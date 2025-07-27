@@ -1,166 +1,94 @@
-# 193nm DUV Resist Process Window & Stochastic Defect Reduction
+# Louis Antoine Portfolio - Complete Project
 
-[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
-[![Jupyter](https://img.shields.io/badge/Jupyter-Notebook-orange.svg)](https://jupyter.org)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+## Current Status
+This portfolio contains all the essential files and project directories needed for a fully functional portfolio website.
 
-## 🎯 Project Overview
+## Portfolio Structure
 
-This comprehensive graduate research project demonstrates the application of industrial Six Sigma methodologies to optimize 193nm deep ultraviolet (DUV) lithography processes in an academic cleanroom setting. By integrating stochastic resist modeling, statistical process control, and advanced data analysis, we achieved significant improvements in both process performance and cost efficiency.
+### Core Files
+- `index.html` - Main portfolio homepage
+- `styles.css` - Main stylesheet with modern design
+- `script.js` - Interactive JavaScript functionality
+- `duv-lithography-project.html` - DUV lithography project details
+- `certifications-detail.html` - Professional certifications page
+- `graduate-research-experience.html` - Graduate research details
+- `programming-skills.html` - Programming and technical skills
+- `advanced-tech-skills.html` - Advanced technical skills
 
-### 🏆 Key Achievements
+### Project Directories
 
-- **42% reduction** in stochastic bridge defects (0.087 → 0.051 defects/cm²)
-- **53% improvement** in process capability (Cpk 1.12 → 1.71)
-- **42% expansion** of process window (165 → 235 nm depth of focus)
-- **$14,700/semester** cost avoidance through improved yield
+#### 1. 193nm-DUV-Academic-Updated Project
+Complete DUV lithography process optimization project with:
+- Process simulation files
+- Lithography simulation results
+- Process capability analysis
+- 3D surface analysis
+- DOE Analysis results
+- SPC dashboard
+- Jupyter notebooks
+- Results and analysis
+- All visualizations
 
-## 🔬 Technical Implementation
+#### 2. advanced_cancer_ai
+Advanced cancer detection AI system with machine learning models
 
-### DMAIC Framework
-- **Define:** Project charter and CTQ requirements
-- **Measure:** Comprehensive baseline analysis with Gage R&R
-- **Analyze:** Stochastic modeling and root cause analysis
-- **Improve:** DOE optimization with response surface methodology
-- **Control:** Real-time SPC with predictive analytics
+#### 3. pollution_analysis_system
+Environmental pollution analysis and monitoring system
 
-### Technologies Used
-- **Python** - Simulation and statistical analysis
-- **Minitab** - Statistical process control and capability studies
-- **JMP** - Real-time SPC dashboards
-- **PROLITH** - Lithography process modeling
-- **Jupyter** - Interactive demonstrations and documentation
+#### 4. pollution_analytics_system
+Advanced pollution analytics with data visualization
 
-## 📊 Visualizations & Simulations
+#### 5. science-learning-platform
+Interactive science learning platform with educational content
 
-This project includes comprehensive visualizations and interactive simulations:
+### Additional Supporting Files
+- Various project documentation
+- Research papers and reports
+- Certification documents
+- Technical specifications
 
-### Generated Visualizations
-- **Process Optimization Simulation** - 4-panel analysis showing optimization progress
-- **Stochastic Defect Analysis** - Bridge defect distribution and process windows
-- **Process Capability Study** - Complete Six Sigma capability analysis
-- **SPC Dashboard** - Real-time statistical process control monitoring
-- **3D Response Surface** - Advanced parameter optimization visualization
-- **DOE Analysis** - Design of experiments with interaction plots
+## Features
+- Responsive design optimized for all devices
+- Interactive navigation with smooth scrolling
+- Professional project showcases
+- Detailed technical documentation
+- Modern UI/UX design
+- Fast loading performance
 
-### Interactive Components
-- Real-time parameter exploration with Jupyter widgets
-- Live process window visualization
-- Stochastic simulation with instant feedback
-- Predictive modeling interface
+## Navigation Links
+All navigation links are functional and point to:
+- Project detail pages
+- Technical skill demonstrations
+- Certification verifications
+- Research documentation
+- Interactive project demos
 
-## 🚀 Quick Start
+## Technical Implementation
+- Pure HTML5, CSS3, and JavaScript
+- No external dependencies
+- Optimized for performance
+- Cross-browser compatible
+- Mobile-first responsive design
 
-### Prerequisites
-```bash
-pip install -r requirements.txt
-```
+## Project Highlights
+1. **193nm DUV Lithography** - Advanced semiconductor fabrication process optimization
+2. **AI Cancer Detection** - Machine learning for medical diagnostics
+3. **Environmental Analytics** - Pollution monitoring and analysis systems
+4. **Educational Platform** - Interactive science learning tools
 
-### Running the Complete Demo
-```bash
-python run_demo.py
-```
+## Usage
+Open `index.html` in any modern web browser to view the complete portfolio.
 
-### Individual Components
-```bash
-# Generate advanced graphs
-python scripts/advanced_graphs.py
+## File Count Summary
+- HTML files: 8
+- Project directories: 5 major projects
+- Supporting files: Extensive documentation and resources
+- Total: Complete professional portfolio ready for deployment
 
-# Create video simulations
-python scripts/video_simulations.py
-
-# Launch interactive demo
-jupyter lab notebooks/05_Interactive_Demo.ipynb
-```
-
-## 📁 Project Structure
-
-```
-193nm-DUV-Academic-Project/
-├── README.md                           # This file
-├── requirements.txt                    # Python dependencies
-├── run_demo.py                        # Master demo script
-├── PROJECT_OVERVIEW.md                # Detailed technical overview
-├── data/                              # Experimental datasets
-│   ├── baseline_measurements.csv
-│   └── doe_results.csv
-├── notebooks/                         # Jupyter notebooks
-│   ├── 01_Baseline_Analysis.ipynb
-│   └── 05_Interactive_Demo.ipynb
-├── scripts/                           # Analysis and simulation scripts
-│   ├── advanced_graphs.py
-│   ├── video_simulations.py
-│   ├── prolith_wrapper.py
-│   └── spc_dashboard.jsl
-├── minitab/                          # Minitab project files
-│   └── macros/
-├── results/                          # Project deliverables
-│   └── STAR_Summary.md
-└── documents/                        # Documentation and procedures
-    ├── Work_Instructions/
-    └── ISO_9001_Templates/
-```
-
-## 📈 Results Summary
-
-### Quantitative Improvements
-| Metric | Baseline | Optimized | Improvement |
-|--------|----------|-----------|-------------|
-| Bridge Defect Rate | 0.087 defects/cm² | 0.051 defects/cm² | 42% reduction |
-| Process Capability (Cpk) | 1.12 | 1.71 | 53% improvement |
-| Depth of Focus | 165 nm | 235 nm | 42% expansion |
-| First-Pass Yield | 67% | 91% | 36% improvement |
-
-### Optimal Process Conditions
-- **Dose:** 25.4 mJ/cm² (optimized from 25.0)
-- **Focus:** -25 nm offset (optimized from 0)
-- **PEB Temperature:** 109.7°C (optimized from 110.0)
-
-## 🎓 Academic Impact
-
-- Framework adopted by 3 subsequent student cohorts
-- SPIE Advanced Lithography conference paper
-- Direct application to semiconductor manufacturing
-- Comprehensive Six Sigma toolkit demonstration
-
-## 🏭 Industrial Applications
-
-- Advanced lithography process optimization
-- Stochastic defect modeling and reduction
-- Real-time process control implementation
-- Quality system development
-
-## 📊 Interactive Demo
-
-The project includes a comprehensive interactive demonstration accessible through Jupyter notebooks. The demo features:
-
-- Real-time parameter sliders for process exploration
-- Live stochastic simulation with instant visualization
-- Process window analysis with immediate feedback
-- Statistical analysis with real-time calculations
-
-## 🤝 Contributing
-
-This project serves as a template for applying industrial quality methodologies in academic research environments. Feel free to adapt the framework for your own lithography optimization projects.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 👨‍🔬 Author
-
-**Louis Antoine**
-- LinkedIn: [louis-antoine-333199a0](https://www.linkedin.com/in/louis-antoine-333199a0)
-- GitHub: [@alovladi007](https://github.com/alovladi007)
-- Email: alovladi@gmail.com
-
-## �� Acknowledgments
-
-- University of Connecticut Nanofabrication Facility
-- ASML for equipment access and technical support
-- Graduate research team members
-- Faculty advisors and cleanroom staff
-
----
-
-*This project successfully demonstrates that industrial-grade quality engineering methodologies can be effectively implemented in academic research environments, achieving significant improvements in both process performance and student learning outcomes.*
+This portfolio demonstrates expertise in:
+- Semiconductor fabrication and process optimization
+- Machine learning and AI development
+- Environmental data analysis
+- Educational technology
+- Web development and design
+- Technical documentation and presentation
