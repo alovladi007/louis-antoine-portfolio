@@ -1,0 +1,89 @@
+# EWMA Control Chart Macro for 193nm Lithography
+# Exponentially Weighted Moving Average with Lambda = 0.2
+# Usage: EXEC 'EWMA_Control.mac' C1 C2
+
+MACRO
+EWMA_Control CD_Data EWMA_Chart
+MCONSTANT Lambda N i UCL LCL CL Sigma_EWMA
+MCOLUMN CD_Data EWMA_Chart UCL_Col LCL_Col
+
+# Set EWMA parameter
+LET Lambda = 0.2
+
+# Get data size
+LET N = COUNT(CD_Data)
+
+# Calculate process mean and standard deviation
+LET CL = MEAN(CD_Data)
+LET Sigma_EWMA = STDEV(CD_Data) * SQRT(Lambda / (2 - Lambda))
+
+# Initialize EWMA chart
+LET EWMA_Chart[1] = CD_Data[1]
+
+# Calculate EWMA values
+DO i = 2:N
+  LET EWMA_Chart[i] = Lambda * CD_Data[i] + (1 - Lambda) * EWMA_Chart[i-1]
+ENDDO
+
+# Calculate control limits (3-sigma)
+LET UCL = CL + 3 * Sigma_EWMA
+LET LCL = CL - 3 * Sigma_EWMA
+
+# Create control limit columns
+SET UCL_Col
+  N(UCL)
+END
+SET LCL_Col
+  N(LCL)
+END
+
+# Create the control chart
+PLOT EWMA_Chart*1:N;
+  CONNECT;
+  TITLE "EWMA Control Chart - 193nm CD Measurements";
+  FOOTNOTE "Lambda = 0.2, UCL = &UCL, LCL = &LCL";
+  YLABEL "EWMA CD (nm)";
+  XLABEL "Sample Number".
+
+# Add control limits
+PLOT UCL_Col*1:N;
+  CONNECT;
+  OVERLAY;
+  COLOR 2.
+
+PLOT LCL_Col*1:N;
+  CONNECT;
+  OVERLAY;
+  COLOR 2.
+
+# Add centerline
+SET CL_Col
+  N(CL)
+END
+PLOT CL_Col*1:N;
+  CONNECT;
+  OVERLAY;
+  COLOR 3.
+
+# Check for out-of-control points
+COPY EWMA_Chart C100
+LET C101 = (C100 > UCL) + (C100 < LCL)
+LET K1 = SUM(C101)
+
+IF K1 > 0
+  PRINT "*** OUT OF CONTROL POINTS DETECTED ***"
+  PRINT "Number of violations: K1"
+ELSE
+  PRINT "Process appears to be in statistical control"
+ENDIF
+
+# Calculate process capability based on EWMA
+LET K2 = STDEV(EWMA_Chart)
+LET K3 = (93 - MEAN(EWMA_Chart)) / (3 * K2)  # Cpu
+LET K4 = (MEAN(EWMA_Chart) - 87) / (3 * K2)  # Cpl
+LET K5 = MIN(K3, K4)  # Cpk
+
+PRINT "EWMA-based Process Capability:"
+PRINT "Cpk = K5"
+
+ENDMACRO

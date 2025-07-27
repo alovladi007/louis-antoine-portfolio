@@ -1,0 +1,147 @@
+# Cpk Forecasting Macro for 193nm Lithography
+# Predictive capability analysis using moving window
+# Usage: EXEC 'Cpk_Forecast.mac' C1
+
+MACRO
+Cpk_Forecast CD_Data
+MCONSTANT N Window_Size i j Current_Cpk Forecast_Cpk Trend_Slope
+MCOLUMN CD_Data Cpk_Values Time_Index Forecast_Points
+
+# Set parameters
+LET Window_Size = 25
+LET N = COUNT(CD_Data)
+
+# Check if we have enough data
+IF N < Window_Size
+  PRINT "Error: Need at least 25 data points for forecasting"
+  EXIT
+ENDIF
+
+# Calculate moving Cpk values
+LET j = 0
+DO i = Window_Size:N
+  LET j = j + 1
+  
+  # Extract window data
+  COPY CD_Data[i-Window_Size+1:i] C200
+  
+  # Calculate Cpk for this window
+  LET K1 = MEAN(C200)
+  LET K2 = STDEV(C200)
+  LET K3 = (93 - K1) / (3 * K2)  # Cpu
+  LET K4 = (K1 - 87) / (3 * K2)  # Cpl
+  LET K5 = MIN(K3, K4)           # Cpk
+  
+  LET Cpk_Values[j] = K5
+  LET Time_Index[j] = i
+ENDDO
+
+# Current Cpk (latest window)
+LET Current_Cpk = Cpk_Values[j]
+
+# Fit trend line to recent Cpk values
+REGRESS Cpk_Values 1 Time_Index;
+  COEF C300.
+
+LET Trend_Slope = C300[2]
+
+# Forecast Cpk for next 10 periods
+LET Forecast_Cpk = Current_Cpk + Trend_Slope * 10
+
+# Create forecast visualization
+PLOT Cpk_Values*Time_Index;
+  CONNECT;
+  TITLE "Cpk Trend Analysis and Forecast";
+  YLABEL "Process Capability (Cpk)";
+  XLABEL "Sample Number";
+  FOOTNOTE "Moving Window = 25 samples".
+
+# Add specification line at Cpk = 1.67
+SET Spec_Line
+  j(1.67)
+END
+PLOT Spec_Line*Time_Index;
+  CONNECT;
+  OVERLAY;
+  COLOR 2;
+  LTYPE 2.
+
+# Add forecast point
+LET K6 = N + 10
+SET Forecast_X
+  1(K6)
+END
+SET Forecast_Y
+  1(Forecast_Cpk)
+END
+PLOT Forecast_Y*Forecast_X;
+  SYMBOL;
+  OVERLAY;
+  COLOR 3;
+  SIZE 2.
+
+# Statistical analysis of Cpk trend
+PRINT "Cpk Trend Analysis Results:"
+PRINT "=========================="
+PRINT "Current Cpk (latest window): Current_Cpk"
+PRINT "Trend slope: Trend_Slope per sample"
+PRINT "Forecasted Cpk (10 samples ahead): Forecast_Cpk"
+PRINT ""
+
+# Trend interpretation
+IF ABS(Trend_Slope) < 0.001
+  PRINT "Trend: STABLE - No significant trend detected"
+ELSEIF Trend_Slope > 0.001
+  PRINT "Trend: IMPROVING - Cpk is increasing over time"
+ELSE
+  PRINT "Trend: DECLINING - Cpk is decreasing over time"
+ENDIF
+
+# Capability assessment
+IF Current_Cpk >= 1.67
+  PRINT "Current Status: EXCELLENT (Cpk ≥ 1.67)"
+ELSEIF Current_Cpk >= 1.33
+  PRINT "Current Status: ADEQUATE (1.33 ≤ Cpk < 1.67)"
+ELSE
+  PRINT "Current Status: POOR (Cpk < 1.33)"
+ENDIF
+
+# Forecast assessment
+IF Forecast_Cpk >= 1.67
+  PRINT "Forecast Status: EXCELLENT (Cpk ≥ 1.67)"
+ELSEIF Forecast_Cpk >= 1.33
+  PRINT "Forecast Status: ADEQUATE (1.33 ≤ Cpk < 1.67)"
+ELSE
+  PRINT "Forecast Status: POOR (Cpk < 1.33)"
+ENDIF
+
+# Control recommendations
+IF Forecast_Cpk < 1.33
+  PRINT ""
+  PRINT "RECOMMENDATION: Process intervention required"
+  PRINT "- Review process parameters"
+  PRINT "- Check for assignable causes"
+  PRINT "- Consider process optimization"
+ELSEIF Forecast_Cpk < 1.67 AND Trend_Slope < 0
+  PRINT ""
+  PRINT "RECOMMENDATION: Monitor closely"
+  PRINT "- Investigate declining trend"
+  PRINT "- Implement preventive actions"
+ELSE
+  PRINT ""
+  PRINT "RECOMMENDATION: Continue current process"
+  PRINT "- Maintain statistical control"
+  PRINT "- Regular monitoring"
+ENDIF
+
+# Calculate confidence intervals for forecast
+LET K7 = STDEV(Cpk_Values)
+LET K8 = Forecast_Cpk - 1.96 * K7  # 95% Lower CI
+LET K9 = Forecast_Cpk + 1.96 * K7  # 95% Upper CI
+
+PRINT ""
+PRINT "95% Confidence Interval for Forecast:"
+PRINT "Lower bound: K8"
+PRINT "Upper bound: K9"
+
+ENDMACRO

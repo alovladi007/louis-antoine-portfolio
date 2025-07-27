@@ -1,0 +1,323 @@
+// JMP Script for Real-Time SPC Dashboard
+// 193nm DUV Lithography Process Control
+// Automated monitoring with EWMA control charts and Cpk forecasting
+
+Names Default To Here(1);
+
+// Database connection parameters
+db_dsn = "DSN=CleanroomDB;UID=readonly;PWD=****";
+refresh_interval = 60; // seconds
+
+// Create main dashboard window
+dashboard_window = New Window("193nm Lithography SPC Dashboard",
+    <<Modal(0),
+    <<Resizable(1),
+    V List Box(
+        // Header section
+        Panel Box("Process Control Dashboard - 193nm Contact Hole Lithography",
+            H List Box(
+                Text Box("Last Update: " || Format(Today(), "yyyy-mm-dd h:m:s")),
+                Spacer Box(Size(200, 0)),
+                Text Box("Status: "),
+                status_text = Text Box("MONITORING", <<Set Font Color("Green"))
+            )
+        ),
+        
+        // Main control charts section
+        H List Box(
+            // CD Control Chart
+            cd_panel = Panel Box("Critical Dimension Control",
+                cd_chart_placeholder = Text Box("Loading CD data...")
+            ),
+            
+            // Bridge Defect Chart  
+            bridge_panel = Panel Box("Bridge Defect Monitoring",
+                bridge_chart_placeholder = Text Box("Loading bridge data...")
+            )
+        ),
+        
+        // Process capability section
+        Panel Box("Process Capability Monitoring",
+            H List Box(
+                cpk_panel = Panel Box("Current Cpk",
+                    cpk_display = Text Box("Calculating...", <<Set Font Size(16))
+                ),
+                
+                forecast_panel = Panel Box("Cpk Forecast",
+                    forecast_display = Text Box("Analyzing trend...", <<Set Font Size(12))
+                ),
+                
+                alarm_panel = Panel Box("Active Alarms",
+                    alarm_list = Text Box("No active alarms", <<Set Font Color("Green"))
+                )
+            )
+        ),
+        
+        // Control buttons
+        H List Box(
+            Button Box("Refresh Now", refresh_data()),
+            Button Box("Export Report", export_report()),
+            Button Box("OCAP Response", launch_ocap()),
+            Spacer Box(Size(100, 0)),
+            Button Box("Close", dashboard_window << Close Window)
+        )
+    )
+);
+
+// Function to refresh data from database
+refresh_data = Function({},
+    Try(
+        // Query latest lithography data
+        dt_current = Open Database(
+            db_dsn,
+            "SELECT * FROM lithography_data WHERE timestamp > NOW() - INTERVAL 24 HOUR ORDER BY timestamp"
+        );
+        
+        If(N Rows(dt_current) > 0,
+            update_control_charts(dt_current);
+            update_capability_metrics(dt_current);
+            check_alarm_conditions(dt_current);
+            
+            status_text << Set Text("ACTIVE - " || Format(Today(), "h:m:s"));
+            status_text << Set Font Color("Green");
+        ,
+            status_text << Set Text("NO DATA");
+            status_text << Set Font Color("Red");
+        );
+        
+        dt_current << Close Window;
+    ,
+        // Handle database connection errors
+        status_text << Set Text("DB ERROR");
+        status_text << Set Font Color("Red");
+        Show("Database connection failed");
+    );
+);
+
+// Function to update control charts
+update_control_charts = Function({dt},
+    // CD Control Chart with EWMA
+    cd_chart = dt << Control Chart Builder(
+        Variables(Y(:CD_Mean)),
+        Chart(Position(1), Limits(Sigma(3))),
+        Chart(Position(2), Type("EWMA"), Lambda(0.2)),
+        Show Control Panel(0),
+        <<Set Title("CD Control Chart - EWMA (λ=0.2)")
+    );
+    
+    // Add specification limits
+    cd_chart << Set Spec Limits(LSL(87), USL(93), Target(90));
+    
+    // Configure alarm rules
+    cd_chart << Set Rules(
+        Test 1(1),  // 1 point outside 3σ
+        Test 2(1),  // 9 points on same side
+        Test 5(1),  // 2 of 3 beyond 2σ
+        Test 6(1)   // 4 of 5 beyond 1σ
+    );
+    
+    // Replace placeholder with actual chart
+    cd_panel << Remove(cd_chart_placeholder);
+    cd_panel << Append(cd_chart);
+    
+    // Bridge Defect Chart
+    bridge_chart = dt << Control Chart Builder(
+        Variables(Y(:Bridge_Rate)),
+        Chart(Position(1), Type("p"), Subgroup Size(:Sample_Size)),
+        Show Control Panel(0),
+        <<Set Title("Bridge Defect Rate Control Chart")
+    );
+    
+    bridge_chart << Set Spec Limits(USL(0.05));
+    
+    bridge_panel << Remove(bridge_chart_placeholder);
+    bridge_panel << Append(bridge_chart);
+);
+
+// Function to update capability metrics
+update_capability_metrics = Function({dt},
+    // Calculate current Cpk
+    cd_values = dt:CD_Mean << Get Values;
+    cd_mean = Mean(cd_values);
+    cd_std = Std Dev(cd_values);
+    
+    lsl = 87;
+    usl = 93;
+    target = 90;
+    
+    cpu = (usl - cd_mean) / (3 * cd_std);
+    cpl = (cd_mean - lsl) / (3 * cd_std);
+    cpk = Min(cpu, cpl);
+    
+    // Update Cpk display with color coding
+    cpk_text = "Cpk = " || Format(cpk, "Fixed Dec", 3);
+    cpk_display << Set Text(cpk_text);
+    
+    If(cpk >= 1.67,
+        cpk_display << Set Font Color("Green"),
+    cpk >= 1.33,
+        cpk_display << Set Font Color("Orange"),
+        cpk_display << Set Font Color("Red")
+    );
+    
+    // Cpk forecast using moving window
+    window_size = 25;
+    if(N Rows(dt) >= window_size,
+        recent_data = dt[Max(1, N Rows(dt) - window_size + 1) :: N Rows(dt), :];
+        forecast_cpk = calculate_cpk_forecast(recent_data);
+        
+        forecast_text = "Trend: " || Format(forecast_cpk, "Fixed Dec", 3) || 
+                       " (next 10 wafers)";
+        forecast_display << Set Text(forecast_text);
+    );
+);
+
+// Function to calculate Cpk forecast
+calculate_cpk_forecast = Function({dt_recent},
+    // Simple linear trend extrapolation
+    n = N Rows(dt_recent);
+    x_vals = 1::n;
+    
+    cd_vals = dt_recent:CD_Mean << Get Values;
+    std_vals = dt_recent:CD_Std << Get Values;
+    
+    // Fit trend lines
+    cd_trend = Fit Line(x_vals, cd_vals);
+    std_trend = Fit Line(x_vals, std_vals);
+    
+    // Forecast 10 periods ahead
+    forecast_x = n + 10;
+    forecast_cd = cd_trend[1] + cd_trend[2] * forecast_x;
+    forecast_std = Max(std_trend[1] + std_trend[2] * forecast_x, 0.5);
+    
+    // Calculate forecast Cpk
+    cpu_forecast = (93 - forecast_cd) / (3 * forecast_std);
+    cpl_forecast = (forecast_cd - 87) / (3 * forecast_std);
+    cpk_forecast = Min(cpu_forecast, cpl_forecast);
+    
+    Return(cpk_forecast);
+);
+
+// Function to check alarm conditions
+check_alarm_conditions = Function({dt},
+    alarm_messages = {};
+    
+    // Check latest measurements
+    latest_row = N Rows(dt);
+    latest_cd = dt:CD_Mean[latest_row];
+    latest_bridge = dt:Bridge_Rate[latest_row];
+    latest_std = dt:CD_Std[latest_row];
+    
+    // CD out of specification
+    If(latest_cd < 87 | latest_cd > 93,
+        Insert Into(alarm_messages, 
+            "CRITICAL: CD out of spec (" || Format(latest_cd, "Fixed Dec", 1) || " nm)")
+    );
+    
+    // High variation
+    If(latest_std > 3.0,
+        Insert Into(alarm_messages,
+            "WARNING: High CD variation (" || Format(latest_std, "Fixed Dec", 1) || " nm)")
+    );
+    
+    // Bridge defects
+    If(latest_bridge > 0.05,
+        Insert Into(alarm_messages,
+            "CRITICAL: Bridge rate exceeded (" || Format(latest_bridge, "Fixed Dec", 3) || ")")
+    );
+    
+    // Update alarm display
+    If(N Items(alarm_messages) > 0,
+        alarm_text = Concat Items(alarm_messages, "\n");
+        alarm_list << Set Text(alarm_text);
+        alarm_list << Set Font Color("Red");
+        
+        // Log alarms to file
+        log_alarms(alarm_messages);
+    ,
+        alarm_list << Set Text("No active alarms");
+        alarm_list << Set Font Color("Green");
+    );
+);
+
+// Function to log alarms
+log_alarms = Function({messages},
+    log_file = "$DOCUMENTS/SPC_Violations.log";
+    timestamp = Format(Today(), "yyyy-mm-dd h:m:s");
+    
+    For(i = 1, i <= N Items(messages), i++,
+        log_entry = timestamp || ": " || messages[i] || "\n";
+        Save Text File(log_file, log_entry, "append");
+    );
+);
+
+// Function to export report
+export_report = Function({},
+    report_window = New Window("Export SPC Report",
+        <<Modal(1),
+        V List Box(
+            Text Box("Select report format:"),
+            H List Box(
+                Button Box("PDF Report", export_pdf()),
+                Button Box("Excel Data", export_excel()),
+                Button Box("PowerPoint", export_ppt())
+            ),
+            H List Box(
+                Button Box("Cancel", report_window << Close Window)
+            )
+        )
+    );
+);
+
+// Function to launch OCAP
+launch_ocap = Function({},
+    ocap_window = New Window("Out of Control Action Plan",
+        <<Modal(1),
+        V List Box(
+            Panel Box("Current Process Status",
+                Text Box("Review current alarms and take appropriate action")
+            ),
+            
+            Panel Box("Response Actions",
+                V List Box(
+                    Button Box("Level 1: Operator Verification", level1_response()),
+                    Button Box("Level 2: Engineering Hold", level2_response()),
+                    Button Box("Level 3: Process Stop", level3_response())
+                )
+            ),
+            
+            H List Box(
+                Button Box("Close", ocap_window << Close Window)
+            )
+        )
+    );
+);
+
+// OCAP Response Functions
+level1_response = Function({},
+    Show("Level 1 Response: Operator verification initiated");
+    // In real implementation, would trigger database updates
+);
+
+level2_response = Function({},
+    Show("Level 2 Response: Engineering hold placed");
+    // In real implementation, would update MES system
+);
+
+level3_response = Function({},
+    Show("Level 3 Response: Process stop initiated");
+    // In real implementation, would trigger emergency procedures
+);
+
+// Auto-refresh timer
+refresh_timer = Function({},
+    refresh_data();
+    // Schedule next refresh
+    Schedule(refresh_interval, refresh_timer());
+);
+
+// Initialize dashboard
+refresh_data();
+Schedule(refresh_interval, refresh_timer());
+
+Show("193nm Lithography SPC Dashboard initialized successfully");
