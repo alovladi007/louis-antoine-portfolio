@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 <body>
     <nav class="navbar">
@@ -285,14 +286,172 @@ fig = visualizer.plot_3d_temperature(T_field, device_geom)
 plt.savefig('thermal_3d_analysis.png', dpi=300, bbox_inches='tight')</code></pre>
                         
                         <div class="simulation-output">
-                            <h4>Visualization Capabilities:</h4>
-                            <ul style="list-style: none; padding: 0;">
-                                <li>✓ 3D surface plots with temperature mapping</li>
-                                <li>✓ 2D contour plots with customizable colormaps</li>
-                                <li>✓ Heat flux vector fields</li>
-                                <li>✓ Animated transient responses</li>
-                                <li>✓ Publication-ready figure export</li>
-                            </ul>
+                            <h4>Visualization Capabilities - Live Examples:</h4>
+                            
+                            <div class="viz-gallery">
+                                <div class="viz-example">
+                                    <h5>✓ 3D Surface Plot with Temperature Mapping</h5>
+                                    <img src="thermal-modeling-files/visualizations/3d_temperature_distribution.png" 
+                                         alt="3D Temperature Surface Plot" 
+                                         style="width: 100%; max-width: 600px; margin: 10px 0;">
+                                    <p>Interactive 3D surface showing temperature peaks at gate edge with full rotation capability.</p>
+                                </div>
+                                
+                                <div class="viz-example">
+                                    <h5>✓ 2D Contour Plot with Custom Colormap</h5>
+                                    <div id="contour-plot" style="width: 100%; height: 400px; margin: 10px 0;"></div>
+                                    <script>
+                                        // Create 2D contour plot
+                                        var contourData = [{
+                                            type: 'contour',
+                                            x: Array.from({length: 100}, (_, i) => i * 0.1),
+                                            y: Array.from({length: 100}, (_, i) => i * 1),
+                                            z: Array.from({length: 100}, () => 
+                                                Array.from({length: 100}, (_, i, j) => {
+                                                    var x = i * 0.1 - 5;
+                                                    var y = j * 1 - 50;
+                                                    return 27 + 100 * Math.exp(-(x*x + y*y/100) / 25);
+                                                })
+                                            ).flat(),
+                                            colorscale: 'Hot',
+                                            contours: {
+                                                coloring: 'heatmap',
+                                                showlabels: true,
+                                                labelfont: {
+                                                    size: 12,
+                                                    color: 'white',
+                                                }
+                                            },
+                                            colorbar: {
+                                                title: 'Temperature (°C)',
+                                                titleside: 'right'
+                                            }
+                                        }];
+                                        
+                                        var contourLayout = {
+                                            title: '2D Temperature Contour Map',
+                                            xaxis: {title: 'X Position (μm)'},
+                                            yaxis: {title: 'Y Position (μm)'},
+                                            paper_bgcolor: 'rgba(0,0,0,0)',
+                                            plot_bgcolor: 'rgba(0,0,0,0.1)'
+                                        };
+                                        
+                                        Plotly.newPlot('contour-plot', contourData, contourLayout);
+                                    </script>
+                                </div>
+                                
+                                <div class="viz-example">
+                                    <h5>✓ Heat Flux Vector Field</h5>
+                                    <div id="vector-field" style="width: 100%; height: 400px; margin: 10px 0;"></div>
+                                    <script>
+                                        // Create heat flux vector field
+                                        var x = [], y = [], u = [], v = [];
+                                        for (var i = 0; i < 20; i++) {
+                                            for (var j = 0; j < 20; j++) {
+                                                x.push(i * 0.5);
+                                                y.push(j * 5);
+                                                // Heat flux vectors pointing away from hot spot
+                                                var dx = i * 0.5 - 5;
+                                                var dy = j * 5 - 50;
+                                                var r = Math.sqrt(dx*dx + dy*dy) + 1;
+                                                u.push(-dx / r * 10);
+                                                v.push(-dy / r * 10);
+                                            }
+                                        }
+                                        
+                                        var vectorData = [{
+                                            type: 'cone',
+                                            x: x, y: y, z: Array(400).fill(0),
+                                            u: u, v: v, w: Array(400).fill(0),
+                                            colorscale: 'Blues',
+                                            sizemode: 'scaled',
+                                            sizeref: 0.5
+                                        }];
+                                        
+                                        var vectorLayout = {
+                                            title: 'Heat Flux Vector Field',
+                                            scene: {
+                                                xaxis: {title: 'X (μm)'},
+                                                yaxis: {title: 'Y (μm)'},
+                                                zaxis: {showticklabels: false},
+                                                camera: {eye: {x: 0, y: 0, z: 2.5}}
+                                            }
+                                        };
+                                        
+                                        Plotly.newPlot('vector-field', vectorData, vectorLayout);
+                                    </script>
+                                    <p>Heat flux vectors showing thermal energy flow away from the hot spot.</p>
+                                </div>
+                                
+                                <div class="viz-example">
+                                    <h5>✓ Animated Transient Response</h5>
+                                    <div id="transient-animation" style="width: 100%; height: 400px; margin: 10px 0;"></div>
+                                    <script>
+                                        // Create animated transient response
+                                        var frames = [];
+                                        var t_values = Array.from({length: 50}, (_, i) => i * 2);
+                                        
+                                        for (var k = 0; k < 50; k++) {
+                                            var temp = [];
+                                            for (var i = 0; i < 100; i++) {
+                                                temp.push(27 + 100 * (1 - Math.exp(-i/100 * k/10)));
+                                            }
+                                            frames.push({
+                                                data: [{y: temp}],
+                                                name: `t=${k*2}μs`
+                                            });
+                                        }
+                                        
+                                        var transientData = [{
+                                            x: Array.from({length: 100}, (_, i) => i * 0.1),
+                                            y: Array(100).fill(27),
+                                            mode: 'lines',
+                                            line: {color: 'red', width: 3},
+                                            name: 'Temperature'
+                                        }];
+                                        
+                                        var transientLayout = {
+                                            title: 'Transient Temperature Response Animation',
+                                            xaxis: {title: 'Position (μm)'},
+                                            yaxis: {title: 'Temperature (°C)', range: [25, 130]},
+                                            updatemenus: [{
+                                                type: 'buttons',
+                                                showactive: false,
+                                                buttons: [{
+                                                    label: 'Play',
+                                                    method: 'animate',
+                                                    args: [null, {
+                                                        frame: {duration: 100},
+                                                        transition: {duration: 50}
+                                                    }]
+                                                }]
+                                            }]
+                                        };
+                                        
+                                        Plotly.newPlot('transient-animation', transientData, transientLayout)
+                                            .then(function() {
+                                                Plotly.addFrames('transient-animation', frames);
+                                            });
+                                    </script>
+                                    <p>Click "Play" to see temperature evolution over time.</p>
+                                </div>
+                                
+                                <div class="viz-example">
+                                    <h5>✓ Publication-Ready Export Examples</h5>
+                                    <div class="export-examples">
+                                        <img src="thermal-modeling-files/visualizations/publication_figure_1.png" 
+                                             alt="Publication Figure 1" 
+                                             style="width: 45%; margin: 5px;">
+                                        <img src="thermal-modeling-files/visualizations/publication_figure_2.png" 
+                                             alt="Publication Figure 2" 
+                                             style="width: 45%; margin: 5px;">
+                                    </div>
+                                    <pre><code class="language-python"># Export publication-quality figures
+fig.savefig('thermal_analysis.pdf', dpi=300, bbox_inches='tight')
+fig.savefig('thermal_analysis.eps', format='eps', dpi=300)
+fig.savefig('thermal_analysis.svg', format='svg', dpi=300)</code></pre>
+                                </div>
+                            </div>
                         </div>
                         
                         <a href="thermal-modeling-files/thermal_visualization.py" download class="download-link">
@@ -462,12 +621,173 @@ Transient Analysis:
             </div>
 
             <div class="content-section">
-                <h2>Interactive Demos</h2>
+                <h2>Interactive Demos and Live Visualizations</h2>
+                
+                <div class="interactive-section">
+                    <h3>🎮 Live Interactive Thermal Simulator</h3>
+                    <p>Adjust parameters in real-time to see how they affect temperature distribution:</p>
+                    <iframe src="thermal-modeling-files/interactive_demo.html" 
+                            style="width: 100%; height: 800px; border: 2px solid #667eea; border-radius: 10px; margin: 20px 0;"
+                            title="Interactive Thermal Simulation">
+                    </iframe>
+                    <div class="demo-controls">
+                        <p><strong>Try these experiments:</strong></p>
+                        <ul>
+                            <li>Increase power to 3W and watch the temperature rise above 150°C</li>
+                            <li>Change thermal time constant to see transient response speed</li>
+                            <li>Compare different substrate materials in the sensitivity plot</li>
+                        </ul>
+                    </div>
+                </div>
+
                 <div class="demo-list">
                     <div class="demo-item">
-                        <h3>1. Basic Thermal Analysis</h3>
-                        <p>Simple demonstration of steady-state thermal simulation without external dependencies.</p>
-                        <pre><code class="language-python"># Basic thermal simulation demo
+                        <h3>1. Real-Time Temperature Animation</h3>
+                        <p>Watch how temperature evolves during device operation:</p>
+                        <div class="animation-container">
+                            <img src="thermal-modeling-files/visualizations/thermal_animation.gif" 
+                                 alt="Temperature Evolution Animation" 
+                                 style="width: 100%; max-width: 700px; margin: 20px auto; display: block; border-radius: 10px;">
+                        </div>
+                        <pre><code class="language-python"># Generate animated temperature evolution
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+from matplotlib.animation import FuncAnimation
+
+def create_thermal_animation():
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+    
+    # Time steps
+    time_steps = 100
+    x = np.linspace(0, 10, 100)
+    y = np.linspace(0, 100, 100)
+    X, Y = np.meshgrid(x, y)
+    
+    # Initialize temperature field
+    T_ambient = 27
+    frames = []
+    
+    def heat_evolution(t):
+        # Time-dependent heat source
+        power = 2.0 * (1 - np.exp(-t/15))  # Ramp up
+        T_peak = T_ambient + power * 50
+        
+        # Gaussian heat distribution
+        gate_x, gate_y = 5, 50
+        sigma = 5 + 0.1 * t  # Spreading effect
+        
+        T = T_ambient + (T_peak - T_ambient) * \
+            np.exp(-((X - gate_x)**2 + (Y - gate_y)**2) / (2 * sigma**2))
+        
+        return T
+    
+    # Create animation
+    im = ax1.imshow(heat_evolution(0), cmap='hot', 
+                    extent=[0, 10, 0, 100], vmin=27, vmax=130)
+    
+    # Temperature vs time plot
+    times = []
+    max_temps = []
+    line, = ax2.plot([], [], 'r-', linewidth=2)
+    
+    def animate(frame):
+        t = frame * 0.5  # Time in microseconds
+        T = heat_evolution(t)
+        
+        # Update heatmap
+        im.set_array(T)
+        
+        # Update line plot
+        times.append(t)
+        max_temps.append(np.max(T))
+        line.set_data(times, max_temps)
+        
+        ax1.set_title(f'Temperature at t = {t:.1f} μs')
+        ax2.set_xlim(0, 50)
+        ax2.set_ylim(27, 130)
+        
+        return [im, line]
+    
+    ax1.set_xlabel('X Position (μm)')
+    ax1.set_ylabel('Y Position (μm)')
+    ax2.set_xlabel('Time (μs)')
+    ax2.set_ylabel('Max Temperature (°C)')
+    ax2.set_title('Temperature Rise Over Time')
+    ax2.grid(True)
+    
+    anim = FuncAnimation(fig, animate, frames=time_steps, 
+                        interval=50, blit=True)
+    
+    return anim
+
+# Create and save animation
+anim = create_thermal_animation()
+anim.save('thermal_animation.gif', writer='pillow', fps=20)</code></pre>
+                        
+                        <div class="simulation-output">
+                            <h4>Animation Insights:</h4>
+                            <ul>
+                                <li>Initial rapid temperature rise (0-20 μs)</li>
+                                <li>Thermal spreading visible as heat diffuses</li>
+                                <li>Steady-state reached around 40 μs</li>
+                                <li>Hot spot remains localized at gate edge</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="demo-item">
+                        <h3>2. Interactive 3D Temperature Visualization</h3>
+                        <p>Explore the temperature distribution in 3D with rotation and zoom:</p>
+                        <div class="plotly-container">
+                            <div id="3d-temp-plot" style="width: 100%; height: 500px;"></div>
+                        </div>
+                        <script>
+                            // 3D temperature plot using Plotly
+                            var x = Array.from({length: 50}, (_, i) => i * 0.2);
+                            var y = Array.from({length: 50}, (_, i) => i * 2);
+                            var z = [];
+                            
+                            // Generate temperature data
+                            for (var j = 0; j < 50; j++) {
+                                var row = [];
+                                for (var i = 0; i < 50; i++) {
+                                    var dist = Math.sqrt(Math.pow(x[i] - 5, 2) + Math.pow(y[j] - 50, 2));
+                                    var temp = 27 + 100 * Math.exp(-dist * dist / 50);
+                                    row.push(temp);
+                                }
+                                z.push(row);
+                            }
+                            
+                            var data = [{
+                                type: 'surface',
+                                x: x,
+                                y: y,
+                                z: z,
+                                colorscale: 'Hot',
+                                colorbar: {
+                                    title: 'Temperature (°C)',
+                                    titleside: 'right'
+                                }
+                            }];
+                            
+                            var layout = {
+                                title: '3D Temperature Distribution - InGaN/GaN HEMT',
+                                scene: {
+                                    xaxis: {title: 'X Position (μm)'},
+                                    yaxis: {title: 'Y Position (μm)'},
+                                    zaxis: {title: 'Temperature (°C)'},
+                                    camera: {
+                                        eye: {x: 1.5, y: 1.5, z: 1.5}
+                                    }
+                                },
+                                autosize: true
+                            };
+                            
+                            Plotly.newPlot('3d-temp-plot', data, layout, {responsive: true});
+                        </script>
+                        
+                        <pre><code class="language-python"># Interactive 3D visualization with Plotly
 import math
 
 class ThermalSimulator:
@@ -756,6 +1076,72 @@ python run_all_demos.py</code></pre>
 
         .bulk-download span {
             font-weight: 600;
+        }
+
+        .viz-gallery {
+            display: grid;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .viz-example {
+            background: rgba(102, 126, 234, 0.03);
+            padding: 1.5rem;
+            border-radius: 10px;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .viz-example h5 {
+            color: #667eea;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .interactive-section {
+            background: rgba(102, 126, 234, 0.05);
+            padding: 2rem;
+            border-radius: 15px;
+            margin: 2rem 0;
+            border: 2px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .demo-controls {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+
+        .demo-controls ul {
+            list-style: none;
+            padding-left: 1rem;
+        }
+
+        .demo-controls li:before {
+            content: "→ ";
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .animation-container {
+            text-align: center;
+            background: #0a0a0f;
+            padding: 1rem;
+            border-radius: 10px;
+        }
+
+        .export-examples {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            background: #0a0a0f;
+            padding: 1rem;
+            border-radius: 10px;
+        }
+
+        .export-examples img {
+            border: 1px solid #667eea;
+            border-radius: 5px;
         }
     </style>
 
