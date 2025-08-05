@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EIT Interactive Demo</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0f0f23;
+            color: #ccc;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .demo-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #667eea;
+            text-align: center;
+        }
+        
+        .controls {
+            background: #1a1a2e;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        label {
+            color: #667eea;
+            font-weight: bold;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+        }
+        
+        .value-display {
+            color: #4ecdc4;
+            font-weight: bold;
+        }
+        
+        .plot-container {
+            background: #1a1a2e;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .info-panel {
+            background: #1a1a2e;
+            padding: 20px;
+            border-radius: 10px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .info-item {
+            text-align: center;
+        }
+        
+        .info-value {
+            font-size: 2em;
+            color: #667eea;
+            font-weight: bold;
+        }
+        
+        .info-label {
+            color: #888;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <h1>EIT Interactive Demonstration</h1>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="control-power">Control Field Power (MHz)</label>
+                <input type="range" id="control-power" min="0.5" max="10" step="0.1" value="3">
+                <span class="value-display" id="control-power-value">3.0 MHz</span>
+            </div>
+            
+            <div class="control-group">
+                <label for="optical-depth">Optical Depth</label>
+                <input type="range" id="optical-depth" min="10" max="200" step="5" value="100">
+                <span class="value-display" id="optical-depth-value">100</span>
+            </div>
+            
+            <div class="control-group">
+                <label for="decoherence">Ground State Decoherence (kHz)</label>
+                <input type="range" id="decoherence" min="0.1" max="10" step="0.1" value="1">
+                <span class="value-display" id="decoherence-value">1.0 kHz</span>
+            </div>
+            
+            <div class="control-group">
+                <label for="temperature">Temperature (°C)</label>
+                <input type="range" id="temperature" min="20" max="100" step="5" value="50">
+                <span class="value-display" id="temperature-value">50°C</span>
+            </div>
+        </div>
+        
+        <div class="plot-container">
+            <div id="main-plot"></div>
+        </div>
+        
+        <div class="info-panel">
+            <div class="info-item">
+                <div class="info-value" id="efficiency">93.6%</div>
+                <div class="info-label">Storage Efficiency</div>
+            </div>
+            <div class="info-item">
+                <div class="info-value" id="linewidth">1.5 MHz</div>
+                <div class="info-label">EIT Linewidth</div>
+            </div>
+            <div class="info-item">
+                <div class="info-value" id="group-delay">10.6 μs</div>
+                <div class="info-label">Group Delay</div>
+            </div>
+            <div class="info-item">
+                <div class="info-value" id="group-velocity">28.3 km/s</div>
+                <div class="info-label">Group Velocity</div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Physical constants
+        const gamma_ge = 6e6; // Hz
+        const gamma_gs = 1e3; // Hz
+        const c = 3e8; // m/s
+        
+        function updatePlot() {
+            const controlPower = parseFloat(document.getElementById('control-power').value);
+            const opticalDepth = parseFloat(document.getElementById('optical-depth').value);
+            const decoherence = parseFloat(document.getElementById('decoherence').value);
+            
+            const omega_c = controlPower * 1e6;
+            const gamma_gs_hz = decoherence * 1e3;
+            
+            // Generate data
+            const detuning = [];
+            const transmission = [];
+            const absorption = [];
+            const dispersion = [];
+            
+            for (let delta = -15; delta <= 15; delta += 0.1) {
+                const delta_hz = delta * 1e6;
+                const gamma_EIT = gamma_gs_hz + (omega_c * omega_c) / gamma_ge;
+                const denominator = gamma_EIT * gamma_EIT + delta_hz * delta_hz;
+                
+                const abs = gamma_gs_hz * gamma_EIT / denominator;
+                const trans = Math.exp(-opticalDepth * abs);
+                const disp = (delta_hz * gamma_EIT) / denominator;
+                
+                detuning.push(delta);
+                transmission.push(trans * 100);
+                absorption.push(abs * 1e6);
+                dispersion.push(disp * 1e6);
+            }
+            
+            // Update calculations
+            const gamma_EIT = gamma_gs_hz + (omega_c * omega_c) / gamma_ge;
+            const efficiency = Math.exp(-opticalDepth * gamma_gs_hz / gamma_EIT) * 100;
+            const linewidth = gamma_EIT / 1e6;
+            const groupDelay = opticalDepth / (2 * Math.PI * gamma_EIT) * 1e6;
+            const groupVelocity = c * omega_c * omega_c / (opticalDepth * gamma_ge) / 1000;
+            
+            // Update info panel
+            document.getElementById('efficiency').textContent = efficiency.toFixed(1) + '%';
+            document.getElementById('linewidth').textContent = linewidth.toFixed(2) + ' MHz';
+            document.getElementById('group-delay').textContent = groupDelay.toFixed(1) + ' μs';
+            document.getElementById('group-velocity').textContent = groupVelocity.toFixed(1) + ' km/s';
+            
+            // Create plot
+            const trace1 = {
+                x: detuning,
+                y: transmission,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Transmission',
+                line: { color: '#667eea', width: 3 },
+                yaxis: 'y'
+            };
+            
+            const trace2 = {
+                x: detuning,
+                y: absorption,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Absorption',
+                line: { color: '#ff6b6b', width: 2 },
+                yaxis: 'y2'
+            };
+            
+            const trace3 = {
+                x: detuning,
+                y: dispersion,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Dispersion',
+                line: { color: '#4ecdc4', width: 2, dash: 'dash' },
+                yaxis: 'y3'
+            };
+            
+            const layout = {
+                title: {
+                    text: 'EIT Spectroscopy: Real-time Simulation',
+                    font: { color: '#ccc' }
+                },
+                xaxis: {
+                    title: 'Probe Detuning (MHz)',
+                    gridcolor: '#444',
+                    zerolinecolor: '#666',
+                    color: '#ccc'
+                },
+                yaxis: {
+                    title: 'Transmission (%)',
+                    gridcolor: '#444',
+                    zerolinecolor: '#666',
+                    color: '#ccc',
+                    range: [0, 105]
+                },
+                yaxis2: {
+                    title: 'Absorption (a.u.)',
+                    overlaying: 'y',
+                    side: 'right',
+                    gridcolor: '#444',
+                    color: '#ccc'
+                },
+                yaxis3: {
+                    title: 'Dispersion (a.u.)',
+                    overlaying: 'y',
+                    side: 'right',
+                    position: 0.95,
+                    gridcolor: '#444',
+                    color: '#ccc'
+                },
+                plot_bgcolor: '#0f0f23',
+                paper_bgcolor: '#1a1a2e',
+                showlegend: true,
+                legend: {
+                    x: 0.02,
+                    y: 0.98,
+                    font: { color: '#ccc' }
+                }
+            };
+            
+            Plotly.newPlot('main-plot', [trace1, trace2, trace3], layout, {responsive: true});
+        }
+        
+        // Event listeners
+        document.getElementById('control-power').addEventListener('input', function(e) {
+            document.getElementById('control-power-value').textContent = e.target.value + ' MHz';
+            updatePlot();
+        });
+        
+        document.getElementById('optical-depth').addEventListener('input', function(e) {
+            document.getElementById('optical-depth-value').textContent = e.target.value;
+            updatePlot();
+        });
+        
+        document.getElementById('decoherence').addEventListener('input', function(e) {
+            document.getElementById('decoherence-value').textContent = e.target.value + ' kHz';
+            updatePlot();
+        });
+        
+        document.getElementById('temperature').addEventListener('input', function(e) {
+            document.getElementById('temperature-value').textContent = e.target.value + '°C';
+            updatePlot();
+        });
+        
+        // Initialize
+        updatePlot();
+    </script>
+</body>
+</html>
