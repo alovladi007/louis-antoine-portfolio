@@ -570,10 +570,15 @@ function optimizeStorageEfficiency(params) {
             if (tabName === 'absorption') updateAbsorptionPlot();
             else if (tabName === 'group-delay') updateGroupDelayPlot();
             else if (tabName === 'pulse-propagation') {
+                // Ensure animation is stopped when switching to this tab
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                    animationId = null;
+                }
+                isPlaying = false;
+                animationFrame = 0;
+                
                 initPulsePropagation();
-                // Set initial button states
-                document.getElementById('pause-btn').disabled = true;
-                document.getElementById('animation-status').textContent = 'Ready';
             }
             else if (tabName === 'storage') updateStoragePlot();
             else if (tabName === 'comparison') updateComparisonPlots();
@@ -808,6 +813,23 @@ function optimizeStorageEfficiency(params) {
             };
             
             Plotly.newPlot('pulse-propagation-plot', [trace1, trace2], layout, {responsive: true});
+            
+            // Reset animation state
+            animationFrame = 0;
+            isPlaying = false;
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+            
+            // Set button states
+            const playBtn = document.getElementById('play-btn');
+            const pauseBtn = document.getElementById('pause-btn');
+            const statusElem = document.getElementById('animation-status');
+            
+            if (playBtn) playBtn.disabled = false;
+            if (pauseBtn) pauseBtn.disabled = true;
+            if (statusElem) statusElem.textContent = 'Ready';
         }
 
         // Update storage efficiency plot
@@ -995,9 +1017,13 @@ function optimizeStorageEfficiency(params) {
             isPlaying = true;
             
             // Update button states
-            document.getElementById('play-btn').disabled = true;
-            document.getElementById('pause-btn').disabled = false;
-            document.getElementById('animation-status').textContent = 'Playing...';
+            const playBtn = document.getElementById('play-btn');
+            const pauseBtn = document.getElementById('pause-btn');
+            const statusElem = document.getElementById('animation-status');
+            
+            if (playBtn) playBtn.disabled = true;
+            if (pauseBtn) pauseBtn.disabled = false;
+            if (statusElem) statusElem.textContent = 'Playing...';
             
             animatePulse();
         }
@@ -1010,9 +1036,13 @@ function optimizeStorageEfficiency(params) {
             }
             
             // Update button states
-            document.getElementById('play-btn').disabled = false;
-            document.getElementById('pause-btn').disabled = true;
-            document.getElementById('animation-status').textContent = 'Paused';
+            const playBtn = document.getElementById('play-btn');
+            const pauseBtn = document.getElementById('pause-btn');
+            const statusElem = document.getElementById('animation-status');
+            
+            if (playBtn) playBtn.disabled = false;
+            if (pauseBtn) pauseBtn.disabled = true;
+            if (statusElem) statusElem.textContent = 'Paused';
         }
 
         function resetAnimation() {
@@ -1021,13 +1051,25 @@ function optimizeStorageEfficiency(params) {
             initPulsePropagation();
             
             // Update button states
-            document.getElementById('play-btn').disabled = false;
-            document.getElementById('pause-btn').disabled = true;
-            document.getElementById('animation-status').textContent = 'Ready';
+            const playBtn = document.getElementById('play-btn');
+            const pauseBtn = document.getElementById('pause-btn');
+            const statusElem = document.getElementById('animation-status');
+            
+            if (playBtn) playBtn.disabled = false;
+            if (pauseBtn) pauseBtn.disabled = true;
+            if (statusElem) statusElem.textContent = 'Ready';
         }
 
         function animatePulse() {
             if (!isPlaying) return;
+            
+            // Check if the plot container exists
+            const plotContainer = document.getElementById('pulse-propagation-plot');
+            if (!plotContainer) {
+                console.error('Pulse propagation plot container not found');
+                pauseAnimation();
+                return;
+            }
             
             const duration = parseFloat(document.getElementById('pulse-duration').value);
             const distance = parseFloat(document.getElementById('propagation-distance').value);
@@ -1040,6 +1082,9 @@ function optimizeStorageEfficiency(params) {
             const inputPulse = [];
             const outputPulse = [];
             
+            // Calculate delay for current frame
+            const delay = 10.6 * (currentTime / 40); // Progressive delay
+            
             // Generate time axis
             for (let t = -20; t <= 40; t += 0.1) {
                 time.push(t);
@@ -1049,7 +1094,6 @@ function optimizeStorageEfficiency(params) {
                 inputPulse.push(input);
                 
                 // Output pulse (moving and evolving)
-                const delay = 10.6 * (currentTime / 40); // Progressive delay
                 const broadening = 1 + 0.1 * (currentTime / 40); // Progressive broadening
                 const amplitude = 0.9 * Math.exp(-0.01 * currentTime); // Slight decay
                 const output = amplitude * Math.exp(-((t - delay) * (t - delay)) / (2 * duration * duration * broadening * broadening));
