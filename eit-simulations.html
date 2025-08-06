@@ -37,11 +37,11 @@
             </div>
 
             <div class="simulation-tabs">
-                <button class="tab-button active" onclick="showTab('absorption')">Absorption Spectrum</button>
-                <button class="tab-button" onclick="showTab('group-delay')">Group Delay</button>
-                <button class="tab-button" onclick="showTab('pulse-propagation')">Pulse Propagation</button>
-                <button class="tab-button" onclick="showTab('storage')">Storage Efficiency</button>
-                <button class="tab-button" onclick="showTab('comparison')">Literature Comparison</button>
+                <button class="tab-button active" onclick="showTab('absorption', event)">Absorption Spectrum</button>
+                <button class="tab-button" onclick="showTab('group-delay', event)">Group Delay</button>
+                <button class="tab-button" onclick="showTab('pulse-propagation', event)">Pulse Propagation</button>
+                <button class="tab-button" onclick="showTab('storage', event)">Storage Efficiency</button>
+                <button class="tab-button" onclick="showTab('comparison', event)">Literature Comparison</button>
             </div>
 
             <!-- Absorption Spectrum Tab -->
@@ -555,8 +555,14 @@ function optimizeStorageEfficiency(params) {
     </style>
 
     <script>
+        // Animation variables - declare at the top
+        let animationId = null;
+        let animationFrame = 0;
+        let isPlaying = false;
+        const animationSpeed = 0.5; // Speed factor
+        
         // Tab switching
-        function showTab(tabName) {
+        function showTab(tabName, event) {
             const tabs = document.querySelectorAll('.tab-content');
             const buttons = document.querySelectorAll('.tab-button');
             
@@ -564,7 +570,18 @@ function optimizeStorageEfficiency(params) {
             buttons.forEach(btn => btn.classList.remove('active'));
             
             document.getElementById(tabName + '-tab').classList.add('active');
-            event.target.classList.add('active');
+            
+            // Find the button that was clicked
+            if (event && event.target) {
+                event.target.classList.add('active');
+            } else {
+                // If no event, find the button by tab name
+                buttons.forEach(btn => {
+                    if (btn.textContent.toLowerCase().includes(tabName.replace('-', ' '))) {
+                        btn.classList.add('active');
+                    }
+                });
+            }
             
             // Initialize plots for the active tab
             if (tabName === 'absorption') updateAbsorptionPlot();
@@ -1007,12 +1024,8 @@ function optimizeStorageEfficiency(params) {
         document.getElementById('control-timing').addEventListener('change', updateStoragePlot);
 
         // Animation functions
-        let animationId = null;
-        let animationFrame = 0;
-        let isPlaying = false;
-        const animationSpeed = 0.5; // Speed factor
-
         function playAnimation() {
+            console.log('playAnimation called, isPlaying:', isPlaying);
             if (isPlaying) return;
             isPlaying = true;
             
@@ -1020,6 +1033,8 @@ function optimizeStorageEfficiency(params) {
             const playBtn = document.getElementById('play-btn');
             const pauseBtn = document.getElementById('pause-btn');
             const statusElem = document.getElementById('animation-status');
+            
+            console.log('Button elements:', { playBtn, pauseBtn, statusElem });
             
             if (playBtn) playBtn.disabled = true;
             if (pauseBtn) pauseBtn.disabled = false;
@@ -1061,6 +1076,7 @@ function optimizeStorageEfficiency(params) {
         }
 
         function animatePulse() {
+            console.log('animatePulse called, isPlaying:', isPlaying);
             if (!isPlaying) return;
             
             // Check if the plot container exists
@@ -1070,6 +1086,8 @@ function optimizeStorageEfficiency(params) {
                 pauseAnimation();
                 return;
             }
+            
+            console.log('Plot container found, animationFrame:', animationFrame);
             
             const duration = parseFloat(document.getElementById('pulse-duration').value);
             const distance = parseFloat(document.getElementById('propagation-distance').value);
@@ -1157,13 +1175,22 @@ function optimizeStorageEfficiency(params) {
                 }]
             };
             
-            Plotly.newPlot('pulse-propagation-plot', [trace1, trace2, trace3], layout, {responsive: true});
+            try {
+                Plotly.newPlot('pulse-propagation-plot', [trace1, trace2, trace3], layout, {responsive: true});
+                console.log('Plot updated successfully');
+            } catch (error) {
+                console.error('Error updating plot:', error);
+                pauseAnimation();
+                return;
+            }
             
             // Increment frame and loop
             animationFrame += animationSpeed;
             if (animationFrame >= totalFrames) {
                 animationFrame = 0;
             }
+            
+            console.log('Requesting next frame, animationFrame:', animationFrame);
             
             // Request next frame
             animationId = requestAnimationFrame(() => animatePulse());
