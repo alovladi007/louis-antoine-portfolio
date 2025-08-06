@@ -65,6 +65,12 @@
                     </div>
                 </div>
                 <div id="absorption-plot"></div>
+                <div class="animation-controls">
+                    <button id="absorption-play-btn" onclick="playAbsorptionAnimation()"><i class="fas fa-play"></i> Animate Power Sweep</button>
+                    <button id="absorption-pause-btn" onclick="pauseAbsorptionAnimation()" disabled><i class="fas fa-pause"></i> Pause</button>
+                    <button id="absorption-reset-btn" onclick="resetAbsorptionAnimation()"><i class="fas fa-redo"></i> Reset</button>
+                    <span id="absorption-animation-status" style="margin-left: 20px; color: #4ecdc4;">Ready</span>
+                </div>
                 <div class="info-panel">
                     <h3>Current Parameters:</h3>
                     <ul>
@@ -91,6 +97,12 @@
                     </div>
                 </div>
                 <div id="group-delay-plot"></div>
+                <div class="animation-controls">
+                    <button id="delay-play-btn" onclick="playDelayAnimation()"><i class="fas fa-play"></i> Animate Temperature Sweep</button>
+                    <button id="delay-pause-btn" onclick="pauseDelayAnimation()" disabled><i class="fas fa-pause"></i> Pause</button>
+                    <button id="delay-reset-btn" onclick="resetDelayAnimation()"><i class="fas fa-redo"></i> Reset</button>
+                    <span id="delay-animation-status" style="margin-left: 20px; color: #4ecdc4;">Ready</span>
+                </div>
                 <div class="info-panel">
                     <h3>Slow Light Properties:</h3>
                     <ul>
@@ -561,10 +573,37 @@ function optimizeStorageEfficiency(params) {
         let isPlaying = false;
         const animationSpeed = 0.5; // Speed factor
         
+        // Absorption animation variables
+        let absorptionInterval = null;
+        let absorptionFrame = 0;
+        let isAbsorptionPlaying = false;
+        
+        // Group delay animation variables
+        let delayInterval = null;
+        let delayFrame = 0;
+        let isDelayPlaying = false;
+        
         // Tab switching
         function showTab(tabName, event) {
             const tabs = document.querySelectorAll('.tab-content');
             const buttons = document.querySelectorAll('.tab-button');
+            
+            // Stop all animations when switching tabs
+            if (animationInterval) {
+                clearInterval(animationInterval);
+                animationInterval = null;
+                isPlaying = false;
+            }
+            if (absorptionInterval) {
+                clearInterval(absorptionInterval);
+                absorptionInterval = null;
+                isAbsorptionPlaying = false;
+            }
+            if (delayInterval) {
+                clearInterval(delayInterval);
+                delayInterval = null;
+                isDelayPlaying = false;
+            }
             
             tabs.forEach(tab => tab.classList.remove('active'));
             buttons.forEach(btn => btn.classList.remove('active'));
@@ -587,14 +626,7 @@ function optimizeStorageEfficiency(params) {
             if (tabName === 'absorption') updateAbsorptionPlot();
             else if (tabName === 'group-delay') updateGroupDelayPlot();
             else if (tabName === 'pulse-propagation') {
-                // Ensure animation is stopped when switching to this tab
-                if (animationInterval) {
-                    clearInterval(animationInterval);
-                    animationInterval = null;
-                }
-                isPlaying = false;
                 animationFrame = 0;
-                
                 initPulsePropagation();
             }
             else if (tabName === 'storage') updateStoragePlot();
@@ -619,7 +651,7 @@ function optimizeStorageEfficiency(params) {
         const c = 3e8; // m/s
 
         // Update absorption spectrum
-        function updateAbsorptionPlot() {
+        function updateAbsorptionPlot(showAnimationTrail = false) {
             const controlPower = parseFloat(document.getElementById('control-power').value);
             const opticalDepth = parseFloat(document.getElementById('optical-depth').value);
             const groundDeco = parseFloat(document.getElementById('ground-deco-abs').value);
@@ -649,16 +681,54 @@ function optimizeStorageEfficiency(params) {
             document.getElementById('peak-transmission').textContent = (Math.exp(-opticalDepth * gamma_gs_hz / gamma_EIT) * 100).toFixed(1);
             document.getElementById('transparency-window').textContent = (2 * gamma_EIT / 1e6).toFixed(1);
             
-            const trace1 = {
+            const traces = [];
+            
+            // Add animation trail if requested
+            if (showAnimationTrail && isAbsorptionPlaying) {
+                // Add faded traces for previous power values
+                const powers = [1, 2, 5, 8]; // Sample power values for trail
+                powers.forEach((power, idx) => {
+                    if (power < controlPower) {
+                        const omega_trail = power * 1e6;
+                        const trans_trail = [];
+                        
+                        for (let delta = -10; delta <= 10; delta += 0.1) {
+                            const delta_hz = delta * 1e6;
+                            const gamma_EIT_trail = gamma_gs_hz + (omega_trail * omega_trail) / gamma_ge;
+                            const denominator_trail = gamma_EIT_trail * gamma_EIT_trail + delta_hz * delta_hz;
+                            const abs_trail = gamma_gs_hz * gamma_EIT_trail / denominator_trail;
+                            trans_trail.push(Math.exp(-opticalDepth * abs_trail) * 100);
+                        }
+                        
+                        traces.push({
+                            x: detuning,
+                            y: trans_trail,
+                            type: 'scatter',
+                            mode: 'lines',
+                            name: `${power} MHz`,
+                            line: { 
+                                color: `rgba(102, 126, 234, ${0.2 + idx * 0.15})`, 
+                                width: 2,
+                                dash: 'dot'
+                            },
+                            showlegend: false
+                        });
+                    }
+                });
+            }
+            
+            // Main transmission trace
+            traces.push({
                 x: detuning,
                 y: transmission,
                 type: 'scatter',
                 mode: 'lines',
-                name: 'Transmission',
+                name: `Transmission (${controlPower.toFixed(1)} MHz)`,
                 line: { color: 'rgb(102, 126, 234)', width: 3 }
-            };
+            });
             
-            const trace2 = {
+            // Absorption trace
+            traces.push({
                 x: detuning,
                 y: absorption,
                 type: 'scatter',
@@ -666,7 +736,7 @@ function optimizeStorageEfficiency(params) {
                 name: 'Absorption',
                 yaxis: 'y2',
                 line: { color: 'rgb(234, 102, 126)', width: 3 }
-            };
+            });
             
             const layout = {
                 title: 'EIT Absorption Spectrum',
@@ -687,7 +757,7 @@ function optimizeStorageEfficiency(params) {
                     side: 'right',
                     gridcolor: '#444',
                     zerolinecolor: '#666',
-                    range: [0, 100]
+                    range: [0, 105]
                 },
                 plot_bgcolor: '#0f0f23',
                 paper_bgcolor: '#1a1a2e',
@@ -695,7 +765,7 @@ function optimizeStorageEfficiency(params) {
                 showlegend: true
             };
             
-            Plotly.newPlot('absorption-plot', [trace1, trace2], layout, {responsive: true});
+            Plotly.newPlot('absorption-plot', traces, layout, {responsive: true});
         }
 
         // Update group delay plot
@@ -1163,6 +1233,192 @@ function optimizeStorageEfficiency(params) {
             // Reset and start animation
             resetAnimation();
             playAnimation();
+        }
+
+        // Absorption animation functions
+        function playAbsorptionAnimation() {
+            if (isAbsorptionPlaying) return;
+            isAbsorptionPlaying = true;
+            
+            const playBtn = document.getElementById('absorption-play-btn');
+            const pauseBtn = document.getElementById('absorption-pause-btn');
+            const statusElem = document.getElementById('absorption-animation-status');
+            
+            if (playBtn) playBtn.disabled = true;
+            if (pauseBtn) pauseBtn.disabled = false;
+            if (statusElem) statusElem.textContent = 'Animating Power Sweep...';
+            
+            // Save original control power value
+            const originalPower = parseFloat(document.getElementById('control-power').value);
+            
+            absorptionInterval = setInterval(() => {
+                animateAbsorption(originalPower);
+            }, 100); // 10 FPS for smoother parameter sweep
+        }
+        
+        function pauseAbsorptionAnimation() {
+            isAbsorptionPlaying = false;
+            
+            if (absorptionInterval) {
+                clearInterval(absorptionInterval);
+                absorptionInterval = null;
+            }
+            
+            const playBtn = document.getElementById('absorption-play-btn');
+            const pauseBtn = document.getElementById('absorption-pause-btn');
+            const statusElem = document.getElementById('absorption-animation-status');
+            
+            if (playBtn) playBtn.disabled = false;
+            if (pauseBtn) pauseBtn.disabled = true;
+            if (statusElem) statusElem.textContent = 'Paused';
+        }
+        
+        function resetAbsorptionAnimation() {
+            pauseAbsorptionAnimation();
+            absorptionFrame = 0;
+            updateAbsorptionPlot();
+            
+            const statusElem = document.getElementById('absorption-animation-status');
+            if (statusElem) statusElem.textContent = 'Ready';
+        }
+        
+        function animateAbsorption(originalPower) {
+            if (!isAbsorptionPlaying) {
+                pauseAbsorptionAnimation();
+                return;
+            }
+            
+            const totalFrames = 50;
+            const minPower = 0.5;
+            const maxPower = 10;
+            
+            // Calculate current power value
+            const progress = absorptionFrame / totalFrames;
+            const currentPower = minPower + (maxPower - minPower) * progress;
+            
+            // Update the slider and value display
+            document.getElementById('control-power').value = currentPower;
+            document.getElementById('control-power-value').textContent = currentPower.toFixed(1);
+            
+            // Update the plot
+            updateAbsorptionPlot(true); // Show animation trail
+            
+            // Update status
+            const statusElem = document.getElementById('absorption-animation-status');
+            if (statusElem) {
+                statusElem.textContent = `Power: ${currentPower.toFixed(1)} MHz`;
+            }
+            
+            // Increment frame
+            absorptionFrame++;
+            if (absorptionFrame > totalFrames) {
+                // Animation complete, restore original value
+                document.getElementById('control-power').value = originalPower;
+                document.getElementById('control-power-value').textContent = originalPower.toFixed(1);
+                updateAbsorptionPlot();
+                
+                pauseAbsorptionAnimation();
+                if (statusElem) statusElem.textContent = 'Animation Complete';
+                
+                // Auto-reset after 2 seconds
+                setTimeout(() => {
+                    absorptionFrame = 0;
+                    if (statusElem) statusElem.textContent = 'Ready';
+                }, 2000);
+            }
+        }
+
+        // Group Delay animation functions
+        function playDelayAnimation() {
+            if (isDelayPlaying) return;
+            isDelayPlaying = true;
+            
+            const playBtn = document.getElementById('delay-play-btn');
+            const pauseBtn = document.getElementById('delay-pause-btn');
+            const statusElem = document.getElementById('delay-animation-status');
+            
+            if (playBtn) playBtn.disabled = true;
+            if (pauseBtn) pauseBtn.disabled = false;
+            if (statusElem) statusElem.textContent = 'Animating Temperature Sweep...';
+            
+            // Save original temperature value
+            const originalTemp = parseFloat(document.getElementById('temp-delay').value);
+            
+            delayInterval = setInterval(() => {
+                animateDelay(originalTemp);
+            }, 100); // 10 FPS
+        }
+        
+        function pauseDelayAnimation() {
+            isDelayPlaying = false;
+            
+            if (delayInterval) {
+                clearInterval(delayInterval);
+                delayInterval = null;
+            }
+            
+            const playBtn = document.getElementById('delay-play-btn');
+            const pauseBtn = document.getElementById('delay-pause-btn');
+            const statusElem = document.getElementById('delay-animation-status');
+            
+            if (playBtn) playBtn.disabled = false;
+            if (pauseBtn) pauseBtn.disabled = true;
+            if (statusElem) statusElem.textContent = 'Paused';
+        }
+        
+        function resetDelayAnimation() {
+            pauseDelayAnimation();
+            delayFrame = 0;
+            updateGroupDelayPlot();
+            
+            const statusElem = document.getElementById('delay-animation-status');
+            if (statusElem) statusElem.textContent = 'Ready';
+        }
+        
+        function animateDelay(originalTemp) {
+            if (!isDelayPlaying) {
+                pauseDelayAnimation();
+                return;
+            }
+            
+            const totalFrames = 50;
+            const minTemp = 20;
+            const maxTemp = 100;
+            
+            // Calculate current temperature value
+            const progress = delayFrame / totalFrames;
+            const currentTemp = minTemp + (maxTemp - minTemp) * progress;
+            
+            // Update the slider and value display
+            document.getElementById('temp-delay').value = currentTemp;
+            document.getElementById('temp-delay-value').textContent = Math.round(currentTemp);
+            
+            // Update the plot
+            updateGroupDelayPlot();
+            
+            // Update status
+            const statusElem = document.getElementById('delay-animation-status');
+            if (statusElem) {
+                statusElem.textContent = `Temperature: ${Math.round(currentTemp)}°C`;
+            }
+            
+            // Increment frame
+            delayFrame++;
+            if (delayFrame > totalFrames) {
+                // Animation complete, restore original value
+                document.getElementById('temp-delay').value = originalTemp;
+                document.getElementById('temp-delay-value').textContent = Math.round(originalTemp);
+                updateGroupDelayPlot();
+                
+                pauseDelayAnimation();
+                if (statusElem) statusElem.textContent = 'Animation Complete';
+                
+                // Auto-reset after 2 seconds
+                setTimeout(() => {
+                    delayFrame = 0;
+                    if (statusElem) statusElem.textContent = 'Ready';
+                }, 2000);
+            }
         }
 
         // Initialize on load
