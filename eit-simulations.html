@@ -556,7 +556,7 @@ function optimizeStorageEfficiency(params) {
 
     <script>
         // Animation variables - declare at the top
-        let animationId = null;
+        let animationInterval = null;
         let animationFrame = 0;
         let isPlaying = false;
         const animationSpeed = 0.5; // Speed factor
@@ -588,9 +588,9 @@ function optimizeStorageEfficiency(params) {
             else if (tabName === 'group-delay') updateGroupDelayPlot();
             else if (tabName === 'pulse-propagation') {
                 // Ensure animation is stopped when switching to this tab
-                if (animationId) {
-                    cancelAnimationFrame(animationId);
-                    animationId = null;
+                if (animationInterval) {
+                    clearInterval(animationInterval);
+                    animationInterval = null;
                 }
                 isPlaying = false;
                 animationFrame = 0;
@@ -811,6 +811,17 @@ function optimizeStorageEfficiency(params) {
                 line: { color: 'rgb(234, 102, 126)', width: 3, dash: 'dash' }
             };
             
+            // Add vertical line trace for animation
+            const trace3 = {
+                x: [10.6, 10.6],
+                y: [0, 1],
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Pulse Position',
+                line: { color: 'rgb(78, 205, 196)', width: 1, dash: 'dot' },
+                showlegend: false
+            };
+            
             const layout = {
                 title: 'Pulse Propagation Through EIT Medium',
                 xaxis: {
@@ -821,7 +832,8 @@ function optimizeStorageEfficiency(params) {
                 yaxis: {
                     title: 'Amplitude (a.u.)',
                     gridcolor: '#444',
-                    zerolinecolor: '#666'
+                    zerolinecolor: '#666',
+                    range: [-0.1, 1.1]
                 },
                 plot_bgcolor: '#0f0f23',
                 paper_bgcolor: '#1a1a2e',
@@ -829,14 +841,14 @@ function optimizeStorageEfficiency(params) {
                 showlegend: true
             };
             
-            Plotly.newPlot('pulse-propagation-plot', [trace1, trace2], layout, {responsive: true});
+            Plotly.newPlot('pulse-propagation-plot', [trace1, trace2, trace3], layout, {responsive: true});
             
             // Reset animation state
             animationFrame = 0;
             isPlaying = false;
-            if (animationId) {
-                cancelAnimationFrame(animationId);
-                animationId = null;
+            if (animationInterval) {
+                clearInterval(animationInterval);
+                animationInterval = null;
             }
             
             // Set button states
@@ -1024,6 +1036,7 @@ function optimizeStorageEfficiency(params) {
         document.getElementById('control-timing').addEventListener('change', updateStoragePlot);
 
         // Animation functions
+        
         function playAnimation() {
             console.log('playAnimation called, isPlaying:', isPlaying);
             if (isPlaying) return;
@@ -1040,14 +1053,16 @@ function optimizeStorageEfficiency(params) {
             if (pauseBtn) pauseBtn.disabled = false;
             if (statusElem) statusElem.textContent = 'Playing...';
             
-            animatePulse();
+            // Start animation with setInterval
+            animationInterval = setInterval(animatePulse, 50); // 20 FPS
         }
 
         function pauseAnimation() {
             isPlaying = false;
-            if (animationId) {
-                cancelAnimationFrame(animationId);
-                animationId = null;
+            
+            if (animationInterval) {
+                clearInterval(animationInterval);
+                animationInterval = null;
             }
             
             // Update button states
@@ -1064,20 +1079,14 @@ function optimizeStorageEfficiency(params) {
             pauseAnimation();
             animationFrame = 0;
             initPulsePropagation();
-            
-            // Update button states
-            const playBtn = document.getElementById('play-btn');
-            const pauseBtn = document.getElementById('pause-btn');
-            const statusElem = document.getElementById('animation-status');
-            
-            if (playBtn) playBtn.disabled = false;
-            if (pauseBtn) pauseBtn.disabled = true;
-            if (statusElem) statusElem.textContent = 'Ready';
         }
 
         function animatePulse() {
             console.log('animatePulse called, isPlaying:', isPlaying);
-            if (!isPlaying) return;
+            if (!isPlaying) {
+                pauseAnimation();
+                return;
+            }
             
             // Check if the plot container exists
             const plotContainer = document.getElementById('pulse-propagation-plot');
@@ -1096,12 +1105,12 @@ function optimizeStorageEfficiency(params) {
             const totalFrames = 100;
             const currentTime = (animationFrame / totalFrames) * 40; // 40 μs total animation
             
+            // Calculate delay for current frame
+            const delay = 10.6 * (currentTime / 40); // Progressive delay
+            
             const time = [];
             const inputPulse = [];
             const outputPulse = [];
-            
-            // Calculate delay for current frame
-            const delay = 10.6 * (currentTime / 40); // Progressive delay
             
             // Generate time axis
             for (let t = -20; t <= 40; t += 0.1) {
@@ -1119,64 +1128,21 @@ function optimizeStorageEfficiency(params) {
                 outputPulse.push(output);
             }
             
-            // Update plot
-            const trace1 = {
-                x: time,
-                y: inputPulse,
-                type: 'scatter',
-                mode: 'lines',
-                name: 'Input Pulse',
-                line: { color: 'rgb(102, 126, 234)', width: 3 }
-            };
-            
-            const trace2 = {
-                x: time,
-                y: outputPulse,
-                type: 'scatter',
-                mode: 'lines',
-                name: 'Output Pulse (Propagating)',
-                line: { color: 'rgb(234, 102, 126)', width: 3, dash: 'dash' }
-            };
-            
-            // Add vertical line to show current position
-            const trace3 = {
-                x: [delay, delay],
-                y: [0, 1],
-                type: 'scatter',
-                mode: 'lines',
-                name: 'Pulse Position',
-                line: { color: 'rgb(78, 205, 196)', width: 1, dash: 'dot' },
-                showlegend: false
-            };
-            
-            const layout = {
-                title: `Pulse Propagation Through EIT Medium (t = ${currentTime.toFixed(1)} μs)`,
-                xaxis: {
-                    title: 'Time (μs)',
-                    gridcolor: '#444',
-                    zerolinecolor: '#666'
-                },
-                yaxis: {
-                    title: 'Amplitude (a.u.)',
-                    gridcolor: '#444',
-                    zerolinecolor: '#666',
-                    range: [-0.1, 1.1]
-                },
-                plot_bgcolor: '#0f0f23',
-                paper_bgcolor: '#1a1a2e',
-                font: { color: '#ccc' },
-                showlegend: true,
-                annotations: [{
-                    x: delay,
-                    y: 1.05,
-                    text: currentTime > 0 ? `v<sub>g</sub> = ${(delay * distance / currentTime).toFixed(1)} m/s` : 'Starting...',
-                    showarrow: false,
-                    font: { color: '#4ecdc4', size: 12 }
-                }]
-            };
-            
             try {
-                Plotly.newPlot('pulse-propagation-plot', [trace1, trace2, trace3], layout, {responsive: true});
+                // Use Plotly.update for better performance
+                Plotly.update('pulse-propagation-plot', {
+                    x: [time, time, [delay, delay]],
+                    y: [inputPulse, outputPulse, [0, 1]]
+                }, {
+                    title: `Pulse Propagation Through EIT Medium (t = ${currentTime.toFixed(1)} μs)`,
+                    annotations: [{
+                        x: delay,
+                        y: 1.05,
+                        text: currentTime > 0 ? `v<sub>g</sub> = ${(delay * distance / currentTime).toFixed(1)} m/s` : 'Starting...',
+                        showarrow: false,
+                        font: { color: '#4ecdc4', size: 12 }
+                    }]
+                });
                 console.log('Plot updated successfully');
             } catch (error) {
                 console.error('Error updating plot:', error);
@@ -1190,10 +1156,7 @@ function optimizeStorageEfficiency(params) {
                 animationFrame = 0;
             }
             
-            console.log('Requesting next frame, animationFrame:', animationFrame);
-            
-            // Request next frame
-            animationId = requestAnimationFrame(() => animatePulse());
+            console.log('Next frame, animationFrame:', animationFrame);
         }
 
         function simulatePropagation() {
