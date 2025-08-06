@@ -121,9 +121,10 @@
                 </div>
                 <div id="pulse-propagation-plot"></div>
                 <div class="animation-controls">
-                    <button onclick="playAnimation()"><i class="fas fa-play"></i> Play</button>
-                    <button onclick="pauseAnimation()"><i class="fas fa-pause"></i> Pause</button>
-                    <button onclick="resetAnimation()"><i class="fas fa-redo"></i> Reset</button>
+                    <button id="play-btn" onclick="playAnimation()"><i class="fas fa-play"></i> Play</button>
+                    <button id="pause-btn" onclick="pauseAnimation()"><i class="fas fa-pause"></i> Pause</button>
+                    <button id="reset-btn" onclick="resetAnimation()"><i class="fas fa-redo"></i> Reset</button>
+                    <span id="animation-status" style="margin-left: 20px; color: #4ecdc4;"></span>
                 </div>
             </div>
 
@@ -454,9 +455,14 @@ function optimizeStorageEfficiency(params) {
             transition: all 0.3s ease;
         }
 
-        .animation-controls button:hover {
+        .animation-controls button:hover:not(:disabled) {
             background: #444;
             color: #667eea;
+        }
+
+        .animation-controls button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
 
         .comparison-grid {
@@ -563,7 +569,12 @@ function optimizeStorageEfficiency(params) {
             // Initialize plots for the active tab
             if (tabName === 'absorption') updateAbsorptionPlot();
             else if (tabName === 'group-delay') updateGroupDelayPlot();
-            else if (tabName === 'pulse-propagation') initPulsePropagation();
+            else if (tabName === 'pulse-propagation') {
+                initPulsePropagation();
+                // Set initial button states
+                document.getElementById('pause-btn').disabled = true;
+                document.getElementById('animation-status').textContent = 'Ready';
+            }
             else if (tabName === 'storage') updateStoragePlot();
             else if (tabName === 'comparison') updateComparisonPlots();
         }
@@ -976,28 +987,148 @@ function optimizeStorageEfficiency(params) {
         // Animation functions
         let animationId = null;
         let animationFrame = 0;
+        let isPlaying = false;
+        const animationSpeed = 0.5; // Speed factor
 
         function playAnimation() {
-            // Implementation for pulse propagation animation
-            console.log('Playing animation...');
+            if (isPlaying) return;
+            isPlaying = true;
+            
+            // Update button states
+            document.getElementById('play-btn').disabled = true;
+            document.getElementById('pause-btn').disabled = false;
+            document.getElementById('animation-status').textContent = 'Playing...';
+            
+            animatePulse();
         }
 
         function pauseAnimation() {
+            isPlaying = false;
             if (animationId) {
                 cancelAnimationFrame(animationId);
                 animationId = null;
             }
+            
+            // Update button states
+            document.getElementById('play-btn').disabled = false;
+            document.getElementById('pause-btn').disabled = true;
+            document.getElementById('animation-status').textContent = 'Paused';
         }
 
         function resetAnimation() {
             pauseAnimation();
             animationFrame = 0;
             initPulsePropagation();
+            
+            // Update button states
+            document.getElementById('play-btn').disabled = false;
+            document.getElementById('pause-btn').disabled = true;
+            document.getElementById('animation-status').textContent = 'Ready';
+        }
+
+        function animatePulse() {
+            if (!isPlaying) return;
+            
+            const duration = parseFloat(document.getElementById('pulse-duration').value);
+            const distance = parseFloat(document.getElementById('propagation-distance').value);
+            
+            // Calculate current propagation time
+            const totalFrames = 100;
+            const currentTime = (animationFrame / totalFrames) * 40; // 40 μs total animation
+            
+            const time = [];
+            const inputPulse = [];
+            const outputPulse = [];
+            
+            // Generate time axis
+            for (let t = -20; t <= 40; t += 0.1) {
+                time.push(t);
+                
+                // Input pulse (stationary at t=0)
+                const input = Math.exp(-(t * t) / (2 * duration * duration));
+                inputPulse.push(input);
+                
+                // Output pulse (moving and evolving)
+                const delay = 10.6 * (currentTime / 40); // Progressive delay
+                const broadening = 1 + 0.1 * (currentTime / 40); // Progressive broadening
+                const amplitude = 0.9 * Math.exp(-0.01 * currentTime); // Slight decay
+                const output = amplitude * Math.exp(-((t - delay) * (t - delay)) / (2 * duration * duration * broadening * broadening));
+                
+                outputPulse.push(output);
+            }
+            
+            // Update plot
+            const trace1 = {
+                x: time,
+                y: inputPulse,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Input Pulse',
+                line: { color: 'rgb(102, 126, 234)', width: 3 }
+            };
+            
+            const trace2 = {
+                x: time,
+                y: outputPulse,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Output Pulse (Propagating)',
+                line: { color: 'rgb(234, 102, 126)', width: 3, dash: 'dash' }
+            };
+            
+            // Add vertical line to show current position
+            const trace3 = {
+                x: [delay, delay],
+                y: [0, 1],
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Pulse Position',
+                line: { color: 'rgb(78, 205, 196)', width: 1, dash: 'dot' },
+                showlegend: false
+            };
+            
+            const layout = {
+                title: `Pulse Propagation Through EIT Medium (t = ${currentTime.toFixed(1)} μs)`,
+                xaxis: {
+                    title: 'Time (μs)',
+                    gridcolor: '#444',
+                    zerolinecolor: '#666'
+                },
+                yaxis: {
+                    title: 'Amplitude (a.u.)',
+                    gridcolor: '#444',
+                    zerolinecolor: '#666',
+                    range: [-0.1, 1.1]
+                },
+                plot_bgcolor: '#0f0f23',
+                paper_bgcolor: '#1a1a2e',
+                font: { color: '#ccc' },
+                showlegend: true,
+                annotations: [{
+                    x: delay,
+                    y: 1.05,
+                    text: currentTime > 0 ? `v<sub>g</sub> = ${(delay * distance / currentTime).toFixed(1)} m/s` : 'Starting...',
+                    showarrow: false,
+                    font: { color: '#4ecdc4', size: 12 }
+                }]
+            };
+            
+            Plotly.newPlot('pulse-propagation-plot', [trace1, trace2, trace3], layout, {responsive: true});
+            
+            // Increment frame and loop
+            animationFrame += animationSpeed;
+            if (animationFrame >= totalFrames) {
+                animationFrame = 0;
+            }
+            
+            // Request next frame
+            animationId = requestAnimationFrame(() => animatePulse());
         }
 
         function simulatePropagation() {
-            // Trigger propagation simulation
-            initPulsePropagation();
+            // Reset and start animation
+            resetAnimation();
+            playAnimation();
         }
 
         // Initialize on load
