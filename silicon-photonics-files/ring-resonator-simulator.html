@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ring Resonator Simulator | Silicon Photonics</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #0a0a0a;
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+        
+        /* Navigation */
+        nav {
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        
+        nav .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        nav h1 {
+            font-size: 1.5rem;
+            color: #4fc3f7;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+        
+        nav a {
+            color: #e0e0e0;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        nav a:hover {
+            color: #4fc3f7;
+        }
+        
+        /* Main Content */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .simulator-container {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        
+        /* Control Panel */
+        .control-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 2rem;
+            height: fit-content;
+        }
+        
+        .control-panel h2 {
+            color: #4fc3f7;
+            margin-bottom: 1.5rem;
+            font-size: 1.3rem;
+        }
+        
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .control-group label {
+            display: block;
+            color: #81c784;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .control-group input[type="range"] {
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+        
+        .control-group .value-display {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: #888;
+        }
+        
+        .control-group input[type="number"] {
+            width: 100%;
+            padding: 0.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            color: #e0e0e0;
+            font-size: 0.9rem;
+        }
+        
+        .control-group select {
+            width: 100%;
+            padding: 0.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            color: #e0e0e0;
+            font-size: 0.9rem;
+        }
+        
+        .control-group select option {
+            background: #1a1a1a;
+        }
+        
+        .button-group {
+            display: grid;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        
+        button {
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, #4fc3f7, #81c784);
+            border: none;
+            border-radius: 8px;
+            color: #0a0a0a;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(79, 195, 247, 0.3);
+        }
+        
+        button.secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e0e0e0;
+        }
+        
+        /* Visualization Panel */
+        .visualization-panel {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 2rem;
+        }
+        
+        .viz-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 1rem;
+        }
+        
+        .viz-tab {
+            padding: 0.5rem 1rem;
+            background: none;
+            border: 1px solid transparent;
+            color: #888;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 5px;
+        }
+        
+        .viz-tab.active {
+            background: rgba(79, 195, 247, 0.1);
+            border-color: rgba(79, 195, 247, 0.3);
+            color: #4fc3f7;
+        }
+        
+        .viz-content {
+            min-height: 500px;
+        }
+        
+        .plot-container {
+            width: 100%;
+            height: 500px;
+            margin-bottom: 2rem;
+        }
+        
+        /* Results Panel */
+        .results-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+        
+        .results-panel h3 {
+            color: #81c784;
+            margin-bottom: 1rem;
+        }
+        
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        
+        .result-item {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .result-item .label {
+            color: #888;
+            font-size: 0.85rem;
+            margin-bottom: 0.3rem;
+        }
+        
+        .result-item .value {
+            color: #4fc3f7;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        
+        /* Info Box */
+        .info-box {
+            background: rgba(79, 195, 247, 0.1);
+            border-left: 4px solid #4fc3f7;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 5px;
+        }
+        
+        .info-box p {
+            color: #b0b0b0;
+            font-size: 0.9rem;
+            margin: 0;
+        }
+        
+        /* Equations */
+        .equation-box {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            text-align: center;
+        }
+        
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .simulator-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav>
+        <div class="container">
+            <h1>Ring Resonator Simulator</h1>
+            <div class="nav-links">
+                <a href="../silicon-photonics-project.html">← Back to Project</a>
+                <a href="../index.html">Home</a>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Main Content -->
+    <div class="container">
+        <div class="simulator-container">
+            <!-- Control Panel -->
+            <div class="control-panel">
+                <h2><i class="fas fa-sliders-h"></i> Design Parameters</h2>
+                
+                <div class="control-group">
+                    <label>Ring Radius (µm)</label>
+                    <input type="range" id="radius" min="5" max="10" step="0.1" value="7">
+                    <div class="value-display">
+                        <span>5µm</span>
+                        <span id="radius-value">7.0µm</span>
+                        <span>10µm</span>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Coupling Gap (µm)</label>
+                    <input type="range" id="gap" min="0.1" max="0.3" step="0.01" value="0.15">
+                    <div class="value-display">
+                        <span>0.1µm</span>
+                        <span id="gap-value">0.15µm</span>
+                        <span>0.3µm</span>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Waveguide Width (nm)</label>
+                    <input type="number" id="width" min="400" max="500" step="10" value="450">
+                </div>
+                
+                <div class="control-group">
+                    <label>Waveguide Height (nm)</label>
+                    <input type="number" id="height" min="200" max="250" step="10" value="220">
+                </div>
+                
+                <div class="control-group">
+                    <label>Material System</label>
+                    <select id="material">
+                        <option value="si">Silicon-on-Insulator (SOI)</option>
+                        <option value="sin">Silicon Nitride (SiN)</option>
+                        <option value="inp">Indium Phosphide (InP)</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>Loss (dB/cm)</label>
+                    <input type="number" id="loss" min="0.1" max="5" step="0.1" value="2">
+                </div>
+                
+                <div class="button-group">
+                    <button onclick="updateSimulation()">
+                        <i class="fas fa-sync"></i> Update Simulation
+                    </button>
+                    <button class="secondary" onclick="resetParameters()">
+                        <i class="fas fa-undo"></i> Reset Parameters
+                    </button>
+                    <button class="secondary" onclick="exportData()">
+                        <i class="fas fa-download"></i> Export Data
+                    </button>
+                </div>
+                
+                <div class="info-box" style="margin-top: 2rem;">
+                    <p><strong>Tip:</strong> Adjust the coupling gap to control the Q-factor and extinction ratio. Smaller gaps lead to stronger coupling and lower Q.</p>
+                </div>
+            </div>
+            
+            <!-- Visualization Panel -->
+            <div class="visualization-panel">
+                <div class="viz-tabs">
+                    <button class="viz-tab active" onclick="switchTab('spectrum')">
+                        <i class="fas fa-chart-line"></i> Transmission Spectrum
+                    </button>
+                    <button class="viz-tab" onclick="switchTab('layout')">
+                        <i class="fas fa-microchip"></i> Device Layout
+                    </button>
+                    <button class="viz-tab" onclick="switchTab('field')">
+                        <i class="fas fa-wave-square"></i> Field Distribution
+                    </button>
+                    <button class="viz-tab" onclick="switchTab('analysis')">
+                        <i class="fas fa-chart-bar"></i> Parameter Analysis
+                    </button>
+                </div>
+                
+                <div class="viz-content">
+                    <div id="spectrum-content" class="tab-content">
+                        <div id="transmission-plot" class="plot-container"></div>
+                        
+                        <div class="results-panel">
+                            <h3>Extracted Metrics</h3>
+                            <div class="results-grid">
+                                <div class="result-item">
+                                    <div class="label">Q-Factor</div>
+                                    <div class="value" id="q-factor">1950</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="label">Extinction Ratio</div>
+                                    <div class="value" id="extinction-ratio">22.5 dB</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="label">FSR</div>
+                                    <div class="value" id="fsr">12.5 nm</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="label">FWHM</div>
+                                    <div class="value" id="fwhm">0.8 nm</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="label">Finesse</div>
+                                    <div class="value" id="finesse">15.6</div>
+                                </div>
+                                <div class="result-item">
+                                    <div class="label">Group Index</div>
+                                    <div class="value" id="group-index">4.2</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="layout-content" class="tab-content" style="display: none;">
+                        <div id="layout-plot" class="plot-container"></div>
+                        <div class="equation-box">
+                            <p>Effective Index: \(n_{eff} = \beta\lambda / 2\pi\)</p>
+                            <p>Resonance Condition: \(2\pi R n_{eff} = m\lambda\)</p>
+                        </div>
+                    </div>
+                    
+                    <div id="field-content" class="tab-content" style="display: none;">
+                        <div id="field-plot" class="plot-container"></div>
+                        <div class="info-box">
+                            <p>Field intensity distribution at resonance wavelength showing coupling between bus waveguide and ring resonator.</p>
+                        </div>
+                    </div>
+                    
+                    <div id="analysis-content" class="tab-content" style="display: none;">
+                        <div id="analysis-plot" class="plot-container"></div>
+                        <div class="equation-box">
+                            <p>Coupling Coefficient: \(\kappa = \kappa_0 \exp(-\gamma \cdot gap)\)</p>
+                            <p>Loaded Q: \(Q_L = Q_i / (1 + \kappa^2 Q_i)\)</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Initialize sliders
+        document.getElementById('radius').addEventListener('input', function(e) {
+            document.getElementById('radius-value').textContent = e.target.value + 'µm';
+        });
+        
+        document.getElementById('gap').addEventListener('input', function(e) {
+            document.getElementById('gap-value').textContent = e.target.value + 'µm';
+        });
+        
+        // Tab switching
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.viz-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Update content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.style.display = 'none';
+            });
+            document.getElementById(tabName + '-content').style.display = 'block';
+            
+            // Update plots
+            if (tabName === 'layout') {
+                updateLayoutPlot();
+            } else if (tabName === 'field') {
+                updateFieldPlot();
+            } else if (tabName === 'analysis') {
+                updateAnalysisPlot();
+            }
+        }
+        
+        // Simulation functions
+        function updateSimulation() {
+            const radius = parseFloat(document.getElementById('radius').value);
+            const gap = parseFloat(document.getElementById('gap').value);
+            const width = parseFloat(document.getElementById('width').value) / 1000; // Convert to µm
+            const height = parseFloat(document.getElementById('height').value) / 1000;
+            const loss = parseFloat(document.getElementById('loss').value);
+            const material = document.getElementById('material').value;
+            
+            // Update transmission spectrum
+            updateTransmissionPlot(radius, gap, width, loss, material);
+            
+            // Update metrics
+            updateMetrics(radius, gap, width, loss);
+        }
+        
+        function updateTransmissionPlot(radius, gap, width, loss, material) {
+            // Material properties
+            const materials = {
+                'si': { neff: 2.45, ng: 4.2 },
+                'sin': { neff: 2.0, ng: 2.1 },
+                'inp': { neff: 3.2, ng: 3.5 }
+            };
+            
+            const mat = materials[material];
+            const centerWavelength = 1.55; // µm
+            
+            // Calculate FSR
+            const fsr = centerWavelength * centerWavelength / (mat.ng * 2 * Math.PI * radius);
+            
+            // Calculate coupling coefficient
+            const kappa = Math.exp(-2 * gap / 0.1);
+            
+            // Calculate Q-factor
+            const alpha = loss * 0.23 / 10000; // Convert dB/cm to 1/µm
+            const Qi = 2 * Math.PI * mat.ng / (centerWavelength * alpha);
+            const Qc = 2 * Math.PI * mat.ng / (centerWavelength * kappa);
+            const Q = 1 / (1/Qi + 1/Qc);
+            
+            // Generate wavelength array
+            const wavelengths = [];
+            const throughPort = [];
+            const dropPort = [];
+            
+            for (let w = 1.54; w <= 1.56; w += 0.0001) {
+                wavelengths.push(w);
+                
+                // Calculate transmission using coupled mode theory
+                let T = 0;
+                let D = 0;
+                
+                // Multiple resonances
+                for (let m = -3; m <= 3; m++) {
+                    const resonance = centerWavelength + m * fsr;
+                    const delta = 2 * Math.PI * mat.ng * (1/w - 1/resonance);
+                    
+                    const a = Math.exp(-alpha * Math.PI * radius);
+                    const t = Math.sqrt(1 - kappa * kappa);
+                    
+                    const num_through = t - a * Math.exp(1j * delta);
+                    const num_drop = -Math.sqrt(1 - t*t) * Math.sqrt(a) * Math.exp(1j * delta/2);
+                    const den = 1 - t * a * Math.exp(1j * delta);
+                    
+                    // Simplified model
+                    const lorentzian = 1 / (1 + Math.pow(2 * Q * (w - resonance) / resonance, 2));
+                    T += 1 - kappa * kappa * lorentzian;
+                    D += kappa * kappa * lorentzian;
+                }
+                
+                throughPort.push(Math.max(0, Math.min(1, T)));
+                dropPort.push(Math.max(0, Math.min(1, D)));
+            }
+            
+            // Create plots
+            const throughTrace = {
+                x: wavelengths.map(w => w * 1000), // Convert to nm
+                y: throughPort,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Through Port',
+                line: { color: '#4fc3f7', width: 2 }
+            };
+            
+            const dropTrace = {
+                x: wavelengths.map(w => w * 1000),
+                y: dropPort,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Drop Port',
+                line: { color: '#81c784', width: 2 }
+            };
+            
+            const layout = {
+                title: {
+                    text: 'Ring Resonator Transmission Spectrum',
+                    font: { color: '#e0e0e0' }
+                },
+                xaxis: {
+                    title: 'Wavelength (nm)',
+                    gridcolor: '#333',
+                    zerolinecolor: '#666',
+                    tickfont: { color: '#888' },
+                    titlefont: { color: '#888' }
+                },
+                yaxis: {
+                    title: 'Transmission',
+                    gridcolor: '#333',
+                    zerolinecolor: '#666',
+                    tickfont: { color: '#888' },
+                    titlefont: { color: '#888' },
+                    range: [0, 1.05]
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                showlegend: true,
+                legend: {
+                    font: { color: '#888' },
+                    bgcolor: 'rgba(0,0,0,0.5)'
+                }
+            };
+            
+            Plotly.newPlot('transmission-plot', [throughTrace, dropTrace], layout, {responsive: true});
+            
+            // Update displayed metrics
+            document.getElementById('q-factor').textContent = Q.toFixed(0);
+            document.getElementById('fsr').textContent = (fsr * 1000).toFixed(1) + ' nm';
+            document.getElementById('fwhm').textContent = (centerWavelength * 1000 / Q).toFixed(2) + ' nm';
+            document.getElementById('finesse').textContent = (fsr * 1000 * Q / centerWavelength / 1000).toFixed(1);
+            document.getElementById('group-index').textContent = mat.ng.toFixed(2);
+            
+            // Calculate extinction ratio
+            const ER = -10 * Math.log10(1 - kappa * kappa);
+            document.getElementById('extinction-ratio').textContent = ER.toFixed(1) + ' dB';
+        }
+        
+        function updateLayoutPlot() {
+            const radius = parseFloat(document.getElementById('radius').value);
+            const gap = parseFloat(document.getElementById('gap').value);
+            const width = parseFloat(document.getElementById('width').value) / 1000;
+            
+            // Generate ring points
+            const ringOuter = { x: [], y: [] };
+            const ringInner = { x: [], y: [] };
+            
+            for (let angle = 0; angle <= 2 * Math.PI; angle += 0.05) {
+                ringOuter.x.push((radius + width/2) * Math.cos(angle));
+                ringOuter.y.push((radius + width/2) * Math.sin(angle));
+                ringInner.x.push((radius - width/2) * Math.cos(angle));
+                ringInner.y.push((radius - width/2) * Math.sin(angle));
+            }
+            
+            // Bus waveguide
+            const busTop = {
+                x: [-radius * 1.5, radius * 1.5],
+                y: [-radius - width/2 - gap - width, -radius - width/2 - gap - width]
+            };
+            
+            const busBottom = {
+                x: [-radius * 1.5, radius * 1.5],
+                y: [-radius - width/2 - gap, -radius - width/2 - gap]
+            };
+            
+            const traces = [
+                {
+                    x: ringOuter.x,
+                    y: ringOuter.y,
+                    mode: 'lines',
+                    line: { color: '#4fc3f7', width: 2 },
+                    name: 'Ring Outer',
+                    showlegend: false
+                },
+                {
+                    x: ringInner.x,
+                    y: ringInner.y,
+                    mode: 'lines',
+                    line: { color: '#4fc3f7', width: 2 },
+                    name: 'Ring Inner',
+                    showlegend: false
+                },
+                {
+                    x: busTop.x,
+                    y: busTop.y,
+                    mode: 'lines',
+                    line: { color: '#81c784', width: 2 },
+                    name: 'Bus Top',
+                    showlegend: false
+                },
+                {
+                    x: busBottom.x,
+                    y: busBottom.y,
+                    mode: 'lines',
+                    line: { color: '#81c784', width: 2 },
+                    name: 'Bus Bottom',
+                    showlegend: false
+                }
+            ];
+            
+            const layout = {
+                title: {
+                    text: 'Ring Resonator Layout',
+                    font: { color: '#e0e0e0' }
+                },
+                xaxis: {
+                    title: 'X (µm)',
+                    gridcolor: '#333',
+                    zerolinecolor: '#666',
+                    tickfont: { color: '#888' },
+                    titlefont: { color: '#888' },
+                    scaleanchor: 'y',
+                    scaleratio: 1
+                },
+                yaxis: {
+                    title: 'Y (µm)',
+                    gridcolor: '#333',
+                    zerolinecolor: '#666',
+                    tickfont: { color: '#888' },
+                    titlefont: { color: '#888' }
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                showlegend: false,
+                annotations: [
+                    {
+                        x: 0,
+                        y: -radius - width/2 - gap/2,
+                        text: `Gap = ${gap}µm`,
+                        showarrow: true,
+                        arrowhead: 2,
+                        arrowsize: 1,
+                        arrowwidth: 2,
+                        arrowcolor: '#ff9800',
+                        ax: 30,
+                        ay: -30,
+                        font: { color: '#ff9800', size: 14 }
+                    },
+                    {
+                        x: radius,
+                        y: 0,
+                        text: `R = ${radius}µm`,
+                        showarrow: true,
+                        arrowhead: 2,
+                        arrowsize: 1,
+                        arrowwidth: 2,
+                        arrowcolor: '#ff9800',
+                        ax: 30,
+                        ay: 30,
+                        font: { color: '#ff9800', size: 14 }
+                    }
+                ]
+            };
+            
+            Plotly.newPlot('layout-plot', traces, layout, {responsive: true});
+        }
+        
+        function updateFieldPlot() {
+            const radius = parseFloat(document.getElementById('radius').value);
+            const gap = parseFloat(document.getElementById('gap').value);
+            
+            // Generate field distribution data
+            const size = 100;
+            const x = [];
+            const y = [];
+            const z = [];
+            
+            for (let i = 0; i < size; i++) {
+                const xi = -radius * 1.5 + (3 * radius * i / size);
+                x.push(xi);
+                y.push(-radius * 1.5 + (3 * radius * i / size));
+            }
+            
+            for (let i = 0; i < size; i++) {
+                const row = [];
+                for (let j = 0; j < size; j++) {
+                    const xi = x[j];
+                    const yi = y[i];
+                    
+                    // Distance from ring center
+                    const r = Math.sqrt(xi * xi + yi * yi);
+                    
+                    // Field in ring
+                    let field = 0;
+                    if (Math.abs(r - radius) < 0.5) {
+                        field = Math.exp(-Math.abs(r - radius) * 10) * Math.cos(20 * Math.atan2(yi, xi));
+                    }
+                    
+                    // Field in bus waveguide
+                    if (Math.abs(yi + radius + gap + 0.225) < 0.225 && Math.abs(xi) < radius * 1.2) {
+                        const coupling = Math.exp(-gap * 10);
+                        field += coupling * Math.cos(10 * xi) * Math.exp(-Math.abs(yi + radius + gap + 0.225) * 10);
+                    }
+                    
+                    row.push(Math.abs(field) * Math.abs(field));
+                }
+                z.push(row);
+            }
+            
+            const data = [{
+                x: x,
+                y: y,
+                z: z,
+                type: 'heatmap',
+                colorscale: 'Hot',
+                showscale: true,
+                colorbar: {
+                    title: '|E|²',
+                    titlefont: { color: '#888' },
+                    tickfont: { color: '#888' }
+                }
+            }];
+            
+            const layout = {
+                title: {
+                    text: 'Electric Field Intensity Distribution',
+                    font: { color: '#e0e0e0' }
+                },
+                xaxis: {
+                    title: 'X (µm)',
+                    gridcolor: '#333',
+                    zerolinecolor: '#666',
+                    tickfont: { color: '#888' },
+                    titlefont: { color: '#888' },
+                    scaleanchor: 'y',
+                    scaleratio: 1
+                },
+                yaxis: {
+                    title: 'Y (µm)',
+                    gridcolor: '#333',
+                    zerolinecolor: '#666',
+                    tickfont: { color: '#888' },
+                    titlefont: { color: '#888' }
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)'
+            };
+            
+            Plotly.newPlot('field-plot', data, layout, {responsive: true});
+        }
+        
+        function updateAnalysisPlot() {
+            // Parameter sweep data
+            const gaps = [];
+            const qFactors = [];
+            const extinctionRatios = [];
+            
+            for (let g = 0.1; g <= 0.3; g += 0.01) {
+                gaps.push(g);
+                
+                const kappa = Math.exp(-2 * g / 0.1);
+                const Qi = 50000;
+                const Q = Qi / (1 + kappa * kappa * Qi);
+                const ER = -10 * Math.log10(1 - kappa * kappa);
+                
+                qFactors.push(Q);
+                extinctionRatios.push(ER);
+            }
+            
+            const trace1 = {
+                x: gaps,
+                y: qFactors,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Q-Factor',
+                line: { color: '#4fc3f7', width: 3 },
+                yaxis: 'y'
+            };
+            
+            const trace2 = {
+                x: gaps,
+                y: extinctionRatios,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Extinction Ratio (dB)',
+                line: { color: '#81c784', width: 3 },
+                yaxis: 'y2'
+            };
+            
+            const layout = {
+                title: {
+                    text: 'Q-Factor and Extinction Ratio vs Coupling Gap',
+                    font: { color: '#e0e0e0' }
+                },
+                xaxis: {
+                    title: 'Coupling Gap (µm)',
+                    gridcolor: '#333',
+                    zerolinecolor: '#666',
+                    tickfont: { color: '#888' },
+                    titlefont: { color: '#888' }
+                },
+                yaxis: {
+                    title: 'Q-Factor',
+                    gridcolor: '#333',
+                    zerolinecolor: '#666',
+                    tickfont: { color: '#4fc3f7' },
+                    titlefont: { color: '#4fc3f7' },
+                    side: 'left'
+                },
+                yaxis2: {
+                    title: 'Extinction Ratio (dB)',
+                    gridcolor: '#333',
+                    zerolinecolor: '#666',
+                    tickfont: { color: '#81c784' },
+                    titlefont: { color: '#81c784' },
+                    overlaying: 'y',
+                    side: 'right'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                showlegend: true,
+                legend: {
+                    font: { color: '#888' },
+                    bgcolor: 'rgba(0,0,0,0.5)'
+                }
+            };
+            
+            Plotly.newPlot('analysis-plot', [trace1, trace2], layout, {responsive: true});
+        }
+        
+        function updateMetrics(radius, gap, width, loss) {
+            // This is already handled in updateTransmissionPlot
+            // Additional calculations can be added here if needed
+        }
+        
+        function resetParameters() {
+            document.getElementById('radius').value = 7;
+            document.getElementById('gap').value = 0.15;
+            document.getElementById('width').value = 450;
+            document.getElementById('height').value = 220;
+            document.getElementById('material').value = 'si';
+            document.getElementById('loss').value = 2;
+            
+            document.getElementById('radius-value').textContent = '7.0µm';
+            document.getElementById('gap-value').textContent = '0.15µm';
+            
+            updateSimulation();
+        }
+        
+        function exportData() {
+            // Get current plot data
+            const plotDiv = document.getElementById('transmission-plot');
+            const data = plotDiv.data;
+            
+            // Create CSV content
+            let csv = 'Wavelength (nm),Through Port,Drop Port\n';
+            for (let i = 0; i < data[0].x.length; i++) {
+                csv += `${data[0].x[i]},${data[0].y[i]},${data[1].y[i]}\n`;
+            }
+            
+            // Download CSV
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'ring_resonator_spectrum.csv';
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+        
+        // Initialize on load
+        window.addEventListener('load', function() {
+            updateSimulation();
+        });
+        
+        // MathJax configuration
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            }
+        };
+    </script>
+</body>
+</html>
