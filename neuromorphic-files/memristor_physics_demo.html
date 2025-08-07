@@ -20,6 +20,33 @@
             margin: 0 auto;
         }
         
+        .navigation-bar {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .nav-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: #e5e7eb;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+        
+        .nav-btn:hover {
+            background: rgba(245, 158, 11, 0.2);
+            border-color: #f59e0b;
+            color: #f59e0b;
+            transform: translateY(-2px);
+        }
+        
         h1 {
             text-align: center;
             color: #f59e0b;
@@ -112,6 +139,17 @@
 </head>
 <body>
     <div class="container">
+        <div class="navigation-bar">
+            <a href="../neuromorphic-computing-research.html" class="nav-btn">
+                <i class="fas fa-arrow-left"></i> Back to Main
+            </a>
+            <a href="crossbar_interactive_demo.html" class="nav-btn">
+                <i class="fas fa-th"></i> Crossbar Simulator
+            </a>
+            <a href="neural_network_accelerator_demo.html" class="nav-btn">
+                <i class="fas fa-brain"></i> Neural Accelerator
+            </a>
+        </div>
         <h1>Advanced HfO₂ Memristor Physics Simulation</h1>
         
         <div class="controls">
@@ -492,6 +530,154 @@
             };
             
             Plotly.newPlot('energyLandscape', data, layout);
+        }
+        
+        function simulateRetention(T, A, d) {
+            const times = [];
+            const resistances = [];
+            const temperatures = [];
+            
+            // Simulate retention over time (hours)
+            for (let t = 0; t < 1000; t += 10) {
+                times.push(t);
+                
+                // Arrhenius model for retention degradation
+                const Ea = 0.8; // Activation energy in eV
+                const kT = k * T / q;
+                const degradationRate = Math.exp(-Ea / kT);
+                
+                // Resistance drift over time
+                const drift = 1 + 0.1 * Math.log10(1 + t) * degradationRate;
+                resistances.push(deviceState.resistance * drift);
+                
+                // Temperature acceleration factor
+                temperatures.push(T + Math.sin(t * 0.01) * 10); // Temperature variation
+            }
+            
+            const trace1 = {
+                x: times,
+                y: resistances.map(r => Math.log10(r)),
+                mode: 'lines',
+                name: 'Resistance Drift',
+                line: {color: '#f59e0b', width: 3}
+            };
+            
+            const layout1 = {
+                title: 'Retention Characteristics',
+                xaxis: {title: 'Time (hours)'},
+                yaxis: {title: 'log₁₀(Resistance) (Ω)'},
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                font: {color: '#e5e7eb'}
+            };
+            
+            Plotly.newPlot('ivCurve', [trace1], layout1);
+            
+            // Retention projection
+            const projectedYears = [0.1, 1, 10];
+            const projectedDrift = projectedYears.map(y => 1 + 0.15 * Math.log10(1 + y * 8760));
+            
+            const trace2 = {
+                x: projectedYears,
+                y: projectedDrift,
+                mode: 'markers+lines',
+                name: 'Projected Drift',
+                marker: {size: 10, color: '#10b981'},
+                line: {color: '#10b981', width: 2}
+            };
+            
+            const layout2 = {
+                title: 'Long-term Retention Projection',
+                xaxis: {title: 'Years', type: 'log'},
+                yaxis: {title: 'Resistance Drift Factor'},
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                font: {color: '#e5e7eb'}
+            };
+            
+            Plotly.newPlot('stateDynamics', [trace2], layout2);
+        }
+        
+        function simulateEndurance(T, A, d) {
+            const cycles = [];
+            const ronValues = [];
+            const roffValues = [];
+            const windowValues = [];
+            
+            // Simulate endurance cycling
+            for (let c = 1; c <= 1e6; c *= 10) {
+                for (let i = 0; i < 10; i++) {
+                    const cycle = c * (1 + i / 10);
+                    cycles.push(cycle);
+                    
+                    // Degradation model
+                    const degradation = 1 - 0.1 * Math.log10(cycle) / 6;
+                    const variability = 1 + (Math.random() - 0.5) * 0.1;
+                    
+                    ronValues.push(10e3 / degradation * variability);
+                    roffValues.push(1e6 * degradation * variability);
+                    windowValues.push((roffValues[roffValues.length - 1] / ronValues[ronValues.length - 1]));
+                }
+            }
+            
+            const trace1 = {
+                x: cycles,
+                y: ronValues,
+                mode: 'lines',
+                name: 'R_ON',
+                line: {color: '#3b82f6', width: 2}
+            };
+            
+            const trace2 = {
+                x: cycles,
+                y: roffValues,
+                mode: 'lines',
+                name: 'R_OFF',
+                line: {color: '#ef4444', width: 2}
+            };
+            
+            const layout1 = {
+                title: 'Endurance Cycling - Resistance Evolution',
+                xaxis: {title: 'Cycle Number', type: 'log'},
+                yaxis: {title: 'Resistance (Ω)', type: 'log'},
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                font: {color: '#e5e7eb'}
+            };
+            
+            Plotly.newPlot('ivCurve', [trace1, trace2], layout1);
+            
+            // Window degradation
+            const trace3 = {
+                x: cycles,
+                y: windowValues,
+                mode: 'lines',
+                name: 'ON/OFF Ratio',
+                line: {color: '#10b981', width: 3}
+            };
+            
+            const layout2 = {
+                title: 'Switching Window Degradation',
+                xaxis: {title: 'Cycle Number', type: 'log'},
+                yaxis: {title: 'R_OFF / R_ON Ratio', type: 'log'},
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                font: {color: '#e5e7eb'},
+                annotations: [{
+                    x: Math.log10(1e6),
+                    y: Math.log10(50),
+                    text: 'Target: >10 after 10⁶ cycles',
+                    showarrow: true,
+                    arrowhead: 2,
+                    ax: -50,
+                    ay: -30
+                }]
+            };
+            
+            Plotly.newPlot('stateDynamics', [trace3], layout2);
+            
+            // Update metrics
+            document.getElementById('onOffRatio').textContent = Math.floor(windowValues[windowValues.length - 1]);
         }
         
         function plotConductionMechanisms() {

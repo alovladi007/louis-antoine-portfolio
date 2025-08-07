@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memristor Switching Dynamics - Interactive Demo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #e5e7eb;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .navigation-bar {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .nav-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: #e5e7eb;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+        
+        .nav-btn:hover {
+            background: rgba(245, 158, 11, 0.2);
+            border-color: #f59e0b;
+            color: #f59e0b;
+            transform: translateY(-2px);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #f59e0b;
+            margin-bottom: 40px;
+        }
+        
+        .main-grid {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .control-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+        
+        .control-section {
+            margin-bottom: 25px;
+        }
+        
+        .control-section h3 {
+            color: #60a5fa;
+            margin-bottom: 15px;
+        }
+        
+        .control-item {
+            margin-bottom: 15px;
+        }
+        
+        .control-item label {
+            display: block;
+            margin-bottom: 5px;
+            color: #9ca3af;
+            font-size: 0.9em;
+        }
+        
+        .control-item input[type="range"] {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+        
+        .value-display {
+            text-align: center;
+            background: #1f2937;
+            padding: 5px;
+            border-radius: 5px;
+            font-family: monospace;
+            color: #60a5fa;
+        }
+        
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .btn {
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn-set {
+            background: #10b981;
+            color: white;
+        }
+        
+        .btn-set:hover {
+            background: #059669;
+        }
+        
+        .btn-reset {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .btn-reset:hover {
+            background: #dc2626;
+        }
+        
+        .btn-pulse {
+            background: #3b82f6;
+            color: white;
+            grid-column: span 2;
+        }
+        
+        .btn-pulse:hover {
+            background: #2563eb;
+        }
+        
+        .visualization-area {
+            display: grid;
+            grid-template-rows: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .plot-container {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+        
+        .info-panel {
+            background: linear-gradient(135deg, rgba(42, 82, 152, 0.1) 0%, rgba(42, 82, 152, 0.05) 100%);
+            border: 1px solid rgba(42, 82, 152, 0.2);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .info-item {
+            text-align: center;
+        }
+        
+        .info-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #60a5fa;
+        }
+        
+        .info-label {
+            font-size: 0.9em;
+            color: #9ca3af;
+            margin-top: 5px;
+        }
+        
+        .device-visualization {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 20px 0;
+        }
+        
+        .memristor-symbol {
+            width: 200px;
+            height: 100px;
+            position: relative;
+        }
+        
+        .resistance-bar {
+            position: absolute;
+            top: 40%;
+            left: 25%;
+            width: 50%;
+            height: 20%;
+            background: linear-gradient(90deg, #10b981 0%, #ef4444 100%);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        
+        .resistance-indicator {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 50%;
+            height: 100%;
+            background: #333;
+            transition: width 0.5s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="navigation-bar">
+            <a href="../neuromorphic-computing-research.html" class="nav-btn">
+                <i class="fas fa-arrow-left"></i> Back to Main
+            </a>
+            <a href="ir_drop_demo.html" class="nav-btn">
+                <i class="fas fa-chart-area"></i> IR Drop Analysis
+            </a>
+            <a href="energy_efficiency_demo.html" class="nav-btn">
+                <i class="fas fa-battery-full"></i> Energy Efficiency
+            </a>
+        </div>
+        
+        <h1>Memristor Switching Dynamics - Real-Time Visualization</h1>
+        
+        <div class="main-grid">
+            <div class="control-panel">
+                <h2>Device Control</h2>
+                
+                <div class="control-section">
+                    <h3>Applied Voltage</h3>
+                    <div class="control-item">
+                        <label>Voltage Amplitude (V)</label>
+                        <input type="range" id="voltageAmplitude" min="0" max="2" step="0.1" value="1">
+                        <div class="value-display" id="voltageValue">1.0 V</div>
+                    </div>
+                    <div class="control-item">
+                        <label>Pulse Width (ns)</label>
+                        <input type="range" id="pulseWidth" min="1" max="100" step="1" value="20">
+                        <div class="value-display" id="pulseWidthValue">20 ns</div>
+                    </div>
+                </div>
+                
+                <div class="control-section">
+                    <h3>Device Parameters</h3>
+                    <div class="control-item">
+                        <label>SET Voltage (V)</label>
+                        <input type="range" id="vSet" min="0.5" max="1.5" step="0.1" value="0.9">
+                        <div class="value-display" id="vSetValue">0.9 V</div>
+                    </div>
+                    <div class="control-item">
+                        <label>RESET Voltage (V)</label>
+                        <input type="range" id="vReset" min="-1.5" max="-0.5" step="0.1" value="-0.9">
+                        <div class="value-display" id="vResetValue">-0.9 V</div>
+                    </div>
+                    <div class="control-item">
+                        <label>Temperature (K)</label>
+                        <input type="range" id="temperature" min="250" max="400" step="10" value="300">
+                        <div class="value-display" id="tempValue">300 K</div>
+                    </div>
+                </div>
+                
+                <div class="button-group">
+                    <button class="btn btn-set" onclick="applySET()">Apply SET</button>
+                    <button class="btn btn-reset" onclick="applyRESET()">Apply RESET</button>
+                    <button class="btn btn-pulse" onclick="applyCustomPulse()">Apply Custom Pulse</button>
+                </div>
+                
+                <div class="device-visualization">
+                    <div class="memristor-symbol">
+                        <div class="resistance-bar">
+                            <div class="resistance-indicator" id="resistanceIndicator"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="info-panel">
+                    <h3>Current Device State</h3>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-value" id="currentState">HRS</div>
+                            <div class="info-label">State</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-value" id="currentResistance">1 MΩ</div>
+                            <div class="info-label">Resistance</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-value" id="switchingTime">0 ns</div>
+                            <div class="info-label">Switch Time</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-value" id="energyConsumed">0 pJ</div>
+                            <div class="info-label">Energy</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="visualization-area">
+                <div class="plot-container">
+                    <div id="dynamicsPlot"></div>
+                </div>
+                <div class="plot-container">
+                    <div id="ivPlot"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Device state
+        let deviceState = {
+            resistance: 1e6, // 1 MΩ initial (HRS)
+            state: 'HRS',
+            history: {
+                time: [],
+                voltage: [],
+                current: [],
+                resistance: []
+            }
+        };
+        
+        // Physical parameters
+        const R_on = 10e3;  // 10 kΩ
+        const R_off = 1e6;  // 1 MΩ
+        
+        // Update display values
+        document.getElementById('voltageAmplitude').addEventListener('input', (e) => {
+            document.getElementById('voltageValue').textContent = e.target.value + ' V';
+        });
+        
+        document.getElementById('pulseWidth').addEventListener('input', (e) => {
+            document.getElementById('pulseWidthValue').textContent = e.target.value + ' ns';
+        });
+        
+        document.getElementById('vSet').addEventListener('input', (e) => {
+            document.getElementById('vSetValue').textContent = e.target.value + ' V';
+        });
+        
+        document.getElementById('vReset').addEventListener('input', (e) => {
+            document.getElementById('vResetValue').textContent = e.target.value + ' V';
+        });
+        
+        document.getElementById('temperature').addEventListener('input', (e) => {
+            document.getElementById('tempValue').textContent = e.target.value + ' K';
+        });
+        
+        function applySET() {
+            const vSet = parseFloat(document.getElementById('vSet').value);
+            const pulseWidth = parseFloat(document.getElementById('pulseWidth').value);
+            simulateSwitching(vSet, pulseWidth, 'SET');
+        }
+        
+        function applyRESET() {
+            const vReset = parseFloat(document.getElementById('vReset').value);
+            const pulseWidth = parseFloat(document.getElementById('pulseWidth').value);
+            simulateSwitching(vReset, pulseWidth, 'RESET');
+        }
+        
+        function applyCustomPulse() {
+            const voltage = parseFloat(document.getElementById('voltageAmplitude').value);
+            const pulseWidth = parseFloat(document.getElementById('pulseWidth').value);
+            const vSet = parseFloat(document.getElementById('vSet').value);
+            const vReset = parseFloat(document.getElementById('vReset').value);
+            
+            let operation = 'READ';
+            if (voltage >= vSet && deviceState.state === 'HRS') {
+                operation = 'SET';
+            } else if (voltage <= vReset && deviceState.state === 'LRS') {
+                operation = 'RESET';
+            }
+            
+            simulateSwitching(voltage, pulseWidth, operation);
+        }
+        
+        function simulateSwitching(voltage, pulseWidth, operation) {
+            const temperature = parseFloat(document.getElementById('temperature').value);
+            
+            // Clear history
+            deviceState.history = {
+                time: [],
+                voltage: [],
+                current: [],
+                resistance: []
+            };
+            
+            // Simulate time evolution
+            const dt = 0.1; // ns
+            const totalTime = pulseWidth * 3; // Show before and after pulse
+            let switchingOccurred = false;
+            let switchTime = 0;
+            
+            for (let t = 0; t <= totalTime; t += dt) {
+                deviceState.history.time.push(t);
+                
+                // Voltage profile
+                let v = 0;
+                if (t >= pulseWidth && t <= pulseWidth * 2) {
+                    v = voltage;
+                }
+                deviceState.history.voltage.push(v);
+                
+                // Switching dynamics
+                if (operation === 'SET' && !switchingOccurred && v >= parseFloat(document.getElementById('vSet').value)) {
+                    // Exponential transition to LRS
+                    const tau = 5; // ns
+                    const progress = 1 - Math.exp(-(t - pulseWidth) / tau);
+                    deviceState.resistance = R_off * (1 - progress) + R_on * progress;
+                    
+                    if (progress > 0.95) {
+                        switchingOccurred = true;
+                        switchTime = t - pulseWidth;
+                        deviceState.state = 'LRS';
+                    }
+                } else if (operation === 'RESET' && !switchingOccurred && v <= parseFloat(document.getElementById('vReset').value)) {
+                    // Exponential transition to HRS
+                    const tau = 8; // ns
+                    const progress = 1 - Math.exp(-(t - pulseWidth) / tau);
+                    deviceState.resistance = R_on * (1 - progress) + R_off * progress;
+                    
+                    if (progress > 0.95) {
+                        switchingOccurred = true;
+                        switchTime = t - pulseWidth;
+                        deviceState.state = 'HRS';
+                    }
+                }
+                
+                // Current calculation
+                const current = v / deviceState.resistance * 1e6; // Convert to μA
+                deviceState.history.current.push(current);
+                deviceState.history.resistance.push(deviceState.resistance);
+            }
+            
+            // Update UI
+            updateDeviceDisplay(switchTime, voltage, pulseWidth);
+            plotDynamics();
+            plotIVCharacteristics();
+        }
+        
+        function updateDeviceDisplay(switchTime, voltage, pulseWidth) {
+            // Update state display
+            document.getElementById('currentState').textContent = deviceState.state;
+            document.getElementById('currentState').style.color = deviceState.state === 'LRS' ? '#10b981' : '#ef4444';
+            
+            // Update resistance
+            const resistance = deviceState.resistance;
+            document.getElementById('currentResistance').textContent = 
+                resistance >= 1e6 ? (resistance / 1e6).toFixed(1) + ' MΩ' : 
+                (resistance / 1e3).toFixed(1) + ' kΩ';
+            
+            // Update switching time
+            document.getElementById('switchingTime').textContent = switchTime.toFixed(1) + ' ns';
+            
+            // Calculate energy
+            const avgCurrent = Math.abs(voltage) / deviceState.resistance;
+            const energy = Math.abs(voltage) * avgCurrent * pulseWidth * 1e-9 * 1e12; // pJ
+            document.getElementById('energyConsumed').textContent = energy.toFixed(1) + ' pJ';
+            
+            // Update resistance indicator
+            const percentage = ((Math.log10(deviceState.resistance) - Math.log10(R_on)) / 
+                              (Math.log10(R_off) - Math.log10(R_on))) * 100;
+            document.getElementById('resistanceIndicator').style.width = percentage + '%';
+        }
+        
+        function plotDynamics() {
+            const trace1 = {
+                x: deviceState.history.time,
+                y: deviceState.history.voltage,
+                name: 'Applied Voltage',
+                yaxis: 'y',
+                type: 'scatter',
+                mode: 'lines',
+                line: {color: '#3b82f6', width: 2}
+            };
+            
+            const trace2 = {
+                x: deviceState.history.time,
+                y: deviceState.history.current,
+                name: 'Current',
+                yaxis: 'y2',
+                type: 'scatter',
+                mode: 'lines',
+                line: {color: '#f59e0b', width: 2}
+            };
+            
+            const trace3 = {
+                x: deviceState.history.time,
+                y: deviceState.history.resistance.map(r => Math.log10(r)),
+                name: 'log₁₀(R)',
+                yaxis: 'y3',
+                type: 'scatter',
+                mode: 'lines',
+                line: {color: '#10b981', width: 2}
+            };
+            
+            const layout = {
+                title: {
+                    text: 'Switching Dynamics',
+                    font: {color: '#f59e0b'}
+                },
+                xaxis: {
+                    title: 'Time (ns)',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                yaxis: {
+                    title: 'Voltage (V)',
+                    titlefont: {color: '#3b82f6'},
+                    tickfont: {color: '#3b82f6'},
+                    side: 'left'
+                },
+                yaxis2: {
+                    title: 'Current (μA)',
+                    titlefont: {color: '#f59e0b'},
+                    tickfont: {color: '#f59e0b'},
+                    overlaying: 'y',
+                    side: 'right',
+                    position: 0.85
+                },
+                yaxis3: {
+                    title: 'log₁₀(R) (Ω)',
+                    titlefont: {color: '#10b981'},
+                    tickfont: {color: '#10b981'},
+                    overlaying: 'y',
+                    side: 'right',
+                    position: 1.0,
+                    range: [3.5, 6.5]
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                showlegend: true,
+                legend: {
+                    x: 0.02,
+                    y: 0.98,
+                    bgcolor: 'rgba(0,0,0,0.5)'
+                }
+            };
+            
+            Plotly.newPlot('dynamicsPlot', [trace1, trace2, trace3], layout);
+        }
+        
+        function plotIVCharacteristics() {
+            // Generate I-V curve
+            const voltages = [];
+            const currents = [];
+            
+            for (let v = -1.5; v <= 1.5; v += 0.05) {
+                voltages.push(v);
+                
+                // Simplified I-V model
+                let current;
+                if (deviceState.state === 'HRS') {
+                    if (v >= parseFloat(document.getElementById('vSet').value)) {
+                        // Switching region
+                        current = v / R_on * 1e6;
+                    } else {
+                        // Linear region
+                        current = v / R_off * 1e6;
+                    }
+                } else { // LRS
+                    if (v <= parseFloat(document.getElementById('vReset').value)) {
+                        // Switching region
+                        current = v / R_off * 1e6;
+                    } else {
+                        // Linear region
+                        current = v / R_on * 1e6;
+                    }
+                }
+                currents.push(current);
+            }
+            
+            const trace = {
+                x: voltages,
+                y: currents,
+                mode: 'lines',
+                line: {
+                    color: deviceState.state === 'LRS' ? '#10b981' : '#ef4444',
+                    width: 3
+                },
+                name: deviceState.state
+            };
+            
+            // Add current operating point
+            const currentV = deviceState.history.voltage[deviceState.history.voltage.length - 1];
+            const currentI = deviceState.history.current[deviceState.history.current.length - 1];
+            
+            const operating = {
+                x: [currentV],
+                y: [currentI],
+                mode: 'markers',
+                marker: {
+                    size: 12,
+                    color: '#f59e0b',
+                    symbol: 'circle'
+                },
+                name: 'Operating Point'
+            };
+            
+            const layout = {
+                title: {
+                    text: 'I-V Characteristics',
+                    font: {color: '#f59e0b'}
+                },
+                xaxis: {
+                    title: 'Voltage (V)',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151',
+                    zeroline: true,
+                    zerolinecolor: '#666'
+                },
+                yaxis: {
+                    title: 'Current (μA)',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151',
+                    zeroline: true,
+                    zerolinecolor: '#666'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                showlegend: true,
+                annotations: [{
+                    x: parseFloat(document.getElementById('vSet').value),
+                    y: 0,
+                    text: 'V_SET',
+                    showarrow: true,
+                    arrowhead: 2,
+                    ax: 0,
+                    ay: -40,
+                    font: {color: '#10b981'}
+                }, {
+                    x: parseFloat(document.getElementById('vReset').value),
+                    y: 0,
+                    text: 'V_RESET',
+                    showarrow: true,
+                    arrowhead: 2,
+                    ax: 0,
+                    ay: 40,
+                    font: {color: '#ef4444'}
+                }]
+            };
+            
+            Plotly.newPlot('ivPlot', [trace, operating], layout);
+        }
+        
+        // Initialize plots
+        plotDynamics();
+        plotIVCharacteristics();
+    </script>
+</body>
+</html>

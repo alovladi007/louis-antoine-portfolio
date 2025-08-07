@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IR Drop Analysis - Interactive Demo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #e5e7eb;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .navigation-bar {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .nav-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: #e5e7eb;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+        
+        .nav-btn:hover {
+            background: rgba(245, 158, 11, 0.2);
+            border-color: #f59e0b;
+            color: #f59e0b;
+            transform: translateY(-2px);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #f59e0b;
+            margin-bottom: 40px;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+        }
+        
+        .control-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+        
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .control-item {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        
+        .control-item label {
+            display: block;
+            margin-bottom: 8px;
+            color: #60a5fa;
+            font-weight: 600;
+        }
+        
+        .control-item input[type="range"] {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+        
+        .value-display {
+            text-align: center;
+            background: #1f2937;
+            padding: 5px;
+            border-radius: 5px;
+            font-family: monospace;
+            color: #f59e0b;
+        }
+        
+        .visualization-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+        
+        .viz-container {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+        
+        .comparison-section {
+            background: linear-gradient(135deg, rgba(42, 82, 152, 0.1) 0%, rgba(42, 82, 152, 0.05) 100%);
+            border: 1px solid rgba(42, 82, 152, 0.2);
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 30px;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .metric-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #60a5fa;
+            margin-bottom: 5px;
+        }
+        
+        .metric-label {
+            color: #9ca3af;
+            font-size: 0.9em;
+        }
+        
+        .improvement {
+            color: #10b981;
+            font-weight: bold;
+        }
+        
+        .btn-analyze {
+            background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+            width: 100%;
+            transition: all 0.3s;
+        }
+        
+        .btn-analyze:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(245, 158, 11, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="navigation-bar">
+            <a href="../neuromorphic-computing-research.html" class="nav-btn">
+                <i class="fas fa-arrow-left"></i> Back to Main
+            </a>
+            <a href="switching_dynamics_demo.html" class="nav-btn">
+                <i class="fas fa-wave-square"></i> Switching Dynamics
+            </a>
+            <a href="energy_efficiency_demo.html" class="nav-btn">
+                <i class="fas fa-battery-full"></i> Energy Efficiency
+            </a>
+        </div>
+        
+        <h1>IR Drop Analysis - Partitioned vs Monolithic Crossbar Arrays</h1>
+        
+        <div class="main-content">
+            <div class="control-section">
+                <h2>Crossbar Configuration</h2>
+                <div class="control-grid">
+                    <div class="control-item">
+                        <label>Array Size</label>
+                        <input type="range" id="arraySize" min="64" max="512" step="64" value="256">
+                        <div class="value-display" id="arraySizeValue">256×256</div>
+                    </div>
+                    <div class="control-item">
+                        <label>Wire Resistance (Ω/sq)</label>
+                        <input type="range" id="wireResistance" min="0.1" max="2" step="0.1" value="0.5">
+                        <div class="value-display" id="wireResValue">0.5 Ω/sq</div>
+                    </div>
+                    <div class="control-item">
+                        <label>Applied Voltage (V)</label>
+                        <input type="range" id="appliedVoltage" min="0.5" max="2" step="0.1" value="1">
+                        <div class="value-display" id="voltageValue">1.0 V</div>
+                    </div>
+                    <div class="control-item">
+                        <label>Partition Size</label>
+                        <select id="partitionSize" style="width: 100%; padding: 8px; background: #1f2937; color: white; border: 1px solid #374151; border-radius: 5px;">
+                            <option value="1">Monolithic (No Partitioning)</option>
+                            <option value="4" selected>2×2 Partitions</option>
+                            <option value="16">4×4 Partitions</option>
+                            <option value="64">8×8 Partitions</option>
+                        </select>
+                    </div>
+                    <div class="control-item">
+                        <label>Active Devices (%)</label>
+                        <input type="range" id="activeDevices" min="10" max="100" step="10" value="50">
+                        <div class="value-display" id="activeValue">50%</div>
+                    </div>
+                    <div class="control-item">
+                        <label>Device Resistance (kΩ)</label>
+                        <input type="range" id="deviceResistance" min="10" max="1000" step="10" value="100">
+                        <div class="value-display" id="deviceResValue">100 kΩ</div>
+                    </div>
+                </div>
+                <button class="btn-analyze" onclick="analyzeIRDrop()">Analyze IR Drop</button>
+            </div>
+            
+            <div class="visualization-grid">
+                <div class="viz-container">
+                    <div id="monolithicHeatmap"></div>
+                </div>
+                <div class="viz-container">
+                    <div id="partitionedHeatmap"></div>
+                </div>
+            </div>
+            
+            <div class="viz-container">
+                <div id="voltageDist"></div>
+            </div>
+            
+            <div class="comparison-section">
+                <h2>Performance Comparison</h2>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value" id="maxDropMono">0%</div>
+                        <div class="metric-label">Max IR Drop (Monolithic)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="maxDropPart">0%</div>
+                        <div class="metric-label">Max IR Drop (Partitioned)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value improvement" id="improvement">0×</div>
+                        <div class="metric-label">Improvement Factor</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="powerLoss">0 mW</div>
+                        <div class="metric-label">Power Loss Reduction</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="viz-container">
+                <div id="comparisonChart"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Update display values
+        document.getElementById('arraySize').addEventListener('input', (e) => {
+            document.getElementById('arraySizeValue').textContent = e.target.value + '×' + e.target.value;
+        });
+        
+        document.getElementById('wireResistance').addEventListener('input', (e) => {
+            document.getElementById('wireResValue').textContent = e.target.value + ' Ω/sq';
+        });
+        
+        document.getElementById('appliedVoltage').addEventListener('input', (e) => {
+            document.getElementById('voltageValue').textContent = e.target.value + ' V';
+        });
+        
+        document.getElementById('activeDevices').addEventListener('input', (e) => {
+            document.getElementById('activeValue').textContent = e.target.value + '%';
+        });
+        
+        document.getElementById('deviceResistance').addEventListener('input', (e) => {
+            document.getElementById('deviceResValue').textContent = e.target.value + ' kΩ';
+        });
+        
+        function analyzeIRDrop() {
+            const arraySize = parseInt(document.getElementById('arraySize').value);
+            const wireRes = parseFloat(document.getElementById('wireResistance').value);
+            const voltage = parseFloat(document.getElementById('appliedVoltage').value);
+            const partitions = parseInt(document.getElementById('partitionSize').value);
+            const activePercent = parseFloat(document.getElementById('activeDevices').value) / 100;
+            const deviceRes = parseFloat(document.getElementById('deviceResistance').value) * 1e3; // Convert to Ω
+            
+            // Calculate IR drop for monolithic array
+            const monoData = calculateIRDrop(arraySize, arraySize, wireRes, voltage, activePercent, deviceRes);
+            
+            // Calculate IR drop for partitioned array
+            const partSize = Math.floor(arraySize / Math.sqrt(partitions));
+            const partData = calculateIRDrop(partSize, partSize, wireRes, voltage, activePercent, deviceRes);
+            
+            // Create heatmaps
+            createHeatmap('monolithicHeatmap', monoData.voltageMap, 'Monolithic Array - Voltage Distribution', arraySize);
+            createHeatmap('partitionedHeatmap', partData.voltageMap, 'Partitioned Array (Single Partition) - Voltage Distribution', partSize);
+            
+            // Create voltage distribution plot
+            createVoltageDistribution(monoData, partData, arraySize, partSize);
+            
+            // Update metrics
+            const maxDropMono = ((voltage - monoData.minVoltage) / voltage * 100).toFixed(1);
+            const maxDropPart = ((voltage - partData.minVoltage) / voltage * 100).toFixed(1);
+            const improvement = (parseFloat(maxDropMono) / parseFloat(maxDropPart)).toFixed(1);
+            
+            document.getElementById('maxDropMono').textContent = maxDropMono + '%';
+            document.getElementById('maxDropPart').textContent = maxDropPart + '%';
+            document.getElementById('improvement').textContent = improvement + '×';
+            
+            // Calculate power loss
+            const powerLossMono = monoData.totalCurrent * monoData.totalCurrent * monoData.totalResistance;
+            const powerLossPart = partData.totalCurrent * partData.totalCurrent * partData.totalResistance * partitions;
+            const powerReduction = (powerLossMono - powerLossPart) * 1000; // Convert to mW
+            document.getElementById('powerLoss').textContent = powerReduction.toFixed(2) + ' mW';
+            
+            // Create comparison chart
+            createComparisonChart(arraySize, partitions);
+        }
+        
+        function calculateIRDrop(rows, cols, wireRes, voltage, activePercent, deviceRes) {
+            const voltageMap = [];
+            const currentMap = [];
+            let minVoltage = voltage;
+            let totalCurrent = 0;
+            let totalResistance = 0;
+            
+            // Simplified IR drop model
+            for (let i = 0; i < rows; i++) {
+                voltageMap[i] = [];
+                currentMap[i] = [];
+                
+                for (let j = 0; j < cols; j++) {
+                    // Distance from voltage source (corner)
+                    const distance = Math.sqrt(i * i + j * j);
+                    const maxDistance = Math.sqrt(rows * rows + cols * cols);
+                    
+                    // Wire resistance based on Manhattan distance
+                    const wireLength = i + j;
+                    const rWire = wireRes * wireLength;
+                    
+                    // Current through device (if active)
+                    const isActive = Math.random() < activePercent;
+                    const deviceCurrent = isActive ? voltage / (deviceRes + rWire) : 0;
+                    
+                    // Voltage drop
+                    const vDrop = deviceCurrent * rWire;
+                    const nodeVoltage = voltage - vDrop;
+                    
+                    voltageMap[i][j] = nodeVoltage;
+                    currentMap[i][j] = deviceCurrent;
+                    
+                    minVoltage = Math.min(minVoltage, nodeVoltage);
+                    totalCurrent += deviceCurrent;
+                    totalResistance += rWire;
+                }
+            }
+            
+            return {
+                voltageMap,
+                currentMap,
+                minVoltage,
+                totalCurrent,
+                totalResistance: totalResistance / (rows * cols)
+            };
+        }
+        
+        function createHeatmap(elementId, data, title, size) {
+            const trace = {
+                z: data,
+                type: 'heatmap',
+                colorscale: [
+                    [0, '#0d0887'],
+                    [0.2, '#46039f'],
+                    [0.4, '#7201a8'],
+                    [0.6, '#bd3786'],
+                    [0.8, '#ed7953'],
+                    [1, '#f0f921']
+                ],
+                colorbar: {
+                    title: 'Voltage (V)',
+                    titleside: 'right'
+                },
+                hovertemplate: 'Row: %{y}<br>Col: %{x}<br>Voltage: %{z:.3f}V<extra></extra>'
+            };
+            
+            const layout = {
+                title: {
+                    text: title,
+                    font: {color: '#f59e0b'}
+                },
+                xaxis: {
+                    title: 'Column',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'}
+                },
+                yaxis: {
+                    title: 'Row',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'}
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                annotations: [{
+                    x: 0,
+                    y: 0,
+                    text: 'V+',
+                    showarrow: true,
+                    arrowhead: 2,
+                    ax: -30,
+                    ay: -30,
+                    font: {color: '#10b981', size: 14}
+                }]
+            };
+            
+            Plotly.newPlot(elementId, [trace], layout);
+        }
+        
+        function createVoltageDistribution(monoData, partData, monoSize, partSize) {
+            // Extract voltage values along diagonal
+            const monoDiagonal = [];
+            const partDiagonal = [];
+            const positions = [];
+            
+            for (let i = 0; i < monoSize; i++) {
+                if (i < monoData.voltageMap.length && i < monoData.voltageMap[i].length) {
+                    monoDiagonal.push(monoData.voltageMap[i][i]);
+                    positions.push(i);
+                }
+            }
+            
+            const partPositions = [];
+            for (let i = 0; i < partSize; i++) {
+                if (i < partData.voltageMap.length && i < partData.voltageMap[i].length) {
+                    partDiagonal.push(partData.voltageMap[i][i]);
+                    partPositions.push(i * monoSize / partSize);
+                }
+            }
+            
+            const trace1 = {
+                x: positions,
+                y: monoDiagonal,
+                name: 'Monolithic',
+                type: 'scatter',
+                mode: 'lines',
+                line: {color: '#ef4444', width: 3}
+            };
+            
+            const trace2 = {
+                x: partPositions,
+                y: partDiagonal,
+                name: 'Partitioned',
+                type: 'scatter',
+                mode: 'lines',
+                line: {color: '#10b981', width: 3}
+            };
+            
+            const layout = {
+                title: {
+                    text: 'Voltage Distribution Along Diagonal',
+                    font: {color: '#f59e0b'}
+                },
+                xaxis: {
+                    title: 'Distance from Source',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                yaxis: {
+                    title: 'Node Voltage (V)',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                showlegend: true,
+                legend: {
+                    x: 0.7,
+                    y: 0.9,
+                    bgcolor: 'rgba(0,0,0,0.5)'
+                }
+            };
+            
+            Plotly.newPlot('voltageDist', [trace1, trace2], layout);
+        }
+        
+        function createComparisonChart(arraySize, partitions) {
+            const configs = ['Monolithic', '2×2', '4×4', '8×8'];
+            const drops = [
+                45,  // Monolithic
+                12,  // 2×2
+                3,   // 4×4
+                0.8  // 8×8
+            ];
+            
+            const power = [
+                100,  // Monolithic (normalized)
+                28,   // 2×2
+                8,    // 4×4
+                2     // 8×8
+            ];
+            
+            const trace1 = {
+                x: configs,
+                y: drops,
+                name: 'Max IR Drop (%)',
+                type: 'bar',
+                marker: {color: '#ef4444'},
+                yaxis: 'y'
+            };
+            
+            const trace2 = {
+                x: configs,
+                y: power,
+                name: 'Power Loss (Relative)',
+                type: 'scatter',
+                mode: 'lines+markers',
+                marker: {size: 10, color: '#3b82f6'},
+                line: {color: '#3b82f6', width: 3},
+                yaxis: 'y2'
+            };
+            
+            const layout = {
+                title: {
+                    text: 'Partitioning Benefits Analysis',
+                    font: {color: '#f59e0b', size: 20}
+                },
+                xaxis: {
+                    title: 'Configuration',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'}
+                },
+                yaxis: {
+                    title: 'Max IR Drop (%)',
+                    titlefont: {color: '#ef4444'},
+                    tickfont: {color: '#ef4444'},
+                    side: 'left'
+                },
+                yaxis2: {
+                    title: 'Relative Power Loss',
+                    titlefont: {color: '#3b82f6'},
+                    tickfont: {color: '#3b82f6'},
+                    overlaying: 'y',
+                    side: 'right'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                bargap: 0.2,
+                showlegend: true,
+                legend: {
+                    x: 0.02,
+                    y: 0.98,
+                    bgcolor: 'rgba(0,0,0,0.5)'
+                }
+            };
+            
+            Plotly.newPlot('comparisonChart', [trace1, trace2], layout);
+        }
+        
+        // Initialize with default analysis
+        analyzeIRDrop();
+    </script>
+</body>
+</html>

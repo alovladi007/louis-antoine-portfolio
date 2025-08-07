@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Neural Network Accelerator Works - Neuromorphic Computing</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #e5e7eb;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .navigation-bar {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .nav-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: #e5e7eb;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+        
+        .nav-btn:hover {
+            background: rgba(245, 158, 11, 0.2);
+            border-color: #f59e0b;
+            color: #f59e0b;
+            transform: translateY(-2px);
+        }
+        
+        h1 {
+            color: #f59e0b;
+            text-align: center;
+            margin-bottom: 40px;
+            font-size: 2.5em;
+        }
+        
+        h2 {
+            color: #60a5fa;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+        
+        h3 {
+            color: #f59e0b;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        
+        .section {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .concept-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .concept-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            transition: transform 0.3s;
+        }
+        
+        .concept-card:hover {
+            transform: translateY(-5px);
+            border-color: #60a5fa;
+        }
+        
+        .concept-icon {
+            font-size: 2.5em;
+            color: #60a5fa;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .equation {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            font-size: 1.2em;
+            color: #60a5fa;
+        }
+        
+        .step-container {
+            position: relative;
+            padding-left: 50px;
+            margin: 20px 0;
+        }
+        
+        .step-number {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 40px;
+            height: 40px;
+            background: #f59e0b;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #0a0a0a;
+        }
+        
+        .visualization-container {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 30px 0;
+        }
+        
+        .code-block {
+            background: #1e1e1e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            overflow-x: auto;
+        }
+        
+        .code-block pre {
+            margin: 0;
+            color: #d4d4d4;
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+        
+        .highlight {
+            background: rgba(245, 158, 11, 0.2);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #f59e0b;
+        }
+        
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        .comparison-table th,
+        .comparison-table td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .comparison-table th {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+            font-weight: bold;
+        }
+        
+        .comparison-table tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .advantage-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .advantage-list li {
+            padding: 10px 0;
+            padding-left: 30px;
+            position: relative;
+        }
+        
+        .advantage-list li:before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #10b981;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="navigation-bar">
+            <a href="../neuromorphic-computing-research.html" class="nav-btn">
+                <i class="fas fa-arrow-left"></i> Back to Main
+            </a>
+            <a href="neural_network_accelerator_demo.html" class="nav-btn">
+                <i class="fas fa-play"></i> Interactive Demo
+            </a>
+            <a href="crossbar_interactive_demo.html" class="nav-btn">
+                <i class="fas fa-th"></i> Crossbar Simulator
+            </a>
+            <a href="memristor_physics_demo.html" class="nav-btn">
+                <i class="fas fa-atom"></i> Physics Simulation
+            </a>
+        </div>
+        
+        <h1>How the Neural Network Accelerator Works</h1>
+        
+        <div class="section">
+            <h2>Overview</h2>
+            <p>The Partitioned Memristor Neural Accelerator (PMNA) represents a paradigm shift in AI hardware acceleration. By leveraging the unique properties of memristor devices arranged in crossbar arrays, we can perform neural network computations directly in the analog domain, achieving unprecedented energy efficiency and speed.</p>
+            
+            <div class="concept-grid">
+                <div class="concept-card">
+                    <div class="concept-icon"><i class="fas fa-memory"></i></div>
+                    <h3>In-Memory Computing</h3>
+                    <p>Eliminates data movement between memory and processing units by computing directly where data is stored.</p>
+                </div>
+                <div class="concept-card">
+                    <div class="concept-icon"><i class="fas fa-bolt"></i></div>
+                    <h3>Analog Computing</h3>
+                    <p>Exploits Ohm's law and Kirchhoff's current law for natural matrix-vector multiplication.</p>
+                </div>
+                <div class="concept-card">
+                    <div class="concept-icon"><i class="fas fa-microchip"></i></div>
+                    <h3>Massive Parallelism</h3>
+                    <p>Thousands of multiply-accumulate operations happen simultaneously in a single time step.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Core Principles</h2>
+            
+            <h3>1. Memristor as Synaptic Weight</h3>
+            <p>Each memristor in the crossbar array represents a synaptic weight in the neural network. The conductance (G = 1/R) of the memristor encodes the weight value.</p>
+            
+            <div class="equation">
+                Weight (w) ∝ Conductance (G) = 1/R
+            </div>
+            
+            <h3>2. Vector-Matrix Multiplication (VMM)</h3>
+            <p>The fundamental operation in neural networks is vector-matrix multiplication. In our memristor crossbar:</p>
+            
+            <div class="equation">
+                I_out = V_in × G_matrix = V_in × W
+            </div>
+            
+            <p>Where:</p>
+            <ul>
+                <li><strong>V_in</strong>: Input voltage vector applied to rows</li>
+                <li><strong>G_matrix</strong>: Conductance matrix (memristor array)</li>
+                <li><strong>I_out</strong>: Output current vector collected from columns</li>
+                <li><strong>W</strong>: Weight matrix of the neural network layer</li>
+            </ul>
+        </div>
+        
+        <div class="section">
+            <h2>Architecture Details</h2>
+            
+            <h3>Partitioned Crossbar Design</h3>
+            <p>To overcome the limitations of large monolithic crossbars, we implement a partitioned architecture:</p>
+            
+            <div class="visualization-container">
+                <div id="architectureViz"></div>
+            </div>
+            
+            <div class="step-container">
+                <div class="step-number">1</div>
+                <h4>Input Distribution</h4>
+                <p>Digital inputs are converted to analog voltages via DACs and distributed to multiple crossbar partitions.</p>
+            </div>
+            
+            <div class="step-container">
+                <div class="step-number">2</div>
+                <h4>Parallel Computation</h4>
+                <p>Each partition performs VMM independently, computing a portion of the overall matrix multiplication.</p>
+            </div>
+            
+            <div class="step-container">
+                <div class="step-number">3</div>
+                <h4>Current Summation</h4>
+                <p>Output currents from each column are summed according to Kirchhoff's current law.</p>
+            </div>
+            
+            <div class="step-container">
+                <div class="step-number">4</div>
+                <h4>Analog-to-Digital Conversion</h4>
+                <p>Summed currents are converted back to digital values via ADCs for further processing or output.</p>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Weight Mapping Process</h2>
+            
+            <h3>From Neural Network to Hardware</h3>
+            
+            <div class="code-block">
+                <pre>
+# Neural network weight matrix
+W = [[0.5, -0.3, 0.8],
+     [0.2,  0.7, -0.4],
+     [-0.6, 0.1,  0.9]]
+
+# Map to conductance values
+G_positive = max(0, W) / R_on
+G_negative = max(0, -W) / R_on
+
+# Program memristors
+for i, j in crossbar:
+    memristor[i,j].set_conductance(G_positive[i,j])
+    memristor[i,j+offset].set_conductance(G_negative[i,j])
+                </pre>
+            </div>
+            
+            <h3>Multi-bit Weight Representation</h3>
+            <p>For higher precision, we use multiple memristors per weight:</p>
+            
+            <div class="equation">
+                W = Σ(2^i × G_i) where i = 0 to n-1
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Advantages Over Traditional Architectures</h2>
+            
+            <table class="comparison-table">
+                <tr>
+                    <th>Aspect</th>
+                    <th>GPU/CPU</th>
+                    <th>PMNA</th>
+                    <th>Improvement</th>
+                </tr>
+                <tr>
+                    <td>Energy per MAC</td>
+                    <td>~1-10 pJ</td>
+                    <td>~0.1 pJ</td>
+                    <td><span class="highlight">10-100×</span></td>
+                </tr>
+                <tr>
+                    <td>Memory Bandwidth</td>
+                    <td>Limited by bus</td>
+                    <td>In-memory</td>
+                    <td><span class="highlight">∞</span></td>
+                </tr>
+                <tr>
+                    <td>Parallelism</td>
+                    <td>~1000s ops</td>
+                    <td>~1M ops</td>
+                    <td><span class="highlight">1000×</span></td>
+                </tr>
+                <tr>
+                    <td>Area Efficiency</td>
+                    <td>Large</td>
+                    <td>Compact</td>
+                    <td><span class="highlight">100×</span></td>
+                </tr>
+            </table>
+        </div>
+        
+        <div class="section">
+            <h2>Challenges and Solutions</h2>
+            
+            <div class="concept-grid">
+                <div class="concept-card">
+                    <h3>IR Drop</h3>
+                    <p><strong>Challenge:</strong> Voltage degradation along wires in large arrays.</p>
+                    <p><strong>Solution:</strong> Partitioned architecture reduces array size, minimizing IR drop effects.</p>
+                </div>
+                <div class="concept-card">
+                    <h3>Device Variability</h3>
+                    <p><strong>Challenge:</strong> Manufacturing variations in memristor properties.</p>
+                    <p><strong>Solution:</strong> Variation-aware training and calibration algorithms.</p>
+                </div>
+                <div class="concept-card">
+                    <h3>Limited Precision</h3>
+                    <p><strong>Challenge:</strong> Analog computation has inherent noise.</p>
+                    <p><strong>Solution:</strong> Multi-bit representation and error correction techniques.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Real-World Applications</h2>
+            
+            <ul class="advantage-list">
+                <li><strong>Edge AI:</strong> Ultra-low power inference for IoT devices</li>
+                <li><strong>Real-time Vision:</strong> High-speed image recognition and processing</li>
+                <li><strong>Natural Language:</strong> Efficient transformer model acceleration</li>
+                <li><strong>Scientific Computing:</strong> Fast matrix operations for simulations</li>
+                <li><strong>Autonomous Systems:</strong> Low-latency decision making</li>
+            </ul>
+        </div>
+        
+        <div class="section">
+            <h2>Performance Metrics Explained</h2>
+            
+            <div class="visualization-container">
+                <div id="performanceMetrics"></div>
+            </div>
+            
+            <h3>Key Performance Indicators</h3>
+            
+            <div class="concept-grid">
+                <div class="concept-card">
+                    <h3>TOPS (Tera Operations Per Second)</h3>
+                    <p>Measures computational throughput. Our design achieves <span class="highlight">1000 TOPS</span> peak performance.</p>
+                </div>
+                <div class="concept-card">
+                    <h3>TOPS/W (Performance per Watt)</h3>
+                    <p>Energy efficiency metric. We achieve <span class="highlight">20 TOPS/W</span>, 200× better than GPUs.</p>
+                </div>
+                <div class="concept-card">
+                    <h3>Latency</h3>
+                    <p>Time for one inference. Analog computation provides <span class="highlight">&lt;1μs</span> latency.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Future Directions</h2>
+            
+            <p>The field of memristor-based neural accelerators is rapidly evolving. Future developments include:</p>
+            
+            <ul>
+                <li>3D integration for higher density</li>
+                <li>On-chip learning capabilities</li>
+                <li>Quantum-classical hybrid architectures</li>
+                <li>Novel memristor materials with better characteristics</li>
+                <li>Advanced error correction and calibration</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        // Architecture Visualization
+        function createArchitectureViz() {
+            const trace1 = {
+                x: [0, 1, 2, 3, 0, 1, 2, 3],
+                y: [0, 0, 0, 0, 1, 1, 1, 1],
+                z: [0, 0, 0, 0, 0, 0, 0, 0],
+                mode: 'markers',
+                marker: {
+                    size: 20,
+                    color: '#3b82f6',
+                    symbol: 'square'
+                },
+                type: 'scatter3d',
+                name: 'Crossbar Partitions',
+                text: ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8'],
+                hoverinfo: 'text'
+            };
+            
+            // Add connections
+            const connections = [];
+            for (let i = 0; i < 4; i++) {
+                for (let j = 0; j < 2; j++) {
+                    connections.push({
+                        x: [i, i],
+                        y: [j, 0.5],
+                        z: [0, -0.5],
+                        mode: 'lines',
+                        line: {color: '#60a5fa', width: 3},
+                        type: 'scatter3d',
+                        showlegend: false
+                    });
+                }
+            }
+            
+            const layout = {
+                title: {
+                    text: 'Partitioned Crossbar Architecture',
+                    font: {color: '#f59e0b'}
+                },
+                scene: {
+                    xaxis: {title: 'X', showgrid: false},
+                    yaxis: {title: 'Y', showgrid: false},
+                    zaxis: {title: 'Layer', showgrid: false},
+                    camera: {
+                        eye: {x: 1.5, y: -1.5, z: 1}
+                    },
+                    bgcolor: 'rgba(0,0,0,0)'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                showlegend: false,
+                height: 400
+            };
+            
+            Plotly.newPlot('architectureViz', [trace1, ...connections], layout);
+        }
+        
+        // Performance Metrics Chart
+        function createPerformanceMetrics() {
+            const categories = ['Energy/Op', 'Throughput', 'Density', 'Flexibility'];
+            const gpu = [30, 70, 40, 90];
+            const asic = [60, 85, 70, 30];
+            const pmna = [95, 90, 85, 70];
+            
+            const trace1 = {
+                r: gpu,
+                theta: categories,
+                fill: 'toself',
+                name: 'GPU',
+                type: 'scatterpolar',
+                line: {color: '#3b82f6'}
+            };
+            
+            const trace2 = {
+                r: asic,
+                theta: categories,
+                fill: 'toself',
+                name: 'ASIC',
+                type: 'scatterpolar',
+                line: {color: '#10b981'}
+            };
+            
+            const trace3 = {
+                r: pmna,
+                theta: categories,
+                fill: 'toself',
+                name: 'PMNA',
+                type: 'scatterpolar',
+                line: {color: '#f59e0b'}
+            };
+            
+            const layout = {
+                title: {
+                    text: 'Performance Comparison (Normalized)',
+                    font: {color: '#f59e0b'}
+                },
+                polar: {
+                    radialaxis: {
+                        visible: true,
+                        range: [0, 100],
+                        tickfont: {color: '#9ca3af'}
+                    },
+                    angularaxis: {
+                        tickfont: {color: '#e5e7eb'}
+                    },
+                    bgcolor: 'rgba(0,0,0,0)'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: {color: '#e5e7eb'},
+                showlegend: true,
+                legend: {
+                    x: 1,
+                    y: 1,
+                    bgcolor: 'rgba(0,0,0,0.5)'
+                }
+            };
+            
+            Plotly.newPlot('performanceMetrics', [trace1, trace2, trace3], layout);
+        }
+        
+        // Initialize visualizations
+        document.addEventListener('DOMContentLoaded', function() {
+            createArchitectureViz();
+            createPerformanceMetrics();
+        });
+    </script>
+</body>
+</html>
