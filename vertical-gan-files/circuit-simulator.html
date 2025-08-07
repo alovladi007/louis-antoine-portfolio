@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Circuit Application Simulator - Vertical GaN</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #0a0a0a;
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+
+        /* Navigation Bar */
+        .navigation-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #3b82f6, #1e40af);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        /* Main Container */
+        .main-container {
+            margin-top: 80px;
+            padding: 2rem;
+            max-width: 1600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .page-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 3rem;
+            background: linear-gradient(135deg, #3b82f6, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Control Panel */
+        .control-panel {
+            background: rgba(20, 20, 20, 0.8);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .control-section {
+            margin-bottom: 2rem;
+        }
+
+        .control-section h3 {
+            color: #60a5fa;
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+        }
+
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .control-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .control-item label {
+            color: #a0a0a0;
+            font-size: 0.9rem;
+        }
+
+        .control-item input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: rgba(59, 130, 246, 0.2);
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .control-item input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #3b82f6;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .control-item select {
+            background: rgba(30, 30, 30, 0.8);
+            color: #e0e0e0;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            padding: 0.5rem;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+
+        .value-display {
+            color: #3b82f6;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        /* Visualization Container */
+        .visualization-container {
+            background: rgba(20, 20, 20, 0.8);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .viz-title {
+            color: #60a5fa;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        /* Circuit Diagram */
+        .circuit-diagram {
+            background: rgba(30, 30, 30, 0.8);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 10px;
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .circuit-svg {
+            max-width: 100%;
+            height: auto;
+        }
+
+        /* Results Grid */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .result-card {
+            background: rgba(59, 130, 246, 0.05);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 10px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .result-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #3b82f6;
+            margin-bottom: 0.5rem;
+        }
+
+        .result-label {
+            color: #a0a0a0;
+            font-size: 0.9rem;
+        }
+
+        /* Info Box */
+        .info-box {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .info-box h4 {
+            color: #60a5fa;
+            margin-bottom: 1rem;
+        }
+
+        /* Button */
+        .btn {
+            background: linear-gradient(135deg, #3b82f6, #1e40af);
+            color: white;
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .page-title {
+                font-size: 2rem;
+            }
+
+            .control-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <div class="navigation-bar">
+        <a href="field-distribution.html" class="nav-btn">
+            <i class="fas fa-arrow-left"></i> Previous Demo
+        </a>
+        <h2 style="color: #3b82f6; margin: 0;">Circuit Simulator</h2>
+        <a href="technical-docs.html" class="nav-btn">
+            Next Demo <i class="fas fa-arrow-right"></i>
+        </a>
+    </div>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <h1 class="page-title">Vertical GaN in Power Converter Applications</h1>
+
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <div class="control-section">
+                <h3>Converter Configuration</h3>
+                <div class="control-grid">
+                    <div class="control-item">
+                        <label>Topology</label>
+                        <select id="topology">
+                            <option value="buck">Buck Converter</option>
+                            <option value="boost">Boost Converter</option>
+                            <option value="inverter">3-Phase Inverter</option>
+                            <option value="totem">Totem Pole PFC</option>
+                            <option value="llc">LLC Resonant</option>
+                        </select>
+                    </div>
+                    <div class="control-item">
+                        <label>Input Voltage (V)</label>
+                        <input type="range" id="vin" min="100" max="800" step="10" value="400">
+                        <span class="value-display" id="vin-value">400 V</span>
+                    </div>
+                    <div class="control-item">
+                        <label>Output Power (kW)</label>
+                        <input type="range" id="power" min="1" max="50" step="1" value="10">
+                        <span class="value-display" id="power-value">10 kW</span>
+                    </div>
+                    <div class="control-item">
+                        <label>Switching Frequency (kHz)</label>
+                        <input type="range" id="frequency" min="20" max="500" step="10" value="100">
+                        <span class="value-display" id="frequency-value">100 kHz</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <h3>Device Selection</h3>
+                <div class="control-grid">
+                    <div class="control-item">
+                        <label>Device Type</label>
+                        <select id="device-type">
+                            <option value="vgan-1200">Vertical GaN 1200V</option>
+                            <option value="lgan-650">Lateral GaN 650V</option>
+                            <option value="sic-1200">SiC MOSFET 1200V</option>
+                            <option value="si-900">Si SJ 900V</option>
+                        </select>
+                    </div>
+                    <div class="control-item">
+                        <label>Gate Drive Voltage (V)</label>
+                        <input type="range" id="vgs" min="5" max="20" step="1" value="15">
+                        <span class="value-display" id="vgs-value">15 V</span>
+                    </div>
+                    <div class="control-item">
+                        <label>Dead Time (ns)</label>
+                        <input type="range" id="deadtime" min="50" max="500" step="10" value="100">
+                        <span class="value-display" id="deadtime-value">100 ns</span>
+                    </div>
+                    <div class="control-item">
+                        <label>Ambient Temp (°C)</label>
+                        <input type="range" id="ambient" min="25" max="85" step="5" value="50">
+                        <span class="value-display" id="ambient-value">50 °C</span>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn" onclick="runSimulation()">
+                <i class="fas fa-play"></i> Run Simulation
+            </button>
+        </div>
+
+        <!-- Circuit Diagram -->
+        <div class="circuit-diagram">
+            <h3 class="viz-title">Circuit Topology</h3>
+            <div id="circuit-svg-container">
+                <!-- Dynamic SVG circuit diagram will be inserted here -->
+            </div>
+        </div>
+
+        <!-- Waveforms -->
+        <div class="visualization-container">
+            <h3 class="viz-title">Switching Waveforms</h3>
+            <div id="waveforms" style="height: 400px;"></div>
+        </div>
+
+        <!-- Loss Analysis -->
+        <div class="visualization-container">
+            <h3 class="viz-title">Power Loss Breakdown</h3>
+            <div id="loss-breakdown" style="height: 400px;"></div>
+        </div>
+
+        <!-- Efficiency Map -->
+        <div class="visualization-container">
+            <h3 class="viz-title">Efficiency Map</h3>
+            <div id="efficiency-map" style="height: 500px;"></div>
+        </div>
+
+        <!-- Thermal Performance -->
+        <div class="visualization-container">
+            <h3 class="viz-title">Thermal Performance</h3>
+            <div id="thermal-performance" style="height: 400px;"></div>
+        </div>
+
+        <!-- Results Display -->
+        <div class="visualization-container">
+            <h3 class="viz-title">Converter Performance Metrics</h3>
+            <div class="results-grid">
+                <div class="result-card">
+                    <div class="result-value" id="efficiency-value">98.5</div>
+                    <div class="result-label">Efficiency (%)</div>
+                </div>
+                <div class="result-card">
+                    <div class="result-value" id="ploss-value">150</div>
+                    <div class="result-label">Total Loss (W)</div>
+                </div>
+                <div class="result-card">
+                    <div class="result-value" id="tj-value">85</div>
+                    <div class="result-label">Junction Temp (°C)</div>
+                </div>
+                <div class="result-card">
+                    <div class="result-value" id="thd-value">2.1</div>
+                    <div class="result-label">Output THD (%)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Information Section -->
+        <div class="info-box">
+            <h4>Vertical GaN in Power Conversion</h4>
+            <p>
+                Vertical GaN devices enable revolutionary improvements in power converter design. 
+                Their combination of high voltage capability (>1.2kV) and ultra-fast switching 
+                (>10MHz) allows for dramatic reductions in passive component size while maintaining 
+                >99% efficiency. This makes them ideal for next-generation EV chargers, data center 
+                power supplies, and renewable energy inverters.
+            </p>
+            <p style="margin-top: 1rem;">
+                The simulator demonstrates how vertical GaN outperforms other technologies in 
+                high-frequency, high-voltage applications. Notice the reduced switching losses 
+                and improved thermal performance compared to SiC and lateral GaN alternatives.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Initialize range inputs
+        document.querySelectorAll('input[type="range"]').forEach(input => {
+            input.addEventListener('input', function() {
+                const valueDisplay = document.getElementById(this.id + '-value');
+                let value = this.value;
+                
+                switch(this.id) {
+                    case 'vin':
+                        valueDisplay.textContent = value + ' V';
+                        break;
+                    case 'power':
+                        valueDisplay.textContent = value + ' kW';
+                        break;
+                    case 'frequency':
+                        valueDisplay.textContent = value + ' kHz';
+                        break;
+                    case 'vgs':
+                        valueDisplay.textContent = value + ' V';
+                        break;
+                    case 'deadtime':
+                        valueDisplay.textContent = value + ' ns';
+                        break;
+                    case 'ambient':
+                        valueDisplay.textContent = value + ' °C';
+                        break;
+                }
+            });
+        });
+
+        // Update circuit diagram when topology changes
+        document.getElementById('topology').addEventListener('change', updateCircuitDiagram);
+
+        function updateCircuitDiagram() {
+            const topology = document.getElementById('topology').value;
+            const container = document.getElementById('circuit-svg-container');
+            
+            // Simple circuit representation (in real app, would be detailed SVG)
+            const circuits = {
+                'buck': '<div style="color: #60a5fa; font-size: 1.2rem;">Buck Converter<br>Vin → [S1] → L → Cout → Vout<br>     ↓<br>    [D1]</div>',
+                'boost': '<div style="color: #60a5fa; font-size: 1.2rem;">Boost Converter<br>Vin → L → [D1] → Cout → Vout<br>       ↓<br>      [S1]</div>',
+                'inverter': '<div style="color: #60a5fa; font-size: 1.2rem;">3-Phase Inverter<br>Vdc → [S1 S3 S5] → Motor<br>     [S2 S4 S6]</div>',
+                'totem': '<div style="color: #60a5fa; font-size: 1.2rem;">Totem Pole PFC<br>AC → [S1] [S2] → L → Cout → Vdc<br>     [S3] [S4]</div>',
+                'llc': '<div style="color: #60a5fa; font-size: 1.2rem;">LLC Resonant<br>Vin → [S1 S2] → Lr → Transformer → Rectifier → Vout</div>'
+            };
+            
+            container.innerHTML = circuits[topology];
+        }
+
+        function runSimulation() {
+            const topology = document.getElementById('topology').value;
+            const vin = parseFloat(document.getElementById('vin').value);
+            const power = parseFloat(document.getElementById('power').value) * 1000;
+            const freq = parseFloat(document.getElementById('frequency').value) * 1000;
+            const deviceType = document.getElementById('device-type').value;
+            const vgs = parseFloat(document.getElementById('vgs').value);
+            const deadtime = parseFloat(document.getElementById('deadtime').value);
+            const ambient = parseFloat(document.getElementById('ambient').value);
+
+            // Update all visualizations
+            plotSwitchingWaveforms(vin, freq, deadtime);
+            plotLossBreakdown(power, freq, deviceType);
+            plotEfficiencyMap(vin, power, deviceType);
+            plotThermalPerformance(power, ambient, deviceType);
+            
+            // Update metrics
+            updatePerformanceMetrics(vin, power, freq, deviceType, ambient);
+        }
+
+        function plotSwitchingWaveforms(vin, freq, deadtime) {
+            const period = 1 / freq;
+            const time = Array.from({length: 1000}, (_, i) => i * period / 1000 * 1e9); // ns
+            
+            // Generate switching waveforms
+            const vds = time.map(t => {
+                const phase = (t * 1e-9 * freq) % 1;
+                return phase < 0.5 ? 0 : vin;
+            });
+            
+            const ids = time.map((t, i) => {
+                const phase = (t * 1e-9 * freq) % 1;
+                if (phase < 0.45) return 50; // On state
+                if (phase < 0.5) return 50 * (0.5 - phase) / 0.05; // Turn off
+                if (phase < 0.55) return 0; // Dead time
+                if (phase < 0.6) return 50 * (phase - 0.55) / 0.05; // Turn on
+                return 50; // On state
+            });
+            
+            const vgs_wave = time.map(t => {
+                const phase = (t * 1e-9 * freq) % 1;
+                return phase < 0.5 ? 15 : -5;
+            });
+            
+            const data = [
+                {
+                    x: time,
+                    y: vds,
+                    name: 'Vds',
+                    type: 'scatter',
+                    line: { color: '#3b82f6', width: 2 },
+                    yaxis: 'y'
+                },
+                {
+                    x: time,
+                    y: ids,
+                    name: 'Ids',
+                    type: 'scatter',
+                    line: { color: '#10b981', width: 2 },
+                    yaxis: 'y2'
+                },
+                {
+                    x: time,
+                    y: vgs_wave,
+                    name: 'Vgs',
+                    type: 'scatter',
+                    line: { color: '#f59e0b', width: 2 },
+                    yaxis: 'y3'
+                }
+            ];
+            
+            const layout = {
+                title: 'Switching Waveforms',
+                xaxis: { 
+                    title: 'Time (ns)',
+                    gridcolor: '#333'
+                },
+                yaxis: { 
+                    title: 'Vds (V)',
+                    side: 'left',
+                    gridcolor: '#333'
+                },
+                yaxis2: {
+                    title: 'Ids (A)',
+                    overlaying: 'y',
+                    side: 'right',
+                    gridcolor: '#333'
+                },
+                yaxis3: {
+                    title: 'Vgs (V)',
+                    overlaying: 'y',
+                    side: 'right',
+                    position: 0.85,
+                    gridcolor: '#333'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(20,20,20,0.8)',
+                font: { color: '#e0e0e0' }
+            };
+            
+            Plotly.newPlot('waveforms', data, layout, {responsive: true});
+        }
+
+        function plotLossBreakdown(power, freq, deviceType) {
+            // Device-specific loss parameters
+            const devices = {
+                'vgan-1200': { ron: 0.85, qg: 20, trr: 30, coss: 50 },
+                'lgan-650': { ron: 1.2, qg: 15, trr: 0, coss: 80 },
+                'sic-1200': { ron: 1.5, qg: 60, trr: 50, coss: 40 },
+                'si-900': { ron: 3.0, qg: 100, trr: 200, coss: 150 }
+            };
+            
+            const dev = devices[deviceType];
+            const iout = power / 400; // Approximate current
+            
+            // Calculate losses
+            const pcond = iout * iout * dev.ron * 1e-3;
+            const psw = 0.5 * 400 * iout * (dev.qg * 1e-9 + dev.trr * 1e-9) * freq;
+            const pcoss = 0.5 * dev.coss * 1e-12 * 400 * 400 * freq;
+            const pgate = dev.qg * 1e-9 * 15 * freq;
+            
+            const data = [{
+                values: [pcond, psw, pcoss, pgate],
+                labels: ['Conduction', 'Switching', 'Coss', 'Gate Drive'],
+                type: 'pie',
+                hole: 0.4,
+                marker: {
+                    colors: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444']
+                }
+            }];
+            
+            const layout = {
+                title: `Power Loss Breakdown - ${deviceType.toUpperCase()}`,
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                showlegend: true
+            };
+            
+            Plotly.newPlot('loss-breakdown', data, layout, {responsive: true});
+        }
+
+        function plotEfficiencyMap(vin, maxPower, deviceType) {
+            // Generate efficiency map data
+            const powers = Array.from({length: 20}, (_, i) => (i + 1) * maxPower / 20);
+            const frequencies = Array.from({length: 20}, (_, i) => 20 + i * 24); // 20-500 kHz
+            
+            const efficiencyData = [];
+            const x = [];
+            const y = [];
+            const z = [];
+            
+            // Device efficiency factors
+            const effFactors = {
+                'vgan-1200': 0.995,
+                'lgan-650': 0.99,
+                'sic-1200': 0.985,
+                'si-900': 0.97
+            };
+            
+            const baseFactor = effFactors[deviceType];
+            
+            powers.forEach(p => {
+                frequencies.forEach(f => {
+                    x.push(p / 1000);
+                    y.push(f);
+                    
+                    // Simple efficiency model
+                    const loadFactor = 1 - 0.02 * Math.pow(1 - p/maxPower, 2);
+                    const freqFactor = 1 - 0.0001 * f;
+                    const efficiency = baseFactor * loadFactor * freqFactor * 100;
+                    
+                    z.push(efficiency);
+                });
+            });
+            
+            const data = [{
+                type: 'contour',
+                x: x,
+                y: y,
+                z: z,
+                colorscale: 'Viridis',
+                contours: {
+                    start: 94,
+                    end: 100,
+                    size: 0.5
+                },
+                colorbar: {
+                    title: 'Efficiency (%)',
+                    titleside: 'right'
+                }
+            }];
+            
+            const layout = {
+                title: 'Converter Efficiency Map',
+                xaxis: { 
+                    title: 'Output Power (kW)',
+                    gridcolor: '#333'
+                },
+                yaxis: { 
+                    title: 'Switching Frequency (kHz)',
+                    gridcolor: '#333'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(20,20,20,0.8)',
+                font: { color: '#e0e0e0' }
+            };
+            
+            Plotly.newPlot('efficiency-map', data, layout, {responsive: true});
+        }
+
+        function plotThermalPerformance(power, ambient, deviceType) {
+            const time = Array.from({length: 100}, (_, i) => i * 0.1); // seconds
+            
+            // Thermal parameters
+            const thermalParams = {
+                'vgan-1200': { rth: 0.5, tau: 5 },
+                'lgan-650': { rth: 1.0, tau: 8 },
+                'sic-1200': { rth: 0.7, tau: 6 },
+                'si-900': { rth: 1.5, tau: 10 }
+            };
+            
+            const params = thermalParams[deviceType];
+            const ploss = power * 0.015; // 1.5% loss assumption
+            
+            // Temperature rise calculation
+            const tempRise = time.map(t => 
+                ploss * params.rth * (1 - Math.exp(-t / params.tau))
+            );
+            
+            const junction = tempRise.map(tr => ambient + tr);
+            const caseTemp = tempRise.map(tr => ambient + tr * 0.7);
+            
+            const data = [
+                {
+                    x: time,
+                    y: junction,
+                    name: 'Junction Temperature',
+                    type: 'scatter',
+                    line: { color: '#ef4444', width: 3 }
+                },
+                {
+                    x: time,
+                    y: caseTemp,
+                    name: 'Case Temperature',
+                    type: 'scatter',
+                    line: { color: '#f59e0b', width: 2 }
+                },
+                {
+                    x: [0, 10],
+                    y: [175, 175],
+                    name: 'Max Operating Temp',
+                    type: 'scatter',
+                    line: { color: '#ef4444', width: 2, dash: 'dash' },
+                    mode: 'lines'
+                }
+            ];
+            
+            const layout = {
+                title: 'Thermal Response',
+                xaxis: { 
+                    title: 'Time (s)',
+                    gridcolor: '#333'
+                },
+                yaxis: { 
+                    title: 'Temperature (°C)',
+                    gridcolor: '#333'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(20,20,20,0.8)',
+                font: { color: '#e0e0e0' }
+            };
+            
+            Plotly.newPlot('thermal-performance', data, layout, {responsive: true});
+        }
+
+        function updatePerformanceMetrics(vin, power, freq, deviceType, ambient) {
+            // Calculate performance metrics
+            const efficiencies = {
+                'vgan-1200': 98.5,
+                'lgan-650': 97.8,
+                'sic-1200': 98.0,
+                'si-900': 96.5
+            };
+            
+            const efficiency = efficiencies[deviceType];
+            const ploss = power * (1 - efficiency/100);
+            
+            // Thermal calculation
+            const rths = {
+                'vgan-1200': 0.5,
+                'lgan-650': 1.0,
+                'sic-1200': 0.7,
+                'si-900': 1.5
+            };
+            
+            const tj = ambient + ploss * rths[deviceType];
+            
+            // THD calculation (simplified)
+            const thds = {
+                'vgan-1200': 2.1,
+                'lgan-650': 2.5,
+                'sic-1200': 2.3,
+                'si-900': 3.2
+            };
+            
+            // Update display
+            document.getElementById('efficiency-value').textContent = efficiency.toFixed(1);
+            document.getElementById('ploss-value').textContent = Math.round(ploss);
+            document.getElementById('tj-value').textContent = Math.round(tj);
+            document.getElementById('thd-value').textContent = thds[deviceType];
+        }
+
+        // Initialize
+        updateCircuitDiagram();
+        runSimulation();
+    </script>
+</body>
+</html>

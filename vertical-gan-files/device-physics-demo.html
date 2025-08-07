@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vertical GaN Device Physics Simulator</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #0a0a0a;
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+
+        /* Navigation Bar */
+        .navigation-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #3b82f6, #1e40af);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        /* Main Container */
+        .main-container {
+            margin-top: 80px;
+            padding: 2rem;
+            max-width: 1600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .page-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 3rem;
+            background: linear-gradient(135deg, #3b82f6, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Control Panel */
+        .control-panel {
+            background: rgba(20, 20, 20, 0.8);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .control-section {
+            margin-bottom: 2rem;
+        }
+
+        .control-section h3 {
+            color: #60a5fa;
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+        }
+
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .control-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .control-item label {
+            color: #a0a0a0;
+            font-size: 0.9rem;
+        }
+
+        .control-item input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: rgba(59, 130, 246, 0.2);
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .control-item input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #3b82f6;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .control-item input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            background: #3b82f6;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+
+        .control-item select {
+            background: rgba(30, 30, 30, 0.8);
+            color: #e0e0e0;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            padding: 0.5rem;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+
+        .value-display {
+            color: #3b82f6;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        /* Visualization Container */
+        .visualization-container {
+            background: rgba(20, 20, 20, 0.8);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .viz-title {
+            color: #60a5fa;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        /* Info Box */
+        .info-box {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .info-box h4 {
+            color: #60a5fa;
+            margin-bottom: 1rem;
+        }
+
+        .info-box p {
+            color: #c0c0c0;
+            line-height: 1.8;
+        }
+
+        /* Equations */
+        .equation-box {
+            background: rgba(30, 30, 30, 0.8);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            text-align: center;
+        }
+
+        /* Results Display */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .result-card {
+            background: rgba(59, 130, 246, 0.05);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 10px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .result-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #3b82f6;
+            margin-bottom: 0.5rem;
+        }
+
+        .result-label {
+            color: #a0a0a0;
+            font-size: 0.9rem;
+        }
+
+        /* Button Styles */
+        .btn {
+            background: linear-gradient(135deg, #3b82f6, #1e40af);
+            color: white;
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .page-title {
+                font-size: 2rem;
+            }
+
+            .control-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <div class="navigation-bar">
+        <a href="../vertical-gan-project.html" class="nav-btn">
+            <i class="fas fa-arrow-left"></i> Back to Project
+        </a>
+        <h2 style="color: #3b82f6; margin: 0;">Device Physics Simulator</h2>
+        <a href="performance-comparison.html" class="nav-btn">
+            Next Demo <i class="fas fa-arrow-right"></i>
+        </a>
+    </div>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <h1 class="page-title">Vertical GaN Device Physics Simulator</h1>
+
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <div class="control-section">
+                <h3>Material Parameters</h3>
+                <div class="control-grid">
+                    <div class="control-item">
+                        <label>AlGaN Composition (x)</label>
+                        <input type="range" id="algan-composition" min="0.1" max="0.4" step="0.01" value="0.25">
+                        <span class="value-display" id="algan-composition-value">0.25</span>
+                    </div>
+                    <div class="control-item">
+                        <label>AlGaN Thickness (nm)</label>
+                        <input type="range" id="algan-thickness" min="10" max="50" step="1" value="25">
+                        <span class="value-display" id="algan-thickness-value">25 nm</span>
+                    </div>
+                    <div class="control-item">
+                        <label>GaN Buffer Doping (cm⁻³)</label>
+                        <input type="range" id="buffer-doping" min="14" max="17" step="0.1" value="16">
+                        <span class="value-display" id="buffer-doping-value">1.0e16</span>
+                    </div>
+                    <div class="control-item">
+                        <label>Temperature (K)</label>
+                        <input type="range" id="temperature" min="77" max="500" step="1" value="300">
+                        <span class="value-display" id="temperature-value">300 K</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <h3>Device Structure</h3>
+                <div class="control-grid">
+                    <div class="control-item">
+                        <label>Drift Layer Thickness (μm)</label>
+                        <input type="range" id="drift-thickness" min="5" max="20" step="0.5" value="10">
+                        <span class="value-display" id="drift-thickness-value">10 μm</span>
+                    </div>
+                    <div class="control-item">
+                        <label>Gate Voltage (V)</label>
+                        <input type="range" id="gate-voltage" min="-5" max="3" step="0.1" value="0">
+                        <span class="value-display" id="gate-voltage-value">0 V</span>
+                    </div>
+                    <div class="control-item">
+                        <label>Drain Voltage (V)</label>
+                        <input type="range" id="drain-voltage" min="0" max="1200" step="10" value="100">
+                        <span class="value-display" id="drain-voltage-value">100 V</span>
+                    </div>
+                    <div class="control-item">
+                        <label>Device Type</label>
+                        <select id="device-type">
+                            <option value="enhancement">Enhancement Mode</option>
+                            <option value="depletion">Depletion Mode</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn" onclick="updateSimulation()">
+                <i class="fas fa-sync-alt"></i> Update Simulation
+            </button>
+        </div>
+
+        <!-- Band Diagram Visualization -->
+        <div class="visualization-container">
+            <h3 class="viz-title">Band Diagram & 2-DEG Formation</h3>
+            <div id="band-diagram" style="height: 500px;"></div>
+        </div>
+
+        <!-- Carrier Concentration Profile -->
+        <div class="visualization-container">
+            <h3 class="viz-title">Carrier Concentration Profile</h3>
+            <div id="carrier-profile" style="height: 400px;"></div>
+        </div>
+
+        <!-- Electric Field Distribution -->
+        <div class="visualization-container">
+            <h3 class="viz-title">Electric Field Distribution</h3>
+            <div id="field-distribution" style="height: 400px;"></div>
+        </div>
+
+        <!-- Results Display -->
+        <div class="visualization-container">
+            <h3 class="viz-title">Device Characteristics</h3>
+            <div class="results-grid">
+                <div class="result-card">
+                    <div class="result-value" id="ns-value">2.5e12</div>
+                    <div class="result-label">2-DEG Density (cm⁻²)</div>
+                </div>
+                <div class="result-card">
+                    <div class="result-value" id="vth-value">-2.1</div>
+                    <div class="result-label">Threshold Voltage (V)</div>
+                </div>
+                <div class="result-card">
+                    <div class="result-value" id="mobility-value">1850</div>
+                    <div class="result-label">Mobility (cm²/V·s)</div>
+                </div>
+                <div class="result-card">
+                    <div class="result-value" id="ron-value">0.85</div>
+                    <div class="result-label">Ron,sp (mΩ·cm²)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Physics Equations -->
+        <div class="info-box">
+            <h4>Key Physics Equations</h4>
+            <div class="equation-box">
+                <p>2-DEG Sheet Charge Density:</p>
+                \[ n_s = \frac{\sigma_{pol}}{q} - \frac{\epsilon_0 \epsilon_r}{q d_{AlGaN}}(V_{GS} - V_{th}) \]
+            </div>
+            <div class="equation-box">
+                <p>Polarization Charge:</p>
+                \[ \sigma_{pol} = P_{sp}(AlGaN) - P_{sp}(GaN) + P_{pz}(AlGaN) \]
+            </div>
+            <div class="equation-box">
+                <p>Breakdown Voltage (Vertical):</p>
+                \[ V_{BR} = \frac{\epsilon_s E_c^2}{2qN_D} \]
+            </div>
+        </div>
+
+        <!-- Information Section -->
+        <div class="info-box">
+            <h4>Understanding Vertical GaN Device Physics</h4>
+            <p>
+                This simulator demonstrates the fundamental physics of vertical GaN power devices. The key 
+                innovation lies in the vertical current flow through a thick drift region, which allows for 
+                much higher breakdown voltages compared to lateral devices. The 2-DEG at the AlGaN/GaN 
+                interface provides the high-mobility channel for current conduction, while the vertical 
+                drift region handles the high voltage.
+            </p>
+            <p style="margin-top: 1rem;">
+                Adjust the parameters above to see how material composition, layer thickness, and bias 
+                conditions affect the band structure, carrier concentration, and device performance. Notice 
+                how the AlGaN composition affects the 2-DEG density through polarization charge, and how 
+                the drift layer thickness impacts the breakdown voltage.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Initialize range input listeners
+        document.querySelectorAll('input[type="range"]').forEach(input => {
+            input.addEventListener('input', function() {
+                const valueDisplay = document.getElementById(this.id + '-value');
+                let value = this.value;
+                
+                // Format display based on input type
+                switch(this.id) {
+                    case 'algan-thickness':
+                    case 'drift-thickness':
+                        valueDisplay.textContent = value + (this.id === 'drift-thickness' ? ' μm' : ' nm');
+                        break;
+                    case 'buffer-doping':
+                        valueDisplay.textContent = `${Math.pow(10, parseFloat(value)).toExponential(1)}`;
+                        break;
+                    case 'temperature':
+                        valueDisplay.textContent = value + ' K';
+                        break;
+                    case 'gate-voltage':
+                    case 'drain-voltage':
+                        valueDisplay.textContent = value + ' V';
+                        break;
+                    default:
+                        valueDisplay.textContent = value;
+                }
+            });
+        });
+
+        // Physics calculations
+        function calculateBandDiagram() {
+            const x = parseFloat(document.getElementById('algan-composition').value);
+            const tAlGaN = parseFloat(document.getElementById('algan-thickness').value);
+            const Nd = Math.pow(10, parseFloat(document.getElementById('buffer-doping').value));
+            const T = parseFloat(document.getElementById('temperature').value);
+            const Vg = parseFloat(document.getElementById('gate-voltage').value);
+            const deviceType = document.getElementById('device-type').value;
+            
+            // Material parameters
+            const Eg_GaN = 3.4; // eV
+            const Eg_AlGaN = Eg_GaN + 1.8 * x; // Linear approximation
+            const chi_GaN = 4.1; // eV
+            const chi_AlGaN = chi_GaN - 0.8 * x;
+            
+            // Calculate conduction band offset
+            const deltaEc = chi_GaN - chi_AlGaN;
+            
+            // Generate position array (nm)
+            const positions = [];
+            const Ec = [];
+            const Ev = [];
+            const Ef = [];
+            
+            // Create band structure
+            for (let z = -50; z <= 200; z += 1) {
+                positions.push(z);
+                
+                if (z < 0) {
+                    // Gate metal region
+                    Ec.push(4.5 + Vg);
+                    Ev.push(4.5 + Vg);
+                    Ef.push(4.5);
+                } else if (z < tAlGaN) {
+                    // AlGaN region
+                    const bandBending = -0.01 * z + Vg * (1 - z/tAlGaN);
+                    Ec.push(chi_AlGaN + bandBending);
+                    Ev.push(chi_AlGaN - Eg_AlGaN + bandBending);
+                    Ef.push(4.5);
+                } else {
+                    // GaN region
+                    const interface_offset = z - tAlGaN;
+                    let bandBending = 0;
+                    
+                    if (interface_offset < 10) {
+                        // 2-DEG region with quantum well
+                        bandBending = -deltaEc * Math.exp(-interface_offset/5);
+                    }
+                    
+                    Ec.push(chi_GaN + bandBending);
+                    Ev.push(chi_GaN - Eg_GaN + bandBending);
+                    Ef.push(4.5);
+                }
+            }
+            
+            return { positions, Ec, Ev, Ef };
+        }
+
+        function calculateCarrierProfile() {
+            const x = parseFloat(document.getElementById('algan-composition').value);
+            const tAlGaN = parseFloat(document.getElementById('algan-thickness').value);
+            const T = parseFloat(document.getElementById('temperature').value);
+            
+            // Calculate 2-DEG density
+            const sigma_pol = 0.034 * x; // C/m^2
+            const ns = sigma_pol / 1.6e-19 * 1e-4; // Convert to cm^-2
+            
+            const positions = [];
+            const electronConc = [];
+            
+            // Generate carrier profile
+            for (let z = -20; z <= 100; z += 1) {
+                positions.push(z);
+                
+                if (z < tAlGaN) {
+                    electronConc.push(1e10); // Low concentration in AlGaN
+                } else if (z < tAlGaN + 5) {
+                    // 2-DEG region
+                    const peakConc = ns * 1e7; // Convert sheet to volume density
+                    const width = 2; // nm
+                    electronConc.push(peakConc * Math.exp(-Math.pow(z - tAlGaN - 1, 2) / (2 * width * width)));
+                } else {
+                    // Bulk GaN
+                    electronConc.push(Math.pow(10, parseFloat(document.getElementById('buffer-doping').value)));
+                }
+            }
+            
+            return { positions, electronConc, ns };
+        }
+
+        function calculateElectricField() {
+            const Vd = parseFloat(document.getElementById('drain-voltage').value);
+            const tDrift = parseFloat(document.getElementById('drift-thickness').value) * 1000; // Convert to nm
+            const Nd = Math.pow(10, parseFloat(document.getElementById('buffer-doping').value));
+            
+            const positions = [];
+            const field = [];
+            
+            // Simplified field distribution
+            const Emax = 2 * Vd / (tDrift * 1e-7); // V/cm
+            
+            for (let z = 0; z <= tDrift; z += tDrift/100) {
+                positions.push(z / 1000); // Convert to μm
+                
+                // Linear field approximation for punch-through
+                const E = Emax * (1 - z / tDrift);
+                field.push(E / 1e6); // Convert to MV/cm
+            }
+            
+            return { positions, field, Emax };
+        }
+
+        function updateSimulation() {
+            // Update band diagram
+            const bandData = calculateBandDiagram();
+            
+            const bandTraces = [
+                {
+                    x: bandData.positions,
+                    y: bandData.Ec,
+                    name: 'Conduction Band',
+                    type: 'scatter',
+                    line: { color: '#3b82f6', width: 3 }
+                },
+                {
+                    x: bandData.positions,
+                    y: bandData.Ev,
+                    name: 'Valence Band',
+                    type: 'scatter',
+                    line: { color: '#60a5fa', width: 3 }
+                },
+                {
+                    x: bandData.positions,
+                    y: bandData.Ef,
+                    name: 'Fermi Level',
+                    type: 'scatter',
+                    line: { color: '#ef4444', width: 2, dash: 'dash' }
+                }
+            ];
+            
+            const bandLayout = {
+                title: 'Energy Band Diagram',
+                xaxis: { 
+                    title: 'Position (nm)',
+                    gridcolor: '#333',
+                    zeroline: true,
+                    zerolinecolor: '#666'
+                },
+                yaxis: { 
+                    title: 'Energy (eV)',
+                    gridcolor: '#333'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(20,20,20,0.8)',
+                font: { color: '#e0e0e0' },
+                showlegend: true
+            };
+            
+            Plotly.newPlot('band-diagram', bandTraces, bandLayout, {responsive: true});
+            
+            // Update carrier profile
+            const carrierData = calculateCarrierProfile();
+            
+            const carrierTrace = [{
+                x: carrierData.positions,
+                y: carrierData.electronConc,
+                name: 'Electron Concentration',
+                type: 'scatter',
+                line: { color: '#10b981', width: 3 },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(16, 185, 129, 0.2)'
+            }];
+            
+            const carrierLayout = {
+                title: 'Electron Concentration Profile',
+                xaxis: { 
+                    title: 'Position (nm)',
+                    gridcolor: '#333'
+                },
+                yaxis: { 
+                    title: 'Concentration (cm⁻³)',
+                    type: 'log',
+                    gridcolor: '#333',
+                    range: [10, 20]
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(20,20,20,0.8)',
+                font: { color: '#e0e0e0' }
+            };
+            
+            Plotly.newPlot('carrier-profile', carrierTrace, carrierLayout, {responsive: true});
+            
+            // Update electric field
+            const fieldData = calculateElectricField();
+            
+            const fieldTrace = [{
+                x: fieldData.positions,
+                y: fieldData.field,
+                name: 'Electric Field',
+                type: 'scatter',
+                line: { color: '#f59e0b', width: 3 },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(245, 158, 11, 0.2)'
+            }];
+            
+            const fieldLayout = {
+                title: 'Electric Field Distribution in Drift Region',
+                xaxis: { 
+                    title: 'Position (μm)',
+                    gridcolor: '#333'
+                },
+                yaxis: { 
+                    title: 'Electric Field (MV/cm)',
+                    gridcolor: '#333'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(20,20,20,0.8)',
+                font: { color: '#e0e0e0' },
+                annotations: [{
+                    x: fieldData.positions[0],
+                    y: fieldData.field[0],
+                    text: `Peak: ${fieldData.field[0].toFixed(2)} MV/cm`,
+                    showarrow: true,
+                    arrowhead: 2,
+                    ax: 40,
+                    ay: -40,
+                    font: { color: '#f59e0b' }
+                }]
+            };
+            
+            Plotly.newPlot('field-distribution', fieldTrace, fieldLayout, {responsive: true});
+            
+            // Update results
+            const x = parseFloat(document.getElementById('algan-composition').value);
+            const T = parseFloat(document.getElementById('temperature').value);
+            const tDrift = parseFloat(document.getElementById('drift-thickness').value);
+            const Nd = Math.pow(10, parseFloat(document.getElementById('buffer-doping').value));
+            
+            // Calculate device parameters
+            const ns = carrierData.ns;
+            const mobility = 2000 - 500 * x - 0.5 * (T - 300); // Temperature and composition dependent
+            const Vth = -2.5 + 3 * x; // Threshold voltage
+            const Ron_sp = (tDrift * 1e-4) / (1.6e-19 * Nd * mobility) * 1000; // mΩ·cm²
+            
+            document.getElementById('ns-value').textContent = ns.toExponential(2);
+            document.getElementById('vth-value').textContent = Vth.toFixed(1);
+            document.getElementById('mobility-value').textContent = Math.round(mobility);
+            document.getElementById('ron-value').textContent = Ron_sp.toFixed(2);
+        }
+
+        // Initial simulation
+        updateSimulation();
+    </script>
+</body>
+</html>
