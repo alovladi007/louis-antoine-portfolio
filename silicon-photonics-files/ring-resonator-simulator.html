@@ -363,18 +363,18 @@
             <!-- Visualization Panel -->
             <div class="visualization-panel">
                 <div class="viz-tabs">
-                    <button class="viz-tab active" onclick="switchTab('spectrum')">
-                        <i class="fas fa-chart-line"></i> Transmission Spectrum
-                    </button>
-                    <button class="viz-tab" onclick="switchTab('layout')">
-                        <i class="fas fa-microchip"></i> Device Layout
-                    </button>
-                    <button class="viz-tab" onclick="switchTab('field')">
-                        <i class="fas fa-wave-square"></i> Field Distribution
-                    </button>
-                    <button class="viz-tab" onclick="switchTab('analysis')">
-                        <i class="fas fa-chart-bar"></i> Parameter Analysis
-                    </button>
+                                    <button class="viz-tab active" onclick="switchTab('spectrum', event)">
+                    <i class="fas fa-chart-line"></i> Transmission Spectrum
+                </button>
+                <button class="viz-tab" onclick="switchTab('layout', event)">
+                    <i class="fas fa-microchip"></i> Device Layout
+                </button>
+                <button class="viz-tab" onclick="switchTab('field', event)">
+                    <i class="fas fa-wave-square"></i> Field Distribution
+                </button>
+                <button class="viz-tab" onclick="switchTab('analysis', event)">
+                    <i class="fas fa-chart-bar"></i> Parameter Analysis
+                </button>
                 </div>
                 
                 <div class="viz-content">
@@ -450,12 +450,22 @@
         });
         
         // Tab switching
-        function switchTab(tabName) {
+        function switchTab(tabName, event) {
             // Update tab buttons
             document.querySelectorAll('.viz-tab').forEach(tab => {
                 tab.classList.remove('active');
             });
-            event.target.classList.add('active');
+            if (event && event.target) {
+                event.target.classList.add('active');
+            } else {
+                // Find the button by tab name
+                document.querySelectorAll('.viz-tab').forEach(tab => {
+                    if (tab.textContent.toLowerCase().includes(tabName.toLowerCase()) || 
+                        (tabName === 'spectrum' && tab.textContent.includes('Transmission'))) {
+                        tab.classList.add('active');
+                    }
+                });
+            }
             
             // Update content
             document.querySelectorAll('.tab-content').forEach(content => {
@@ -520,26 +530,22 @@
             for (let w = 1.54; w <= 1.56; w += 0.0001) {
                 wavelengths.push(w);
                 
-                // Calculate transmission using coupled mode theory
-                let T = 0;
+                // Calculate transmission using simplified coupled mode theory
+                let T = 1;
                 let D = 0;
                 
                 // Multiple resonances
                 for (let m = -3; m <= 3; m++) {
                     const resonance = centerWavelength + m * fsr;
-                    const delta = 2 * Math.PI * mat.ng * (1/w - 1/resonance);
                     
-                    const a = Math.exp(-alpha * Math.PI * radius);
-                    const t = Math.sqrt(1 - kappa * kappa);
-                    
-                    const num_through = t - a * Math.exp(1j * delta);
-                    const num_drop = -Math.sqrt(1 - t*t) * Math.sqrt(a) * Math.exp(1j * delta/2);
-                    const den = 1 - t * a * Math.exp(1j * delta);
-                    
-                    // Simplified model
+                    // Lorentzian line shape
                     const lorentzian = 1 / (1 + Math.pow(2 * Q * (w - resonance) / resonance, 2));
-                    T += 1 - kappa * kappa * lorentzian;
-                    D += kappa * kappa * lorentzian;
+                    
+                    // Through port: dips at resonance
+                    T *= (1 - kappa * kappa * lorentzian);
+                    
+                    // Drop port: peaks at resonance
+                    D += kappa * kappa * lorentzian * Math.exp(-alpha * 2 * Math.PI * radius);
                 }
                 
                 throughPort.push(Math.max(0, Math.min(1, T)));
