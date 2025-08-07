@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Six Sigma Analytics - DUV Lithography</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0a0a0a;
+            color: #e5e7eb;
+            font-family: 'Inter', -apple-system, sans-serif;
+            overflow-x: hidden;
+        }
+
+        .navigation-bar {
+            background: rgba(20, 20, 30, 0.9);
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-btn {
+            background: rgba(102, 126, 234, 0.2);
+            color: #a5b4fc;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-btn:hover {
+            background: rgba(102, 126, 234, 0.4);
+            border-color: rgba(102, 126, 234, 0.6);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 80px 2rem 2rem;
+        }
+
+        .page-title {
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .page-subtitle {
+            text-align: center;
+            color: #9ca3af;
+            font-size: 1.2rem;
+            margin-bottom: 3rem;
+        }
+
+        .dmaic-overview {
+            background: rgba(20, 20, 30, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .dmaic-phases {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .phase-card {
+            background: rgba(30, 30, 40, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .phase-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(102, 126, 234, 0.6);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }
+
+        .phase-card.active {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+        }
+
+        .phase-icon {
+            font-size: 2.5rem;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .phase-name {
+            font-weight: 600;
+            color: #f3f4f6;
+            margin-bottom: 0.25rem;
+        }
+
+        .phase-status {
+            font-size: 0.9rem;
+            color: #9ca3af;
+        }
+
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .chart-container {
+            background: rgba(20, 20, 30, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 12px;
+            padding: 2rem;
+        }
+
+        .chart-title {
+            font-size: 1.5rem;
+            color: #f3f4f6;
+            margin-bottom: 1rem;
+        }
+
+        .metrics-summary {
+            background: rgba(15, 15, 25, 0.9);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .metric-card {
+            background: rgba(30, 30, 40, 0.8);
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            color: #9ca3af;
+            font-size: 0.9rem;
+        }
+
+        .capability-analysis {
+            background: rgba(20, 20, 30, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .capability-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .capability-stats {
+            background: rgba(30, 30, 40, 0.8);
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+
+        .stat-name {
+            color: #9ca3af;
+        }
+
+        .stat-value {
+            color: #f3f4f6;
+            font-weight: 600;
+        }
+
+        .control-plan {
+            background: rgba(20, 20, 30, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .control-table {
+            width: 100%;
+            margin-top: 1.5rem;
+            border-collapse: collapse;
+        }
+
+        .control-table th {
+            background: rgba(102, 126, 234, 0.2);
+            color: #f3f4f6;
+            padding: 0.75rem;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .control-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+            color: #d1d5db;
+        }
+
+        .control-table tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+
+        .status-indicator.green {
+            background: #10b981;
+        }
+
+        .status-indicator.yellow {
+            background: #f59e0b;
+        }
+
+        .status-indicator.red {
+            background: #ef4444;
+        }
+
+        @media (max-width: 1200px) {
+            .dmaic-phases {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .analytics-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .capability-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <div class="navigation-bar">
+        <a href="doe_tool.html" class="nav-btn">
+            <i class="fas fa-arrow-left"></i> DOE Tool
+        </a>
+        <h2 style="color: #f59e0b; margin: 0;">Six Sigma Analytics Suite</h2>
+        <div>
+            <a href="technical_docs.html" class="nav-btn">
+                Technical Docs <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1 class="page-title">Six Sigma Analytics Suite</h1>
+        <p class="page-subtitle">Comprehensive DMAIC Framework for Process Excellence</p>
+
+        <!-- DMAIC Overview -->
+        <div class="dmaic-overview">
+            <h3 style="color: #f3f4f6; margin-bottom: 1rem;">DMAIC Project Phases</h3>
+            <div class="dmaic-phases">
+                <div class="phase-card active" onclick="selectPhase('define')">
+                    <i class="fas fa-bullseye phase-icon"></i>
+                    <div class="phase-name">Define</div>
+                    <div class="phase-status">Completed</div>
+                </div>
+                <div class="phase-card active" onclick="selectPhase('measure')">
+                    <i class="fas fa-ruler phase-icon"></i>
+                    <div class="phase-name">Measure</div>
+                    <div class="phase-status">Completed</div>
+                </div>
+                <div class="phase-card active" onclick="selectPhase('analyze')">
+                    <i class="fas fa-search phase-icon"></i>
+                    <div class="phase-name">Analyze</div>
+                    <div class="phase-status">Completed</div>
+                </div>
+                <div class="phase-card active" onclick="selectPhase('improve')">
+                    <i class="fas fa-chart-line phase-icon"></i>
+                    <div class="phase-name">Improve</div>
+                    <div class="phase-status">Completed</div>
+                </div>
+                <div class="phase-card" onclick="selectPhase('control')">
+                    <i class="fas fa-shield-alt phase-icon"></i>
+                    <div class="phase-name">Control</div>
+                    <div class="phase-status">In Progress</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metrics Summary -->
+        <div class="metrics-summary">
+            <h3 style="color: #f3f4f6; margin-bottom: 1rem;">Project Performance Metrics</h3>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value">5.2σ</div>
+                    <div class="metric-label">Sigma Level</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">1.71</div>
+                    <div class="metric-label">Process Cpk</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">42%</div>
+                    <div class="metric-label">Defect Reduction</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">$1.2M</div>
+                    <div class="metric-label">Cost Savings</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">91.2%</div>
+                    <div class="metric-label">First Pass Yield</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">18</div>
+                    <div class="metric-label">DPMO</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics Charts -->
+        <div class="analytics-grid">
+            <div class="chart-container">
+                <h3 class="chart-title">Sigma Level Progression</h3>
+                <div id="sigmaChart" style="height: 400px;"></div>
+            </div>
+            <div class="chart-container">
+                <h3 class="chart-title">DPMO Reduction</h3>
+                <div id="dpmoChart" style="height: 400px;"></div>
+            </div>
+            <div class="chart-container">
+                <h3 class="chart-title">Cost-Benefit Analysis</h3>
+                <div id="costChart" style="height: 400px;"></div>
+            </div>
+            <div class="chart-container">
+                <h3 class="chart-title">Yield Improvement</h3>
+                <div id="yieldChart" style="height: 400px;"></div>
+            </div>
+        </div>
+
+        <!-- Capability Analysis -->
+        <div class="capability-analysis">
+            <h3 style="color: #f3f4f6; margin-bottom: 1rem;">Process Capability Analysis</h3>
+            <div class="capability-grid">
+                <div class="capability-stats">
+                    <h4 style="color: #f59e0b; margin-bottom: 1rem;">Statistical Summary</h4>
+                    <div class="stat-row">
+                        <span class="stat-name">USL</span>
+                        <span class="stat-value">47.0 nm</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-name">Target</span>
+                        <span class="stat-value">45.0 nm</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-name">LSL</span>
+                        <span class="stat-value">43.0 nm</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-name">Mean</span>
+                        <span class="stat-value">45.1 nm</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-name">Std Dev</span>
+                        <span class="stat-value">0.39 nm</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-name">Cp</span>
+                        <span class="stat-value">1.71</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-name">Cpk</span>
+                        <span class="stat-value">1.71</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-name">Pp</span>
+                        <span class="stat-value">1.68</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-name">Ppk</span>
+                        <span class="stat-value">1.65</span>
+                    </div>
+                </div>
+                <div id="capabilityChart" style="height: 400px;"></div>
+            </div>
+        </div>
+
+        <!-- Control Plan -->
+        <div class="control-plan">
+            <h3 style="color: #f3f4f6; margin-bottom: 1rem;">Control Plan</h3>
+            <table class="control-table">
+                <thead>
+                    <tr>
+                        <th>Process Step</th>
+                        <th>Critical Parameter</th>
+                        <th>Control Method</th>
+                        <th>Frequency</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Exposure</td>
+                        <td>Dose (mJ/cm²)</td>
+                        <td>SPC Chart</td>
+                        <td>Every lot</td>
+                        <td><span class="status-indicator green"></span>In Control</td>
+                    </tr>
+                    <tr>
+                        <td>Focus</td>
+                        <td>Focus Offset (nm)</td>
+                        <td>Run Chart</td>
+                        <td>Every wafer</td>
+                        <td><span class="status-indicator green"></span>In Control</td>
+                    </tr>
+                    <tr>
+                        <td>Development</td>
+                        <td>CD Uniformity</td>
+                        <td>X̄-R Chart</td>
+                        <td>5 wafers/lot</td>
+                        <td><span class="status-indicator yellow"></span>Warning</td>
+                    </tr>
+                    <tr>
+                        <td>Metrology</td>
+                        <td>Overlay</td>
+                        <td>EWMA Chart</td>
+                        <td>Every lot</td>
+                        <td><span class="status-indicator green"></span>In Control</td>
+                    </tr>
+                    <tr>
+                        <td>Inspection</td>
+                        <td>Defect Density</td>
+                        <td>P-Chart</td>
+                        <td>Sample</td>
+                        <td><span class="status-indicator green"></span>In Control</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Sigma Level Progression
+        function createSigmaChart() {
+            const months = ['Baseline', 'Month 1', 'Month 2', 'Month 3', 'Month 4', 'Month 5', 'Month 6'];
+            const sigmaLevels = [3.8, 4.1, 4.4, 4.7, 4.9, 5.1, 5.2];
+
+            const trace = {
+                x: months,
+                y: sigmaLevels,
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: {
+                    color: '#667eea',
+                    width: 3
+                },
+                marker: {
+                    size: 10,
+                    color: '#667eea'
+                },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(102, 126, 234, 0.2)'
+            };
+
+            const layout = {
+                xaxis: {
+                    tickfont: {color: '#9ca3af'}
+                },
+                yaxis: {
+                    title: 'Sigma Level',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151',
+                    range: [3, 6]
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                shapes: [{
+                    type: 'line',
+                    x0: 0,
+                    x1: 6,
+                    y0: 6,
+                    y1: 6,
+                    line: {
+                        color: '#10b981',
+                        width: 2,
+                        dash: 'dash'
+                    }
+                }],
+                annotations: [{
+                    x: 6,
+                    y: 6,
+                    text: '6σ Target',
+                    showarrow: false,
+                    xanchor: 'right',
+                    font: {color: '#10b981'}
+                }]
+            };
+
+            Plotly.newPlot('sigmaChart', [trace], layout, {responsive: true});
+        }
+
+        // DPMO Chart
+        function createDPMOChart() {
+            const phases = ['Define', 'Measure', 'Analyze', 'Improve', 'Control'];
+            const dpmo = [233, 187, 142, 56, 18];
+
+            const trace = {
+                x: phases,
+                y: dpmo,
+                type: 'bar',
+                marker: {
+                    color: ['#ef4444', '#f59e0b', '#eab308', '#84cc16', '#10b981']
+                }
+            };
+
+            const layout = {
+                xaxis: {
+                    tickfont: {color: '#9ca3af'}
+                },
+                yaxis: {
+                    title: 'DPMO',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)'
+            };
+
+            Plotly.newPlot('dpmoChart', [trace], layout, {responsive: true});
+        }
+
+        // Cost-Benefit Analysis
+        function createCostChart() {
+            const categories = ['Implementation Cost', 'Training', 'Equipment', 'Savings Y1', 'Savings Y2', 'Savings Y3'];
+            const costs = [-150000, -50000, -75000, 400000, 450000, 500000];
+            const cumulative = [];
+            let sum = 0;
+            
+            costs.forEach(cost => {
+                sum += cost;
+                cumulative.push(sum);
+            });
+
+            const trace1 = {
+                x: categories,
+                y: costs,
+                name: 'Cost/Benefit',
+                type: 'bar',
+                marker: {
+                    color: costs.map(c => c < 0 ? '#ef4444' : '#10b981')
+                }
+            };
+
+            const trace2 = {
+                x: categories,
+                y: cumulative,
+                name: 'Cumulative',
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: {color: '#667eea', width: 3},
+                yaxis: 'y2'
+            };
+
+            const layout = {
+                xaxis: {
+                    tickfont: {color: '#9ca3af'},
+                    tickangle: -45
+                },
+                yaxis: {
+                    title: 'Cost/Benefit ($)',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                yaxis2: {
+                    title: 'Cumulative ($)',
+                    titlefont: {color: '#667eea'},
+                    tickfont: {color: '#667eea'},
+                    overlaying: 'y',
+                    side: 'right'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                legend: {
+                    font: {color: '#e5e7eb'},
+                    bgcolor: 'rgba(0,0,0,0.5)'
+                }
+            };
+
+            Plotly.newPlot('costChart', [trace1, trace2], layout, {responsive: true});
+        }
+
+        // Yield Chart
+        function createYieldChart() {
+            const weeks = Array.from({length: 24}, (_, i) => `W${i + 1}`);
+            const baseline = Array(6).fill(67);
+            const improvement = [];
+            for (let i = 0; i < 12; i++) {
+                improvement.push(67 + i * 2 + Math.random() * 2);
+            }
+            const sustained = Array(6).fill(91 + Math.random());
+            const yield = [...baseline, ...improvement, ...sustained];
+
+            const trace = {
+                x: weeks,
+                y: yield,
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: {color: '#667eea', width: 2},
+                marker: {size: 6}
+            };
+
+            const layout = {
+                xaxis: {
+                    tickfont: {color: '#9ca3af', size: 10},
+                    tickangle: -45
+                },
+                yaxis: {
+                    title: 'First Pass Yield (%)',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151',
+                    range: [60, 95]
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                shapes: [{
+                    type: 'line',
+                    x0: 0,
+                    x1: 23,
+                    y0: 90,
+                    y1: 90,
+                    line: {
+                        color: '#10b981',
+                        width: 2,
+                        dash: 'dash'
+                    }
+                }],
+                annotations: [
+                    {
+                        x: 3,
+                        y: 67,
+                        text: 'Baseline',
+                        showarrow: true,
+                        arrowhead: 2,
+                        ax: 0,
+                        ay: -40,
+                        font: {color: '#9ca3af'}
+                    },
+                    {
+                        x: 12,
+                        y: 80,
+                        text: 'Improvement',
+                        showarrow: true,
+                        arrowhead: 2,
+                        ax: 0,
+                        ay: -40,
+                        font: {color: '#9ca3af'}
+                    },
+                    {
+                        x: 20,
+                        y: 91,
+                        text: 'Control',
+                        showarrow: true,
+                        arrowhead: 2,
+                        ax: 0,
+                        ay: -40,
+                        font: {color: '#9ca3af'}
+                    }
+                ]
+            };
+
+            Plotly.newPlot('yieldChart', [trace], layout, {responsive: true});
+        }
+
+        // Capability Chart
+        function createCapabilityChart() {
+            // Generate normal distribution data
+            const mean = 45.1;
+            const stdDev = 0.39;
+            const lsl = 43;
+            const usl = 47;
+            
+            const x = [];
+            const y = [];
+            
+            for (let i = 41; i <= 49; i += 0.1) {
+                x.push(i);
+                const z = (i - mean) / stdDev;
+                const pdf = (1 / (stdDev * Math.sqrt(2 * Math.PI))) * 
+                           Math.exp(-0.5 * z * z);
+                y.push(pdf);
+            }
+
+            const trace1 = {
+                x: x,
+                y: y,
+                type: 'scatter',
+                mode: 'lines',
+                fill: 'tozeroy',
+                fillcolor: 'rgba(102, 126, 234, 0.3)',
+                line: {color: '#667eea', width: 3},
+                name: 'Process Distribution'
+            };
+
+            // Add specification limits
+            const maxY = Math.max(...y);
+            const shapes = [
+                {
+                    type: 'line',
+                    x0: lsl,
+                    x1: lsl,
+                    y0: 0,
+                    y1: maxY,
+                    line: {color: '#ef4444', width: 2, dash: 'dash'}
+                },
+                {
+                    type: 'line',
+                    x0: usl,
+                    x1: usl,
+                    y0: 0,
+                    y1: maxY,
+                    line: {color: '#ef4444', width: 2, dash: 'dash'}
+                },
+                {
+                    type: 'line',
+                    x0: 45,
+                    x1: 45,
+                    y0: 0,
+                    y1: maxY,
+                    line: {color: '#10b981', width: 2, dash: 'dot'}
+                }
+            ];
+
+            const layout = {
+                title: {
+                    text: 'Process Capability Distribution',
+                    font: {color: '#f59e0b', size: 16}
+                },
+                xaxis: {
+                    title: 'CD (nm)',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                yaxis: {
+                    title: 'Probability Density',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                shapes: shapes,
+                annotations: [
+                    {
+                        x: lsl,
+                        y: maxY,
+                        text: 'LSL',
+                        showarrow: false,
+                        yanchor: 'bottom',
+                        font: {color: '#ef4444'}
+                    },
+                    {
+                        x: usl,
+                        y: maxY,
+                        text: 'USL',
+                        showarrow: false,
+                        yanchor: 'bottom',
+                        font: {color: '#ef4444'}
+                    },
+                    {
+                        x: 45,
+                        y: maxY,
+                        text: 'Target',
+                        showarrow: false,
+                        yanchor: 'bottom',
+                        font: {color: '#10b981'}
+                    }
+                ]
+            };
+
+            Plotly.newPlot('capabilityChart', [trace1], layout, {responsive: true});
+        }
+
+        // Phase selection
+        function selectPhase(phase) {
+            // Update active phase styling
+            document.querySelectorAll('.phase-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+            
+            // In a real implementation, this would update the displayed data
+            console.log(`Selected phase: ${phase}`);
+        }
+
+        // Initialize all charts
+        window.addEventListener('load', () => {
+            createSigmaChart();
+            createDPMOChart();
+            createCostChart();
+            createYieldChart();
+            createCapabilityChart();
+        });
+    </script>
+</body>
+</html>

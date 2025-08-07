@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Process Optimization Dashboard - DUV Lithography</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0a0a0a;
+            color: #e5e7eb;
+            font-family: 'Inter', -apple-system, sans-serif;
+            overflow-x: hidden;
+        }
+
+        .navigation-bar {
+            background: rgba(20, 20, 30, 0.9);
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-btn {
+            background: rgba(102, 126, 234, 0.2);
+            color: #a5b4fc;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-btn:hover {
+            background: rgba(102, 126, 234, 0.4);
+            border-color: rgba(102, 126, 234, 0.6);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 80px 2rem 2rem;
+        }
+
+        .page-title {
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .page-subtitle {
+            text-align: center;
+            color: #9ca3af;
+            font-size: 1.2rem;
+            margin-bottom: 3rem;
+        }
+
+        .metrics-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .metric-card {
+            background: rgba(20, 20, 30, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 12px;
+            padding: 1.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+
+        .metric-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .metric-title {
+            color: #9ca3af;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .metric-icon {
+            font-size: 1.5rem;
+            color: #667eea;
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #f3f4f6;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-change {
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .metric-change.positive {
+            color: #10b981;
+        }
+
+        .metric-change.negative {
+            color: #ef4444;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .chart-container {
+            background: rgba(20, 20, 30, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 12px;
+            padding: 2rem;
+        }
+
+        .chart-title {
+            font-size: 1.5rem;
+            color: #f3f4f6;
+            margin-bottom: 1rem;
+        }
+
+        .control-section {
+            background: rgba(15, 15, 25, 0.9);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .control-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .control-label {
+            color: #9ca3af;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .control-select {
+            padding: 0.75rem;
+            background: rgba(30, 30, 40, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            color: #e5e7eb;
+            font-size: 1rem;
+        }
+
+        .refresh-btn {
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .alert-section {
+            background: rgba(20, 20, 30, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .alert-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: rgba(30, 30, 40, 0.8);
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border-left: 4px solid;
+        }
+
+        .alert-item.warning {
+            border-left-color: #f59e0b;
+        }
+
+        .alert-item.critical {
+            border-left-color: #ef4444;
+        }
+
+        .alert-item.info {
+            border-left-color: #3b82f6;
+        }
+
+        .alert-icon {
+            font-size: 1.5rem;
+        }
+
+        .alert-content {
+            flex: 1;
+        }
+
+        .alert-title {
+            font-weight: 600;
+            color: #f3f4f6;
+            margin-bottom: 0.25rem;
+        }
+
+        .alert-description {
+            color: #9ca3af;
+            font-size: 0.9rem;
+        }
+
+        .alert-time {
+            color: #6b7280;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .control-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <div class="navigation-bar">
+        <a href="lithography_simulator.html" class="nav-btn">
+            <i class="fas fa-arrow-left"></i> Lithography Simulator
+        </a>
+        <h2 style="color: #f59e0b; margin: 0;">Process Optimization Dashboard</h2>
+        <div>
+            <a href="defect_analysis.html" class="nav-btn">
+                Defect Analysis <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1 class="page-title">Real-Time Process Monitoring Dashboard</h1>
+        <p class="page-subtitle">Statistical Process Control for 193nm DUV Lithography</p>
+
+        <!-- Metrics Overview -->
+        <div class="metrics-overview">
+            <div class="metric-card">
+                <div class="metric-header">
+                    <span class="metric-title">Process Capability (Cpk)</span>
+                    <i class="fas fa-chart-line metric-icon"></i>
+                </div>
+                <div class="metric-value">1.71</div>
+                <div class="metric-change positive">
+                    <i class="fas fa-arrow-up"></i>
+                    <span>+0.08 from last week</span>
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-header">
+                    <span class="metric-title">Defect Density</span>
+                    <i class="fas fa-exclamation-triangle metric-icon"></i>
+                </div>
+                <div class="metric-value">0.051</div>
+                <div class="metric-change positive">
+                    <i class="fas fa-arrow-down"></i>
+                    <span>-0.003 defects/cm²</span>
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-header">
+                    <span class="metric-title">First Pass Yield</span>
+                    <i class="fas fa-percentage metric-icon"></i>
+                </div>
+                <div class="metric-value">91.2%</div>
+                <div class="metric-change positive">
+                    <i class="fas fa-arrow-up"></i>
+                    <span>+0.7% improvement</span>
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-header">
+                    <span class="metric-title">Mean CD</span>
+                    <i class="fas fa-ruler metric-icon"></i>
+                </div>
+                <div class="metric-value">45.1nm</div>
+                <div class="metric-change positive">
+                    <i class="fas fa-check"></i>
+                    <span>Within spec (±2nm)</span>
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-header">
+                    <span class="metric-title">CD Uniformity (3σ)</span>
+                    <i class="fas fa-compress-alt metric-icon"></i>
+                </div>
+                <div class="metric-value">2.8nm</div>
+                <div class="metric-change positive">
+                    <i class="fas fa-arrow-down"></i>
+                    <span>-0.2nm improvement</span>
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-header">
+                    <span class="metric-title">Tool Uptime</span>
+                    <i class="fas fa-clock metric-icon"></i>
+                </div>
+                <div class="metric-value">96.8%</div>
+                <div class="metric-change negative">
+                    <i class="fas fa-arrow-down"></i>
+                    <span>-1.2% from target</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Control Section -->
+        <div class="control-section">
+            <h2 style="color: #f3f4f6; margin-bottom: 1rem;">Dashboard Controls</h2>
+            <div class="control-grid">
+                <div class="control-item">
+                    <label class="control-label">Time Range</label>
+                    <select class="control-select" id="timeRange">
+                        <option value="1h">Last Hour</option>
+                        <option value="8h">Last 8 Hours</option>
+                        <option value="24h" selected>Last 24 Hours</option>
+                        <option value="7d">Last 7 Days</option>
+                        <option value="30d">Last 30 Days</option>
+                    </select>
+                </div>
+                <div class="control-item">
+                    <label class="control-label">Process Step</label>
+                    <select class="control-select" id="processStep">
+                        <option value="all" selected>All Steps</option>
+                        <option value="exposure">Exposure</option>
+                        <option value="peb">Post-Exposure Bake</option>
+                        <option value="develop">Development</option>
+                        <option value="rinse">Rinse/Dry</option>
+                    </select>
+                </div>
+                <div class="control-item">
+                    <label class="control-label">Tool ID</label>
+                    <select class="control-select" id="toolId">
+                        <option value="all" selected>All Tools</option>
+                        <option value="tool1">Scanner #1</option>
+                        <option value="tool2">Scanner #2</option>
+                        <option value="tool3">Scanner #3</option>
+                    </select>
+                </div>
+                <div class="control-item">
+                    <label class="control-label">Update Interval</label>
+                    <select class="control-select" id="updateInterval">
+                        <option value="5">5 seconds</option>
+                        <option value="10" selected>10 seconds</option>
+                        <option value="30">30 seconds</option>
+                        <option value="60">1 minute</option>
+                    </select>
+                </div>
+                <div class="control-item">
+                    <label class="control-label">&nbsp;</label>
+                    <button class="refresh-btn" onclick="refreshDashboard()">
+                        <i class="fas fa-sync-alt"></i> Refresh Now
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alert Section -->
+        <div class="alert-section">
+            <h2 style="color: #f3f4f6; margin-bottom: 1.5rem;">Active Alerts</h2>
+            <div id="alertsContainer">
+                <div class="alert-item warning">
+                    <i class="fas fa-exclamation-triangle alert-icon" style="color: #f59e0b;"></i>
+                    <div class="alert-content">
+                        <div class="alert-title">CD Trending High - Scanner #2</div>
+                        <div class="alert-description">Critical dimension trending 1.5nm above target. Recommend dose adjustment.</div>
+                    </div>
+                    <div class="alert-time">5 min ago</div>
+                </div>
+                <div class="alert-item info">
+                    <i class="fas fa-info-circle alert-icon" style="color: #3b82f6;"></i>
+                    <div class="alert-content">
+                        <div class="alert-title">Scheduled Maintenance - Scanner #3</div>
+                        <div class="alert-description">Preventive maintenance scheduled in 2 hours.</div>
+                    </div>
+                    <div class="alert-time">15 min ago</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Charts -->
+        <div class="dashboard-grid">
+            <div class="chart-container">
+                <h3 class="chart-title">CD Control Chart (X̄-R)</h3>
+                <div id="cdControlChart" style="height: 400px;"></div>
+            </div>
+            <div class="chart-container">
+                <h3 class="chart-title">Defect Density Trend</h3>
+                <div id="defectTrendChart" style="height: 400px;"></div>
+            </div>
+            <div class="chart-container">
+                <h3 class="chart-title">Process Capability Index</h3>
+                <div id="cpkChart" style="height: 400px;"></div>
+            </div>
+            <div class="chart-container">
+                <h3 class="chart-title">Exposure Dose Distribution</h3>
+                <div id="doseDistChart" style="height: 400px;"></div>
+            </div>
+            <div class="chart-container">
+                <h3 class="chart-title">Focus Uniformity Map</h3>
+                <div id="focusMapChart" style="height: 400px;"></div>
+            </div>
+            <div class="chart-container">
+                <h3 class="chart-title">Yield Pareto Analysis</h3>
+                <div id="yieldParetoChart" style="height: 400px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Generate sample data
+        function generateTimeSeriesData(hours, baseline, variation) {
+            const data = [];
+            const now = new Date();
+            for (let i = 0; i < hours * 6; i++) { // 10-minute intervals
+                const time = new Date(now - (hours * 6 - i) * 10 * 60 * 1000);
+                const value = baseline + (Math.random() - 0.5) * variation;
+                data.push({time, value});
+            }
+            return data;
+        }
+
+        // CD Control Chart
+        function createCDControlChart() {
+            const data = generateTimeSeriesData(24, 45, 2);
+            const times = data.map(d => d.time);
+            const values = data.map(d => d.value);
+
+            const ucl = 47;
+            const lcl = 43;
+            const target = 45;
+
+            const trace1 = {
+                x: times,
+                y: values,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'CD Measurement',
+                line: {color: '#667eea', width: 2},
+                marker: {size: 6}
+            };
+
+            const trace2 = {
+                x: times,
+                y: Array(times.length).fill(ucl),
+                type: 'scatter',
+                mode: 'lines',
+                name: 'UCL',
+                line: {color: '#ef4444', width: 2, dash: 'dash'}
+            };
+
+            const trace3 = {
+                x: times,
+                y: Array(times.length).fill(lcl),
+                type: 'scatter',
+                mode: 'lines',
+                name: 'LCL',
+                line: {color: '#ef4444', width: 2, dash: 'dash'}
+            };
+
+            const trace4 = {
+                x: times,
+                y: Array(times.length).fill(target),
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Target',
+                line: {color: '#10b981', width: 2, dash: 'dot'}
+            };
+
+            const layout = {
+                xaxis: {
+                    title: 'Time',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                yaxis: {
+                    title: 'Critical Dimension (nm)',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                legend: {
+                    font: {color: '#e5e7eb'},
+                    bgcolor: 'rgba(0,0,0,0.5)'
+                }
+            };
+
+            Plotly.newPlot('cdControlChart', [trace1, trace2, trace3, trace4], layout, {responsive: true});
+        }
+
+        // Defect Trend Chart
+        function createDefectTrendChart() {
+            const data = generateTimeSeriesData(24, 0.051, 0.01);
+            
+            const trace = {
+                x: data.map(d => d.time),
+                y: data.map(d => d.value),
+                type: 'scatter',
+                mode: 'lines',
+                fill: 'tozeroy',
+                fillcolor: 'rgba(102, 126, 234, 0.2)',
+                line: {color: '#667eea', width: 3},
+                name: 'Defect Density'
+            };
+
+            const layout = {
+                xaxis: {
+                    title: 'Time',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                yaxis: {
+                    title: 'Defects/cm²',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)'
+            };
+
+            Plotly.newPlot('defectTrendChart', [trace], layout, {responsive: true});
+        }
+
+        // Cpk Chart
+        function createCpkChart() {
+            const processes = ['Exposure', 'Focus', 'Overlay X', 'Overlay Y', 'CD Uniformity'];
+            const cpkValues = [1.71, 1.65, 1.82, 1.79, 1.58];
+
+            const trace = {
+                x: processes,
+                y: cpkValues,
+                type: 'bar',
+                marker: {
+                    color: cpkValues.map(v => v >= 1.67 ? 'rgba(16, 185, 129, 0.8)' : 
+                                                v >= 1.33 ? 'rgba(245, 158, 11, 0.8)' : 
+                                                           'rgba(239, 68, 68, 0.8)')
+                }
+            };
+
+            const layout = {
+                xaxis: {
+                    tickfont: {color: '#9ca3af'}
+                },
+                yaxis: {
+                    title: 'Cpk Value',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                shapes: [{
+                    type: 'line',
+                    x0: -0.5,
+                    x1: 4.5,
+                    y0: 1.67,
+                    y1: 1.67,
+                    line: {
+                        color: '#10b981',
+                        width: 2,
+                        dash: 'dash'
+                    }
+                }],
+                annotations: [{
+                    x: 4.5,
+                    y: 1.67,
+                    text: 'Target: 1.67',
+                    showarrow: false,
+                    xanchor: 'right',
+                    font: {color: '#10b981'}
+                }]
+            };
+
+            Plotly.newPlot('cpkChart', [trace], layout, {responsive: true});
+        }
+
+        // Dose Distribution Chart
+        function createDoseDistChart() {
+            const doses = [];
+            for (let i = 0; i < 500; i++) {
+                doses.push(25 + (Math.random() - 0.5) * 3);
+            }
+
+            const trace = {
+                x: doses,
+                type: 'histogram',
+                nbinsx: 30,
+                marker: {
+                    color: 'rgba(102, 126, 234, 0.8)',
+                    line: {
+                        color: 'rgba(102, 126, 234, 1)',
+                        width: 1
+                    }
+                }
+            };
+
+            const layout = {
+                xaxis: {
+                    title: 'Exposure Dose (mJ/cm²)',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                yaxis: {
+                    title: 'Frequency',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                shapes: [{
+                    type: 'line',
+                    x0: 25,
+                    x1: 25,
+                    y0: 0,
+                    y1: 1,
+                    yref: 'paper',
+                    line: {
+                        color: '#10b981',
+                        width: 2,
+                        dash: 'dash'
+                    }
+                }],
+                annotations: [{
+                    x: 25,
+                    y: 1,
+                    yref: 'paper',
+                    text: 'Target: 25',
+                    showarrow: false,
+                    font: {color: '#10b981'}
+                }]
+            };
+
+            Plotly.newPlot('doseDistChart', [trace], layout, {responsive: true});
+        }
+
+        // Focus Map Chart
+        function createFocusMapChart() {
+            const size = 20;
+            const z = [];
+            for (let i = 0; i < size; i++) {
+                z[i] = [];
+                for (let j = 0; j < size; j++) {
+                    const r = Math.sqrt((i - size/2)**2 + (j - size/2)**2);
+                    z[i][j] = -5 + 10 * (r / (size/2)) + (Math.random() - 0.5) * 5;
+                }
+            }
+
+            const data = [{
+                z: z,
+                type: 'heatmap',
+                colorscale: [
+                    [0, '#10b981'],
+                    [0.5, '#f59e0b'],
+                    [1, '#ef4444']
+                ],
+                colorbar: {
+                    title: 'Focus Offset (nm)',
+                    titlefont: {color: '#9ca3af'}
+                }
+            }];
+
+            const layout = {
+                xaxis: {
+                    title: 'X Position',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'}
+                },
+                yaxis: {
+                    title: 'Y Position',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'}
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)'
+            };
+
+            Plotly.newPlot('focusMapChart', data, layout, {responsive: true});
+        }
+
+        // Yield Pareto Chart
+        function createYieldParetoChart() {
+            const defects = [
+                {type: 'Bridge Defects', count: 42},
+                {type: 'Missing Pattern', count: 28},
+                {type: 'CD Out of Spec', count: 18},
+                {type: 'Overlay Error', count: 12},
+                {type: 'Particles', count: 8},
+                {type: 'Other', count: 5}
+            ];
+
+            const cumulative = [];
+            let total = defects.reduce((sum, d) => sum + d.count, 0);
+            let running = 0;
+            defects.forEach(d => {
+                running += d.count;
+                cumulative.push(running / total * 100);
+            });
+
+            const trace1 = {
+                x: defects.map(d => d.type),
+                y: defects.map(d => d.count),
+                type: 'bar',
+                name: 'Defect Count',
+                marker: {color: 'rgba(102, 126, 234, 0.8)'},
+                yaxis: 'y'
+            };
+
+            const trace2 = {
+                x: defects.map(d => d.type),
+                y: cumulative,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Cumulative %',
+                line: {color: '#f59e0b', width: 3},
+                marker: {size: 8},
+                yaxis: 'y2'
+            };
+
+            const layout = {
+                xaxis: {
+                    tickfont: {color: '#9ca3af'},
+                    tickangle: -45
+                },
+                yaxis: {
+                    title: 'Defect Count',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                yaxis2: {
+                    title: 'Cumulative %',
+                    titlefont: {color: '#f59e0b'},
+                    tickfont: {color: '#f59e0b'},
+                    overlaying: 'y',
+                    side: 'right',
+                    range: [0, 100]
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                legend: {
+                    font: {color: '#e5e7eb'},
+                    bgcolor: 'rgba(0,0,0,0.5)'
+                }
+            };
+
+            Plotly.newPlot('yieldParetoChart', [trace1, trace2], layout, {responsive: true});
+        }
+
+        // Refresh dashboard
+        function refreshDashboard() {
+            createCDControlChart();
+            createDefectTrendChart();
+            createCpkChart();
+            createDoseDistChart();
+            createFocusMapChart();
+            createYieldParetoChart();
+            
+            // Update metrics with animation
+            document.querySelectorAll('.metric-value').forEach(el => {
+                el.style.opacity = '0.5';
+                setTimeout(() => {
+                    el.style.opacity = '1';
+                }, 300);
+            });
+        }
+
+        // Auto-refresh based on interval
+        let refreshInterval;
+        function setAutoRefresh() {
+            const interval = parseInt(document.getElementById('updateInterval').value) * 1000;
+            clearInterval(refreshInterval);
+            refreshInterval = setInterval(refreshDashboard, interval);
+        }
+
+        // Initialize dashboard
+        window.addEventListener('load', () => {
+            refreshDashboard();
+            setAutoRefresh();
+            
+            document.getElementById('updateInterval').addEventListener('change', setAutoRefresh);
+        });
+    </script>
+</body>
+</html>

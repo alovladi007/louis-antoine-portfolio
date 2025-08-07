@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DOE Interactive Tool - DUV Lithography</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0a0a0a;
+            color: #e5e7eb;
+            font-family: 'Inter', -apple-system, sans-serif;
+            overflow-x: hidden;
+        }
+
+        .navigation-bar {
+            background: rgba(20, 20, 30, 0.9);
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-btn {
+            background: rgba(102, 126, 234, 0.2);
+            color: #a5b4fc;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-btn:hover {
+            background: rgba(102, 126, 234, 0.4);
+            border-color: rgba(102, 126, 234, 0.6);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 80px 2rem 2rem;
+        }
+
+        .page-title {
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .page-subtitle {
+            text-align: center;
+            color: #9ca3af;
+            font-size: 1.2rem;
+            margin-bottom: 3rem;
+        }
+
+        .doe-setup {
+            background: rgba(20, 20, 30, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .setup-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .factor-card {
+            background: rgba(30, 30, 40, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+
+        .factor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .factor-name {
+            font-weight: 600;
+            color: #f3f4f6;
+        }
+
+        .factor-toggle {
+            position: relative;
+            width: 50px;
+            height: 25px;
+            background: rgba(102, 126, 234, 0.3);
+            border-radius: 25px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .factor-toggle.active {
+            background: #667eea;
+        }
+
+        .factor-toggle::after {
+            content: '';
+            position: absolute;
+            width: 21px;
+            height: 21px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.3s ease;
+        }
+
+        .factor-toggle.active::after {
+            transform: translateX(25px);
+        }
+
+        .factor-levels {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .level-input {
+            padding: 0.5rem;
+            background: rgba(10, 10, 20, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 4px;
+            color: #e5e7eb;
+        }
+
+        .design-controls {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+            margin-top: 2rem;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .control-label {
+            color: #9ca3af;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .control-select {
+            padding: 0.75rem;
+            background: rgba(30, 30, 40, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            color: #e5e7eb;
+            font-size: 1rem;
+        }
+
+        .generate-btn {
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .results-section {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .design-matrix {
+            background: rgba(20, 20, 30, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 12px;
+            padding: 2rem;
+        }
+
+        .matrix-table {
+            width: 100%;
+            margin-top: 1rem;
+            border-collapse: collapse;
+        }
+
+        .matrix-table th {
+            background: rgba(102, 126, 234, 0.2);
+            color: #f3f4f6;
+            padding: 0.75rem;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .matrix-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+            color: #d1d5db;
+        }
+
+        .matrix-table tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .visualization-container {
+            background: rgba(20, 20, 30, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 12px;
+            padding: 2rem;
+        }
+
+        .viz-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .viz-tab {
+            padding: 0.75rem 1.5rem;
+            background: none;
+            border: none;
+            color: #9ca3af;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .viz-tab.active {
+            color: #667eea;
+        }
+
+        .viz-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #667eea;
+        }
+
+        .analysis-summary {
+            background: rgba(15, 15, 25, 0.9);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-top: 3rem;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .summary-card {
+            background: rgba(30, 30, 40, 0.8);
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .summary-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .summary-label {
+            color: #9ca3af;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 1200px) {
+            .results-section {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <div class="navigation-bar">
+        <a href="defect_analysis.html" class="nav-btn">
+            <i class="fas fa-arrow-left"></i> Defect Analysis
+        </a>
+        <h2 style="color: #f59e0b; margin: 0;">Design of Experiments Tool</h2>
+        <div>
+            <a href="six_sigma_analytics.html" class="nav-btn">
+                Six Sigma Analytics <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1 class="page-title">Interactive DOE Tool</h1>
+        <p class="page-subtitle">Response Surface Methodology for Process Optimization</p>
+
+        <!-- DOE Setup -->
+        <div class="doe-setup">
+            <h3 style="color: #f3f4f6; margin-bottom: 1rem;">Factor Configuration</h3>
+            <div class="setup-grid">
+                <div class="factor-card">
+                    <div class="factor-header">
+                        <span class="factor-name">Exposure Dose</span>
+                        <div class="factor-toggle active" onclick="toggleFactor(this)"></div>
+                    </div>
+                    <div class="factor-levels">
+                        <input type="number" class="level-input" value="22" placeholder="Low (-1)">
+                        <input type="number" class="level-input" value="28" placeholder="High (+1)">
+                    </div>
+                    <div style="color: #9ca3af; font-size: 0.9rem; margin-top: 0.5rem;">Units: mJ/cm²</div>
+                </div>
+
+                <div class="factor-card">
+                    <div class="factor-header">
+                        <span class="factor-name">Focus Offset</span>
+                        <div class="factor-toggle active" onclick="toggleFactor(this)"></div>
+                    </div>
+                    <div class="factor-levels">
+                        <input type="number" class="level-input" value="-100" placeholder="Low (-1)">
+                        <input type="number" class="level-input" value="100" placeholder="High (+1)">
+                    </div>
+                    <div style="color: #9ca3af; font-size: 0.9rem; margin-top: 0.5rem;">Units: nm</div>
+                </div>
+
+                <div class="factor-card">
+                    <div class="factor-header">
+                        <span class="factor-name">PEB Temperature</span>
+                        <div class="factor-toggle active" onclick="toggleFactor(this)"></div>
+                    </div>
+                    <div class="factor-levels">
+                        <input type="number" class="level-input" value="110" placeholder="Low (-1)">
+                        <input type="number" class="level-input" value="130" placeholder="High (+1)">
+                    </div>
+                    <div style="color: #9ca3af; font-size: 0.9rem; margin-top: 0.5rem;">Units: °C</div>
+                </div>
+
+                <div class="factor-card">
+                    <div class="factor-header">
+                        <span class="factor-name">Development Time</span>
+                        <div class="factor-toggle" onclick="toggleFactor(this)"></div>
+                    </div>
+                    <div class="factor-levels">
+                        <input type="number" class="level-input" value="45" placeholder="Low (-1)">
+                        <input type="number" class="level-input" value="75" placeholder="High (+1)">
+                    </div>
+                    <div style="color: #9ca3af; font-size: 0.9rem; margin-top: 0.5rem;">Units: seconds</div>
+                </div>
+
+                <div class="factor-card">
+                    <div class="factor-header">
+                        <span class="factor-name">Resist Thickness</span>
+                        <div class="factor-toggle" onclick="toggleFactor(this)"></div>
+                    </div>
+                    <div class="factor-levels">
+                        <input type="number" class="level-input" value="80" placeholder="Low (-1)">
+                        <input type="number" class="level-input" value="120" placeholder="High (+1)">
+                    </div>
+                    <div style="color: #9ca3af; font-size: 0.9rem; margin-top: 0.5rem;">Units: nm</div>
+                </div>
+
+                <div class="factor-card">
+                    <div class="factor-header">
+                        <span class="factor-name">NA Setting</span>
+                        <div class="factor-toggle" onclick="toggleFactor(this)"></div>
+                    </div>
+                    <div class="factor-levels">
+                        <input type="number" class="level-input" value="0.85" step="0.01" placeholder="Low (-1)">
+                        <input type="number" class="level-input" value="1.00" step="0.01" placeholder="High (+1)">
+                    </div>
+                    <div style="color: #9ca3af; font-size: 0.9rem; margin-top: 0.5rem;">Units: NA</div>
+                </div>
+            </div>
+
+            <div class="design-controls">
+                <div class="control-group">
+                    <label class="control-label">Design Type</label>
+                    <select class="control-select" id="designType">
+                        <option value="full">Full Factorial</option>
+                        <option value="fractional">Fractional Factorial</option>
+                        <option value="ccd" selected>Central Composite</option>
+                        <option value="boxbehnken">Box-Behnken</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Center Points</label>
+                    <select class="control-select" id="centerPoints">
+                        <option value="0">0</option>
+                        <option value="3" selected>3</option>
+                        <option value="5">5</option>
+                        <option value="7">7</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Replicates</label>
+                    <select class="control-select" id="replicates">
+                        <option value="1" selected>1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                    </select>
+                </div>
+                <button class="generate-btn" onclick="generateDesign()">
+                    <i class="fas fa-play"></i> Generate Design
+                </button>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div class="results-section">
+            <!-- Design Matrix -->
+            <div class="design-matrix">
+                <h3 style="color: #f3f4f6; margin-bottom: 1rem;">Design Matrix</h3>
+                <div style="overflow-x: auto;">
+                    <table class="matrix-table" id="matrixTable">
+                        <thead>
+                            <tr>
+                                <th>Run</th>
+                                <th>Dose</th>
+                                <th>Focus</th>
+                                <th>PEB</th>
+                                <th>CD (nm)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="matrixBody">
+                            <!-- Generated runs will appear here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Visualization -->
+            <div class="visualization-container">
+                <div class="viz-tabs">
+                    <button class="viz-tab active" onclick="switchViz('surface')">Response Surface</button>
+                    <button class="viz-tab" onclick="switchViz('contour')">Contour Plot</button>
+                    <button class="viz-tab" onclick="switchViz('effects')">Main Effects</button>
+                    <button class="viz-tab" onclick="switchViz('interaction')">Interactions</button>
+                </div>
+                <div id="vizContainer" style="height: 500px;"></div>
+            </div>
+        </div>
+
+        <!-- Analysis Summary -->
+        <div class="analysis-summary">
+            <h3 style="color: #f3f4f6; margin-bottom: 1rem;">DOE Analysis Summary</h3>
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <div class="summary-value" id="totalRuns">27</div>
+                    <div class="summary-label">Total Runs</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-value" id="activeFactors">3</div>
+                    <div class="summary-label">Active Factors</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-value" id="rSquared">0.982</div>
+                    <div class="summary-label">R² Value</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-value" id="optimalCD">45.2</div>
+                    <div class="summary-label">Optimal CD (nm)</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-value" id="desirability">0.94</div>
+                    <div class="summary-label">Desirability</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentViz = 'surface';
+        let activeFactors = 3;
+
+        function toggleFactor(toggle) {
+            toggle.classList.toggle('active');
+            activeFactors = document.querySelectorAll('.factor-toggle.active').length;
+            document.getElementById('activeFactors').textContent = activeFactors;
+        }
+
+        function generateDesign() {
+            const designType = document.getElementById('designType').value;
+            const centerPoints = parseInt(document.getElementById('centerPoints').value);
+            const replicates = parseInt(document.getElementById('replicates').value);
+            
+            // Generate design matrix based on type
+            let runs = [];
+            if (designType === 'ccd') {
+                // Central Composite Design for 3 factors
+                const factorial = [
+                    [-1, -1, -1], [1, -1, -1], [-1, 1, -1], [1, 1, -1],
+                    [-1, -1, 1], [1, -1, 1], [-1, 1, 1], [1, 1, 1]
+                ];
+                const axial = [
+                    [-1.682, 0, 0], [1.682, 0, 0],
+                    [0, -1.682, 0], [0, 1.682, 0],
+                    [0, 0, -1.682], [0, 0, 1.682]
+                ];
+                const center = Array(centerPoints).fill([0, 0, 0]);
+                
+                runs = [...factorial, ...axial, ...center];
+            }
+            
+            // Populate design matrix table
+            const tbody = document.getElementById('matrixBody');
+            tbody.innerHTML = '';
+            
+            runs.forEach((run, index) => {
+                const row = tbody.insertRow();
+                row.insertCell(0).textContent = index + 1;
+                row.insertCell(1).textContent = (25 + run[0] * 3).toFixed(1);
+                row.insertCell(2).textContent = (run[1] * 100).toFixed(0);
+                row.insertCell(3).textContent = (120 + run[2] * 10).toFixed(0);
+                
+                // Simulate CD response
+                const cd = 45 + run[0] * 2 - run[1] * 1.5 + run[2] * 0.5 + 
+                          run[0] * run[1] * 0.3 + (Math.random() - 0.5) * 0.5;
+                row.insertCell(4).textContent = cd.toFixed(1);
+            });
+            
+            document.getElementById('totalRuns').textContent = runs.length * replicates;
+            
+            // Update visualization
+            updateVisualization();
+        }
+
+        function switchViz(type) {
+            currentViz = type;
+            document.querySelectorAll('.viz-tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+            updateVisualization();
+        }
+
+        function updateVisualization() {
+            switch(currentViz) {
+                case 'surface':
+                    createResponseSurface();
+                    break;
+                case 'contour':
+                    createContourPlot();
+                    break;
+                case 'effects':
+                    createMainEffects();
+                    break;
+                case 'interaction':
+                    createInteractionPlot();
+                    break;
+            }
+        }
+
+        function createResponseSurface() {
+            // Generate 3D response surface
+            const size = 30;
+            const x = Array.from({length: size}, (_, i) => -2 + i * 4 / (size - 1));
+            const y = Array.from({length: size}, (_, i) => -2 + i * 4 / (size - 1));
+            const z = [];
+            
+            for (let i = 0; i < size; i++) {
+                z[i] = [];
+                for (let j = 0; j < size; j++) {
+                    // Response surface equation
+                    z[i][j] = 45 + x[i] * 2 - y[j] * 1.5 + x[i] * y[j] * 0.3 - 
+                             x[i] * x[i] * 0.5 - y[j] * y[j] * 0.3;
+                }
+            }
+
+            const data = [{
+                x: x,
+                y: y,
+                z: z,
+                type: 'surface',
+                colorscale: 'Viridis',
+                contours: {
+                    z: {
+                        show: true,
+                        usecolormap: true,
+                        highlightcolor: "#42f462",
+                        project: {z: true}
+                    }
+                }
+            }];
+
+            const layout = {
+                title: {
+                    text: 'Response Surface: CD vs Dose & Focus',
+                    font: {color: '#f59e0b', size: 18}
+                },
+                scene: {
+                    xaxis: {
+                        title: 'Dose (coded)',
+                        titlefont: {color: '#9ca3af'},
+                        tickfont: {color: '#9ca3af'},
+                        gridcolor: '#374151'
+                    },
+                    yaxis: {
+                        title: 'Focus (coded)',
+                        titlefont: {color: '#9ca3af'},
+                        tickfont: {color: '#9ca3af'},
+                        gridcolor: '#374151'
+                    },
+                    zaxis: {
+                        title: 'CD (nm)',
+                        titlefont: {color: '#9ca3af'},
+                        tickfont: {color: '#9ca3af'},
+                        gridcolor: '#374151'
+                    },
+                    bgcolor: 'rgba(0,0,0,0)',
+                    camera: {
+                        eye: {x: 1.5, y: 1.5, z: 1.5}
+                    }
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)'
+            };
+
+            Plotly.newPlot('vizContainer', data, layout, {responsive: true});
+        }
+
+        function createContourPlot() {
+            const size = 50;
+            const x = Array.from({length: size}, (_, i) => -2 + i * 4 / (size - 1));
+            const y = Array.from({length: size}, (_, i) => -2 + i * 4 / (size - 1));
+            const z = [];
+            
+            for (let i = 0; i < size; i++) {
+                z[i] = [];
+                for (let j = 0; j < size; j++) {
+                    z[i][j] = 45 + x[i] * 2 - y[j] * 1.5 + x[i] * y[j] * 0.3 - 
+                             x[i] * x[i] * 0.5 - y[j] * y[j] * 0.3;
+                }
+            }
+
+            const data = [{
+                x: x,
+                y: y,
+                z: z,
+                type: 'contour',
+                colorscale: 'Viridis',
+                contours: {
+                    coloring: 'heatmap',
+                    showlabels: true,
+                    labelfont: {
+                        size: 12,
+                        color: 'white',
+                    }
+                },
+                colorbar: {
+                    title: 'CD (nm)',
+                    titlefont: {color: '#9ca3af'}
+                }
+            }];
+
+            const layout = {
+                title: {
+                    text: 'Contour Plot: CD Response',
+                    font: {color: '#f59e0b', size: 18}
+                },
+                xaxis: {
+                    title: 'Dose (coded)',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                yaxis: {
+                    title: 'Focus (coded)',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)'
+            };
+
+            Plotly.newPlot('vizContainer', data, layout, {responsive: true});
+        }
+
+        function createMainEffects() {
+            const factors = ['Dose', 'Focus', 'PEB Temp'];
+            const effects = [2.1, -1.8, 0.9];
+            
+            const trace = {
+                x: factors,
+                y: effects,
+                type: 'bar',
+                marker: {
+                    color: effects.map(e => e > 0 ? 'rgba(16, 185, 129, 0.8)' : 'rgba(239, 68, 68, 0.8)')
+                }
+            };
+
+            const layout = {
+                title: {
+                    text: 'Main Effects Plot',
+                    font: {color: '#f59e0b', size: 18}
+                },
+                xaxis: {
+                    tickfont: {color: '#9ca3af'}
+                },
+                yaxis: {
+                    title: 'Effect on CD (nm)',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151',
+                    zeroline: true,
+                    zerolinecolor: '#667eea',
+                    zerolinewidth: 2
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)'
+            };
+
+            Plotly.newPlot('vizContainer', [trace], layout, {responsive: true});
+        }
+
+        function createInteractionPlot() {
+            // Interaction plot for Dose x Focus
+            const dose_low = [-2, -1, 0, 1, 2];
+            const dose_high = [-2, -1, 0, 1, 2];
+            
+            const cd_low = dose_low.map(d => 43 + d * 1.5);
+            const cd_high = dose_high.map(d => 47 + d * 2.5);
+
+            const trace1 = {
+                x: dose_low,
+                y: cd_low,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Focus = -100nm',
+                line: {color: '#ef4444', width: 3}
+            };
+
+            const trace2 = {
+                x: dose_high,
+                y: cd_high,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Focus = +100nm',
+                line: {color: '#10b981', width: 3}
+            };
+
+            const layout = {
+                title: {
+                    text: 'Dose × Focus Interaction',
+                    font: {color: '#f59e0b', size: 18}
+                },
+                xaxis: {
+                    title: 'Dose (coded)',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                yaxis: {
+                    title: 'CD (nm)',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                legend: {
+                    font: {color: '#e5e7eb'},
+                    bgcolor: 'rgba(0,0,0,0.5)'
+                }
+            };
+
+            Plotly.newPlot('vizContainer', [trace1, trace2], layout, {responsive: true});
+        }
+
+        // Initialize on load
+        window.addEventListener('load', () => {
+            generateDesign();
+        });
+    </script>
+</body>
+</html>

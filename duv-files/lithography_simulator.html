@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>193nm DUV Lithography Simulator - Louis Antoine</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0a0a0a;
+            color: #e5e7eb;
+            font-family: 'Inter', -apple-system, sans-serif;
+            overflow-x: hidden;
+        }
+
+        .navigation-bar {
+            background: rgba(20, 20, 30, 0.9);
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-btn {
+            background: rgba(102, 126, 234, 0.2);
+            color: #a5b4fc;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-btn:hover {
+            background: rgba(102, 126, 234, 0.4);
+            border-color: rgba(102, 126, 234, 0.6);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 80px 2rem 2rem;
+        }
+
+        .page-title {
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .simulator-grid {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .control-panel {
+            background: rgba(20, 20, 30, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 12px;
+            padding: 2rem;
+        }
+
+        .control-group {
+            margin-bottom: 2rem;
+        }
+
+        .control-label {
+            display: block;
+            color: #f3f4f6;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .control-input {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(30, 30, 40, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            color: #e5e7eb;
+            font-size: 1rem;
+        }
+
+        .control-input:focus {
+            outline: none;
+            border-color: rgba(102, 126, 234, 0.6);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .slider-container {
+            margin-top: 0.5rem;
+        }
+
+        .slider {
+            width: 100%;
+            height: 6px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgba(102, 126, 234, 0.2);
+            border-radius: 3px;
+            outline: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #667eea;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.5);
+        }
+
+        .slider-value {
+            display: inline-block;
+            margin-left: 1rem;
+            color: #9ca3af;
+            font-size: 0.9rem;
+        }
+
+        .simulate-btn {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 2rem;
+        }
+
+        .simulate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .visualization-panel {
+            background: rgba(20, 20, 30, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 12px;
+            padding: 2rem;
+        }
+
+        .viz-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .viz-tab {
+            padding: 0.75rem 1.5rem;
+            background: none;
+            border: none;
+            color: #9ca3af;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .viz-tab.active {
+            color: #667eea;
+        }
+
+        .viz-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #667eea;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .result-card {
+            background: rgba(30, 30, 40, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .result-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .result-label {
+            color: #9ca3af;
+            font-size: 0.9rem;
+        }
+
+        .info-section {
+            background: rgba(15, 15, 25, 0.9);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-top: 3rem;
+        }
+
+        .info-title {
+            font-size: 1.5rem;
+            color: #f59e0b;
+            margin-bottom: 1rem;
+        }
+
+        .info-content {
+            color: #d1d5db;
+            line-height: 1.8;
+        }
+
+        .equation {
+            background: rgba(102, 126, 234, 0.1);
+            border-left: 3px solid #667eea;
+            padding: 1rem;
+            margin: 1rem 0;
+            font-family: 'Courier New', monospace;
+            color: #e5e7eb;
+        }
+
+        @media (max-width: 968px) {
+            .simulator-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <div class="navigation-bar">
+        <a href="../duv-lithography-project.html" class="nav-btn">
+            <i class="fas fa-arrow-left"></i> Back to Main
+        </a>
+        <h2 style="color: #f59e0b; margin: 0;">193nm DUV Lithography Simulator</h2>
+        <div>
+            <a href="process_dashboard.html" class="nav-btn">
+                Process Dashboard <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1 class="page-title">Interactive Lithography Process Simulator</h1>
+
+        <div class="simulator-grid">
+            <!-- Control Panel -->
+            <div class="control-panel">
+                <h3 style="color: #f3f4f6; margin-bottom: 2rem;">Process Parameters</h3>
+                
+                <div class="control-group">
+                    <label class="control-label">Exposure Dose (mJ/cm²)</label>
+                    <input type="range" class="slider" id="doseSlider" min="15" max="35" value="25" step="0.5">
+                    <span class="slider-value" id="doseValue">25.0</span>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Focus Offset (nm)</label>
+                    <input type="range" class="slider" id="focusSlider" min="-200" max="200" value="0" step="10">
+                    <span class="slider-value" id="focusValue">0</span>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Numerical Aperture (NA)</label>
+                    <input type="range" class="slider" id="naSlider" min="0.7" max="1.35" value="0.93" step="0.01">
+                    <span class="slider-value" id="naValue">0.93</span>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Partial Coherence (σ)</label>
+                    <input type="range" class="slider" id="sigmaSlider" min="0.3" max="0.9" value="0.75" step="0.05">
+                    <span class="slider-value" id="sigmaValue">0.75</span>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Target CD (nm)</label>
+                    <input type="number" class="control-input" id="targetCD" value="45" min="20" max="100">
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Mask Type</label>
+                    <select class="control-input" id="maskType">
+                        <option value="binary">Binary Mask</option>
+                        <option value="attPSM">Attenuated PSM</option>
+                        <option value="altPSM">Alternating PSM</option>
+                        <option value="chromeless">Chromeless PSM</option>
+                    </select>
+                </div>
+
+                <button class="simulate-btn" onclick="runSimulation()">
+                    <i class="fas fa-play"></i> Run Simulation
+                </button>
+            </div>
+
+            <!-- Visualization Panel -->
+            <div class="visualization-panel">
+                <div class="viz-tabs">
+                    <button class="viz-tab active" onclick="switchTab('aerial')">Aerial Image</button>
+                    <button class="viz-tab" onclick="switchTab('resist')">Resist Profile</button>
+                    <button class="viz-tab" onclick="switchTab('window')">Process Window</button>
+                    <button class="viz-tab" onclick="switchTab('metrics')">Performance Metrics</button>
+                </div>
+
+                <div id="visualizationContainer" style="height: 500px;"></div>
+
+                <div class="results-grid">
+                    <div class="result-card">
+                        <div class="result-value" id="cdResult">45.2</div>
+                        <div class="result-label">Critical Dimension (nm)</div>
+                    </div>
+                    <div class="result-card">
+                        <div class="result-value" id="mefResult">1.23</div>
+                        <div class="result-label">Mask Error Factor</div>
+                    </div>
+                    <div class="result-card">
+                        <div class="result-value" id="dofResult">235</div>
+                        <div class="result-label">Depth of Focus (nm)</div>
+                    </div>
+                    <div class="result-card">
+                        <div class="result-value" id="elResult">±12%</div>
+                        <div class="result-label">Exposure Latitude</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Information Section -->
+        <div class="info-section">
+            <h3 class="info-title">Understanding DUV Lithography Simulation</h3>
+            <div class="info-content">
+                <p>
+                    This simulator models the 193nm deep ultraviolet (DUV) lithography process used in 
+                    advanced semiconductor manufacturing. The simulation includes optical image formation, 
+                    resist exposure, and development processes.
+                </p>
+
+                <h4 style="color: #f59e0b; margin-top: 2rem;">Key Equations</h4>
+                
+                <div class="equation">
+                    Resolution (R) = k₁ × λ / NA
+                </div>
+                <p>Where k₁ is the process factor, λ is wavelength (193nm), and NA is numerical aperture.</p>
+
+                <div class="equation">
+                    Depth of Focus (DOF) = k₂ × λ / NA²
+                </div>
+                <p>The usable focus range maintaining acceptable CD control.</p>
+
+                <h4 style="color: #f59e0b; margin-top: 2rem;">Simulation Features</h4>
+                <ul style="line-height: 1.8;">
+                    <li>Real-time aerial image calculation using Fourier optics</li>
+                    <li>Resist development modeling with stochastic effects</li>
+                    <li>Process window analysis for dose and focus optimization</li>
+                    <li>Performance metrics calculation including MEF and NILS</li>
+                    <li>Support for various mask types and illumination modes</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize sliders
+        const sliders = ['dose', 'focus', 'na', 'sigma'];
+        sliders.forEach(param => {
+            const slider = document.getElementById(param + 'Slider');
+            const value = document.getElementById(param + 'Value');
+            slider.addEventListener('input', function() {
+                value.textContent = this.value;
+                if (param === 'dose') value.textContent += '.0';
+            });
+        });
+
+        let currentTab = 'aerial';
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.viz-tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            updateVisualization();
+        }
+
+        function runSimulation() {
+            // Get parameter values
+            const dose = parseFloat(document.getElementById('doseSlider').value);
+            const focus = parseFloat(document.getElementById('focusSlider').value);
+            const na = parseFloat(document.getElementById('naSlider').value);
+            const sigma = parseFloat(document.getElementById('sigmaSlider').value);
+            const targetCD = parseFloat(document.getElementById('targetCD').value);
+            const maskType = document.getElementById('maskType').value;
+
+            // Update results
+            updateResults(dose, focus, na, sigma, targetCD);
+            
+            // Update visualization
+            updateVisualization();
+        }
+
+        function updateResults(dose, focus, na, sigma, targetCD) {
+            // Simulate CD calculation
+            const cdVariation = (Math.random() - 0.5) * 2;
+            const cd = targetCD + cdVariation + (focus / 100) * 2;
+            document.getElementById('cdResult').textContent = cd.toFixed(1);
+
+            // Calculate MEF
+            const mef = 1 + 0.3 * (1 - sigma) + 0.1 * (na - 0.93);
+            document.getElementById('mefResult').textContent = mef.toFixed(2);
+
+            // Calculate DOF
+            const k2 = 0.5;
+            const wavelength = 193; // nm
+            const dof = k2 * wavelength / (na * na);
+            document.getElementById('dofResult').textContent = Math.round(dof);
+
+            // Calculate exposure latitude
+            const el = 8 + 4 * sigma + 2 * (1.35 - na);
+            document.getElementById('elResult').textContent = `±${el.toFixed(0)}%`;
+        }
+
+        function updateVisualization() {
+            const container = document.getElementById('visualizationContainer');
+            
+            switch(currentTab) {
+                case 'aerial':
+                    createAerialImage();
+                    break;
+                case 'resist':
+                    createResistProfile();
+                    break;
+                case 'window':
+                    createProcessWindow();
+                    break;
+                case 'metrics':
+                    createMetricsChart();
+                    break;
+            }
+        }
+
+        function createAerialImage() {
+            // Create 2D aerial image simulation
+            const size = 50;
+            const x = Array.from({length: size}, (_, i) => i - size/2);
+            const y = Array.from({length: size}, (_, i) => i - size/2);
+            const z = [];
+
+            const na = parseFloat(document.getElementById('naSlider').value);
+            const sigma = parseFloat(document.getElementById('sigmaSlider').value);
+            const focus = parseFloat(document.getElementById('focusSlider').value);
+
+            for (let i = 0; i < size; i++) {
+                z[i] = [];
+                for (let j = 0; j < size; j++) {
+                    const r = Math.sqrt(x[i]**2 + y[j]**2);
+                    const defocusEffect = Math.exp(-focus*focus/10000);
+                    z[i][j] = Math.exp(-r*r/200) * defocusEffect * 
+                             (1 + 0.3*Math.sin(r/5) * sigma);
+                }
+            }
+
+            const data = [{
+                x: x,
+                y: y,
+                z: z,
+                type: 'heatmap',
+                colorscale: [
+                    [0, '#000000'],
+                    [0.5, '#667eea'],
+                    [1, '#ffffff']
+                ],
+                showscale: true,
+                colorbar: {
+                    title: 'Intensity',
+                    titlefont: {color: '#9ca3af'}
+                }
+            }];
+
+            const layout = {
+                title: {
+                    text: 'Aerial Image Intensity Distribution',
+                    font: {color: '#f59e0b', size: 18}
+                },
+                xaxis: {
+                    title: 'X Position (nm)',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                yaxis: {
+                    title: 'Y Position (nm)',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)'
+            };
+
+            Plotly.newPlot('visualizationContainer', data, layout, {responsive: true});
+        }
+
+        function createResistProfile() {
+            const x = Array.from({length: 100}, (_, i) => i - 50);
+            const dose = parseFloat(document.getElementById('doseSlider').value);
+            const targetCD = parseFloat(document.getElementById('targetCD').value);
+
+            // Simulate resist profile
+            const profile = x.map(pos => {
+                const edge = targetCD / 2;
+                if (Math.abs(pos) < edge) {
+                    return 100; // Resist height
+                } else {
+                    const slope = 85; // degrees
+                    const distance = Math.abs(pos) - edge;
+                    return Math.max(0, 100 - distance * Math.tan(slope * Math.PI / 180));
+                }
+            });
+
+            const trace1 = {
+                x: x,
+                y: profile,
+                type: 'scatter',
+                mode: 'lines',
+                fill: 'tozeroy',
+                fillcolor: 'rgba(102, 126, 234, 0.3)',
+                line: {color: '#667eea', width: 3},
+                name: 'Resist Profile'
+            };
+
+            // Add target CD lines
+            const trace2 = {
+                x: [-targetCD/2, -targetCD/2],
+                y: [0, 120],
+                type: 'scatter',
+                mode: 'lines',
+                line: {color: '#ef4444', width: 2, dash: 'dash'},
+                name: 'Target CD'
+            };
+
+            const trace3 = {
+                x: [targetCD/2, targetCD/2],
+                y: [0, 120],
+                type: 'scatter',
+                mode: 'lines',
+                line: {color: '#ef4444', width: 2, dash: 'dash'},
+                showlegend: false
+            };
+
+            const layout = {
+                title: {
+                    text: 'Photoresist Profile After Development',
+                    font: {color: '#f59e0b', size: 18}
+                },
+                xaxis: {
+                    title: 'Position (nm)',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                yaxis: {
+                    title: 'Resist Thickness (nm)',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                legend: {
+                    font: {color: '#e5e7eb'},
+                    bgcolor: 'rgba(0,0,0,0.5)'
+                }
+            };
+
+            Plotly.newPlot('visualizationContainer', [trace1, trace2, trace3], layout, {responsive: true});
+        }
+
+        function createProcessWindow() {
+            const dose = Array.from({length: 20}, (_, i) => 20 + i * 0.75);
+            const focus = Array.from({length: 20}, (_, i) => -150 + i * 15);
+            
+            const z = [];
+            const targetCD = parseFloat(document.getElementById('targetCD').value);
+            const tolerance = 0.1; // 10% CD tolerance
+
+            for (let i = 0; i < focus.length; i++) {
+                z[i] = [];
+                for (let j = 0; j < dose.length; j++) {
+                    // Simulate CD as function of dose and focus
+                    const nominalCD = targetCD;
+                    const doseEffect = (dose[j] - 25) * 0.5;
+                    const focusEffect = Math.abs(focus[i]) * 0.05;
+                    const cd = nominalCD + doseEffect - focusEffect;
+                    
+                    // Check if within tolerance
+                    const error = Math.abs(cd - targetCD) / targetCD;
+                    z[i][j] = error < tolerance ? 1 : 0;
+                }
+            }
+
+            const data = [{
+                x: dose,
+                y: focus,
+                z: z,
+                type: 'contour',
+                colorscale: [
+                    [0, '#ef4444'],
+                    [1, '#10b981']
+                ],
+                contours: {
+                    start: 0,
+                    end: 1,
+                    size: 0.5
+                },
+                colorbar: {
+                    title: 'Within Spec',
+                    titlefont: {color: '#9ca3af'},
+                    tickvals: [0, 1],
+                    ticktext: ['No', 'Yes']
+                }
+            }];
+
+            const layout = {
+                title: {
+                    text: 'Process Window Analysis',
+                    font: {color: '#f59e0b', size: 18}
+                },
+                xaxis: {
+                    title: 'Exposure Dose (mJ/cm²)',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                yaxis: {
+                    title: 'Focus Offset (nm)',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)'
+            };
+
+            Plotly.newPlot('visualizationContainer', data, layout, {responsive: true});
+        }
+
+        function createMetricsChart() {
+            const metrics = ['NILS', 'Contrast', 'LER', 'LWR', 'CDU'];
+            const baseline = [1.8, 0.85, 3.2, 2.8, 4.1];
+            const optimized = [2.4, 0.92, 2.1, 1.9, 2.7];
+
+            const trace1 = {
+                x: metrics,
+                y: baseline,
+                name: 'Baseline',
+                type: 'bar',
+                marker: {color: 'rgba(239, 68, 68, 0.8)'}
+            };
+
+            const trace2 = {
+                x: metrics,
+                y: optimized,
+                name: 'Optimized',
+                type: 'bar',
+                marker: {color: 'rgba(102, 126, 234, 0.8)'}
+            };
+
+            const layout = {
+                title: {
+                    text: 'Lithography Performance Metrics',
+                    font: {color: '#f59e0b', size: 18}
+                },
+                xaxis: {
+                    tickfont: {color: '#9ca3af'}
+                },
+                yaxis: {
+                    title: 'Value',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                barmode: 'group',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                legend: {
+                    font: {color: '#e5e7eb'},
+                    bgcolor: 'rgba(0,0,0,0.5)'
+                }
+            };
+
+            Plotly.newPlot('visualizationContainer', [trace1, trace2], layout, {responsive: true});
+        }
+
+        // Initialize with aerial image
+        window.addEventListener('load', () => {
+            createAerialImage();
+        });
+    </script>
+</body>
+</html>

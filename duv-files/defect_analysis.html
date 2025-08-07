@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Defect Analysis Tool - DUV Lithography</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0a0a0a;
+            color: #e5e7eb;
+            font-family: 'Inter', -apple-system, sans-serif;
+            overflow-x: hidden;
+        }
+
+        .navigation-bar {
+            background: rgba(20, 20, 30, 0.9);
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-btn {
+            background: rgba(102, 126, 234, 0.2);
+            color: #a5b4fc;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-btn:hover {
+            background: rgba(102, 126, 234, 0.4);
+            border-color: rgba(102, 126, 234, 0.6);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 80px 2rem 2rem;
+        }
+
+        .page-title {
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .page-subtitle {
+            text-align: center;
+            color: #9ca3af;
+            font-size: 1.2rem;
+            margin-bottom: 3rem;
+        }
+
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .control-panel {
+            background: rgba(20, 20, 30, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 12px;
+            padding: 2rem;
+        }
+
+        .analysis-panel {
+            background: rgba(20, 20, 30, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 12px;
+            padding: 2rem;
+        }
+
+        .control-group {
+            margin-bottom: 2rem;
+        }
+
+        .control-label {
+            display: block;
+            color: #f3f4f6;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .control-input {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(30, 30, 40, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            color: #e5e7eb;
+            font-size: 1rem;
+        }
+
+        .analyze-btn {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 2rem;
+        }
+
+        .analyze-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .defect-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(30, 30, 40, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: #9ca3af;
+            font-size: 0.9rem;
+        }
+
+        .visualization-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .viz-container {
+            background: rgba(20, 20, 30, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 12px;
+            padding: 2rem;
+        }
+
+        .viz-title {
+            font-size: 1.5rem;
+            color: #f3f4f6;
+            margin-bottom: 1rem;
+        }
+
+        .classification-results {
+            background: rgba(15, 15, 25, 0.9);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-top: 2rem;
+        }
+
+        .classification-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .class-item {
+            background: rgba(30, 30, 40, 0.8);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .class-item.bridge {
+            border-color: #ef4444;
+        }
+
+        .class-item.missing {
+            border-color: #f59e0b;
+        }
+
+        .class-item.particle {
+            border-color: #3b82f6;
+        }
+
+        .class-item.scratch {
+            border-color: #10b981;
+        }
+
+        .class-probability {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .class-name {
+            color: #9ca3af;
+            font-size: 0.9rem;
+        }
+
+        .upload-area {
+            border: 2px dashed rgba(102, 126, 234, 0.5);
+            border-radius: 12px;
+            padding: 3rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .upload-area:hover {
+            border-color: rgba(102, 126, 234, 0.8);
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        @media (max-width: 1200px) {
+            .analysis-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .visualization-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <div class="navigation-bar">
+        <a href="process_dashboard.html" class="nav-btn">
+            <i class="fas fa-arrow-left"></i> Process Dashboard
+        </a>
+        <h2 style="color: #f59e0b; margin: 0;">Defect Analysis Tool</h2>
+        <div>
+            <a href="doe_tool.html" class="nav-btn">
+                DOE Tool <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1 class="page-title">Advanced Defect Classification & Analysis</h1>
+        <p class="page-subtitle">Machine Learning-Powered Defect Detection for 193nm DUV Lithography</p>
+
+        <div class="analysis-grid">
+            <!-- Control Panel -->
+            <div class="control-panel">
+                <h3 style="color: #f3f4f6; margin-bottom: 2rem;">Analysis Parameters</h3>
+                
+                <div class="control-group">
+                    <label class="control-label">Wafer ID</label>
+                    <input type="text" class="control-input" id="waferId" value="W2024-001" placeholder="Enter wafer ID">
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Process Step</label>
+                    <select class="control-input" id="processStep">
+                        <option value="post-exposure">Post Exposure</option>
+                        <option value="post-develop" selected>Post Development</option>
+                        <option value="post-etch">Post Etch</option>
+                        <option value="final-inspection">Final Inspection</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Inspection Tool</label>
+                    <select class="control-input" id="inspectionTool">
+                        <option value="sem" selected>SEM - High Resolution</option>
+                        <option value="optical">Optical Inspection</option>
+                        <option value="afm">AFM - Surface Topology</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Detection Sensitivity</label>
+                    <input type="range" class="control-input" id="sensitivity" min="0" max="100" value="85">
+                    <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
+                        <span style="color: #9ca3af; font-size: 0.9rem;">Low</span>
+                        <span style="color: #667eea; font-size: 0.9rem;" id="sensitivityValue">85%</span>
+                        <span style="color: #9ca3af; font-size: 0.9rem;">High</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Analysis Region</label>
+                    <select class="control-input" id="analysisRegion">
+                        <option value="full-wafer" selected>Full Wafer</option>
+                        <option value="center">Center (100mm)</option>
+                        <option value="edge">Edge Region</option>
+                        <option value="custom">Custom ROI</option>
+                    </select>
+                </div>
+
+                <button class="analyze-btn" onclick="runDefectAnalysis()">
+                    <i class="fas fa-search"></i> Run Defect Analysis
+                </button>
+
+                <div class="defect-stats" style="margin-top: 2rem;">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalDefects">127</div>
+                        <div class="stat-label">Total Defects</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="defectDensity">0.051</div>
+                        <div class="stat-label">Defects/cm²</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="yieldImpact">-2.3%</div>
+                        <div class="stat-label">Yield Impact</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analysis Panel -->
+            <div class="analysis-panel">
+                <h3 style="color: #f3f4f6; margin-bottom: 2rem;">SEM Image Analysis</h3>
+                
+                <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                    <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                    <p style="color: #9ca3af; margin-bottom: 0.5rem;">Drop SEM images here or click to upload</p>
+                    <p style="color: #6b7280; font-size: 0.9rem;">Supports: TIFF, PNG, JPG (up to 50MB)</p>
+                    <input type="file" id="fileInput" style="display: none;" accept="image/*" multiple>
+                </div>
+
+                <div id="waferMap" style="height: 400px; margin-top: 2rem;"></div>
+            </div>
+        </div>
+
+        <!-- Classification Results -->
+        <div class="classification-results">
+            <h3 style="color: #f3f4f6; margin-bottom: 1rem;">Defect Classification Results</h3>
+            <div class="classification-grid">
+                <div class="class-item bridge">
+                    <div class="class-probability" style="color: #ef4444;">42%</div>
+                    <div class="class-name">Bridge Defects</div>
+                </div>
+                <div class="class-item missing">
+                    <div class="class-probability" style="color: #f59e0b;">28%</div>
+                    <div class="class-name">Missing Pattern</div>
+                </div>
+                <div class="class-item particle">
+                    <div class="class-probability" style="color: #3b82f6;">18%</div>
+                    <div class="class-name">Particles</div>
+                </div>
+                <div class="class-item scratch">
+                    <div class="class-probability" style="color: #10b981;">12%</div>
+                    <div class="class-name">Scratches</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Visualization Grid -->
+        <div class="visualization-grid">
+            <div class="viz-container">
+                <h3 class="viz-title">Defect Size Distribution</h3>
+                <div id="sizeDistChart" style="height: 350px;"></div>
+            </div>
+            <div class="viz-container">
+                <h3 class="viz-title">Spatial Clustering Analysis</h3>
+                <div id="clusterChart" style="height: 350px;"></div>
+            </div>
+            <div class="viz-container">
+                <h3 class="viz-title">Root Cause Correlation</h3>
+                <div id="correlationChart" style="height: 350px;"></div>
+            </div>
+            <div class="viz-container">
+                <h3 class="viz-title">Defect Trend Analysis</h3>
+                <div id="trendChart" style="height: 350px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Update sensitivity value display
+        document.getElementById('sensitivity').addEventListener('input', function() {
+            document.getElementById('sensitivityValue').textContent = this.value + '%';
+        });
+
+        // Wafer map visualization
+        function createWaferMap() {
+            const numPoints = 200;
+            const waferRadius = 150; // mm
+            const defects = [];
+
+            for (let i = 0; i < numPoints; i++) {
+                const r = Math.random() * waferRadius;
+                const theta = Math.random() * 2 * Math.PI;
+                const x = r * Math.cos(theta);
+                const y = r * Math.sin(theta);
+                
+                if (Math.sqrt(x*x + y*y) <= waferRadius) {
+                    defects.push({
+                        x: x,
+                        y: y,
+                        size: Math.random() * 5 + 1,
+                        type: ['Bridge', 'Missing', 'Particle', 'Scratch'][Math.floor(Math.random() * 4)]
+                    });
+                }
+            }
+
+            const trace = {
+                x: defects.map(d => d.x),
+                y: defects.map(d => d.y),
+                mode: 'markers',
+                type: 'scatter',
+                marker: {
+                    size: defects.map(d => d.size * 3),
+                    color: defects.map(d => {
+                        switch(d.type) {
+                            case 'Bridge': return '#ef4444';
+                            case 'Missing': return '#f59e0b';
+                            case 'Particle': return '#3b82f6';
+                            case 'Scratch': return '#10b981';
+                        }
+                    }),
+                    opacity: 0.8
+                },
+                text: defects.map(d => `Type: ${d.type}<br>Size: ${d.size.toFixed(1)}μm`),
+                hoverinfo: 'text'
+            };
+
+            // Add wafer outline
+            const theta = Array.from({length: 100}, (_, i) => i * 2 * Math.PI / 100);
+            const waferOutline = {
+                x: theta.map(t => waferRadius * Math.cos(t)),
+                y: theta.map(t => waferRadius * Math.sin(t)),
+                mode: 'lines',
+                type: 'scatter',
+                line: {color: '#667eea', width: 2},
+                showlegend: false
+            };
+
+            const layout = {
+                title: {
+                    text: 'Wafer Defect Map',
+                    font: {color: '#f59e0b', size: 18}
+                },
+                xaxis: {
+                    title: 'X Position (mm)',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151',
+                    range: [-160, 160]
+                },
+                yaxis: {
+                    title: 'Y Position (mm)',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151',
+                    range: [-160, 160],
+                    scaleanchor: 'x'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                showlegend: false
+            };
+
+            Plotly.newPlot('waferMap', [trace, waferOutline], layout, {responsive: true});
+        }
+
+        // Size distribution chart
+        function createSizeDistribution() {
+            const sizes = [];
+            for (let i = 0; i < 500; i++) {
+                sizes.push(Math.random() * 10 * Math.exp(-Math.random() * 2));
+            }
+
+            const trace = {
+                x: sizes,
+                type: 'histogram',
+                nbinsx: 30,
+                marker: {
+                    color: 'rgba(102, 126, 234, 0.8)',
+                    line: {
+                        color: 'rgba(102, 126, 234, 1)',
+                        width: 1
+                    }
+                }
+            };
+
+            const layout = {
+                xaxis: {
+                    title: 'Defect Size (μm)',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                yaxis: {
+                    title: 'Count',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)'
+            };
+
+            Plotly.newPlot('sizeDistChart', [trace], layout, {responsive: true});
+        }
+
+        // Clustering analysis
+        function createClusterAnalysis() {
+            // Generate clustered defect data
+            const clusters = [];
+            const numClusters = 5;
+            
+            for (let c = 0; c < numClusters; c++) {
+                const centerX = (Math.random() - 0.5) * 200;
+                const centerY = (Math.random() - 0.5) * 200;
+                const numPoints = Math.floor(Math.random() * 30) + 10;
+                
+                for (let i = 0; i < numPoints; i++) {
+                    clusters.push({
+                        x: centerX + (Math.random() - 0.5) * 40,
+                        y: centerY + (Math.random() - 0.5) * 40,
+                        cluster: c
+                    });
+                }
+            }
+
+            const trace = {
+                x: clusters.map(d => d.x),
+                y: clusters.map(d => d.y),
+                mode: 'markers',
+                type: 'scatter',
+                marker: {
+                    size: 8,
+                    color: clusters.map(d => d.cluster),
+                    colorscale: 'Viridis',
+                    showscale: true,
+                    colorbar: {
+                        title: 'Cluster ID',
+                        titlefont: {color: '#9ca3af'}
+                    }
+                }
+            };
+
+            const layout = {
+                xaxis: {
+                    title: 'X Position (mm)',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                yaxis: {
+                    title: 'Y Position (mm)',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)'
+            };
+
+            Plotly.newPlot('clusterChart', [trace], layout, {responsive: true});
+        }
+
+        // Correlation chart
+        function createCorrelationChart() {
+            const parameters = ['Dose', 'Focus', 'PEB Temp', 'Dev Time', 'CD', 'Overlay'];
+            const correlationMatrix = [];
+            
+            for (let i = 0; i < parameters.length; i++) {
+                correlationMatrix[i] = [];
+                for (let j = 0; j < parameters.length; j++) {
+                    if (i === j) {
+                        correlationMatrix[i][j] = 1;
+                    } else {
+                        correlationMatrix[i][j] = (Math.random() - 0.5) * 2;
+                    }
+                }
+            }
+
+            const data = [{
+                z: correlationMatrix,
+                x: parameters,
+                y: parameters,
+                type: 'heatmap',
+                colorscale: [
+                    [0, '#ef4444'],
+                    [0.5, '#ffffff'],
+                    [1, '#10b981']
+                ],
+                colorbar: {
+                    title: 'Correlation',
+                    titlefont: {color: '#9ca3af'}
+                }
+            }];
+
+            const layout = {
+                xaxis: {
+                    tickfont: {color: '#9ca3af'},
+                    tickangle: -45
+                },
+                yaxis: {
+                    tickfont: {color: '#9ca3af'}
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)'
+            };
+
+            Plotly.newPlot('correlationChart', data, layout, {responsive: true});
+        }
+
+        // Trend analysis
+        function createTrendAnalysis() {
+            const days = 30;
+            const dates = [];
+            const bridgeDefects = [];
+            const missingDefects = [];
+            const particleDefects = [];
+            
+            for (let i = 0; i < days; i++) {
+                const date = new Date();
+                date.setDate(date.getDate() - (days - i));
+                dates.push(date);
+                
+                bridgeDefects.push(40 + Math.random() * 20 - 10);
+                missingDefects.push(25 + Math.random() * 15 - 7.5);
+                particleDefects.push(15 + Math.random() * 10 - 5);
+            }
+
+            const trace1 = {
+                x: dates,
+                y: bridgeDefects,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Bridge Defects',
+                line: {color: '#ef4444', width: 2}
+            };
+
+            const trace2 = {
+                x: dates,
+                y: missingDefects,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Missing Pattern',
+                line: {color: '#f59e0b', width: 2}
+            };
+
+            const trace3 = {
+                x: dates,
+                y: particleDefects,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Particles',
+                line: {color: '#3b82f6', width: 2}
+            };
+
+            const layout = {
+                xaxis: {
+                    title: 'Date',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                yaxis: {
+                    title: 'Defect Count',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                legend: {
+                    font: {color: '#e5e7eb'},
+                    bgcolor: 'rgba(0,0,0,0.5)'
+                }
+            };
+
+            Plotly.newPlot('trendChart', [trace1, trace2, trace3], layout, {responsive: true});
+        }
+
+        // Run defect analysis
+        function runDefectAnalysis() {
+            // Simulate analysis running
+            const btn = event.target;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+            btn.disabled = true;
+
+            setTimeout(() => {
+                // Update statistics
+                document.getElementById('totalDefects').textContent = Math.floor(Math.random() * 50) + 100;
+                document.getElementById('defectDensity').textContent = (Math.random() * 0.05 + 0.03).toFixed(3);
+                document.getElementById('yieldImpact').textContent = '-' + (Math.random() * 3 + 1).toFixed(1) + '%';
+
+                // Update classification percentages
+                const percentages = document.querySelectorAll('.class-probability');
+                percentages.forEach(el => {
+                    el.textContent = Math.floor(Math.random() * 40 + 10) + '%';
+                });
+
+                // Refresh visualizations
+                createWaferMap();
+                createSizeDistribution();
+                createClusterAnalysis();
+                createCorrelationChart();
+                createTrendAnalysis();
+
+                btn.innerHTML = '<i class="fas fa-search"></i> Run Defect Analysis';
+                btn.disabled = false;
+            }, 2000);
+        }
+
+        // Initialize visualizations
+        window.addEventListener('load', () => {
+            createWaferMap();
+            createSizeDistribution();
+            createClusterAnalysis();
+            createCorrelationChart();
+            createTrendAnalysis();
+        });
+
+        // File upload handler
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                console.log(`Uploaded ${files.length} files for analysis`);
+                // In a real implementation, this would process the images
+                runDefectAnalysis();
+            }
+        });
+    </script>
+</body>
+</html>
