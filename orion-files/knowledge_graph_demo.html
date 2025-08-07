@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knowledge Graph Explorer - ORION</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/vis-network.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            background-color: #0a0a0a;
+            color: #e5e7eb;
+            font-family: 'Inter', -apple-system, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .navigation-bar {
+            background: rgba(20, 20, 30, 0.9);
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-btn {
+            background: rgba(102, 126, 234, 0.2);
+            color: #a5b4fc;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-btn:hover {
+            background: rgba(102, 126, 234, 0.4);
+            border-color: rgba(102, 126, 234, 0.6);
+            transform: translateY(-2px);
+        }
+
+        .main-container {
+            display: flex;
+            height: calc(100vh - 60px);
+            overflow: hidden;
+        }
+
+        .control-panel {
+            width: 350px;
+            background: rgba(20, 20, 30, 0.8);
+            border-right: 1px solid rgba(102, 126, 234, 0.2);
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
+        .graph-container {
+            flex: 1;
+            position: relative;
+            background: radial-gradient(ellipse at center, rgba(26, 26, 46, 0.5) 0%, rgba(10, 10, 10, 0.8) 100%);
+        }
+
+        #mynetwork {
+            width: 100%;
+            height: 100%;
+        }
+
+        .section-title {
+            color: #667eea;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 0.8rem;
+            background: rgba(30, 30, 40, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            color: #e5e7eb;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .filter-group {
+            margin-bottom: 2rem;
+        }
+
+        .filter-label {
+            color: #9ca3af;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #d1d5db;
+            cursor: pointer;
+        }
+
+        .checkbox-label input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .info-panel {
+            background: rgba(30, 30, 40, 0.9);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .info-title {
+            color: #f59e0b;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
+
+        .info-content {
+            color: #d1d5db;
+            line-height: 1.6;
+        }
+
+        .property-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .property-item {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.2);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .property-name {
+            color: #9ca3af;
+        }
+
+        .property-value {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .legend {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(20, 20, 30, 0.9);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 12px;
+            padding: 1rem;
+            z-index: 100;
+        }
+
+        .legend-title {
+            color: #f59e0b;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 0.3rem 0;
+            color: #d1d5db;
+            font-size: 0.9rem;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(40, 40, 50, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            color: #667eea;
+            font-weight: 700;
+        }
+
+        .stat-label {
+            color: #9ca3af;
+            font-size: 0.8rem;
+            margin-top: 0.3rem;
+        }
+
+        .visualization-panel {
+            background: rgba(20, 20, 30, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <div class="navigation-bar">
+        <a href="../orion-nanomaterials-research.html" class="nav-btn">
+            <i class="fas fa-arrow-left"></i> Back to ORION
+        </a>
+        <h2 style="color: #f59e0b; margin: 0;">Knowledge Graph Explorer</h2>
+        <div>
+            <a href="material_prediction_demo.html" class="nav-btn">
+                Material Prediction <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <h3 class="section-title">Search & Filter</h3>
+            
+            <input type="text" class="search-box" id="searchInput" placeholder="Search materials, properties, or relationships...">
+            
+            <div class="filter-group">
+                <label class="filter-label">Node Types</label>
+                <div class="checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="filterMaterial" checked> Materials
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="filterProperty" checked> Properties
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="filterMethod" checked> Methods
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="filterApplication" checked> Applications
+                    </label>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label">Relationship Types</label>
+                <div class="checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="relHasProperty" checked> Has Property
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="relSynthesizedBy" checked> Synthesized By
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="relUsedIn" checked> Used In
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="relSimilarTo" checked> Similar To
+                    </label>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="nodeCount">0</div>
+                    <div class="stat-label">Nodes</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="edgeCount">0</div>
+                    <div class="stat-label">Edges</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="clusterCount">0</div>
+                    <div class="stat-label">Clusters</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="densityValue">0</div>
+                    <div class="stat-label">Density</div>
+                </div>
+            </div>
+
+            <div class="info-panel" id="nodeInfo" style="display: none;">
+                <h4 class="info-title" id="nodeTitle">Node Information</h4>
+                <div class="info-content" id="nodeContent"></div>
+            </div>
+
+            <div class="visualization-panel">
+                <h4 class="section-title">Property Distribution</h4>
+                <div id="propertyChart" style="height: 300px;"></div>
+            </div>
+        </div>
+
+        <!-- Graph Container -->
+        <div class="graph-container">
+            <div id="mynetwork"></div>
+            
+            <div class="legend">
+                <div class="legend-title">Node Types</div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #667eea;"></div>
+                    <span>Materials</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #10b981;"></div>
+                    <span>Properties</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #f59e0b;"></div>
+                    <span>Methods</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ef4444;"></div>
+                    <span>Applications</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize network
+        let network = null;
+        let nodes = null;
+        let edges = null;
+        let allNodes = [];
+        let allEdges = [];
+
+        // Generate sample knowledge graph data
+        function generateKnowledgeGraphData() {
+            const materials = [
+                {id: 'mat1', label: 'TiO₂', type: 'material', properties: {bandgap: 3.2, density: 4.23}},
+                {id: 'mat2', label: 'ZnO', type: 'material', properties: {bandgap: 3.37, density: 5.61}},
+                {id: 'mat3', label: 'HfO₂', type: 'material', properties: {bandgap: 5.8, density: 9.68}},
+                {id: 'mat4', label: 'Al₂O₃', type: 'material', properties: {bandgap: 8.8, density: 3.95}},
+                {id: 'mat5', label: 'SiO₂', type: 'material', properties: {bandgap: 9.0, density: 2.65}},
+                {id: 'mat6', label: 'WO₃', type: 'material', properties: {bandgap: 2.7, density: 7.16}},
+                {id: 'mat7', label: 'Fe₂O₃', type: 'material', properties: {bandgap: 2.1, density: 5.24}},
+                {id: 'mat8', label: 'CuO', type: 'material', properties: {bandgap: 1.2, density: 6.31}}
+            ];
+
+            const properties = [
+                {id: 'prop1', label: 'High Bandgap', type: 'property'},
+                {id: 'prop2', label: 'Photocatalytic', type: 'property'},
+                {id: 'prop3', label: 'Memristive', type: 'property'},
+                {id: 'prop4', label: 'Transparent', type: 'property'},
+                {id: 'prop5', label: 'High-k Dielectric', type: 'property'},
+                {id: 'prop6', label: 'Semiconducting', type: 'property'}
+            ];
+
+            const methods = [
+                {id: 'meth1', label: 'ALD', type: 'method'},
+                {id: 'meth2', label: 'Sol-Gel', type: 'method'},
+                {id: 'meth3', label: 'Sputtering', type: 'method'},
+                {id: 'meth4', label: 'CVD', type: 'method'},
+                {id: 'meth5', label: 'Hydrothermal', type: 'method'}
+            ];
+
+            const applications = [
+                {id: 'app1', label: 'Solar Cells', type: 'application'},
+                {id: 'app2', label: 'Memristors', type: 'application'},
+                {id: 'app3', label: 'Photocatalysis', type: 'application'},
+                {id: 'app4', label: 'Gate Dielectric', type: 'application'},
+                {id: 'app5', label: 'Gas Sensors', type: 'application'}
+            ];
+
+            // Combine all nodes
+            allNodes = [...materials, ...properties, ...methods, ...applications];
+
+            // Generate edges
+            allEdges = [
+                // Material-Property relationships
+                {from: 'mat1', to: 'prop2', type: 'has_property'},
+                {from: 'mat1', to: 'prop4', type: 'has_property'},
+                {from: 'mat2', to: 'prop2', type: 'has_property'},
+                {from: 'mat2', to: 'prop6', type: 'has_property'},
+                {from: 'mat3', to: 'prop3', type: 'has_property'},
+                {from: 'mat3', to: 'prop5', type: 'has_property'},
+                {from: 'mat4', to: 'prop1', type: 'has_property'},
+                {from: 'mat4', to: 'prop5', type: 'has_property'},
+                {from: 'mat5', to: 'prop1', type: 'has_property'},
+                {from: 'mat5', to: 'prop4', type: 'has_property'},
+                {from: 'mat6', to: 'prop2', type: 'has_property'},
+                {from: 'mat7', to: 'prop6', type: 'has_property'},
+                {from: 'mat8', to: 'prop6', type: 'has_property'},
+                
+                // Material-Method relationships
+                {from: 'mat1', to: 'meth1', type: 'synthesized_by'},
+                {from: 'mat1', to: 'meth2', type: 'synthesized_by'},
+                {from: 'mat2', to: 'meth3', type: 'synthesized_by'},
+                {from: 'mat2', to: 'meth5', type: 'synthesized_by'},
+                {from: 'mat3', to: 'meth1', type: 'synthesized_by'},
+                {from: 'mat3', to: 'meth4', type: 'synthesized_by'},
+                {from: 'mat4', to: 'meth1', type: 'synthesized_by'},
+                {from: 'mat5', to: 'meth4', type: 'synthesized_by'},
+                {from: 'mat6', to: 'meth3', type: 'synthesized_by'},
+                {from: 'mat7', to: 'meth2', type: 'synthesized_by'},
+                {from: 'mat8', to: 'meth3', type: 'synthesized_by'},
+                
+                // Material-Application relationships
+                {from: 'mat1', to: 'app1', type: 'used_in'},
+                {from: 'mat1', to: 'app3', type: 'used_in'},
+                {from: 'mat2', to: 'app1', type: 'used_in'},
+                {from: 'mat2', to: 'app5', type: 'used_in'},
+                {from: 'mat3', to: 'app2', type: 'used_in'},
+                {from: 'mat3', to: 'app4', type: 'used_in'},
+                {from: 'mat4', to: 'app4', type: 'used_in'},
+                {from: 'mat5', to: 'app4', type: 'used_in'},
+                {from: 'mat6', to: 'app3', type: 'used_in'},
+                {from: 'mat6', to: 'app5', type: 'used_in'},
+                {from: 'mat7', to: 'app3', type: 'used_in'},
+                {from: 'mat8', to: 'app1', type: 'used_in'},
+                
+                // Similar materials
+                {from: 'mat1', to: 'mat2', type: 'similar_to'},
+                {from: 'mat3', to: 'mat4', type: 'similar_to'},
+                {from: 'mat4', to: 'mat5', type: 'similar_to'},
+                {from: 'mat6', to: 'mat7', type: 'similar_to'}
+            ];
+        }
+
+        // Initialize the network
+        function initNetwork() {
+            generateKnowledgeGraphData();
+            
+            // Create vis.js nodes
+            nodes = new vis.DataSet(allNodes.map(node => ({
+                id: node.id,
+                label: node.label,
+                group: node.type,
+                title: `${node.label} (${node.type})`,
+                color: getNodeColor(node.type),
+                font: {color: '#e5e7eb'},
+                borderWidth: 2,
+                borderWidthSelected: 4,
+                chosen: {
+                    node: function(values) {
+                        values.borderColor = '#f59e0b';
+                        values.borderWidth = 4;
+                    }
+                },
+                properties: node.properties || {}
+            })));
+
+            // Create vis.js edges
+            edges = new vis.DataSet(allEdges.map((edge, index) => ({
+                id: index,
+                from: edge.from,
+                to: edge.to,
+                label: edge.type.replace(/_/g, ' '),
+                type: edge.type,
+                color: {
+                    color: getEdgeColor(edge.type),
+                    highlight: '#f59e0b',
+                    hover: '#f59e0b'
+                },
+                font: {
+                    color: '#9ca3af',
+                    size: 12,
+                    strokeWidth: 3,
+                    strokeColor: '#0a0a0a'
+                },
+                smooth: {
+                    type: 'curvedCW',
+                    roundness: 0.2
+                }
+            })));
+
+            // Create network
+            const container = document.getElementById('mynetwork');
+            const data = {nodes: nodes, edges: edges};
+            const options = {
+                physics: {
+                    enabled: true,
+                    barnesHut: {
+                        gravitationalConstant: -8000,
+                        centralGravity: 0.3,
+                        springLength: 200,
+                        springConstant: 0.04,
+                        damping: 0.09
+                    }
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 200,
+                    zoomView: true,
+                    dragView: true
+                },
+                nodes: {
+                    shape: 'dot',
+                    size: 25,
+                    font: {
+                        size: 14,
+                        face: 'Inter'
+                    }
+                },
+                edges: {
+                    width: 2,
+                    arrows: {
+                        to: {
+                            enabled: true,
+                            scaleFactor: 0.5
+                        }
+                    }
+                }
+            };
+
+            network = new vis.Network(container, data, options);
+
+            // Add event listeners
+            network.on('click', function(params) {
+                if (params.nodes.length > 0) {
+                    showNodeInfo(params.nodes[0]);
+                }
+            });
+
+            network.on('doubleClick', function(params) {
+                if (params.nodes.length > 0) {
+                    expandNode(params.nodes[0]);
+                }
+            });
+
+            updateStats();
+            createPropertyChart();
+        }
+
+        // Get node color based on type
+        function getNodeColor(type) {
+            const colors = {
+                material: '#667eea',
+                property: '#10b981',
+                method: '#f59e0b',
+                application: '#ef4444'
+            };
+            return colors[type] || '#9ca3af';
+        }
+
+        // Get edge color based on type
+        function getEdgeColor(type) {
+            const colors = {
+                has_property: '#667eea',
+                synthesized_by: '#10b981',
+                used_in: '#f59e0b',
+                similar_to: '#ef4444'
+            };
+            return colors[type] || '#9ca3af';
+        }
+
+        // Show node information
+        function showNodeInfo(nodeId) {
+            const node = nodes.get(nodeId);
+            const connectedNodes = network.getConnectedNodes(nodeId);
+            const connectedEdges = network.getConnectedEdges(nodeId);
+            
+            document.getElementById('nodeInfo').style.display = 'block';
+            document.getElementById('nodeTitle').textContent = node.label;
+            
+            let content = `<p><strong>Type:</strong> ${node.group}</p>`;
+            
+            if (node.properties && Object.keys(node.properties).length > 0) {
+                content += '<ul class="property-list">';
+                for (const [key, value] of Object.entries(node.properties)) {
+                    content += `<li class="property-item">
+                        <span class="property-name">${key}</span>
+                        <span class="property-value">${value}</span>
+                    </li>`;
+                }
+                content += '</ul>';
+            }
+            
+            content += `<p><strong>Connections:</strong> ${connectedNodes.length} nodes</p>`;
+            content += `<p><strong>Relationships:</strong> ${connectedEdges.length} edges</p>`;
+            
+            document.getElementById('nodeContent').innerHTML = content;
+        }
+
+        // Expand node (show more connections)
+        function expandNode(nodeId) {
+            // Simulate adding more connections
+            const node = nodes.get(nodeId);
+            console.log(`Expanding node: ${node.label}`);
+            // In a real implementation, this would query the backend for more relationships
+        }
+
+        // Update statistics
+        function updateStats() {
+            const nodeCount = nodes.length;
+            const edgeCount = edges.length;
+            const density = (2 * edgeCount) / (nodeCount * (nodeCount - 1));
+            
+            document.getElementById('nodeCount').textContent = nodeCount;
+            document.getElementById('edgeCount').textContent = edgeCount;
+            document.getElementById('clusterCount').textContent = '4'; // Simplified
+            document.getElementById('densityValue').textContent = density.toFixed(3);
+        }
+
+        // Create property distribution chart
+        function createPropertyChart() {
+            const propertyTypes = {};
+            allNodes.forEach(node => {
+                if (node.type === 'property') {
+                    propertyTypes[node.label] = 0;
+                }
+            });
+            
+            allEdges.forEach(edge => {
+                if (edge.type === 'has_property') {
+                    const propNode = allNodes.find(n => n.id === edge.to);
+                    if (propNode) {
+                        propertyTypes[propNode.label]++;
+                    }
+                }
+            });
+            
+            const data = [{
+                x: Object.keys(propertyTypes),
+                y: Object.values(propertyTypes),
+                type: 'bar',
+                marker: {
+                    color: '#667eea',
+                    opacity: 0.8
+                }
+            }];
+            
+            const layout = {
+                title: {
+                    text: 'Material Properties',
+                    font: {color: '#f59e0b', size: 16}
+                },
+                xaxis: {
+                    tickfont: {color: '#9ca3af', size: 10},
+                    tickangle: -45
+                },
+                yaxis: {
+                    title: 'Count',
+                    titlefont: {color: '#9ca3af'},
+                    tickfont: {color: '#9ca3af'}
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                margin: {l: 40, r: 20, t: 40, b: 80}
+            };
+            
+            Plotly.newPlot('propertyChart', data, layout, {responsive: true});
+        }
+
+        // Filter functionality
+        function applyFilters() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const showMaterials = document.getElementById('filterMaterial').checked;
+            const showProperties = document.getElementById('filterProperty').checked;
+            const showMethods = document.getElementById('filterMethod').checked;
+            const showApplications = document.getElementById('filterApplication').checked;
+            
+            const showHasProperty = document.getElementById('relHasProperty').checked;
+            const showSynthesizedBy = document.getElementById('relSynthesizedBy').checked;
+            const showUsedIn = document.getElementById('relUsedIn').checked;
+            const showSimilarTo = document.getElementById('relSimilarTo').checked;
+            
+            // Filter nodes
+            const filteredNodes = allNodes.filter(node => {
+                const typeMatch = (node.type === 'material' && showMaterials) ||
+                                (node.type === 'property' && showProperties) ||
+                                (node.type === 'method' && showMethods) ||
+                                (node.type === 'application' && showApplications);
+                
+                const searchMatch = searchTerm === '' || 
+                                  node.label.toLowerCase().includes(searchTerm);
+                
+                return typeMatch && searchMatch;
+            });
+            
+            // Filter edges
+            const filteredNodeIds = filteredNodes.map(n => n.id);
+            const filteredEdges = allEdges.filter(edge => {
+                const nodesExist = filteredNodeIds.includes(edge.from) && 
+                                  filteredNodeIds.includes(edge.to);
+                
+                const typeMatch = (edge.type === 'has_property' && showHasProperty) ||
+                                (edge.type === 'synthesized_by' && showSynthesizedBy) ||
+                                (edge.type === 'used_in' && showUsedIn) ||
+                                (edge.type === 'similar_to' && showSimilarTo);
+                
+                return nodesExist && typeMatch;
+            });
+            
+            // Update network
+            nodes.clear();
+            edges.clear();
+            
+            nodes.add(filteredNodes.map(node => ({
+                id: node.id,
+                label: node.label,
+                group: node.type,
+                title: `${node.label} (${node.type})`,
+                color: getNodeColor(node.type),
+                font: {color: '#e5e7eb'},
+                borderWidth: 2,
+                borderWidthSelected: 4,
+                properties: node.properties || {}
+            })));
+            
+            edges.add(filteredEdges.map((edge, index) => ({
+                id: index,
+                from: edge.from,
+                to: edge.to,
+                label: edge.type.replace(/_/g, ' '),
+                type: edge.type,
+                color: {
+                    color: getEdgeColor(edge.type),
+                    highlight: '#f59e0b',
+                    hover: '#f59e0b'
+                },
+                font: {
+                    color: '#9ca3af',
+                    size: 12,
+                    strokeWidth: 3,
+                    strokeColor: '#0a0a0a'
+                }
+            })));
+            
+            updateStats();
+        }
+
+        // Event listeners
+        document.getElementById('searchInput').addEventListener('input', applyFilters);
+        document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', applyFilters);
+        });
+
+        // Initialize on load
+        window.addEventListener('load', initNetwork);
+    </script>
+</body>
+</html>

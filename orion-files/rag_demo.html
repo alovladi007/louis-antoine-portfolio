@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG Query Interface - ORION</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            background-color: #0a0a0a;
+            color: #e5e7eb;
+            font-family: 'Inter', -apple-system, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .navigation-bar {
+            background: rgba(20, 20, 30, 0.9);
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-btn {
+            background: rgba(102, 126, 234, 0.2);
+            color: #a5b4fc;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-btn:hover {
+            background: rgba(102, 126, 234, 0.4);
+            border-color: rgba(102, 126, 234, 0.6);
+            transform: translateY(-2px);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .query-interface {
+            background: rgba(20, 20, 30, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .query-input-group {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .query-input {
+            flex: 1;
+            padding: 1rem;
+            background: rgba(30, 30, 40, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            color: #e5e7eb;
+            font-size: 1rem;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .query-btn {
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            align-self: flex-start;
+        }
+
+        .query-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .query-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .example-queries {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .example-chip {
+            padding: 0.5rem 1rem;
+            background: rgba(102, 126, 234, 0.2);
+            color: #a5b4fc;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 20px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .example-chip:hover {
+            background: rgba(102, 126, 234, 0.4);
+            border-color: rgba(102, 126, 234, 0.6);
+        }
+
+        .results-container {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 2rem;
+        }
+
+        .retrieved-docs {
+            background: rgba(20, 20, 30, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .doc-card {
+            background: rgba(30, 30, 40, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .doc-card:hover {
+            border-color: rgba(102, 126, 234, 0.6);
+            transform: translateX(5px);
+        }
+
+        .doc-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .doc-title {
+            color: #f59e0b;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .relevance-score {
+            background: rgba(102, 126, 234, 0.2);
+            color: #a5b4fc;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+
+        .doc-snippet {
+            color: #d1d5db;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        .doc-metadata {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: #9ca3af;
+        }
+
+        .highlight {
+            background: rgba(245, 158, 11, 0.3);
+            padding: 0.1rem 0.3rem;
+            border-radius: 3px;
+        }
+
+        .analysis-panel {
+            background: rgba(20, 20, 30, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 12px;
+            padding: 1.5rem;
+            height: fit-content;
+        }
+
+        .section-title {
+            color: #667eea;
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .entity-list {
+            margin-bottom: 2rem;
+        }
+
+        .entity-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            background: rgba(40, 40, 50, 0.6);
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+        }
+
+        .entity-type {
+            padding: 0.2rem 0.5rem;
+            background: rgba(102, 126, 234, 0.3);
+            color: #a5b4fc;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .visualization-container {
+            background: rgba(30, 30, 40, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .loading-state {
+            display: none;
+            text-align: center;
+            padding: 3rem;
+            color: #9ca3af;
+        }
+
+        .loading-state.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(102, 126, 234, 0.3);
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <div class="navigation-bar">
+        <a href="../orion-nanomaterials-research.html" class="nav-btn">
+            <i class="fas fa-arrow-left"></i> Back to ORION
+        </a>
+        <h2 style="color: #f59e0b; margin: 0;">RAG Query Interface</h2>
+        <div>
+            <a href="protocol_generator_demo.html" class="nav-btn">
+                Protocol Generator <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Query Interface -->
+        <div class="query-interface">
+            <h3 class="section-title">Ask ORION</h3>
+            <div class="query-input-group">
+                <textarea class="query-input" id="queryInput" placeholder="Enter your materials science query..."></textarea>
+                <button class="query-btn" id="queryBtn" onclick="submitQuery()">
+                    <i class="fas fa-search"></i> Search
+                </button>
+            </div>
+            <div class="example-queries">
+                <span style="color: #9ca3af; margin-right: 1rem;">Try:</span>
+                <div class="example-chip" onclick="setExample('What are the best materials for photocatalytic water splitting?')">
+                    Photocatalytic materials
+                </div>
+                <div class="example-chip" onclick="setExample('How does HfO2 compare to TiO2 for memristor applications?')">
+                    Memristor comparison
+                </div>
+                <div class="example-chip" onclick="setExample('What synthesis methods work best for perovskite solar cells?')">
+                    Perovskite synthesis
+                </div>
+                <div class="example-chip" onclick="setExample('Materials with bandgap between 1.5 and 2.0 eV')">
+                    Bandgap search
+                </div>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div class="results-container">
+            <!-- Retrieved Documents -->
+            <div class="retrieved-docs">
+                <h3 class="section-title">Retrieved Documents</h3>
+                
+                <div class="loading-state" id="loadingState">
+                    <div class="spinner"></div>
+                    <p>Searching knowledge base...</p>
+                </div>
+                
+                <div id="docsList"></div>
+            </div>
+
+            <!-- Analysis Panel -->
+            <div class="analysis-panel">
+                <h3 class="section-title">Query Analysis</h3>
+                
+                <div class="entity-list">
+                    <h4 style="color: #9ca3af; margin-bottom: 0.5rem;">Extracted Entities</h4>
+                    <div id="entityList"></div>
+                </div>
+
+                <div class="visualization-container">
+                    <h4 style="color: #9ca3af; margin-bottom: 0.5rem;">Relevance Distribution</h4>
+                    <div id="relevanceChart" style="height: 200px;"></div>
+                </div>
+
+                <div class="visualization-container">
+                    <h4 style="color: #9ca3af; margin-bottom: 0.5rem;">Source Types</h4>
+                    <div id="sourceChart" style="height: 200px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Set example query
+        function setExample(query) {
+            document.getElementById('queryInput').value = query;
+        }
+
+        // Submit query
+        async function submitQuery() {
+            const query = document.getElementById('queryInput').value;
+            if (!query.trim()) return;
+
+            const btn = document.getElementById('queryBtn');
+            btn.disabled = true;
+            
+            document.getElementById('loadingState').classList.add('active');
+            document.getElementById('docsList').innerHTML = '';
+            document.getElementById('entityList').innerHTML = '';
+
+            // Simulate API call
+            await new Promise(resolve => setTimeout(resolve, 1500));
+
+            // Generate mock results
+            const results = generateMockResults(query);
+            displayResults(results);
+            
+            document.getElementById('loadingState').classList.remove('active');
+            btn.disabled = false;
+        }
+
+        // Generate mock results
+        function generateMockResults(query) {
+            const docs = [
+                {
+                    title: "High-efficiency photocatalytic materials for water splitting",
+                    relevance: 0.95,
+                    snippet: "Recent advances in <span class='highlight'>photocatalytic materials</span> have shown promising results for water splitting applications. TiO₂-based composites demonstrate enhanced efficiency...",
+                    source: "Journal",
+                    year: 2024,
+                    citations: 45
+                },
+                {
+                    title: "Comparative study of metal oxide memristors",
+                    relevance: 0.88,
+                    snippet: "HfO₂ and TiO₂ represent two of the most studied materials for <span class='highlight'>memristor applications</span>. Our analysis shows that HfO₂ exhibits superior switching characteristics...",
+                    source: "Conference",
+                    year: 2023,
+                    citations: 23
+                },
+                {
+                    title: "Synthesis methods for perovskite materials",
+                    relevance: 0.82,
+                    snippet: "Various <span class='highlight'>synthesis methods</span> have been developed for perovskite solar cells, including solution processing, vapor deposition, and hybrid approaches...",
+                    source: "Review",
+                    year: 2024,
+                    citations: 67
+                },
+                {
+                    title: "Bandgap engineering in semiconductor materials",
+                    relevance: 0.76,
+                    snippet: "Materials with <span class='highlight'>bandgap between 1.5 and 2.0 eV</span> are ideal for single-junction solar cells. Recent developments in alloy compositions...",
+                    source: "Patent",
+                    year: 2023,
+                    citations: 12
+                }
+            ];
+
+            const entities = [
+                { name: "TiO₂", type: "Material" },
+                { name: "HfO₂", type: "Material" },
+                { name: "Photocatalytic", type: "Property" },
+                { name: "Water Splitting", type: "Application" },
+                { name: "Sol-gel", type: "Method" }
+            ];
+
+            return { docs, entities };
+        }
+
+        // Display results
+        function displayResults(results) {
+            // Display documents
+            const docsContainer = document.getElementById('docsList');
+            results.docs.forEach(doc => {
+                const card = document.createElement('div');
+                card.className = 'doc-card';
+                card.innerHTML = `
+                    <div class="doc-header">
+                        <span class="doc-title">${doc.title}</span>
+                        <span class="relevance-score">${(doc.relevance * 100).toFixed(0)}%</span>
+                    </div>
+                    <div class="doc-snippet">${doc.snippet}</div>
+                    <div class="doc-metadata">
+                        <span><i class="fas fa-book"></i> ${doc.source}</span>
+                        <span><i class="fas fa-calendar"></i> ${doc.year}</span>
+                        <span><i class="fas fa-quote-right"></i> ${doc.citations} citations</span>
+                    </div>
+                `;
+                docsContainer.appendChild(card);
+            });
+
+            // Display entities
+            const entityContainer = document.getElementById('entityList');
+            results.entities.forEach(entity => {
+                const item = document.createElement('div');
+                item.className = 'entity-item';
+                item.innerHTML = `
+                    <span class="entity-type">${entity.type}</span>
+                    <span>${entity.name}</span>
+                `;
+                entityContainer.appendChild(item);
+            });
+
+            // Create visualizations
+            createRelevanceChart(results.docs);
+            createSourceChart(results.docs);
+        }
+
+        // Create relevance distribution chart
+        function createRelevanceChart(docs) {
+            const trace = {
+                x: docs.map((_, i) => `Doc ${i + 1}`),
+                y: docs.map(d => d.relevance * 100),
+                type: 'bar',
+                marker: {
+                    color: docs.map(d => d.relevance > 0.9 ? '#10b981' : d.relevance > 0.8 ? '#667eea' : '#f59e0b')
+                }
+            };
+
+            const layout = {
+                xaxis: {
+                    tickfont: {color: '#9ca3af'}
+                },
+                yaxis: {
+                    title: 'Relevance (%)',
+                    titlefont: {color: '#9ca3af', size: 12},
+                    tickfont: {color: '#9ca3af'},
+                    gridcolor: '#374151'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                margin: {l: 40, r: 20, t: 20, b: 40}
+            };
+
+            Plotly.newPlot('relevanceChart', [trace], layout, {responsive: true});
+        }
+
+        // Create source types chart
+        function createSourceChart(docs) {
+            const sourceCounts = {};
+            docs.forEach(doc => {
+                sourceCounts[doc.source] = (sourceCounts[doc.source] || 0) + 1;
+            });
+
+            const trace = {
+                labels: Object.keys(sourceCounts),
+                values: Object.values(sourceCounts),
+                type: 'pie',
+                marker: {
+                    colors: ['#667eea', '#10b981', '#f59e0b', '#ef4444']
+                },
+                textfont: {color: '#e5e7eb'}
+            };
+
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                margin: {l: 20, r: 20, t: 20, b: 20},
+                showlegend: true,
+                legend: {
+                    font: {color: '#e5e7eb', size: 10}
+                }
+            };
+
+            Plotly.newPlot('sourceChart', [trace], layout, {responsive: true});
+        }
+
+        // Handle enter key
+        document.getElementById('queryInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                submitQuery();
+            }
+        });
+    </script>
+</body>
+</html>
