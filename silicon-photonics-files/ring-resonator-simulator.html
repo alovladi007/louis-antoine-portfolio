@@ -485,18 +485,54 @@
         
         // Simulation functions
         function updateSimulation() {
-            const radius = parseFloat(document.getElementById('radius').value);
-            const gap = parseFloat(document.getElementById('gap').value);
-            const width = parseFloat(document.getElementById('width').value) / 1000; // Convert to µm
-            const height = parseFloat(document.getElementById('height').value) / 1000;
-            const loss = parseFloat(document.getElementById('loss').value);
-            const material = document.getElementById('material').value;
-            
-            // Update transmission spectrum
-            updateTransmissionPlot(radius, gap, width, loss, material);
-            
-            // Update metrics
-            updateMetrics(radius, gap, width, loss);
+            try {
+                const radius = parseFloat(document.getElementById('radius').value);
+                const gap = parseFloat(document.getElementById('gap').value);
+                const width = parseFloat(document.getElementById('width').value) / 1000; // Convert to µm
+                const height = parseFloat(document.getElementById('height').value) / 1000;
+                const loss = parseFloat(document.getElementById('loss').value);
+                const material = document.getElementById('material').value;
+                
+                // Validate inputs
+                if (isNaN(radius) || isNaN(gap) || isNaN(width) || isNaN(height) || isNaN(loss)) {
+                    alert('Please enter valid numeric values for all parameters.');
+                    return;
+                }
+                
+                // Update transmission spectrum
+                updateTransmissionPlot(radius, gap, width, loss, material);
+                
+                // Update metrics
+                updateMetrics(radius, gap, width, loss);
+                
+                // Update other plots if they're visible
+                const activeTab = document.querySelector('.viz-tab.active');
+                if (activeTab) {
+                    const tabText = activeTab.textContent.toLowerCase();
+                    if (tabText.includes('layout')) {
+                        updateLayoutPlot();
+                    } else if (tabText.includes('field')) {
+                        updateFieldPlot();
+                    } else if (tabText.includes('analysis')) {
+                        updateAnalysisPlot();
+                    }
+                }
+                
+                // Visual feedback
+                const button = event.target || document.querySelector('button[onclick*="updateSimulation"]');
+                if (button) {
+                    const originalText = button.innerHTML;
+                    button.innerHTML = '<i class="fas fa-check"></i> Updated!';
+                    button.style.background = 'linear-gradient(135deg, #81c784, #4fc3f7)';
+                    setTimeout(() => {
+                        button.innerHTML = originalText;
+                        button.style.background = '';
+                    }, 1000);
+                }
+            } catch (error) {
+                console.error('Simulation error:', error);
+                alert('An error occurred during simulation. Please check your parameters.');
+            }
         }
         
         function updateTransmissionPlot(radius, gap, width, loss, material) {
@@ -902,6 +938,7 @@
         }
         
         function resetParameters() {
+            // Reset all parameters to defaults
             document.getElementById('radius').value = 7;
             document.getElementById('gap').value = 0.15;
             document.getElementById('width').value = 450;
@@ -909,36 +946,94 @@
             document.getElementById('material').value = 'si';
             document.getElementById('loss').value = 2;
             
+            // Update display values
             document.getElementById('radius-value').textContent = '7.0µm';
             document.getElementById('gap-value').textContent = '0.15µm';
             
+            // Visual feedback
+            const button = event.target || document.querySelector('button[onclick*="resetParameters"]');
+            if (button) {
+                const originalText = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-check"></i> Reset!';
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                }, 1000);
+            }
+            
+            // Update simulation with reset values
             updateSimulation();
         }
         
         function exportData() {
             // Get current plot data
             const plotDiv = document.getElementById('transmission-plot');
+            
+            // Check if plot exists and has data
+            if (!plotDiv || !plotDiv.data || plotDiv.data.length < 2) {
+                alert('No data to export. Please run the simulation first.');
+                return;
+            }
+            
             const data = plotDiv.data;
             
-            // Create CSV content
-            let csv = 'Wavelength (nm),Through Port,Drop Port\n';
+            // Get current parameters
+            const params = {
+                radius: document.getElementById('radius').value,
+                gap: document.getElementById('gap').value,
+                width: document.getElementById('width').value,
+                height: document.getElementById('height').value,
+                material: document.getElementById('material').value,
+                loss: document.getElementById('loss').value
+            };
+            
+            // Create CSV content with header
+            let csv = '# Silicon Microring Resonator Simulation Results\n';
+            csv += `# Date: ${new Date().toISOString()}\n`;
+            csv += `# Parameters: Radius=${params.radius}µm, Gap=${params.gap}µm, Width=${params.width}nm, Height=${params.height}nm, Material=${params.material}, Loss=${params.loss}dB/cm\n`;
+            csv += '# \n';
+            csv += 'Wavelength (nm),Through Port,Drop Port\n';
+            
+            // Add data points
             for (let i = 0; i < data[0].x.length; i++) {
-                csv += `${data[0].x[i]},${data[0].y[i]},${data[1].y[i]}\n`;
+                csv += `${data[0].x[i].toFixed(4)},${data[0].y[i].toFixed(6)},${data[1].y[i].toFixed(6)}\n`;
             }
+            
+            // Create filename with timestamp
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            const filename = `ring_resonator_R${params.radius}_G${params.gap}_${timestamp}.csv`;
             
             // Download CSV
             const blob = new Blob([csv], { type: 'text/csv' });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'ring_resonator_spectrum.csv';
+            a.download = filename;
             a.click();
             window.URL.revokeObjectURL(url);
+            
+            // Visual feedback
+            const button = event.target || document.querySelector('button[onclick*="exportData"]');
+            if (button) {
+                const originalText = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-check"></i> Exported!';
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                }, 1000);
+            }
         }
         
         // Initialize on load
         window.addEventListener('load', function() {
-            updateSimulation();
+            // Ensure Plotly is loaded
+            if (typeof Plotly === 'undefined') {
+                console.error('Plotly library not loaded');
+                return;
+            }
+            
+            // Initialize the simulation
+            setTimeout(() => {
+                updateSimulation();
+            }, 100);
         });
         
         // MathJax configuration
