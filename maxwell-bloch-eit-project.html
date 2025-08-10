@@ -887,11 +887,11 @@ python src/high_fidelity_qo_suite.py \
                 </p>
             </div>
             
-            <div class="demo-card" onclick="window.open('https://github.com/alovladi007/Full-Maxwell-Bloch-Simulation-for-EIT-Based-Quantum-Optics/blob/main/docs/Quantum_Optics_Project_Paper.tex', '_blank')">
+            <div class="demo-card" onclick="showTechnicalPaper()">
                 <div class="demo-icon"><i class="fas fa-file-alt"></i></div>
                 <h3 class="demo-title">Technical Paper</h3>
                 <p class="demo-description">
-                    Complete LaTeX manuscript with detailed theoretical background and comprehensive results analysis.
+                    Complete scientific manuscript with detailed theoretical background and comprehensive results analysis.
                 </p>
             </div>
             
@@ -1568,19 +1568,19 @@ for T in temperatures:
         
         // Demo loaders
         function loadEITSimulator() {
-            showEITPropagationDemo();
+            showFullEITSimulator();
         }
         
         function loadStorageDemo() {
-            showStorageRetrievalDemo();
+            showFullStorageDemo();
         }
         
         function loadDopplerAnalysis() {
-            showHOMVisibilityDemo();
+            showDopplerEffectsExplorer();
         }
         
         function loadParameterSpace() {
-            show3DParameterSpace();
+            showFullParameterSpace();
         }
         
         // Documentation tab switcher
@@ -2030,6 +2030,776 @@ for T in temperatures:
         function updateAveraging(value) {
             document.getElementById('averaging-value').textContent = value + ' shots';
         }
+        
+        // Full Interactive Demonstrations
+        function showFullEITSimulator() {
+            const container = document.getElementById('extended-demo-container');
+            const title = document.getElementById('demo-title');
+            const plotDiv = document.getElementById('extended-demo-plot');
+            const controlsDiv = document.getElementById('extended-demo-controls');
+            
+            container.style.display = 'block';
+            title.textContent = 'Full EIT Propagation Simulator';
+            
+            // Create interactive EIT simulator
+            const frequencies = Array.from({length: 200}, (_, i) => -100 + i);
+            
+            function calculateEIT(detuning, rabiControl, gammaSG) {
+                const gammaEG = 6; // MHz
+                const eitWidth = Math.pow(rabiControl, 2) / gammaEG + gammaSG;
+                const absorption = [];
+                const dispersion = [];
+                
+                for (let delta of frequencies) {
+                    const denom = Math.pow(delta - detuning, 2) + Math.pow(eitWidth/2, 2);
+                    const abs = 1 - Math.pow(rabiControl, 2) / (4 * denom);
+                    const disp = (delta - detuning) * Math.pow(rabiControl, 2) / (4 * denom);
+                    absorption.push(abs);
+                    dispersion.push(disp);
+                }
+                return {absorption, dispersion};
+            }
+            
+            const initialData = calculateEIT(0, 10, 0.2);
+            
+            const trace1 = {
+                x: frequencies,
+                y: initialData.absorption,
+                name: 'Absorption',
+                type: 'scatter',
+                line: { color: '#ef4444', width: 3 }
+            };
+            
+            const trace2 = {
+                x: frequencies,
+                y: initialData.dispersion,
+                name: 'Dispersion',
+                type: 'scatter',
+                line: { color: '#8b5cf6', width: 3 },
+                yaxis: 'y2'
+            };
+            
+            const layout = {
+                title: 'EIT Spectroscopy - Absorption and Dispersion',
+                xaxis: { 
+                    title: 'Probe Detuning (MHz)', 
+                    color: '#e0e0e0',
+                    zeroline: true,
+                    zerolinecolor: '#666'
+                },
+                yaxis: { 
+                    title: 'Absorption', 
+                    color: '#ef4444',
+                    range: [-0.1, 1.1]
+                },
+                yaxis2: {
+                    title: 'Dispersion',
+                    color: '#8b5cf6',
+                    overlaying: 'y',
+                    side: 'right',
+                    range: [-0.5, 0.5]
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                showlegend: true
+            };
+            
+            Plotly.newPlot(plotDiv, [trace1, trace2], layout, {responsive: true});
+            
+            controlsDiv.innerHTML = `
+                <h4 style="color: #c4b5fd; margin-bottom: 1rem;">EIT Control Parameters</h4>
+                <div class="control-group">
+                    <label class="control-label">Control Rabi Frequency: <span id="sim-rabi-value" class="control-value">10 MHz</span></label>
+                    <input type="range" class="control-slider" id="sim-rabi-slider" min="0" max="50" value="10" step="1"
+                           oninput="updateEITSimulator()">
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Two-Photon Detuning: <span id="sim-detuning-value" class="control-value">0 MHz</span></label>
+                    <input type="range" class="control-slider" id="sim-detuning-slider" min="-20" max="20" value="0" step="0.5"
+                           oninput="updateEITSimulator()">
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Ground State Dephasing: <span id="sim-gamma-value" class="control-value">0.2 MHz</span></label>
+                    <input type="range" class="control-slider" id="sim-gamma-slider" min="0.01" max="2" value="0.2" step="0.01"
+                           oninput="updateEITSimulator()">
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Atomic Density: <span id="sim-density-value" class="control-value">5×10¹⁶ m⁻³</span></label>
+                    <input type="range" class="control-slider" id="sim-density-slider" min="15" max="17" value="16" step="0.1"
+                           oninput="updateEITSimulator()">
+                </div>
+                <p style="margin-top: 1rem; color: #a0a0a0;">
+                    Explore how EIT creates a narrow transparency window within an absorption line. 
+                    The control field opens the window, while dephasing and detuning affect its shape and depth.
+                </p>
+            `;
+            
+            window.updateEITSimulator = function() {
+                const rabi = parseFloat(document.getElementById('sim-rabi-slider').value);
+                const detuning = parseFloat(document.getElementById('sim-detuning-slider').value);
+                const gamma = parseFloat(document.getElementById('sim-gamma-slider').value);
+                const density = parseFloat(document.getElementById('sim-density-slider').value);
+                
+                document.getElementById('sim-rabi-value').textContent = rabi + ' MHz';
+                document.getElementById('sim-detuning-value').textContent = detuning + ' MHz';
+                document.getElementById('sim-gamma-value').textContent = gamma.toFixed(2) + ' MHz';
+                document.getElementById('sim-density-value').textContent = `${(10**density/1e16).toFixed(1)}×10¹⁶ m⁻³`;
+                
+                const newData = calculateEIT(detuning, rabi, gamma);
+                
+                Plotly.update(plotDiv, {
+                    y: [newData.absorption, newData.dispersion]
+                }, {}, [0, 1]);
+            };
+        }
+        
+        function showFullStorageDemo() {
+            const container = document.getElementById('extended-demo-container');
+            const title = document.getElementById('demo-title');
+            const plotDiv = document.getElementById('extended-demo-plot');
+            const controlsDiv = document.getElementById('extended-demo-controls');
+            
+            container.style.display = 'block';
+            title.textContent = 'Animated Quantum Memory Storage & Retrieval';
+            
+            // Create animated storage demo
+            let animationFrame = 0;
+            let animationId = null;
+            
+            function generateStorageData(frame, rampTime, storageTime) {
+                const t = Array.from({length: 500}, (_, i) => i * 0.02);
+                const probeIn = [];
+                const probeOut = [];
+                const control = [];
+                const spinWave = [];
+                
+                const t1 = 2.0; // probe arrival
+                const t2 = 2.5; // start storage
+                const t3 = t2 + rampTime; // storage complete
+                const t4 = t3 + storageTime; // start retrieval
+                const t5 = t4 + rampTime; // retrieval complete
+                
+                for (let i = 0; i < t.length; i++) {
+                    const time = t[i];
+                    
+                    // Input probe pulse
+                    probeIn[i] = Math.exp(-Math.pow((time - t1) / 0.3, 2));
+                    
+                    // Control field
+                    if (time < t2) control[i] = 1;
+                    else if (time < t3) control[i] = 1 - (time - t2) / rampTime;
+                    else if (time < t4) control[i] = 0;
+                    else if (time < t5) control[i] = (time - t4) / rampTime;
+                    else control[i] = 1;
+                    
+                    // Output probe
+                    if (time < t2) probeOut[i] = probeIn[i] * 0.9;
+                    else if (time < t3) probeOut[i] = probeIn[i] * control[i] * 0.8;
+                    else if (time < t4) probeOut[i] = 0;
+                    else if (time < t5) {
+                        const retrievalPulse = Math.exp(-Math.pow((time - t4 - 0.3) / 0.3, 2));
+                        probeOut[i] = retrievalPulse * control[i] * 0.7;
+                    } else {
+                        const retrievalPulse = Math.exp(-Math.pow((time - t4 - 0.3) / 0.3, 2));
+                        probeOut[i] = retrievalPulse * 0.7;
+                    }
+                    
+                    // Spin wave
+                    if (time < t2) spinWave[i] = 0;
+                    else if (time < t3) spinWave[i] = (1 - control[i]) * 0.8;
+                    else if (time < t4) spinWave[i] = 0.8 * Math.exp(-(time - t3) * 0.1);
+                    else if (time < t5) spinWave[i] = spinWave[i-1] * (1 - control[i] * 0.1);
+                    else spinWave[i] = 0;
+                }
+                
+                // Animate based on frame
+                const visibleIndex = Math.min(Math.floor(frame * 5), t.length);
+                
+                return {
+                    t: t.slice(0, visibleIndex),
+                    probeIn: probeIn.slice(0, visibleIndex),
+                    probeOut: probeOut.slice(0, visibleIndex),
+                    control: control.slice(0, visibleIndex),
+                    spinWave: spinWave.slice(0, visibleIndex)
+                };
+            }
+            
+            const data = generateStorageData(100, 0.5, 1.0);
+            
+            const trace1 = {
+                x: data.t,
+                y: data.probeIn,
+                name: 'Input Probe',
+                type: 'scatter',
+                line: { color: '#10b981', width: 2, dash: 'dash' }
+            };
+            
+            const trace2 = {
+                x: data.t,
+                y: data.probeOut,
+                name: 'Output Probe',
+                type: 'scatter',
+                line: { color: '#10b981', width: 3 }
+            };
+            
+            const trace3 = {
+                x: data.t,
+                y: data.control,
+                name: 'Control Field',
+                type: 'scatter',
+                line: { color: '#8b5cf6', width: 3 },
+                yaxis: 'y2'
+            };
+            
+            const trace4 = {
+                x: data.t,
+                y: data.spinWave,
+                name: 'Spin Wave',
+                type: 'scatter',
+                line: { color: '#ef4444', width: 2 },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(239, 68, 68, 0.2)'
+            };
+            
+            const layout = {
+                title: 'Quantum Memory Operation in Real Time',
+                xaxis: { 
+                    title: 'Time (μs)', 
+                    color: '#e0e0e0',
+                    range: [0, 10]
+                },
+                yaxis: { 
+                    title: 'Probe Field', 
+                    color: '#10b981',
+                    range: [-0.1, 1.1]
+                },
+                yaxis2: {
+                    title: 'Control Field',
+                    color: '#8b5cf6',
+                    overlaying: 'y',
+                    side: 'right',
+                    range: [-0.1, 1.1]
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                showlegend: true,
+                legend: { x: 0.02, y: 0.98 }
+            };
+            
+            Plotly.newPlot(plotDiv, [trace1, trace2, trace3, trace4], layout, {responsive: true});
+            
+            controlsDiv.innerHTML = `
+                <h4 style="color: #c4b5fd; margin-bottom: 1rem;">Storage Control</h4>
+                <div class="control-group">
+                    <button class="demo-btn" onclick="startStorageAnimation()" style="margin: 0;">
+                        <i class="fas fa-play"></i> Start Animation
+                    </button>
+                    <button class="demo-btn" onclick="stopStorageAnimation()" style="margin: 0 0 0 1rem; background: linear-gradient(135deg, #ef4444, #dc2626);">
+                        <i class="fas fa-stop"></i> Stop
+                    </button>
+                    <button class="demo-btn" onclick="resetStorageAnimation()" style="margin: 0 0 0 1rem; background: linear-gradient(135deg, #6b7280, #4b5563);">
+                        <i class="fas fa-redo"></i> Reset
+                    </button>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Ramp Time: <span id="storage-ramp-time" class="control-value">0.5 μs</span></label>
+                    <input type="range" class="control-slider" id="storage-ramp-slider" min="0.1" max="2.0" value="0.5" step="0.1"
+                           oninput="updateStorageParams()">
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Storage Duration: <span id="storage-duration" class="control-value">1.0 μs</span></label>
+                    <input type="range" class="control-slider" id="storage-duration-slider" min="0.5" max="3.0" value="1.0" step="0.1"
+                           oninput="updateStorageParams()">
+                </div>
+                <p style="margin-top: 1rem; color: #a0a0a0;">
+                    Watch how the probe pulse is stored as atomic spin coherence when the control field 
+                    is turned off, then retrieved when the control is restored. The efficiency depends 
+                    on the ramp speed and storage duration.
+                </p>
+            `;
+            
+            window.startStorageAnimation = function() {
+                if (animationId) return;
+                
+                function animate() {
+                    animationFrame = (animationFrame + 1) % 100;
+                    const rampTime = parseFloat(document.getElementById('storage-ramp-slider').value);
+                    const storageTime = parseFloat(document.getElementById('storage-duration-slider').value);
+                    const data = generateStorageData(animationFrame, rampTime, storageTime);
+                    
+                    Plotly.update(plotDiv, {
+                        x: [data.t, data.t, data.t, data.t],
+                        y: [data.probeIn, data.probeOut, data.control, data.spinWave]
+                    }, {}, [0, 1, 2, 3]);
+                    
+                    animationId = requestAnimationFrame(animate);
+                }
+                animate();
+            };
+            
+            window.stopStorageAnimation = function() {
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                    animationId = null;
+                }
+            };
+            
+            window.resetStorageAnimation = function() {
+                stopStorageAnimation();
+                animationFrame = 0;
+                const rampTime = parseFloat(document.getElementById('storage-ramp-slider').value);
+                const storageTime = parseFloat(document.getElementById('storage-duration-slider').value);
+                const data = generateStorageData(100, rampTime, storageTime);
+                
+                Plotly.update(plotDiv, {
+                    x: [data.t, data.t, data.t, data.t],
+                    y: [data.probeIn, data.probeOut, data.control, data.spinWave]
+                }, {}, [0, 1, 2, 3]);
+            };
+            
+            window.updateStorageParams = function() {
+                const rampTime = parseFloat(document.getElementById('storage-ramp-slider').value);
+                const storageTime = parseFloat(document.getElementById('storage-duration-slider').value);
+                document.getElementById('storage-ramp-time').textContent = rampTime + ' μs';
+                document.getElementById('storage-duration').textContent = storageTime + ' μs';
+                
+                if (!animationId) {
+                    const data = generateStorageData(100, rampTime, storageTime);
+                    Plotly.update(plotDiv, {
+                        x: [data.t, data.t, data.t, data.t],
+                        y: [data.probeIn, data.probeOut, data.control, data.spinWave]
+                    }, {}, [0, 1, 2, 3]);
+                }
+            };
+        }
+        
+        function showDopplerEffectsExplorer() {
+            const container = document.getElementById('extended-demo-container');
+            const title = document.getElementById('demo-title');
+            const plotDiv = document.getElementById('extended-demo-plot');
+            const controlsDiv = document.getElementById('extended-demo-controls');
+            
+            container.style.display = 'block';
+            title.textContent = 'Doppler Effects on EIT Performance';
+            
+            // Create Doppler visualization
+            function generateDopplerData(temperature, geometry) {
+                const k_B = 1.38e-23;
+                const m_Rb = 1.45e-25;
+                const sigma_v = Math.sqrt(k_B * temperature / m_Rb);
+                
+                const velocities = Array.from({length: 100}, (_, i) => -3*sigma_v + 6*sigma_v*i/99);
+                const weights = velocities.map(v => Math.exp(-v*v/(2*sigma_v*sigma_v)));
+                const sumWeights = weights.reduce((a, b) => a + b);
+                weights.forEach((_, i) => weights[i] /= sumWeights);
+                
+                const frequencies = Array.from({length: 200}, (_, i) => -50 + 0.5*i);
+                const absorption = new Array(frequencies.length).fill(0);
+                
+                // Calculate absorption for each velocity class
+                for (let j = 0; j < velocities.length; j++) {
+                    const v = velocities[j];
+                    const doppler = geometry === 'co' ? 0.01 * v : 0.02 * v; // Different for co/counter
+                    
+                    for (let i = 0; i < frequencies.length; i++) {
+                        const delta = frequencies[i] - doppler;
+                        const abs = 1 / (1 + 4 * delta * delta / 100);
+                        absorption[i] += weights[j] * abs;
+                    }
+                }
+                
+                return {frequencies, absorption, velocities, weights, sigma_v};
+            }
+            
+            const data = generateDopplerData(300, 'co');
+            
+            // Create subplots
+            const trace1 = {
+                x: data.velocities,
+                y: data.weights,
+                name: 'Velocity Distribution',
+                type: 'scatter',
+                line: { color: '#8b5cf6', width: 3 },
+                xaxis: 'x',
+                yaxis: 'y'
+            };
+            
+            const trace2 = {
+                x: data.frequencies,
+                y: data.absorption,
+                name: 'EIT Spectrum',
+                type: 'scatter',
+                line: { color: '#10b981', width: 3 },
+                xaxis: 'x2',
+                yaxis: 'y2'
+            };
+            
+            const layout = {
+                title: 'Thermal Motion Effects on EIT',
+                grid: {rows: 1, columns: 2, pattern: 'independent'},
+                xaxis: {
+                    title: 'Velocity (m/s)',
+                    color: '#e0e0e0',
+                    domain: [0, 0.45]
+                },
+                yaxis: {
+                    title: 'Probability',
+                    color: '#e0e0e0'
+                },
+                xaxis2: {
+                    title: 'Detuning (MHz)',
+                    color: '#e0e0e0',
+                    domain: [0.55, 1]
+                },
+                yaxis2: {
+                    title: 'Absorption',
+                    color: '#e0e0e0',
+                    anchor: 'x2'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                showlegend: true,
+                annotations: [{
+                    x: 0.225,
+                    y: 1.1,
+                    xref: 'paper',
+                    yref: 'paper',
+                    text: `σ<sub>v</sub> = ${data.sigma_v.toFixed(0)} m/s`,
+                    showarrow: false,
+                    font: { color: '#c4b5fd', size: 14 }
+                }]
+            };
+            
+            Plotly.newPlot(plotDiv, [trace1, trace2], layout, {responsive: true});
+            
+            controlsDiv.innerHTML = `
+                <h4 style="color: #c4b5fd; margin-bottom: 1rem;">Doppler Parameters</h4>
+                <div class="control-group">
+                    <label class="control-label">Temperature: <span id="doppler-temp-value" class="control-value">300 K</span></label>
+                    <input type="range" class="control-slider" id="doppler-temp-slider" min="100" max="600" value="300" step="10"
+                           oninput="updateDopplerExplorer()">
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Geometry: 
+                        <select id="doppler-geometry" onchange="updateDopplerExplorer()" style="background: #1a1a1a; color: #8b5cf6; border: 1px solid #8b5cf6; padding: 0.5rem; border-radius: 5px;">
+                            <option value="co">Co-propagating</option>
+                            <option value="counter">Counter-propagating</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Show Individual Classes: 
+                        <input type="checkbox" id="doppler-classes-check" onchange="updateDopplerExplorer()">
+                    </label>
+                </div>
+                <p style="margin-top: 1rem; color: #a0a0a0;">
+                    Higher temperatures lead to broader velocity distributions, which cause Doppler broadening 
+                    of the EIT window. Counter-propagating geometry shows different sensitivity to Doppler effects 
+                    compared to co-propagating configuration.
+                </p>
+            `;
+            
+            window.updateDopplerExplorer = function() {
+                const temp = parseFloat(document.getElementById('doppler-temp-slider').value);
+                const geometry = document.getElementById('doppler-geometry').value;
+                const showClasses = document.getElementById('doppler-classes-check').checked;
+                
+                document.getElementById('doppler-temp-value').textContent = temp + ' K';
+                
+                const newData = generateDopplerData(temp, geometry);
+                
+                Plotly.update(plotDiv, {
+                    x: [newData.velocities, newData.frequencies],
+                    y: [newData.weights, newData.absorption]
+                }, {
+                    annotations: [{
+                        x: 0.225,
+                        y: 1.1,
+                        xref: 'paper',
+                        yref: 'paper',
+                        text: `σ<sub>v</sub> = ${newData.sigma_v.toFixed(0)} m/s`,
+                        showarrow: false,
+                        font: { color: '#c4b5fd', size: 14 }
+                    }]
+                }, [0, 1]);
+            };
+        }
+        
+        function showFullParameterSpace() {
+            const container = document.getElementById('extended-demo-container');
+            const title = document.getElementById('demo-title');
+            const plotDiv = document.getElementById('extended-demo-plot');
+            const controlsDiv = document.getElementById('extended-demo-controls');
+            
+            container.style.display = 'block';
+            title.textContent = 'Interactive 3D Parameter Space Explorer';
+            
+            // Generate comprehensive parameter space
+            function generateParameterSpace(param1, param2, param3) {
+                const x = Array.from({length: 30}, (_, i) => 0.1 + i * 0.1); // Ramp time
+                const y = Array.from({length: 30}, (_, i) => 10 + i * 30); // Dephasing rate
+                const z = [];
+                
+                for (let i = 0; i < y.length; i++) {
+                    z[i] = [];
+                    for (let j = 0; j < x.length; j++) {
+                        // Complex efficiency model
+                        const ramp = x[j];
+                        const gamma = y[i];
+                        const eff = Math.exp(-gamma * ramp / 1000) * 
+                                   (1 - 0.05 * ramp) * 
+                                   (1 + 0.1 * Math.sin(param1 * ramp)) *
+                                   Math.exp(-param2 * gamma / 10000) *
+                                   (1 - param3 * 0.1);
+                        z[i][j] = Math.max(0, Math.min(1, eff));
+                    }
+                }
+                
+                return {x, y, z};
+            }
+            
+            const data = generateParameterSpace(1, 1, 0.5);
+            
+            const surface = {
+                type: 'surface',
+                x: data.x,
+                y: data.y,
+                z: data.z,
+                colorscale: [
+                    [0, '#440154'],
+                    [0.2, '#3e4989'],
+                    [0.4, '#26828e'],
+                    [0.6, '#35b779'],
+                    [0.8, '#6ece58'],
+                    [1, '#b5de2b']
+                ],
+                contours: {
+                    z: {
+                        show: true,
+                        usecolormap: true,
+                        highlightcolor: "#42f462",
+                        project: {z: true}
+                    }
+                },
+                colorbar: {
+                    title: 'Efficiency',
+                    titleside: 'right'
+                }
+            };
+            
+            const layout = {
+                title: 'Multi-Dimensional Parameter Optimization',
+                scene: {
+                    xaxis: {
+                        title: 'Ramp Duration (μs)',
+                        color: '#e0e0e0',
+                        gridcolor: '#444',
+                        showspikes: false
+                    },
+                    yaxis: {
+                        title: 'γ_sg/2π (kHz)',
+                        color: '#e0e0e0',
+                        gridcolor: '#444',
+                        showspikes: false
+                    },
+                    zaxis: {
+                        title: 'Retrieval Efficiency',
+                        color: '#e0e0e0',
+                        gridcolor: '#444',
+                        showspikes: false
+                    },
+                    camera: {
+                        eye: {x: 1.5, y: 1.5, z: 1.5},
+                        center: {x: 0, y: 0, z: -0.1}
+                    },
+                    bgcolor: 'rgba(0,0,0,0)'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                margin: {l: 0, r: 0, t: 40, b: 0}
+            };
+            
+            Plotly.newPlot(plotDiv, [surface], layout, {responsive: true});
+            
+            controlsDiv.innerHTML = `
+                <h4 style="color: #c4b5fd; margin-bottom: 1rem;">Parameter Space Controls</h4>
+                <div class="control-group">
+                    <label class="control-label">Optical Depth Factor: <span id="param1-value" class="control-value">1.0</span></label>
+                    <input type="range" class="control-slider" id="param1-slider" min="0" max="3" value="1" step="0.1"
+                           oninput="updateParameterSpace()">
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Temperature Factor: <span id="param2-value" class="control-value">1.0</span></label>
+                    <input type="range" class="control-slider" id="param2-slider" min="0" max="3" value="1" step="0.1"
+                           oninput="updateParameterSpace()">
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Noise Level: <span id="param3-value" class="control-value">0.5</span></label>
+                    <input type="range" class="control-slider" id="param3-slider" min="0" max="1" value="0.5" step="0.05"
+                           oninput="updateParameterSpace()">
+                </div>
+                <div class="control-group">
+                    <label class="control-label">View Angle: 
+                        <button class="demo-btn" onclick="rotateParameterSpace()" style="margin: 0; padding: 0.5rem 1rem;">
+                            <i class="fas fa-sync-alt"></i> Auto Rotate
+                        </button>
+                    </label>
+                </div>
+                <p style="margin-top: 1rem; color: #a0a0a0;">
+                    Explore the complex parameter space for quantum memory optimization. The surface shows 
+                    retrieval efficiency as a function of control parameters, with additional factors 
+                    modulating the landscape. Find the optimal operating point for your experimental conditions.
+                </p>
+            `;
+            
+            window.updateParameterSpace = function() {
+                const param1 = parseFloat(document.getElementById('param1-slider').value);
+                const param2 = parseFloat(document.getElementById('param2-slider').value);
+                const param3 = parseFloat(document.getElementById('param3-slider').value);
+                
+                document.getElementById('param1-value').textContent = param1.toFixed(1);
+                document.getElementById('param2-value').textContent = param2.toFixed(1);
+                document.getElementById('param3-value').textContent = param3.toFixed(2);
+                
+                const newData = generateParameterSpace(param1, param2, param3);
+                
+                Plotly.update(plotDiv, {
+                    z: [newData.z]
+                }, {}, [0]);
+            };
+            
+            let rotationInterval = null;
+            window.rotateParameterSpace = function() {
+                if (rotationInterval) {
+                    clearInterval(rotationInterval);
+                    rotationInterval = null;
+                    return;
+                }
+                
+                let angle = 0;
+                rotationInterval = setInterval(() => {
+                    angle += 2;
+                    const radians = angle * Math.PI / 180;
+                    const camera = {
+                        eye: {
+                            x: 1.5 * Math.cos(radians),
+                            y: 1.5 * Math.sin(radians),
+                            z: 1.5
+                        }
+                    };
+                    Plotly.relayout(plotDiv, {'scene.camera': camera});
+                }, 50);
+            };
+        }
+        
+        function showTechnicalPaper() {
+            const container = document.getElementById('extended-demo-container');
+            const title = document.getElementById('demo-title');
+            const plotDiv = document.getElementById('extended-demo-plot');
+            const controlsDiv = document.getElementById('extended-demo-controls');
+            
+            container.style.display = 'block';
+            title.textContent = 'Technical Paper: EIT-Based Quantum Optics';
+            
+            // Create a formatted paper view
+            plotDiv.innerHTML = `
+                <div style="background: white; color: black; padding: 3rem; border-radius: 10px; max-width: 800px; margin: 0 auto; font-family: 'Times New Roman', serif; line-height: 1.8; overflow-y: auto; max-height: 600px;">
+                    <h1 style="text-align: center; font-size: 24px; margin-bottom: 1rem; color: black;">
+                        Electromagnetically Induced Transparency, Slow Light, and Two-Photon Interference:
+                        <br>An Extended Simulation Study with Maxwell–Bloch Propagation and Storage
+                    </h1>
+                    
+                    <p style="text-align: center; font-style: italic; margin-bottom: 2rem; color: #666;">
+                        Generated by Advanced Quantum Optics Simulation Suite
+                    </p>
+                    
+                    <h2 style="font-size: 20px; margin-top: 2rem; color: black;">Abstract</h2>
+                    <p style="text-align: justify; text-indent: 2rem;">
+                        We extend a self-contained, simulation-driven quantum optics project to include (i) one-dimensional 
+                        Maxwell–Bloch (MB) propagation of a weak probe through a Λ medium with Doppler averaging and decoherence; 
+                        (ii) an EIT storage/retrieval sequence using a time-dependent control field; and (iii) a noise/visibility 
+                        analysis for Hong–Ou–Mandel (HOM) interference under multi-photon contamination and spectral impurity. 
+                        We provide figures, CSV data, and a ready-to-compile LaTeX manuscript.
+                    </p>
+                    
+                    <h2 style="font-size: 20px; margin-top: 2rem; color: black;">1. Introduction</h2>
+                    <p style="text-align: justify; text-indent: 2rem;">
+                        Electromagnetically induced transparency (EIT) enables quantum control of absorption and dispersion 
+                        in multi-level media, allowing slow light and optical storage. Two-photon interference in the HOM 
+                        effect probes indistinguishability of single photons. We build on standard optical Bloch and 
+                        linear-response models and add a 1D MB propagator for realistic pulse evolution.
+                    </p>
+                    
+                    <h2 style="font-size: 20px; margin-top: 2rem; color: black;">2. Methods</h2>
+                    <h3 style="font-size: 18px; margin-top: 1.5rem; color: black;">2.1 Maxwell–Bloch Equations</h3>
+                    <p style="text-align: justify; text-indent: 2rem;">
+                        Under the slowly varying envelope approximation (SVEA) and a co-moving frame (t' = t - z/c), 
+                        the probe Rabi frequency Ω<sub>p</sub>(z,t) obeys:
+                    </p>
+                                         <div style="text-align: center; margin: 1rem 0; font-style: italic;">
+                         ∂<sub>z</sub>Ω<sub>p</sub>(z,t) = iη⟨ρ<sub>eg</sub>(z,t;v)⟩<sub>v</sub>
+                     </div>
+                     <p style="text-align: justify; text-indent: 2rem;">
+                         where η = Nμ²ω/(2ε₀ℏc) and ⟨·⟩<sub>v</sub> denotes Doppler averaging over velocities v.
+                     </p>
+                     
+                     <h3 style="font-size: 18px; margin-top: 1.5rem; color: black;">2.2 EIT Storage and Retrieval</h3>
+                     <p style="text-align: justify; text-indent: 2rem;">
+                         A time-dependent control field Ω<sub>c</sub>(t) is ramped to zero to map the probe envelope 
+                         onto the spin coherence ρ<sub>sg</sub> and later restored to retrieve the pulse. We implement 
+                         smooth linear ramps and a hold period.
+                     </p>
+                     
+                     <h3 style="font-size: 18px; margin-top: 1.5rem; color: black;">2.3 HOM Visibility with Noise</h3>
+                     <p style="text-align: justify; text-indent: 2rem;">
+                         We model the HOM visibility as limited by (i) a mean multiphoton parameter μ and (ii) 
+                         spectral-temporal mode overlap M∈[0,1]. A practical heuristic is V(μ,M) ≈ M/(1 + 2μ).
+                     </p>
+                     
+                     <h2 style="font-size: 20px; margin-top: 2rem; color: black;">3. Results</h2>
+                     <p style="text-align: justify; text-indent: 2rem;">
+                         Our simulations demonstrate EIT pulse propagation with and without Doppler averaging, 
+                         storage/retrieval sequences with varying efficiency, and HOM visibility degradation 
+                         under realistic conditions. The MB propagator captures pulse delay and residual absorption 
+                         with Doppler and decoherence.
+                     </p>
+                     
+                     <h2 style="font-size: 20px; margin-top: 2rem; color: black;">4. Conclusion</h2>
+                     <p style="text-align: justify; text-indent: 2rem;">
+                         We provide an extended, reproducible simulation suite for quantum optics experiments. 
+                         The data can seed laboratory planning, coursework, or pre-experimental parameter scans.
+                     </p>
+                     
+                     <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid #ccc;">
+                         <h3 style="font-size: 16px; color: black;">References</h3>
+                         <ol style="font-size: 14px;">
+                             <li>M. Fleischhauer, A. Imamoglu, and J. P. Marangos, "Electromagnetically induced transparency," Rev. Mod. Phys. 77, 633 (2005).</li>
+                             <li>C. K. Hong, Z. Y. Ou, and L. Mandel, "Measurement of subpicosecond time intervals between two photons by interference," Phys. Rev. Lett. 59, 2044 (1987).</li>
+                         </ol>
+                     </div>
+                 </div>
+             `;
+             
+             controlsDiv.innerHTML = `
+                 <h4 style="color: #c4b5fd; margin-bottom: 1rem;">Paper Options</h4>
+                 <div class="control-group">
+                     <button class="demo-btn" onclick="window.open('https://github.com/alovladi007/Full-Maxwell-Bloch-Simulation-for-EIT-Based-Quantum-Optics/raw/main/docs/Quantum_Optics_Project_Paper.tex', '_blank')" style="margin: 0;">
+                         <i class="fas fa-download"></i> Download LaTeX Source
+                     </button>
+                     <button class="demo-btn" onclick="window.print()" style="margin: 0 0 0 1rem;">
+                         <i class="fas fa-print"></i> Print Paper
+                     </button>
+                 </div>
+                 <p style="margin-top: 1rem; color: #a0a0a0;">
+                     This technical paper provides the theoretical background and detailed analysis of the 
+                     Maxwell-Bloch simulation results. The LaTeX source is available for download if you 
+                     want to compile it locally or use it as a reference.
+                 </p>
+             `;
+         }
         
         // Initialize MathJax
         window.MathJax = {
