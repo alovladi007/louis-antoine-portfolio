@@ -262,15 +262,41 @@ function toggleAudio() {
         if (audioVisualizer) {
             audioVisualizer.style.display = 'none';
         }
+        showAudioNotification('Music Paused ⏸️');
     } else {
-        audio.play().catch(e => console.log('Audio play failed:', e));
-        audioBtn.classList.add('playing');
-        audioBtn.innerHTML = '<i class="fas fa-volume-mute"></i>';
-        if (audioVisualizer) {
-            audioVisualizer.style.display = 'flex';
-        }
+        audio.volume = 0.5; // Set volume to 50%
+        audio.play().then(() => {
+            audioBtn.classList.add('playing');
+            audioBtn.innerHTML = '<i class="fas fa-volume-mute"></i>';
+            if (audioVisualizer) {
+                audioVisualizer.style.display = 'flex';
+            }
+            showAudioNotification('Music Playing 🎵');
+        }).catch(e => {
+            console.log('Audio play failed:', e);
+            showAudioNotification('Click again to play music');
+        });
     }
     isPlaying = !isPlaying;
+}
+
+// Show audio notification
+function showAudioNotification(message) {
+    const notification = document.createElement('div');
+    notification.className = 'audio-notification';
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.classList.add('show');
+    }, 10);
+    
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            notification.remove();
+        }, 300);
+    }, 2000);
 }
 
 // Initialize audio on user interaction
