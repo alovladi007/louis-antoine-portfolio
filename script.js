@@ -136,3 +136,20 @@ window.addEventListener('load', () => {
         document.body.style.opacity = '1';
     }, 100);
 });
+
+// About section tab switching
+function showAboutSection(section) {
+    // Remove active class from all tabs and sections
+    document.querySelectorAll('.about-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.querySelectorAll('.about-section').forEach(sec => {
+        sec.classList.remove('active');
+    });
+    
+    // Add active class to clicked tab
+    event.target.closest('.about-tab').classList.add('active');
+    
+    // Show corresponding section
+    document.getElementById(section + '-section').classList.add('active');
+}
