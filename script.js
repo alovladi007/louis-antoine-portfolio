@@ -137,22 +137,7 @@ window.addEventListener('load', () => {
     }, 100);
 });
 
-// About section tab switching
-function showAboutSection(section) {
-    // Remove active class from all tabs and sections
-    document.querySelectorAll('.about-tab').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    document.querySelectorAll('.about-section').forEach(sec => {
-        sec.classList.remove('active');
-    });
-    
-    // Add active class to clicked tab
-    event.target.closest('.about-tab').classList.add('active');
-    
-    // Show corresponding section
-    document.getElementById(section + '-section').classList.add('active');
-}
+// About section tab switching - Removed in favor of showAboutSection3D
 
 // Slideshow functionality
 let slideIndex = 1;
@@ -298,7 +283,7 @@ document.addEventListener('click', function initAudio() {
 }, { once: true });
 
 // New About Section 3D Functions
-function showAboutSection3D(section) {
+window.showAboutSection3D = function(section) {
     // Update tab states
     document.querySelectorAll('.about-tab-3d').forEach(tab => {
         tab.classList.remove('active');
@@ -319,7 +304,7 @@ const carousels = {
     mission: { current: 1, total: 2 }
 };
 
-function navigateSlide(section, direction) {
+window.navigateSlide = function(section, direction) {
     const carousel = carousels[section];
     carousel.current += direction;
     
@@ -332,7 +317,7 @@ function navigateSlide(section, direction) {
     updateCarousel(section);
 }
 
-function goToSlide(section, slideNum) {
+window.goToSlide = function(section, slideNum) {
     carousels[section].current = slideNum;
     updateCarousel(section);
 }
