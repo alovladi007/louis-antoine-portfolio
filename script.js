@@ -297,3 +297,139 @@ document.addEventListener('click', function initAudio() {
     }
 }, { once: true });
 
+// New About Section 3D Functions
+function showAboutSection3D(section) {
+    // Update tab states
+    document.querySelectorAll('.about-tab-3d').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.querySelector(`[data-section="${section}"]`).classList.add('active');
+    
+    // Update section visibility
+    document.querySelectorAll('.about-section').forEach(sec => {
+        sec.classList.remove('active');
+    });
+    document.getElementById(`${section}-section`).classList.add('active');
+}
+
+// Carousel Navigation
+const carousels = {
+    intro: { current: 1, total: 2 },
+    work: { current: 1, total: 3 },
+    mission: { current: 1, total: 2 }
+};
+
+function navigateSlide(section, direction) {
+    const carousel = carousels[section];
+    carousel.current += direction;
+    
+    if (carousel.current > carousel.total) {
+        carousel.current = 1;
+    } else if (carousel.current < 1) {
+        carousel.current = carousel.total;
+    }
+    
+    updateCarousel(section);
+}
+
+function goToSlide(section, slideNum) {
+    carousels[section].current = slideNum;
+    updateCarousel(section);
+}
+
+function updateCarousel(section) {
+    const carousel = carousels[section];
+    const container = document.querySelector(`#${section}-section .carousel-track`);
+    
+    // Update slide visibility
+    container.querySelectorAll('.carousel-slide').forEach((slide, index) => {
+        if (index + 1 === carousel.current) {
+            slide.classList.add('active');
+        } else {
+            slide.classList.remove('active');
+        }
+    });
+    
+    // Update indicators
+    const indicators = document.querySelectorAll(`#${section}-section .indicator`);
+    indicators.forEach((indicator, index) => {
+        if (index + 1 === carousel.current) {
+            indicator.classList.add('active');
+        } else {
+            indicator.classList.remove('active');
+        }
+    });
+}
+
+// Auto-advance carousels
+function startCarouselAutoAdvance() {
+    setInterval(() => {
+        // Auto-advance active section's carousel
+        const activeSection = document.querySelector('.about-section.active');
+        if (activeSection) {
+            const sectionId = activeSection.id.replace('-section', '');
+            navigateSlide(sectionId, 1);
+        }
+    }, 5000);
+}
+
+// Create dynamic particles
+function createParticles() {
+    const particleSystem = document.querySelector('.particle-system');
+    if (!particleSystem) return;
+    
+    for (let i = 0; i < 20; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        particle.style.cssText = `
+            position: absolute;
+            width: ${Math.random() * 4 + 1}px;
+            height: ${Math.random() * 4 + 1}px;
+            background: rgba(102, 126, 234, ${Math.random() * 0.5 + 0.3});
+            border-radius: 50%;
+            left: ${Math.random() * 100}%;
+            animation: particle-float ${Math.random() * 20 + 10}s infinite linear;
+            animation-delay: ${Math.random() * 20}s;
+        `;
+        particleSystem.appendChild(particle);
+    }
+}
+
+// Initialize About Section
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize particles
+    createParticles();
+    
+    // Start carousel auto-advance
+    startCarouselAutoAdvance();
+    
+    // Add glitch effect on hover
+    document.querySelectorAll('.glitch-text').forEach(text => {
+        text.addEventListener('mouseenter', () => {
+            text.style.animation = 'none';
+            setTimeout(() => {
+                text.style.animation = '';
+            }, 100);
+        });
+    });
+    
+    // Timeline scroll animation
+    const observerOptions = {
+        threshold: 0.5,
+        rootMargin: '0px 0px -100px 0px'
+    };
+    
+    const timelineObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+            }
+        });
+    }, observerOptions);
+    
+    const timeline = document.querySelector('.about-timeline');
+    if (timeline) {
+        timelineObserver.observe(timeline);
+    }
+});
+
