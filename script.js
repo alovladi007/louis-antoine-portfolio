@@ -261,3 +261,39 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 4500); // Change slide every 4.5 seconds
 });
 
+// Audio control functionality
+let isPlaying = false;
+const audio = document.getElementById('background-audio');
+const audioBtn = document.getElementById('audio-toggle');
+const audioVisualizer = document.querySelector('.audio-visualizer');
+
+function toggleAudio() {
+    if (!audio) return;
+    
+    if (isPlaying) {
+        audio.pause();
+        audioBtn.classList.remove('playing');
+        audioBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
+        if (audioVisualizer) {
+            audioVisualizer.style.display = 'none';
+        }
+    } else {
+        audio.play().catch(e => console.log('Audio play failed:', e));
+        audioBtn.classList.add('playing');
+        audioBtn.innerHTML = '<i class="fas fa-volume-mute"></i>';
+        if (audioVisualizer) {
+            audioVisualizer.style.display = 'flex';
+        }
+    }
+    isPlaying = !isPlaying;
+}
+
+// Initialize audio on user interaction
+document.addEventListener('click', function initAudio() {
+    if (audio && !isPlaying) {
+        audio.volume = 0.3; // Set volume to 30%
+        // Remove this listener after first interaction
+        document.removeEventListener('click', initAudio);
+    }
+}, { once: true });
+
