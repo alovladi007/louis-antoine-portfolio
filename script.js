@@ -286,29 +286,50 @@ document.addEventListener('click', function initAudio() {
 window.showAboutSection3D = function(section) {
     console.log('Switching to section:', section);
     
-    // Update tab states
+    // Prevent event bubbling
+    if (event) {
+        event.stopPropagation();
+    }
+    
+    // Update tab states with a small delay for animation
     document.querySelectorAll('.about-tab-3d').forEach(tab => {
         tab.classList.remove('active');
+        // Reset transform for non-active tabs
+        if (tab.dataset.section !== section) {
+            tab.style.transform = 'rotateY(0deg)';
+        }
     });
+    
+    // Set active tab
     const activeTab = document.querySelector(`[data-section="${section}"]`);
     if (activeTab) {
         activeTab.classList.add('active');
+        activeTab.style.transform = 'rotateY(180deg)';
     }
     
-    // Update section visibility
-    document.querySelectorAll('.about-section').forEach(sec => {
-        sec.classList.remove('active');
-    });
-    const activeSection = document.getElementById(`${section}-section`);
-    if (activeSection) {
-        activeSection.classList.add('active');
-    }
-    
-    // Ensure the content wrapper has proper height
-    const wrapper = document.querySelector('.about-content-wrapper');
-    if (wrapper && activeSection) {
-        wrapper.style.minHeight = activeSection.offsetHeight + 'px';
-    }
+    // Update section visibility with delay for smooth transition
+    setTimeout(() => {
+        document.querySelectorAll('.about-section').forEach(sec => {
+            sec.classList.remove('active');
+            sec.style.display = 'none';
+        });
+        
+        const activeSection = document.getElementById(`${section}-section`);
+        if (activeSection) {
+            activeSection.style.display = 'block';
+            setTimeout(() => {
+                activeSection.classList.add('active');
+            }, 50);
+        }
+        
+        // Ensure the content wrapper has proper height
+        const wrapper = document.querySelector('.about-content-wrapper');
+        if (wrapper && activeSection) {
+            setTimeout(() => {
+                wrapper.style.minHeight = activeSection.offsetHeight + 'px';
+            }, 100);
+        }
+    }, 300);
 }
 
 // Carousel Navigation
@@ -403,9 +424,11 @@ document.addEventListener('DOMContentLoaded', function() {
     startCarouselAutoAdvance();
     
     // Initialize the first section properly
-    setTimeout(() => {
-        showAboutSection3D('intro');
-    }, 100);
+    const introSection = document.getElementById('intro-section');
+    if (introSection) {
+        introSection.style.display = 'block';
+        introSection.classList.add('active');
+    }
     
     // Add glitch effect on hover
     document.querySelectorAll('.glitch-text').forEach(text => {
