@@ -210,6 +210,36 @@ function showWorkSlide(n) {
     }
 }
 
+// Mission slideshow functionality
+let missionSlideIndex = 1;
+
+window.currentMissionSlide = function(n) {
+    showMissionSlide(missionSlideIndex = n);
+}
+
+function showMissionSlide(n) {
+    let slides = document.getElementsByClassName("mission-slide");
+    let dots = document.getElementsByClassName("mission-dot");
+    
+    if (n > slides.length) { missionSlideIndex = 1 }
+    if (n < 1) { missionSlideIndex = slides.length }
+    
+    for (let i = 0; i < slides.length; i++) {
+        slides[i].classList.remove('active');
+    }
+    
+    for (let i = 0; i < dots.length; i++) {
+        dots[i].classList.remove('active');
+    }
+    
+    if (slides[missionSlideIndex-1]) {
+        slides[missionSlideIndex-1].classList.add('active');
+    }
+    if (dots[missionSlideIndex-1]) {
+        dots[missionSlideIndex-1].classList.add('active');
+    }
+}
+
 // Initialize slideshows when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     // Auto-advance About Me slideshow
@@ -223,5 +253,11 @@ document.addEventListener('DOMContentLoaded', function() {
         workSlideIndex++;
         showWorkSlide(workSlideIndex);
     }, 4000); // Change slide every 4 seconds
+    
+    // Auto-advance Mission slideshow
+    setInterval(() => {
+        missionSlideIndex++;
+        showMissionSlide(missionSlideIndex);
+    }, 4500); // Change slide every 4.5 seconds
 });
 
