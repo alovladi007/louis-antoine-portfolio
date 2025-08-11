@@ -154,34 +154,4 @@ function showAboutSection(section) {
     document.getElementById(section + '-section').classList.add('active');
 }
 
-// Slideshow functionality
-let slideIndex = 1;
 
-function currentSlide(n) {
-    showSlide(slideIndex = n);
-}
-
-function showSlide(n) {
-    let slides = document.getElementsByClassName("slide");
-    let dots = document.getElementsByClassName("dot");
-    
-    if (n > slides.length) { slideIndex = 1 }
-    if (n < 1) { slideIndex = slides.length }
-    
-    for (let i = 0; i < slides.length; i++) {
-        slides[i].classList.remove('active');
-    }
-    
-    for (let i = 0; i < dots.length; i++) {
-        dots[i].classList.remove('active');
-    }
-    
-    slides[slideIndex-1].classList.add('active');
-    dots[slideIndex-1].classList.add('active');
-}
-
-// Auto-advance slideshow
-setInterval(() => {
-    slideIndex++;
-    showSlide(slideIndex);
-}, 5000); // Change slide every 5 seconds
