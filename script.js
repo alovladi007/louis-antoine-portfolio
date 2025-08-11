@@ -284,17 +284,31 @@ document.addEventListener('click', function initAudio() {
 
 // New About Section 3D Functions
 window.showAboutSection3D = function(section) {
+    console.log('Switching to section:', section);
+    
     // Update tab states
     document.querySelectorAll('.about-tab-3d').forEach(tab => {
         tab.classList.remove('active');
     });
-    document.querySelector(`[data-section="${section}"]`).classList.add('active');
+    const activeTab = document.querySelector(`[data-section="${section}"]`);
+    if (activeTab) {
+        activeTab.classList.add('active');
+    }
     
     // Update section visibility
     document.querySelectorAll('.about-section').forEach(sec => {
         sec.classList.remove('active');
     });
-    document.getElementById(`${section}-section`).classList.add('active');
+    const activeSection = document.getElementById(`${section}-section`);
+    if (activeSection) {
+        activeSection.classList.add('active');
+    }
+    
+    // Ensure the content wrapper has proper height
+    const wrapper = document.querySelector('.about-content-wrapper');
+    if (wrapper && activeSection) {
+        wrapper.style.minHeight = activeSection.offsetHeight + 'px';
+    }
 }
 
 // Carousel Navigation
@@ -387,6 +401,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Start carousel auto-advance
     startCarouselAutoAdvance();
+    
+    // Initialize the first section properly
+    setTimeout(() => {
+        showAboutSection3D('intro');
+    }, 100);
     
     // Add glitch effect on hover
     document.querySelectorAll('.glitch-text').forEach(text => {
