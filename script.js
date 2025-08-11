@@ -157,7 +157,7 @@ function showAboutSection(section) {
 // Slideshow functionality
 let slideIndex = 1;
 
-function currentSlide(n) {
+window.currentSlide = function(n) {
     showSlide(slideIndex = n);
 }
 
@@ -180,9 +180,12 @@ function showSlide(n) {
     dots[slideIndex-1].classList.add('active');
 }
 
-// Auto-advance slideshow
-setInterval(() => {
-    slideIndex++;
-    showSlide(slideIndex);
-}, 5000); // Change slide every 5 seconds
+// Initialize slideshow when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-advance slideshow
+    setInterval(() => {
+        slideIndex++;
+        showSlide(slideIndex);
+    }, 5000); // Change slide every 5 seconds
+});
 
