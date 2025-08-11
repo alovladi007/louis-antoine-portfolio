@@ -180,12 +180,48 @@ function showSlide(n) {
     dots[slideIndex-1].classList.add('active');
 }
 
-// Initialize slideshow when DOM is loaded
+// Work slideshow functionality
+let workSlideIndex = 1;
+
+window.currentWorkSlide = function(n) {
+    showWorkSlide(workSlideIndex = n);
+}
+
+function showWorkSlide(n) {
+    let slides = document.getElementsByClassName("work-slide");
+    let dots = document.getElementsByClassName("work-dot");
+    
+    if (n > slides.length) { workSlideIndex = 1 }
+    if (n < 1) { workSlideIndex = slides.length }
+    
+    for (let i = 0; i < slides.length; i++) {
+        slides[i].classList.remove('active');
+    }
+    
+    for (let i = 0; i < dots.length; i++) {
+        dots[i].classList.remove('active');
+    }
+    
+    if (slides[workSlideIndex-1]) {
+        slides[workSlideIndex-1].classList.add('active');
+    }
+    if (dots[workSlideIndex-1]) {
+        dots[workSlideIndex-1].classList.add('active');
+    }
+}
+
+// Initialize slideshows when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    // Auto-advance slideshow
+    // Auto-advance About Me slideshow
     setInterval(() => {
         slideIndex++;
         showSlide(slideIndex);
     }, 5000); // Change slide every 5 seconds
+    
+    // Auto-advance Work slideshow
+    setInterval(() => {
+        workSlideIndex++;
+        showWorkSlide(workSlideIndex);
+    }, 4000); // Change slide every 4 seconds
 });
 
