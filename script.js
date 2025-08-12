@@ -530,8 +530,58 @@ function createFuturisticCityEffects() {
         }
     }
     
+    // Create energy particles
+    const createEnergyParticles = () => {
+        const particlesContainer = document.querySelector('.energy-particles');
+        if (particlesContainer) {
+            setInterval(() => {
+                const particle = document.createElement('div');
+                particle.className = 'energy-particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 5 + 's';
+                particlesContainer.appendChild(particle);
+                
+                setTimeout(() => particle.remove(), 8000);
+            }, 300);
+        }
+    };
+    
+    // Add window lights to buildings
+    const addWindowLights = () => {
+        const buildings = document.querySelectorAll('.mega-city, .main-metropolis');
+        buildings.forEach(building => {
+            const grid = document.createElement('div');
+            grid.className = 'city-lights-grid';
+            building.appendChild(grid);
+        });
+    };
+    
+    // Create shooting stars occasionally
+    const createShootingStar = () => {
+        const sky = document.querySelector('.planet-sky');
+        if (sky) {
+            setInterval(() => {
+                const shootingStar = document.createElement('div');
+                shootingStar.style.cssText = `
+                    position: absolute;
+                    width: 100px;
+                    height: 2px;
+                    background: linear-gradient(to right, transparent, white, transparent);
+                    top: ${Math.random() * 40}%;
+                    left: -100px;
+                    animation: shooting-star 2s linear forwards;
+                `;
+                sky.appendChild(shootingStar);
+                setTimeout(() => shootingStar.remove(), 2000);
+            }, 8000);
+        }
+    };
+    
     setTimeout(addCityLights, 100);
     setTimeout(createTrafficLights, 200);
+    setTimeout(createEnergyParticles, 300);
+    setTimeout(addWindowLights, 400);
+    setTimeout(createShootingStar, 500);
 }
 
 // Add CSS for city animations
@@ -549,6 +599,17 @@ cityStyles.textContent = `
     @keyframes star-twinkle {
         0%, 100% { opacity: 0.3; }
         50% { opacity: 1; }
+    }
+    
+    @keyframes shooting-star {
+        0% {
+            transform: translateX(0) translateY(0);
+            opacity: 1;
+        }
+        100% {
+            transform: translateX(300px) translateY(100px);
+            opacity: 0;
+        }
     }
 `;
 document.head.appendChild(cityStyles);
