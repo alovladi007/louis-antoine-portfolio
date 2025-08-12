@@ -441,128 +441,25 @@ function createParticles() {
     }
 }
 
-// Create Minority Report style effects
-function createMinorityReportEffects() {
-    const interface = document.querySelector('.minority-report-interface');
-    if (!interface) return;
+// Create skills particles
+function createSkillsParticles() {
+    const particlesContainer = document.querySelector('.skills-particles');
+    if (!particlesContainer) return;
     
-    // Create gesture cursor
-    const cursor = interface.querySelector('.gesture-cursor');
-    let isMoving = false;
-    let lastX = 0, lastY = 0;
-    
-    // Show custom cursor in skills section
-    const skillsSection = document.querySelector('.skills');
-    skillsSection.addEventListener('mouseenter', () => {
-        cursor.style.display = 'block';
-    });
-    
-    skillsSection.addEventListener('mouseleave', () => {
-        cursor.style.display = 'none';
-    });
-    
-    // Track mouse movement
-    skillsSection.addEventListener('mousemove', (e) => {
-        const rect = skillsSection.getBoundingClientRect();
-        const x = e.clientX;
-        const y = e.clientY;
-        
-        cursor.style.left = x + 'px';
-        cursor.style.top = y + 'px';
-        
-        // Create gesture trails
-        if (!isMoving) {
-            isMoving = true;
-            lastX = x;
-            lastY = y;
-            setTimeout(() => isMoving = false, 50);
-        } else {
-            const distance = Math.sqrt(Math.pow(x - lastX, 2) + Math.pow(y - lastY, 2));
-            if (distance > 30) {
-                createGestureTrail(lastX, lastY, x, y);
-                lastX = x;
-                lastY = y;
-            }
-        }
-    });
-    
-    // Create gesture trail effect
-    function createGestureTrail(x1, y1, x2, y2) {
-        const trail = document.createElement('div');
-        trail.className = 'gesture-trail-line';
-        
-        const length = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
-        const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
-        
-        trail.style.width = length + 'px';
-        trail.style.left = x1 + 'px';
-        trail.style.top = y1 + 'px';
-        trail.style.transform = `rotate(${angle}deg)`;
-        trail.style.transformOrigin = '0 50%';
-        
-        interface.querySelector('.gesture-trail-container').appendChild(trail);
-        setTimeout(() => trail.remove(), 1000);
-    }
-    
-    // Add panel interactions
-    const panels = interface.querySelectorAll('.glass-panel');
-    panels.forEach(panel => {
-        panel.addEventListener('mouseenter', () => {
-            panel.style.background = 'rgba(255, 255, 255, 0.12)';
-            panel.style.borderColor = 'rgba(0, 212, 255, 0.8)';
-            panel.style.transform = 'scale(1.02)';
-        });
-        
-        panel.addEventListener('mouseleave', () => {
-            panel.style.background = 'rgba(255, 255, 255, 0.08)';
-            panel.style.borderColor = 'rgba(0, 212, 255, 0.5)';
-            panel.style.transform = 'scale(1)';
-        });
-    });
-    
-    // Simulate hand gestures
-    setInterval(() => {
-        const gestureX = Math.random() * window.innerWidth;
-        const gestureY = Math.random() * window.innerHeight;
-        const endX = gestureX + (Math.random() - 0.5) * 200;
-        const endY = gestureY + (Math.random() - 0.5) * 200;
-        
-        createGestureTrail(gestureX, gestureY, endX, endY);
-    }, 3000);
-    
-    // Create gesture streaks synchronized with hand movements
-    const seatedOperator = interface.querySelector('.seated-operator');
-    if (seatedOperator) {
-        const gestureContainer = seatedOperator.querySelector('.gesture-effects-container');
-        
-        // Create gesture streaks for left hand (synced with 12s animation)
-        setInterval(() => {
-            createGestureStreak(gestureContainer, 'left', 110, 210, 80, 175);
-        }, 12000);
-        
-        // Create gesture streaks for right hand (synced with 12s animation, 6s delay)
-        setTimeout(() => {
-            setInterval(() => {
-                createGestureStreak(gestureContainer, 'right', 290, 210, 320, 175);
-            }, 12000);
-        }, 6000);
-    }
-    
-    // Create gesture streak effect
-    function createGestureStreak(container, side, x1, y1, x2, y2) {
-        const streak = document.createElement('div');
-        streak.className = 'gesture-streak';
-        
-        const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
-        const length = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
-        
-        streak.style.left = x1 + 'px';
-        streak.style.top = y1 + 'px';
-        streak.style.transform = `rotate(${angle}deg)`;
-        streak.style.transformOrigin = '0 50%';
-        
-        container.appendChild(streak);
-        setTimeout(() => streak.remove(), 1000);
+    for (let i = 0; i < 10; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'skill-particle';
+        particle.style.cssText = `
+            position: absolute;
+            width: ${Math.random() * 4 + 2}px;
+            height: ${Math.random() * 4 + 2}px;
+            background: rgba(102, 126, 234, ${Math.random() * 0.6 + 0.2});
+            border-radius: 50%;
+            left: ${Math.random() * 100}%;
+            animation: skill-particle ${Math.random() * 10 + 10}s infinite linear;
+            animation-delay: ${Math.random() * 10}s;
+        `;
+        particlesContainer.appendChild(particle);
     }
 }
 
@@ -570,7 +467,7 @@ function createMinorityReportEffects() {
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize particles
     createParticles();
-    createMinorityReportEffects();
+    createSkillsParticles();
     
     // Start carousel auto-advance
     startCarouselAutoAdvance();
