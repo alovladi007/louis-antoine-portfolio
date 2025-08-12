@@ -661,49 +661,105 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Auto-play Interstellar theme on page load
-window.addEventListener('load', function() {
+// Auto-play background music on page load
+window.addEventListener('DOMContentLoaded', function() {
     const audio = document.getElementById('background-audio');
-    if (audio) {
-        audio.volume = 0.3; // Set volume to 30%
-        
-        // Try to play audio
-        const playAudio = () => {
-            audio.play().catch(e => {
-                // If autoplay is blocked, try again on first user interaction
-                console.log('Autoplay blocked, will play on user interaction');
-                const startPlayback = () => {
-                    audio.play();
-                    document.removeEventListener('click', startPlayback);
-                    document.removeEventListener('scroll', startPlayback);
-                    document.removeEventListener('mousemove', startPlayback);
-                    document.removeEventListener('touchstart', startPlayback);
-                };
-                document.addEventListener('click', startPlayback);
-                document.addEventListener('scroll', startPlayback);
-                document.addEventListener('mousemove', startPlayback);
-                document.addEventListener('touchstart', startPlayback);
-            });
+    if (!audio) return;
+    
+    // Set initial volume
+    audio.volume = 0.3;
+    
+    // Function to start audio with unmute
+    const startAudio = () => {
+        audio.muted = false;
+        audio.play().then(() => {
+            console.log('Audio playing successfully');
+        }).catch(e => {
+            console.log('Audio play failed:', e);
+        });
+    };
+    
+    // Try to play immediately (will work if muted)
+    audio.play().then(() => {
+        // If autoplay worked (because muted), unmute on first interaction
+        const unmute = () => {
+            audio.muted = false;
+            document.removeEventListener('click', unmute);
+            document.removeEventListener('scroll', unmute);
+            document.removeEventListener('mousemove', unmute);
+            document.removeEventListener('touchstart', unmute);
+            document.removeEventListener('keydown', unmute);
         };
         
-        // Small delay to ensure page is ready
-        setTimeout(playAudio, 1000);
+        // Add listeners for first interaction
+        document.addEventListener('click', unmute);
+        document.addEventListener('scroll', unmute);
+        document.addEventListener('mousemove', unmute);
+        document.addEventListener('touchstart', unmute);
+        document.addEventListener('keydown', unmute);
+    }).catch(e => {
+        // If even muted autoplay failed, wait for user interaction
+        console.log('Autoplay failed, waiting for user interaction');
+        const startOnInteraction = () => {
+            startAudio();
+            document.removeEventListener('click', startOnInteraction);
+            document.removeEventListener('scroll', startOnInteraction);
+            document.removeEventListener('touchstart', startOnInteraction);
+        };
         
-        // Ensure audio continues playing across page navigation
-        window.addEventListener('beforeunload', function() {
-            if (!audio.paused) {
-                localStorage.setItem('audioPlaying', 'true');
-                localStorage.setItem('audioTime', audio.currentTime);
-            }
-        });
-        
-        // Resume playback if it was playing before
-        if (localStorage.getItem('audioPlaying') === 'true') {
-            const storedTime = localStorage.getItem('audioTime');
-            if (storedTime) {
-                audio.currentTime = parseFloat(storedTime);
-            }
-            playAudio();
+        document.addEventListener('click', startOnInteraction);
+        document.addEventListener('scroll', startOnInteraction);
+        document.addEventListener('touchstart', startOnInteraction);
+    });
+    
+    // Add a visible notification to encourage interaction
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: rgba(102, 126, 234, 0.9);
+        color: white;
+        padding: 15px 25px;
+        border-radius: 50px;
+        font-size: 14px;
+        z-index: 10000;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        animation: pulse 2s infinite;
+    `;
+    notification.innerHTML = '🎵 Click anywhere to play music';
+    notification.onclick = () => {
+        startAudio();
+        notification.remove();
+    };
+    
+    // Add pulse animation
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
         }
-    }
+    `;
+    document.head.appendChild(style);
+    
+    // Show notification if audio is not playing after 2 seconds
+    setTimeout(() => {
+        if (audio.paused || audio.muted) {
+            document.body.appendChild(notification);
+            
+            // Auto-remove notification after user interacts
+            const removeNotification = () => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+                document.removeEventListener('click', removeNotification);
+                document.removeEventListener('scroll', removeNotification);
+            };
+            document.addEventListener('click', removeNotification);
+            document.addEventListener('scroll', removeNotification);
+        }
+    }, 2000);
 });
