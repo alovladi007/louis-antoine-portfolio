@@ -529,6 +529,42 @@ function createMinorityReportEffects() {
         
         createGestureTrail(gestureX, gestureY, endX, endY);
     }, 3000);
+    
+    // Create hand trails from figure
+    const figure = interface.querySelector('.operator-figure');
+    if (figure) {
+        const leftHand = figure.querySelector('.figure-arm-left .hand');
+        const rightHand = figure.querySelector('.figure-arm-right .hand');
+        
+        // Create trails from hands periodically
+        setInterval(() => {
+            if (leftHand) {
+                const rect = leftHand.getBoundingClientRect();
+                createHandTrail(rect.left + rect.width/2, rect.top + rect.height/2, 'left');
+            }
+            if (rightHand) {
+                const rect = rightHand.getBoundingClientRect();
+                createHandTrail(rect.left + rect.width/2, rect.top + rect.height/2, 'right');
+            }
+        }, 800);
+    }
+    
+    // Create hand trail effect
+    function createHandTrail(x, y, direction) {
+        const trail = document.createElement('div');
+        trail.className = 'hand-trail';
+        trail.style.left = x + 'px';
+        trail.style.top = y + 'px';
+        
+        if (direction === 'left') {
+            trail.style.transform = 'rotate(-30deg)';
+        } else {
+            trail.style.transform = 'rotate(30deg)';
+        }
+        
+        interface.querySelector('.gesture-effects').appendChild(trail);
+        setTimeout(() => trail.remove(), 500);
+    }
 }
 
 // Initialize About Section
