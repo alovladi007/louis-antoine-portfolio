@@ -661,3 +661,49 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// Auto-play Interstellar theme on page load
+window.addEventListener('load', function() {
+    const audio = document.getElementById('background-audio');
+    if (audio) {
+        audio.volume = 0.3; // Set volume to 30%
+        
+        // Try to play audio
+        const playAudio = () => {
+            audio.play().catch(e => {
+                // If autoplay is blocked, try again on first user interaction
+                console.log('Autoplay blocked, will play on user interaction');
+                const startPlayback = () => {
+                    audio.play();
+                    document.removeEventListener('click', startPlayback);
+                    document.removeEventListener('scroll', startPlayback);
+                    document.removeEventListener('mousemove', startPlayback);
+                    document.removeEventListener('touchstart', startPlayback);
+                };
+                document.addEventListener('click', startPlayback);
+                document.addEventListener('scroll', startPlayback);
+                document.addEventListener('mousemove', startPlayback);
+                document.addEventListener('touchstart', startPlayback);
+            });
+        };
+        
+        // Small delay to ensure page is ready
+        setTimeout(playAudio, 1000);
+        
+        // Ensure audio continues playing across page navigation
+        window.addEventListener('beforeunload', function() {
+            if (!audio.paused) {
+                localStorage.setItem('audioPlaying', 'true');
+                localStorage.setItem('audioTime', audio.currentTime);
+            }
+        });
+        
+        // Resume playback if it was playing before
+        if (localStorage.getItem('audioPlaying') === 'true') {
+            const storedTime = localStorage.getItem('audioTime');
+            if (storedTime) {
+                audio.currentTime = parseFloat(storedTime);
+            }
+            playAudio();
+        }
+    }
+});
