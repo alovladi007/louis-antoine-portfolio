@@ -530,39 +530,39 @@ function createMinorityReportEffects() {
         createGestureTrail(gestureX, gestureY, endX, endY);
     }, 3000);
     
-    // Create gesture particles from hands
-    const humanOperator = interface.querySelector('.human-operator');
-    if (humanOperator) {
-        const particlesContainer = humanOperator.querySelector('.gesture-particles');
+    // Create gesture streaks synchronized with hand movements
+    const seatedOperator = interface.querySelector('.seated-operator');
+    if (seatedOperator) {
+        const gestureContainer = seatedOperator.querySelector('.gesture-effects-container');
         
-        // Create particles periodically
+        // Create gesture streaks for left hand (synced with 12s animation)
         setInterval(() => {
-            createGestureParticle(particlesContainer, 'left');
-            createGestureParticle(particlesContainer, 'right');
-        }, 500);
+            createGestureStreak(gestureContainer, 'left', 110, 210, 80, 175);
+        }, 12000);
+        
+        // Create gesture streaks for right hand (synced with 12s animation, 6s delay)
+        setTimeout(() => {
+            setInterval(() => {
+                createGestureStreak(gestureContainer, 'right', 290, 210, 320, 175);
+            }, 12000);
+        }, 6000);
     }
     
-    // Create gesture particle effect
-    function createGestureParticle(container, side) {
-        const particle = document.createElement('div');
-        particle.className = 'gesture-particle';
+    // Create gesture streak effect
+    function createGestureStreak(container, side, x1, y1, x2, y2) {
+        const streak = document.createElement('div');
+        streak.className = 'gesture-streak';
         
-        // Position near hands
-        if (side === 'left') {
-            particle.style.left = '45px';
-            particle.style.top = '160px';
-            particle.style.setProperty('--tx', '-30px');
-            particle.style.setProperty('--ty', '-40px');
-        } else {
-            particle.style.left = '155px';
-            particle.style.top = '160px';
-            particle.style.setProperty('--tx', '30px');
-            particle.style.setProperty('--ty', '-40px');
-        }
+        const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+        const length = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
         
-        particle.style.animationDelay = Math.random() * 0.5 + 's';
-        container.appendChild(particle);
-        setTimeout(() => particle.remove(), 3000);
+        streak.style.left = x1 + 'px';
+        streak.style.top = y1 + 'px';
+        streak.style.transform = `rotate(${angle}deg)`;
+        streak.style.transformOrigin = '0 50%';
+        
+        container.appendChild(streak);
+        setTimeout(() => streak.remove(), 1000);
     }
 }
 
