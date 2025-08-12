@@ -641,8 +641,31 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize About Me section tabs
     setTimeout(() => {
+        console.log('Initializing About Me section...');
+        
+        // Make sure the intro section is visible
+        const introSection = document.getElementById('intro-section');
+        if (introSection) {
+            introSection.style.display = 'block';
+            introSection.classList.add('active');
+        }
+        
+        // Initialize first slide in each carousel
+        const carouselSections = ['intro', 'work', 'mission'];
+        carouselSections.forEach(section => {
+            const firstSlide = document.querySelector(`#${section}-section .carousel-slide`);
+            if (firstSlide) {
+                firstSlide.classList.add('active');
+            }
+            const firstIndicator = document.querySelector(`#${section}-section .indicator`);
+            if (firstIndicator) {
+                firstIndicator.classList.add('active');
+            }
+        });
+        
+        // Now show the section
         showAboutSection3D('intro');
-    }, 100);
+    }, 500);
     
     // Add glitch effect on hover
     document.querySelectorAll('.glitch-text').forEach(text => {
@@ -681,4 +704,28 @@ window.addEventListener('DOMContentLoaded', function() {
         console.log('Audio element found and ready');
         // Audio will be controlled by the play button
     }
+});
+
+// Add event listeners for About Me tabs after everything loads
+window.addEventListener('load', function() {
+    // Re-attach click handlers to tabs
+    document.querySelectorAll('.about-tab-3d').forEach(tab => {
+        tab.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const section = this.getAttribute('data-section');
+            if (section) {
+                console.log('Tab clicked:', section);
+                window.showAboutSection3D(section);
+            }
+        });
+    });
+    
+    // Re-attach carousel navigation
+    document.querySelectorAll('.carousel-nav .nav-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+    });
 });
