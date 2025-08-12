@@ -313,7 +313,7 @@ window.showAboutSection3D = function(section) {
     console.log('Switching to section:', section);
     
     // Prevent event bubbling
-    if (event) {
+    if (typeof event !== 'undefined' && event) {
         event.stopPropagation();
     }
     
@@ -355,6 +355,9 @@ window.showAboutSection3D = function(section) {
                 wrapper.style.minHeight = activeSection.offsetHeight + 'px';
             }, 100);
         }
+        
+        // Initialize carousel for the active section
+        updateCarousel(section);
     }, 300);
 }
 
@@ -386,6 +389,11 @@ window.goToSlide = function(section, slideNum) {
 function updateCarousel(section) {
     const carousel = carousels[section];
     const container = document.querySelector(`#${section}-section .carousel-track`);
+    
+    if (!container) {
+        console.log('Carousel container not found for section:', section);
+        return;
+    }
     
     // Update slide visibility
     container.querySelectorAll('.carousel-slide').forEach((slide, index) => {
@@ -630,6 +638,11 @@ document.addEventListener('DOMContentLoaded', function() {
         introSection.style.display = 'block';
         introSection.classList.add('active');
     }
+    
+    // Initialize About Me section tabs
+    setTimeout(() => {
+        showAboutSection3D('intro');
+    }, 100);
     
     // Add glitch effect on hover
     document.querySelectorAll('.glitch-text').forEach(text => {
