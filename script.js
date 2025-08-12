@@ -443,56 +443,92 @@ function createParticles() {
 
 // Create Minority Report style effects
 function createMinorityReportEffects() {
-    const holoInterface = document.querySelector('.holographic-interface');
-    if (!holoInterface) return;
+    const interface = document.querySelector('.minority-report-interface');
+    if (!interface) return;
     
-    // Create gesture trails
-    const gestureContainer = holoInterface.querySelector('.gesture-container');
-    setInterval(() => {
-        const trail = document.createElement('div');
-        trail.className = 'gesture-trail';
-        trail.style.top = Math.random() * 100 + '%';
-        trail.style.left = '-100px';
-        gestureContainer.appendChild(trail);
+    // Create gesture cursor
+    const cursor = interface.querySelector('.gesture-cursor');
+    let isMoving = false;
+    let lastX = 0, lastY = 0;
+    
+    // Show custom cursor in skills section
+    const skillsSection = document.querySelector('.skills');
+    skillsSection.addEventListener('mouseenter', () => {
+        cursor.style.display = 'block';
+    });
+    
+    skillsSection.addEventListener('mouseleave', () => {
+        cursor.style.display = 'none';
+    });
+    
+    // Track mouse movement
+    skillsSection.addEventListener('mousemove', (e) => {
+        const rect = skillsSection.getBoundingClientRect();
+        const x = e.clientX;
+        const y = e.clientY;
         
-        setTimeout(() => trail.remove(), 3000);
-    }, 4000);
-    
-    // Create random touch effects
-    setInterval(() => {
-        const touchEffect = document.createElement('div');
-        touchEffect.className = 'touch-effect';
-        touchEffect.style.left = Math.random() * 100 + '%';
-        touchEffect.style.top = Math.random() * 100 + '%';
-        holoInterface.querySelector('.touch-effects').appendChild(touchEffect);
+        cursor.style.left = x + 'px';
+        cursor.style.top = y + 'px';
         
-        setTimeout(() => touchEffect.remove(), 1000);
-    }, 3000);
-    
-    // Animate data bars
-    const dataBars = holoInterface.querySelector('.data-bars');
-    if (dataBars) {
-        for (let i = 0; i < 5; i++) {
-            const bar = document.createElement('span');
-            bar.style.height = Math.random() * 50 + 20 + 'px';
-            bar.style.animationDelay = i * 0.2 + 's';
-            dataBars.appendChild(bar);
+        // Create gesture trails
+        if (!isMoving) {
+            isMoving = true;
+            lastX = x;
+            lastY = y;
+            setTimeout(() => isMoving = false, 50);
+        } else {
+            const distance = Math.sqrt(Math.pow(x - lastX, 2) + Math.pow(y - lastY, 2));
+            if (distance > 30) {
+                createGestureTrail(lastX, lastY, x, y);
+                lastX = x;
+                lastY = y;
+            }
         }
+    });
+    
+    // Create gesture trail effect
+    function createGestureTrail(x1, y1, x2, y2) {
+        const trail = document.createElement('div');
+        trail.className = 'gesture-trail-line';
+        
+        const length = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+        const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+        
+        trail.style.width = length + 'px';
+        trail.style.left = x1 + 'px';
+        trail.style.top = y1 + 'px';
+        trail.style.transform = `rotate(${angle}deg)`;
+        trail.style.transformOrigin = '0 50%';
+        
+        interface.querySelector('.gesture-trail-container').appendChild(trail);
+        setTimeout(() => trail.remove(), 1000);
     }
     
-    // Add hover interaction to screens
-    const screens = holoInterface.querySelectorAll('.holo-screen');
-    screens.forEach(screen => {
-        screen.addEventListener('mouseenter', () => {
-            screen.style.transform = `scale(1.05) ${screen.style.transform}`;
-            screen.style.opacity = '0.9';
+    // Add panel interactions
+    const panels = interface.querySelectorAll('.glass-panel');
+    panels.forEach(panel => {
+        panel.addEventListener('mouseenter', () => {
+            panel.style.background = 'rgba(255, 255, 255, 0.12)';
+            panel.style.borderColor = 'rgba(0, 212, 255, 0.8)';
+            panel.style.transform = 'scale(1.02)';
         });
         
-        screen.addEventListener('mouseleave', () => {
-            screen.style.transform = screen.style.transform.replace('scale(1.05) ', '');
-            screen.style.opacity = '0.7';
+        panel.addEventListener('mouseleave', () => {
+            panel.style.background = 'rgba(255, 255, 255, 0.08)';
+            panel.style.borderColor = 'rgba(0, 212, 255, 0.5)';
+            panel.style.transform = 'scale(1)';
         });
     });
+    
+    // Simulate hand gestures
+    setInterval(() => {
+        const gestureX = Math.random() * window.innerWidth;
+        const gestureY = Math.random() * window.innerHeight;
+        const endX = gestureX + (Math.random() - 0.5) * 200;
+        const endY = gestureY + (Math.random() - 0.5) * 200;
+        
+        createGestureTrail(gestureX, gestureY, endX, endY);
+    }, 3000);
 }
 
 // Initialize About Section
