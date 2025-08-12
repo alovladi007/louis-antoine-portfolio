@@ -664,102 +664,123 @@ document.addEventListener('DOMContentLoaded', function() {
 // Auto-play background music on page load
 window.addEventListener('DOMContentLoaded', function() {
     const audio = document.getElementById('background-audio');
-    if (!audio) return;
+    if (!audio) {
+        console.error('Audio element not found');
+        return;
+    }
     
     // Set initial volume
-    audio.volume = 0.3;
+    audio.volume = 0.5;
     
-    // Function to start audio with unmute
-    const startAudio = () => {
+    let hasInteracted = false;
+    
+    // Function to play audio
+    const playAudio = () => {
+        if (hasInteracted) return;
+        hasInteracted = true;
+        
         audio.muted = false;
         audio.play().then(() => {
-            console.log('Audio playing successfully');
+            console.log('Audio is now playing');
+            removeNotification();
         }).catch(e => {
-            console.log('Audio play failed:', e);
+            console.error('Audio play error:', e);
+            // Try again with user gesture
+            audio.muted = true;
+            audio.play().then(() => {
+                audio.muted = false;
+            });
         });
     };
     
-    // Try to play immediately (will work if muted)
-    audio.play().then(() => {
-        // If autoplay worked (because muted), unmute on first interaction
-        const unmute = () => {
-            audio.muted = false;
-            document.removeEventListener('click', unmute);
-            document.removeEventListener('scroll', unmute);
-            document.removeEventListener('mousemove', unmute);
-            document.removeEventListener('touchstart', unmute);
-            document.removeEventListener('keydown', unmute);
-        };
-        
-        // Add listeners for first interaction
-        document.addEventListener('click', unmute);
-        document.addEventListener('scroll', unmute);
-        document.addEventListener('mousemove', unmute);
-        document.addEventListener('touchstart', unmute);
-        document.addEventListener('keydown', unmute);
-    }).catch(e => {
-        // If even muted autoplay failed, wait for user interaction
-        console.log('Autoplay failed, waiting for user interaction');
-        const startOnInteraction = () => {
-            startAudio();
-            document.removeEventListener('click', startOnInteraction);
-            document.removeEventListener('scroll', startOnInteraction);
-            document.removeEventListener('touchstart', startOnInteraction);
-        };
-        
-        document.addEventListener('click', startOnInteraction);
-        document.addEventListener('scroll', startOnInteraction);
-        document.addEventListener('touchstart', startOnInteraction);
-    });
-    
-    // Add a visible notification to encourage interaction
+    // Create notification
     const notification = document.createElement('div');
+    notification.id = 'audio-notification';
     notification.style.cssText = `
         position: fixed;
-        top: 20px;
+        top: 80px;
         right: 20px;
-        background: rgba(102, 126, 234, 0.9);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
-        padding: 15px 25px;
-        border-radius: 50px;
-        font-size: 14px;
+        padding: 20px 30px;
+        border-radius: 10px;
+        font-size: 16px;
+        font-weight: 500;
         z-index: 10000;
         cursor: pointer;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
         transition: all 0.3s ease;
-        animation: pulse 2s infinite;
+        animation: slideIn 0.5s ease-out, pulse 2s infinite;
     `;
-    notification.innerHTML = '🎵 Click anywhere to play music';
-    notification.onclick = () => {
-        startAudio();
-        notification.remove();
-    };
+    notification.innerHTML = '🎵 Click to play Interstellar Theme';
     
-    // Add pulse animation
+    // Add animations
     const style = document.createElement('style');
     style.textContent = `
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
         @keyframes pulse {
-            0% { transform: scale(1); }
+            0%, 100% { transform: scale(1); }
             50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
+        }
+        #audio-notification:hover {
+            transform: scale(1.1) !important;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4) !important;
         }
     `;
     document.head.appendChild(style);
     
-    // Show notification if audio is not playing after 2 seconds
-    setTimeout(() => {
-        if (audio.paused || audio.muted) {
-            document.body.appendChild(notification);
-            
-            // Auto-remove notification after user interacts
-            const removeNotification = () => {
-                if (notification.parentNode) {
-                    notification.remove();
-                }
-                document.removeEventListener('click', removeNotification);
-                document.removeEventListener('scroll', removeNotification);
-            };
-            document.addEventListener('click', removeNotification);
-            document.addEventListener('scroll', removeNotification);
+    // Remove notification function
+    const removeNotification = () => {
+        const notif = document.getElementById('audio-notification');
+        if (notif) {
+            notif.style.animation = 'slideOut 0.5s ease-out forwards';
+            setTimeout(() => notif.remove(), 500);
         }
-    }, 2000);
+    };
+    
+    // Add notification click handler
+    notification.onclick = (e) => {
+        e.stopPropagation();
+        playAudio();
+    };
+    
+    // Show notification immediately
+    setTimeout(() => {
+        document.body.appendChild(notification);
+    }, 1000);
+    
+    // Add global interaction listeners
+    const interactionEvents = ['click', 'touchstart', 'keydown'];
+    
+    const handleInteraction = (e) => {
+        // Don't trigger on notification click
+        if (e.target.id === 'audio-notification') return;
+        
+        playAudio();
+        
+        // Remove all listeners after first interaction
+        interactionEvents.forEach(event => {
+            document.removeEventListener(event, handleInteraction);
+        });
+    };
+    
+    // Add interaction listeners
+    interactionEvents.forEach(event => {
+        document.addEventListener(event, handleInteraction);
+    });
+    
+    // Try muted autoplay first
+    audio.muted = true;
+    audio.play().catch(e => {
+        console.log('Muted autoplay failed, waiting for user interaction');
+    });
 });
