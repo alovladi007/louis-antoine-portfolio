@@ -465,11 +465,173 @@ function createSkillsParticles() {
 
 
 
+// Create alien planet interactive elements
+function createAlienPlanetEffects() {
+    // Create stars
+    const starsContainer = document.querySelector('.alien-stars');
+    if (starsContainer) {
+        for (let i = 0; i < 100; i++) {
+            const star = document.createElement('div');
+            star.className = 'alien-star';
+            star.style.cssText = `
+                position: absolute;
+                width: ${Math.random() * 3}px;
+                height: ${Math.random() * 3}px;
+                background: white;
+                border-radius: 50%;
+                left: ${Math.random() * 100}%;
+                top: ${Math.random() * 100}%;
+                animation: star-twinkle ${Math.random() * 3 + 2}s ease-in-out infinite;
+                animation-delay: ${Math.random() * 3}s;
+            `;
+            starsContainer.appendChild(star);
+        }
+    }
+    
+    // Create interactive orbs
+    const orbsContainer = document.querySelector('.interactive-orbs');
+    if (orbsContainer) {
+        for (let i = 0; i < 8; i++) {
+            const orb = document.createElement('div');
+            orb.className = 'interactive-orb';
+            orb.style.cssText = `
+                left: ${Math.random() * 90 + 5}%;
+                top: ${Math.random() * 80 + 10}%;
+                animation-delay: ${Math.random() * 4}s;
+            `;
+            
+            orb.addEventListener('click', function(e) {
+                e.stopPropagation();
+                createOrbBurst(e.pageX, e.pageY);
+            });
+            
+            orbsContainer.appendChild(orb);
+        }
+    }
+    
+    // Create alien particles
+    const particlesContainer = document.querySelector('.alien-particles');
+    if (particlesContainer) {
+        setInterval(() => {
+            const particle = document.createElement('div');
+            particle.className = 'alien-particle';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.animationDuration = (Math.random() * 5 + 5) + 's';
+            particlesContainer.appendChild(particle);
+            
+            setTimeout(() => particle.remove(), 10000);
+        }, 500);
+    }
+    
+    // Add hover particles to cities
+    document.querySelectorAll('.hover-particles').forEach(container => {
+        setInterval(() => {
+            const particle = document.createElement('div');
+            particle.style.cssText = `
+                position: absolute;
+                width: 4px;
+                height: 4px;
+                background: #e0d5ff;
+                border-radius: 50%;
+                left: ${Math.random() * 100}%;
+                bottom: 0;
+                animation: hover-particle-rise 2s ease-out forwards;
+            `;
+            container.appendChild(particle);
+            setTimeout(() => particle.remove(), 2000);
+        }, 300);
+    });
+}
+
+// Create orb burst effect
+function createOrbBurst(x, y) {
+    const burst = document.createElement('div');
+    burst.style.cssText = `
+        position: fixed;
+        left: ${x}px;
+        top: ${y}px;
+        width: 100px;
+        height: 100px;
+        margin: -50px 0 0 -50px;
+        border: 2px solid #e0d5ff;
+        border-radius: 50%;
+        animation: orb-burst 1s ease-out forwards;
+        pointer-events: none;
+        z-index: 1000;
+    `;
+    document.body.appendChild(burst);
+    
+    // Create particles
+    for (let i = 0; i < 12; i++) {
+        const particle = document.createElement('div');
+        const angle = (i * 30) * Math.PI / 180;
+        particle.style.cssText = `
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: #e0d5ff;
+            border-radius: 50%;
+            left: 50%;
+            top: 50%;
+            animation: burst-particle 1s ease-out forwards;
+            --tx: ${Math.cos(angle) * 100}px;
+            --ty: ${Math.sin(angle) * 100}px;
+        `;
+        burst.appendChild(particle);
+    }
+    
+    setTimeout(() => burst.remove(), 1000);
+}
+
+// Add CSS for new animations
+const alienStyles = document.createElement('style');
+alienStyles.textContent = `
+    @keyframes star-twinkle {
+        0%, 100% { opacity: 0.3; }
+        50% { opacity: 1; }
+    }
+    
+    @keyframes hover-particle-rise {
+        0% {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        100% {
+            transform: translateY(-50px);
+            opacity: 0;
+        }
+    }
+    
+    @keyframes orb-burst {
+        0% {
+            transform: scale(0);
+            opacity: 1;
+        }
+        100% {
+            transform: scale(2);
+            opacity: 0;
+        }
+    }
+    
+    @keyframes burst-particle {
+        0% {
+            transform: translate(-3px, -3px);
+            opacity: 1;
+        }
+        100% {
+            transform: translate(calc(var(--tx) - 3px), calc(var(--ty) - 3px));
+            opacity: 0;
+        }
+    }
+`;
+document.head.appendChild(alienStyles);
+
 // Initialize About Section
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize particles
     createParticles();
     createSkillsParticles();
+    createAlienPlanetEffects();
     
     // Start carousel auto-advance
     startCarouselAutoAdvance();
