@@ -441,33 +441,65 @@ function createParticles() {
     }
 }
 
-// Create skills particles
-function createSkillsParticles() {
-    const particlesContainer = document.querySelector('.skills-particles');
-    if (!particlesContainer) return;
+// Create Minority Report style effects
+function createMinorityReportEffects() {
+    const holoInterface = document.querySelector('.holographic-interface');
+    if (!holoInterface) return;
     
-    for (let i = 0; i < 10; i++) {
-        const particle = document.createElement('div');
-        particle.className = 'skill-particle';
-        particle.style.cssText = `
-            position: absolute;
-            width: ${Math.random() * 4 + 2}px;
-            height: ${Math.random() * 4 + 2}px;
-            background: rgba(102, 126, 234, ${Math.random() * 0.6 + 0.2});
-            border-radius: 50%;
-            left: ${Math.random() * 100}%;
-            animation: skill-particle ${Math.random() * 10 + 10}s infinite linear;
-            animation-delay: ${Math.random() * 10}s;
-        `;
-        particlesContainer.appendChild(particle);
+    // Create gesture trails
+    const gestureContainer = holoInterface.querySelector('.gesture-container');
+    setInterval(() => {
+        const trail = document.createElement('div');
+        trail.className = 'gesture-trail';
+        trail.style.top = Math.random() * 100 + '%';
+        trail.style.left = '-100px';
+        gestureContainer.appendChild(trail);
+        
+        setTimeout(() => trail.remove(), 3000);
+    }, 4000);
+    
+    // Create random touch effects
+    setInterval(() => {
+        const touchEffect = document.createElement('div');
+        touchEffect.className = 'touch-effect';
+        touchEffect.style.left = Math.random() * 100 + '%';
+        touchEffect.style.top = Math.random() * 100 + '%';
+        holoInterface.querySelector('.touch-effects').appendChild(touchEffect);
+        
+        setTimeout(() => touchEffect.remove(), 1000);
+    }, 3000);
+    
+    // Animate data bars
+    const dataBars = holoInterface.querySelector('.data-bars');
+    if (dataBars) {
+        for (let i = 0; i < 5; i++) {
+            const bar = document.createElement('span');
+            bar.style.height = Math.random() * 50 + 20 + 'px';
+            bar.style.animationDelay = i * 0.2 + 's';
+            dataBars.appendChild(bar);
+        }
     }
+    
+    // Add hover interaction to screens
+    const screens = holoInterface.querySelectorAll('.holo-screen');
+    screens.forEach(screen => {
+        screen.addEventListener('mouseenter', () => {
+            screen.style.transform = `scale(1.05) ${screen.style.transform}`;
+            screen.style.opacity = '0.9';
+        });
+        
+        screen.addEventListener('mouseleave', () => {
+            screen.style.transform = screen.style.transform.replace('scale(1.05) ', '');
+            screen.style.opacity = '0.7';
+        });
+    });
 }
 
 // Initialize About Section
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize particles
     createParticles();
-    createSkillsParticles();
+    createMinorityReportEffects();
     
     // Start carousel auto-advance
     startCarouselAutoAdvance();
