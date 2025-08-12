@@ -463,42 +463,13 @@ function createSkillsParticles() {
     }
 }
 
-// Create Minority Report gesture effects
-function createMinorityReportEffects() {
-    // Hero gestures
-    const heroGestures = document.querySelector('.mr-gestures');
-    if (heroGestures) {
-        setInterval(() => {
-            const gesture = document.createElement('div');
-            gesture.className = 'mr-gesture-line';
-            gesture.style.top = Math.random() * 100 + '%';
-            gesture.style.left = Math.random() * 100 + '%';
-            gesture.style.transform = `rotate(${Math.random() * 360}deg)`;
-            heroGestures.appendChild(gesture);
-            setTimeout(() => gesture.remove(), 2000);
-        }, 3000);
-    }
-    
-    // Education gestures
-    const eduGestures = document.querySelector('.mr-edu-gestures');
-    if (eduGestures) {
-        setInterval(() => {
-            const gesture = document.createElement('div');
-            gesture.className = 'edu-gesture';
-            gesture.style.top = Math.random() * 100 + '%';
-            gesture.style.left = Math.random() * 50 + '%';
-            eduGestures.appendChild(gesture);
-            setTimeout(() => gesture.remove(), 3000);
-        }, 4000);
-    }
-}
+
 
 // Initialize About Section
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize particles
     createParticles();
     createSkillsParticles();
-    createMinorityReportEffects();
     
     // Start carousel auto-advance
     startCarouselAutoAdvance();
