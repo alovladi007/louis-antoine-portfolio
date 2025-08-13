@@ -705,17 +705,26 @@ window.addEventListener('DOMContentLoaded', function() {
         // Audio will be controlled by the play button
     }
     
-    // Initialize Tesseract effect
-    initTesseractEffect();
+    // Initialize Tesseract effect with delay to ensure DOM is ready
+    setTimeout(() => {
+        initTesseractEffect();
+    }, 100);
 });
 
 // Tesseract Effect Implementation
 function initTesseractEffect() {
+    console.log('Initializing Tesseract effect...');
+    
     const grid = document.querySelector('.tesseract-grid');
     const timeStreams = document.querySelector('.time-streams');
     const canvas = document.getElementById('tesseract-canvas');
     
-    if (!grid || !canvas) return;
+    if (!grid || !canvas) {
+        console.error('Tesseract elements not found:', { grid, canvas });
+        return;
+    }
+    
+    console.log('Tesseract elements found, creating effect...');
     
     const ctx = canvas.getContext('2d');
     canvas.width = window.innerWidth;
