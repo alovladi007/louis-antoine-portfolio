@@ -704,7 +704,133 @@ window.addEventListener('DOMContentLoaded', function() {
         console.log('Audio element found and ready');
         // Audio will be controlled by the play button
     }
+    
+    // Initialize Tesseract effect
+    initTesseractEffect();
 });
+
+// Tesseract Effect Implementation
+function initTesseractEffect() {
+    const grid = document.querySelector('.tesseract-grid');
+    const timeStreams = document.querySelector('.time-streams');
+    const canvas = document.getElementById('tesseract-canvas');
+    
+    if (!grid || !canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    
+    // Create grid lines
+    const gridSize = 12;
+    const spacing = 100;
+    
+    // Horizontal lines
+    for (let i = 0; i < gridSize; i++) {
+        const line = document.createElement('div');
+        line.className = 'grid-line horizontal';
+        line.style.top = `${(i / gridSize) * 100}%`;
+        line.style.animationDelay = `${i * 0.1}s`;
+        grid.appendChild(line);
+    }
+    
+    // Vertical lines
+    for (let i = 0; i < gridSize; i++) {
+        const line = document.createElement('div');
+        line.className = 'grid-line vertical';
+        line.style.left = `${(i / gridSize) * 100}%`;
+        line.style.animationDelay = `${i * 0.15}s`;
+        grid.appendChild(line);
+    }
+    
+    // Depth points
+    for (let i = 0; i < gridSize; i++) {
+        for (let j = 0; j < gridSize; j++) {
+            const point = document.createElement('div');
+            point.className = 'grid-line depth';
+            point.style.left = `${(i / gridSize) * 100}%`;
+            point.style.top = `${(j / gridSize) * 100}%`;
+            point.style.animationDelay = `${(i + j) * 0.1}s`;
+            grid.appendChild(point);
+        }
+    }
+    
+    // Create time stream particles
+    function createTimeParticle() {
+        const particle = document.createElement('div');
+        particle.className = 'time-particle';
+        particle.style.left = `${Math.random() * 100}%`;
+        particle.style.top = `${Math.random() * 100}%`;
+        particle.style.animationDuration = `${3 + Math.random() * 4}s`;
+        particle.style.animationDelay = `${Math.random() * 2}s`;
+        timeStreams.appendChild(particle);
+        
+        // Remove particle after animation
+        setTimeout(() => particle.remove(), 7000);
+    }
+    
+    // Continuously create particles
+    setInterval(createTimeParticle, 200);
+    
+    // Canvas animation for additional effects
+    let time = 0;
+    function animateCanvas() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw connecting lines with time distortion
+        ctx.strokeStyle = 'rgba(102, 224, 255, 0.1)';
+        ctx.lineWidth = 1;
+        
+        for (let i = 0; i < 5; i++) {
+            ctx.beginPath();
+            const offset = time * 0.001 + i * 0.5;
+            const x1 = Math.sin(offset) * canvas.width * 0.3 + canvas.width * 0.5;
+            const y1 = Math.cos(offset * 0.7) * canvas.height * 0.3 + canvas.height * 0.5;
+            const x2 = Math.sin(offset + Math.PI) * canvas.width * 0.3 + canvas.width * 0.5;
+            const y2 = Math.cos((offset + Math.PI) * 0.7) * canvas.height * 0.3 + canvas.height * 0.5;
+            
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+        }
+        
+        time++;
+        requestAnimationFrame(animateCanvas);
+    }
+    
+    animateCanvas();
+    
+    // Interactive ripple effect on click
+    document.querySelector('.experience').addEventListener('click', function(e) {
+        const ripple = document.createElement('div');
+        ripple.className = 'ripple';
+        ripple.style.left = e.clientX + 'px';
+        ripple.style.top = e.clientY - this.offsetTop + 'px';
+        this.appendChild(ripple);
+        
+        setTimeout(() => ripple.remove(), 2000);
+    });
+    
+    // Mouse parallax effect
+    let mouseX = 0, mouseY = 0;
+    document.addEventListener('mousemove', function(e) {
+        mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
+        mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
+        
+        grid.style.transform = `
+            perspective(1200px) 
+            rotateX(${mouseY * 10}deg) 
+            rotateY(${mouseX * 10}deg)
+            translateZ(${Math.abs(mouseX * mouseY) * 50}px)
+        `;
+    });
+    
+    // Resize handler
+    window.addEventListener('resize', function() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    });
+}
 
 // Add event listeners for About Me tabs after everything loads
 window.addEventListener('load', function() {
