@@ -246,7 +246,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 4500); // Change slide every 4.5 seconds
 });
 
-// Audio control functionality
+// Audio control functionality - DISABLED (using YouTube player instead)
+/* Commented out - using YouTube autoplay instead
 let isPlaying = false;
 const audio = document.getElementById('background-audio');
 const audioBtn = document.getElementById('audio-toggle');
@@ -307,6 +308,7 @@ document.addEventListener('click', function initAudio() {
         document.removeEventListener('click', initAudio);
     }
 }, { once: true });
+*/
 
 // New About Section 3D Functions
 window.showAboutSection3D = function(section) {
