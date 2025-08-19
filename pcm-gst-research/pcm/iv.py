@@ -1,7 +1,7 @@
 """
-I-V Characteristics and Threshold Switching Module
-==================================================
-Quasi-static I-V sweep with threshold switching hysteresis.
+Threshold Switching I-V Module
+===============================
+I-V characteristics with electronic threshold switching.
 """
 
 import numpy as np
@@ -22,11 +22,11 @@ class ThresholdSwitching:
     def default_params() -> Dict:
         """Default threshold switching parameters."""
         return {
-            "Vth0_V": 1.2,
-            "Ihold_A": 50e-6,
-            "Ron_ohm": 1e3,
-            "Roff_base_ohm": 20e6,
-            "series_R_ohm": 500.0
+            "Vth0_V": 1.2,           # Base threshold voltage
+            "Ihold_A": 50e-6,        # Hold current
+            "Ron_ohm": 1e3,          # ON state resistance
+            "Roff_base_ohm": 20e6,   # Base OFF state resistance
+            "series_R_ohm": 500.0    # Series resistance
         }
     
     def sweep_iv(self, X_state: float = 0.0, Vmax: float = 3.0,
@@ -35,7 +35,7 @@ class ThresholdSwitching:
         Simulate quasi-static I-V sweep with hysteresis.
         
         Args:
-            X_state: Crystalline fraction
+            X_state: Crystalline fraction (0=amorphous, 1=crystalline)
             Vmax: Maximum voltage
             steps: Number of voltage steps
             
@@ -73,7 +73,7 @@ class ThresholdSwitching:
         # Down-sweep
         V_down = np.linspace(Vmax, 0, steps)
         I_down = np.zeros_like(V_down)
-        on = True if I_up[-1] > Ihold else False
+        on = True
         
         for i, v in enumerate(V_down):
             if on:
@@ -92,82 +92,69 @@ class ThresholdSwitching:
             "V_down": V_down,
             "I_down": I_down,
             "Vth": Vth,
-            "Ihold": Ihold,
-            "Ron": Ron,
             "Roff": Roff,
-            "X_state": X_state
+            "X_state": X_state,
+            "Ihold": Ihold
         }
     
-    def plot_iv(self, data: Dict) -> plt.Figure:
+    def plot_iv(self, data: Dict = None, X_state: float = 0.0) -> plt.Figure:
         """Plot I-V characteristics with hysteresis."""
-        fig, ax = plt.subplots(figsize=(8, 6))
+        if data is None:
+            data = self.sweep_iv(X_state=X_state)
+            
+        fig, ax = plt.subplots(figsize=(10, 6))
         
+        # Plot up and down sweeps
         ax.plot(data["V_up"], data["I_up"] * 1e3, 'b-', 
                 label="Up-sweep", linewidth=2)
         ax.plot(data["V_down"], data["I_down"] * 1e3, 'r-', 
                 label="Down-sweep", linewidth=2)
         
+        # Add threshold and hold indicators
+        ax.axvline(data["Vth"], color='k', linestyle='--', 
+                   alpha=0.5, label=f'Vth={data["Vth"]:.2f}V')
+        ax.axhline(data["Ihold"] * 1e3, color='g', linestyle='--', 
+                   alpha=0.5, label=f'Ihold={data["Ihold"]*1e6:.1f}μA')
+        
         ax.set_xlabel("Voltage (V)", fontsize=12)
         ax.set_ylabel("Current (mA)", fontsize=12)
-        ax.set_title(f"Threshold Switching I-V (X={data['X_state']:.2f})", 
+        ax.set_title(f"Threshold Switching I-V (GST, simplified)\nCrystalline Fraction X={data['X_state']:.2f}", 
                      fontsize=14)
         ax.legend(loc='best')
         ax.grid(True, alpha=0.3)
         
-        # Annotate threshold
-        ax.axvline(data["Vth"], color='k', linestyle='--', alpha=0.5)
-        ax.text(data["Vth"], ax.get_ylim()[1]*0.9, 
-                f"Vth={data['Vth']:.2f}V",
-                ha='center', fontsize=10)
-        
-        # Annotate hold current
-        ax.axhline(data["Ihold"] * 1e3, color='k', linestyle='--', alpha=0.5)
-        ax.text(ax.get_xlim()[1]*0.9, data["Ihold"] * 1e3,
-                f"Ihold={data['Ihold']*1e6:.0f}µA",
-                va='bottom', ha='right', fontsize=10)
+        # Use log scale for better visualization
+        ax.set_yscale('log')
+        ax.set_ylim([1e-6, 10])
         
         return fig
     
-    def sweep_multiple_states(self, X_states: np.ndarray = None,
-                             Vmax: float = 3.0) -> Dict:
-        """
-        Sweep I-V for multiple crystalline states.
+    def plot_iv_comparison(self, X_values: np.ndarray = None) -> plt.Figure:
+        """Plot I-V curves for different crystalline fractions."""
+        if X_values is None:
+            X_values = np.array([0.0, 0.5, 1.0])
         
-        Args:
-            X_states: Array of crystalline fractions
-            Vmax: Maximum voltage
+        fig, axes = plt.subplots(1, len(X_values), figsize=(15, 5))
+        
+        for idx, X in enumerate(X_values):
+            ax = axes[idx] if len(X_values) > 1 else axes
+            data = self.sweep_iv(X_state=X)
             
-        Returns:
-            Dictionary with all sweep data
-        """
-        if X_states is None:
-            X_states = np.array([0.0, 0.3, 0.7, 1.0])
+            ax.plot(data["V_up"], data["I_up"] * 1e3, 'b-', 
+                    label="Up-sweep", linewidth=2)
+            ax.plot(data["V_down"], data["I_down"] * 1e3, 'r-', 
+                    label="Down-sweep", linewidth=2)
+            
+            ax.set_xlabel("Voltage (V)", fontsize=11)
+            ax.set_ylabel("Current (mA)" if idx == 0 else "", fontsize=11)
+            ax.set_title(f"X = {X:.1f}", fontsize=12)
+            ax.legend(loc='best', fontsize=9)
+            ax.grid(True, alpha=0.3)
+            ax.set_yscale('log')
+            ax.set_ylim([1e-6, 10])
         
-        results = {}
-        for X in X_states:
-            results[f"X_{X:.1f}"] = self.sweep_iv(X, Vmax)
-        
-        return results
-    
-    def plot_multiple_iv(self, results: Dict) -> plt.Figure:
-        """Plot multiple I-V curves on same axes."""
-        fig, ax = plt.subplots(figsize=(10, 7))
-        
-        colors = plt.cm.viridis(np.linspace(0, 1, len(results)))
-        
-        for (key, data), color in zip(results.items(), colors):
-            X = data["X_state"]
-            ax.plot(data["V_up"], data["I_up"] * 1e3,
-                   color=color, linestyle='-', alpha=0.7,
-                   label=f"X={X:.1f} (up)")
-            ax.plot(data["V_down"], data["I_down"] * 1e3,
-                   color=color, linestyle='--', alpha=0.7,
-                   label=f"X={X:.1f} (down)")
-        
-        ax.set_xlabel("Voltage (V)", fontsize=12)
-        ax.set_ylabel("Current (mA)", fontsize=12)
-        ax.set_title("Threshold Switching I-V for Different States", fontsize=14)
-        ax.legend(loc='best', ncol=2, fontsize=9)
-        ax.grid(True, alpha=0.3)
+        fig.suptitle("Threshold Switching I-V for Different Phase States", 
+                     fontsize=14, y=1.02)
+        plt.tight_layout()
         
         return fig

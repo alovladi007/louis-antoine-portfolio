@@ -1,7 +1,7 @@
 """
-JMAK Crystallization Kinetics Module
-====================================
-Johnson-Mehl-Avrami-Kolmogorov model for phase transformation kinetics.
+Crystallization Kinetics Module
+================================
+Johnson-Mehl-Avrami-Kolmogorov (JMAK) model for GST crystallization.
 """
 
 import numpy as np
@@ -24,9 +24,9 @@ class JMAKModel:
     def default_params() -> Dict:
         """Default GST-like kinetic parameters."""
         return {
-            "k0_cryst": 1e13,        # Prefactor (1/s)
-            "Ea_cryst_eV": 2.1,      # Activation energy (eV)
-            "avrami_n": 3.0,         # Avrami exponent
+            "k0_cryst": 1e16,        # Prefactor (1/s) - increased for faster kinetics
+            "Ea_cryst_eV": 1.8,      # Activation energy (eV) - slightly lower
+            "avrami_n": 3.0,         # Avrami exponent for 3D growth
             "Tc_K": 430.0,           # Crystallization onset (K)
             "kb_eV": 8.617333262e-5  # Boltzmann constant (eV/K)
         }
@@ -84,13 +84,18 @@ class JMAKModel:
         
         # Incremental JMAK: X_new = 1 - (1-X_old) * exp(-(k*dt)^n)
         inc = 1.0 - np.exp(-(k * dt)**n)
-        X_new = X_old + (1.0 - X_old) * inc
+        X_new = 1.0 - (1.0 - X_old) * (1.0 - inc)
         return float(np.clip(X_new, 0.0, 1.0))
     
-    def plot_kinetics(self, temps_K: np.ndarray, 
-                      t_array: np.ndarray) -> Tuple[plt.Figure, pd.DataFrame]:
+    def plot_kinetics(self, temps_K: np.ndarray = None, 
+                      t_array: np.ndarray = None) -> Tuple[plt.Figure, pd.DataFrame]:
         """Plot crystallization kinetics at multiple temperatures."""
-        fig, ax = plt.subplots(figsize=(8, 6))
+        if temps_K is None:
+            temps_K = np.array([400, 450, 500, 550, 600, 650])
+        if t_array is None:
+            t_array = np.logspace(-9, -3, 500)  # 1 ns to 1 ms
+            
+        fig, ax = plt.subplots(figsize=(10, 6))
         data_list = []
         
         for T in temps_K:
@@ -103,11 +108,37 @@ class JMAKModel:
         
         ax.set_xlabel("Time (s)", fontsize=12)
         ax.set_ylabel("Crystalline fraction X", fontsize=12)
-        ax.set_title("JMAK Crystallization Kinetics (GST)", fontsize=14)
+        ax.set_title("JMAK Crystallization Kinetics (GST-like)", fontsize=14)
         ax.legend(loc='best')
         ax.grid(True, alpha=0.3)
-        ax.set_xlim(t_array.min(), t_array.max())
-        ax.set_ylim(0, 1)
+        ax.set_xlim([1e-9, 1e-2])
+        ax.set_ylim([0, 1.05])
         
         df = pd.DataFrame(data_list)
         return fig, df
+    
+    def time_to_crystallize(self, T: float, target_X: float = 0.5) -> float:
+        """
+        Calculate time to reach target crystalline fraction.
+        
+        Args:
+            T: Temperature (K)
+            target_X: Target crystalline fraction
+            
+        Returns:
+            Time to reach target_X (s)
+        """
+        if T < self.params["Tc_K"] or target_X <= 0 or target_X >= 1:
+            return np.inf
+        
+        k = self.rate_constant(T)
+        n = self.params["avrami_n"]
+        
+        if k <= 0:
+            return np.inf
+        
+        # Solve: target_X = 1 - exp(-(k*t)^n)
+        # t = ((-ln(1-target_X))^(1/n)) / k
+        t = ((-np.log(1 - target_X))**(1/n)) / k
+        
+        return t

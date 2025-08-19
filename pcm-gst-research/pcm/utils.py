@@ -1,7 +1,7 @@
 """
-Utility Functions for PCM Simulations
-=====================================
-Helper functions for data I/O, plotting, and analysis.
+Utilities Module
+================
+Helper functions for PCM simulations.
 """
 
 import json
@@ -30,8 +30,8 @@ def save_figure(fig: plt.Figure, name: str, outdir: str = "data"):
     """Save figure to file."""
     os.makedirs(outdir, exist_ok=True)
     filepath = os.path.join(outdir, f"{name}.png")
-    fig.savefig(filepath, dpi=150, bbox_inches='tight')
-    plt.close(fig)
+    fig.savefig(filepath, dpi=180, bbox_inches='tight')
+    print(f"Saved figure: {filepath}")
     return filepath
 
 
@@ -40,6 +40,7 @@ def save_dataframe(df: pd.DataFrame, name: str, outdir: str = "data"):
     os.makedirs(outdir, exist_ok=True)
     filepath = os.path.join(outdir, f"{name}.csv")
     df.to_csv(filepath, index=False)
+    print(f"Saved data: {filepath}")
     return filepath
 
 
@@ -56,6 +57,7 @@ def create_project_bundle(project_dir: str = ".",
                     filepath = os.path.join(root, file)
                     arcname = os.path.relpath(filepath, project_dir)
                     zf.write(filepath, arcname)
+    print(f"Created bundle: {output_name}")
     return output_name
 
 
@@ -64,163 +66,192 @@ def plot_pulse_results(data: Dict, title_prefix: str = "Pulse") -> Dict[str, plt
     figs = {}
     t_ns = data["t_s"] * 1e9
     
+    # Create figure with subplots
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+    
     # Current vs time
-    fig, ax = plt.subplots(figsize=(8, 5))
-    ax.plot(t_ns, data["I_A"] * 1e3, linewidth=2)
-    ax.set_xlabel("Time (ns)", fontsize=12)
-    ax.set_ylabel("Current (mA)", fontsize=12)
-    ax.set_title(f"{title_prefix}: Current vs Time", fontsize=14)
+    ax = axes[0, 0]
+    ax.plot(t_ns, data["I_A"] * 1e3, 'b-', linewidth=2)
+    ax.set_xlabel("Time (ns)", fontsize=11)
+    ax.set_ylabel("Current (mA)", fontsize=11)
+    ax.set_title(f"{title_prefix}: Current vs Time", fontsize=12)
     ax.grid(True, alpha=0.3)
-    figs["current"] = fig
     
     # Temperature vs time
-    fig, ax = plt.subplots(figsize=(8, 5))
-    ax.plot(t_ns, data["T_K"], linewidth=2, color='red')
-    ax.set_xlabel("Time (ns)", fontsize=12)
-    ax.set_ylabel("Temperature (K)", fontsize=12)
-    ax.set_title(f"{title_prefix}: Temperature vs Time", fontsize=14)
+    ax = axes[0, 1]
+    ax.plot(t_ns, data["T_K"], 'r-', linewidth=2)
+    ax.set_xlabel("Time (ns)", fontsize=11)
+    ax.set_ylabel("Temperature (K)", fontsize=11)
+    ax.set_title(f"{title_prefix}: Temperature vs Time", fontsize=12)
     ax.grid(True, alpha=0.3)
     # Add melting temperature line
     if "Tm_K" in data:
-        ax.axhline(data["Tm_K"], color='k', linestyle='--', alpha=0.3, label='Tm')
-        ax.legend()
-    figs["temperature"] = fig
+        ax.axhline(data.get("Tm_K", 900), color='orange', linestyle='--', 
+                   alpha=0.5, label='Melting')
+    ax.axhline(430, color='green', linestyle='--', alpha=0.5, label='Crystallization')
+    ax.legend(loc='best', fontsize=9)
     
     # Crystalline fraction vs time
-    fig, ax = plt.subplots(figsize=(8, 5))
-    ax.plot(t_ns, data["X"], linewidth=2, color='green')
-    ax.set_xlabel("Time (ns)", fontsize=12)
-    ax.set_ylabel("Crystalline fraction X", fontsize=12)
-    ax.set_title(f"{title_prefix}: Phase Evolution", fontsize=14)
+    ax = axes[1, 0]
+    ax.plot(t_ns, data["X"], 'g-', linewidth=2)
+    ax.set_xlabel("Time (ns)", fontsize=11)
+    ax.set_ylabel("Crystalline fraction X", fontsize=11)
+    ax.set_title(f"{title_prefix}: Phase Evolution", fontsize=12)
     ax.grid(True, alpha=0.3)
-    ax.set_ylim(-0.05, 1.05)
-    figs["phase"] = fig
+    ax.set_ylim([-0.05, 1.05])
     
-    # Resistance vs time (log scale)
-    fig, ax = plt.subplots(figsize=(8, 5))
-    ax.semilogy(t_ns, np.maximum(data["R_ohm"], 1e0), linewidth=2, color='purple')
-    ax.set_xlabel("Time (ns)", fontsize=12)
-    ax.set_ylabel("Device Resistance (Ω)", fontsize=12)
-    ax.set_title(f"{title_prefix}: Resistance vs Time", fontsize=14)
+    # Resistance vs time
+    ax = axes[1, 1]
+    ax.semilogy(t_ns, np.maximum(data["R_ohm"], 1e0), 'purple', linewidth=2)
+    ax.set_xlabel("Time (ns)", fontsize=11)
+    ax.set_ylabel("Device Resistance (Ω)", fontsize=11)
+    ax.set_title(f"{title_prefix}: Resistance vs Time", fontsize=12)
     ax.grid(True, alpha=0.3, which='both')
-    figs["resistance"] = fig
+    
+    plt.suptitle(f"{title_prefix} Operation Analysis", fontsize=14, y=1.02)
+    plt.tight_layout()
+    
+    figs["combined"] = fig
     
     return figs
 
 
-def plot_combined_pulse_results(reset_data: Dict, set_data: Dict) -> plt.Figure:
-    """Create combined plot showing RESET and SET operations."""
+def plot_resistance_vs_crystallinity(X_array: np.ndarray = None, 
+                                    T: float = 300.0) -> plt.Figure:
+    """Plot resistance vs crystalline fraction."""
+    if X_array is None:
+        X_array = np.linspace(0, 1, 100)
+    
+    # Calculate resistance using percolation model
+    rho_a = 1.0  # Amorphous resistivity
+    rho_c = 1e-3  # Crystalline resistivity
+    
+    # Percolation mixing
+    sigma = X_array / rho_c + (1 - X_array) / rho_a
+    R = 1 / sigma  # Normalized resistance
+    
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.semilogy(X_array, R, 'b-', linewidth=3)
+    ax.set_xlabel("Crystalline Fraction X", fontsize=12)
+    ax.set_ylabel("Device Resistance (Ω)", fontsize=12)
+    ax.set_title(f"Resistance vs Crystalline Fraction @ {T:.0f} K", fontsize=14)
+    ax.grid(True, alpha=0.3, which='both')
+    ax.set_xlim([0, 1])
+    
+    # Add annotations
+    ax.annotate(f'Amorphous\nR = {R[0]:.2e} Ω', 
+                xy=(0, R[0]), xytext=(0.1, R[0]*2),
+                arrowprops=dict(arrowstyle='->', color='red'),
+                fontsize=10, ha='left')
+    ax.annotate(f'Crystalline\nR = {R[-1]:.2e} Ω', 
+                xy=(1, R[-1]), xytext=(0.9, R[-1]/2),
+                arrowprops=dict(arrowstyle='->', color='green'),
+                fontsize=10, ha='right')
+    
+    return fig
+
+
+def generate_summary_report(results: Dict) -> str:
+    """Generate a text summary report of simulation results."""
+    report = []
+    report.append("=" * 60)
+    report.append("PCM GST SIMULATION SUMMARY REPORT")
+    report.append("=" * 60)
+    report.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    report.append("")
+    
+    if "device_params" in results:
+        report.append("DEVICE PARAMETERS:")
+        report.append("-" * 30)
+        params = results["device_params"]
+        report.append(f"  Active Layer: {params.get('thickness_m', 50e-9)*1e9:.1f} nm GST")
+        report.append(f"  Device Area: {params.get('area_m2', (50e-9)**2)*1e12:.1f} nm²")
+        report.append(f"  Thermal Capacitance: {params.get('Cth_J_per_K', 1e-11):.2e} J/K")
+        report.append(f"  Thermal Resistance: {params.get('Rth_K_per_W', 5e5):.2e} K/W")
+        report.append("")
+    
+    if "reset_set_cycle" in results:
+        cycle = results["reset_set_cycle"]
+        report.append("PROGRAMMING OPERATIONS:")
+        report.append("-" * 30)
+        if "reset" in cycle:
+            reset = cycle["reset"]
+            report.append(f"  RESET Pulse:")
+            report.append(f"    Duration: {(reset['t_s'][-1] - reset['t_s'][0])*1e9:.1f} ns")
+            report.append(f"    Max Temperature: {np.max(reset['T_K']):.0f} K")
+            report.append(f"    Final X: {reset['X'][-1]:.3f}")
+            report.append(f"    Final R: {reset['R_ohm'][-1]:.2e} Ω")
+        
+        if "set" in cycle:
+            set_data = cycle["set"]
+            report.append(f"  SET Pulse:")
+            report.append(f"    Duration: {(set_data['t_s'][-1] - set_data['t_s'][0])*1e9:.1f} ns")
+            report.append(f"    Max Temperature: {np.max(set_data['T_K']):.0f} K")
+            report.append(f"    Final X: {set_data['X'][-1]:.3f}")
+            report.append(f"    Final R: {set_data['R_ohm'][-1]:.2e} Ω")
+        
+        if "resistance_ratio" in cycle:
+            report.append(f"  Resistance Ratio: {cycle['resistance_ratio']:.0f}×")
+        report.append("")
+    
+    if "retention" in results:
+        ret = results["retention"]
+        report.append("RETENTION ANALYSIS:")
+        report.append("-" * 30)
+        for T_C, t50_y in zip(ret["temp_C"], ret["t50_years"]):
+            if t50_y < 1e10:
+                report.append(f"  {T_C:3.0f}°C: {t50_y:.2e} years")
+        report.append("")
+    
+    if "endurance" in results:
+        end = results["endurance"]
+        report.append("ENDURANCE ANALYSIS:")
+        report.append("-" * 30)
+        report.append(f"  Weibull Shape (β): {end['beta']:.1f}")
+        report.append(f"  Characteristic Life (η): {end['eta']:.2e} cycles")
+        if "percentiles" in end:
+            report.append("  Percentiles:")
+            for p, val in end["percentiles"].items():
+                report.append(f"    {p:2d}%: {val:.2e} cycles")
+        report.append("")
+    
+    report.append("=" * 60)
+    
+    return "\n".join(report)
+
+
+def compare_materials(materials: List[Dict]) -> plt.Figure:
+    """Compare different PCM materials."""
     fig, axes = plt.subplots(2, 2, figsize=(14, 10))
     
-    # RESET data
-    t_reset_ns = reset_data["t_s"] * 1e9
-    axes[0, 0].plot(t_reset_ns, reset_data["T_K"], 'r-', label='RESET')
-    axes[0, 0].set_ylabel("Temperature (K)")
-    axes[0, 0].set_title("Temperature Evolution")
-    axes[0, 0].grid(True, alpha=0.3)
-    axes[0, 0].legend()
+    # Placeholder for material comparison plots
+    # This would be expanded with actual material data
     
-    axes[0, 1].plot(t_reset_ns, reset_data["X"], 'b-', label='RESET')
-    axes[0, 1].set_ylabel("Crystalline Fraction")
-    axes[0, 1].set_title("Phase State")
-    axes[0, 1].grid(True, alpha=0.3)
-    axes[0, 1].legend()
+    ax = axes[0, 0]
+    ax.text(0.5, 0.5, "Crystallization Temperature", 
+            ha='center', va='center', fontsize=14)
+    ax.set_xlim([0, 1])
+    ax.set_ylim([0, 1])
     
-    # SET data
-    t_set_ns = set_data["t_s"] * 1e9
-    axes[1, 0].plot(t_set_ns, set_data["T_K"], 'r--', label='SET')
-    axes[1, 0].set_xlabel("Time (ns)")
-    axes[1, 0].set_ylabel("Temperature (K)")
-    axes[1, 0].grid(True, alpha=0.3)
-    axes[1, 0].legend()
+    ax = axes[0, 1]
+    ax.text(0.5, 0.5, "Resistance Ratio", 
+            ha='center', va='center', fontsize=14)
+    ax.set_xlim([0, 1])
+    ax.set_ylim([0, 1])
     
-    axes[1, 1].plot(t_set_ns, set_data["X"], 'b--', label='SET')
-    axes[1, 1].set_xlabel("Time (ns)")
-    axes[1, 1].set_ylabel("Crystalline Fraction")
-    axes[1, 1].grid(True, alpha=0.3)
-    axes[1, 1].legend()
+    ax = axes[1, 0]
+    ax.text(0.5, 0.5, "Retention @ 85°C", 
+            ha='center', va='center', fontsize=14)
+    ax.set_xlim([0, 1])
+    ax.set_ylim([0, 1])
     
-    fig.suptitle("PCM Operation: RESET vs SET", fontsize=16)
+    ax = axes[1, 1]
+    ax.text(0.5, 0.5, "Endurance", 
+            ha='center', va='center', fontsize=14)
+    ax.set_xlim([0, 1])
+    ax.set_ylim([0, 1])
+    
+    plt.suptitle("PCM Material Comparison", fontsize=16)
     plt.tight_layout()
     
     return fig
-
-
-def generate_switching_map(device, voltages: np.ndarray, durations: np.ndarray,
-                          initial_X: float = 0.0) -> Dict:
-    """
-    Generate 2D switching map for voltage-duration parameter space.
-    
-    Args:
-        device: PCMDevice instance
-        voltages: Array of voltages to test
-        durations: Array of pulse durations to test
-        initial_X: Initial crystalline fraction
-        
-    Returns:
-        Dictionary with switching map data
-    """
-    final_X = np.zeros((len(durations), len(voltages)))
-    peak_T = np.zeros((len(durations), len(voltages)))
-    
-    for i, duration in enumerate(durations):
-        for j, voltage in enumerate(voltages):
-            t, V = device.create_set_pulse(duration, voltage)
-            result = device.simulate_voltage_pulse(V, t, X0=initial_X)
-            final_X[i, j] = result['X'][-1]
-            peak_T[i, j] = result['T_K'].max()
-    
-    return {
-        "voltages": voltages,
-        "durations": durations,
-        "final_X": final_X,
-        "peak_T": peak_T
-    }
-
-
-def plot_switching_map(data: Dict) -> plt.Figure:
-    """Plot 2D switching map."""
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
-    
-    # Final crystalline fraction
-    im1 = ax1.imshow(data["final_X"], aspect='auto', origin='lower',
-                     extent=[data["voltages"].min(), data["voltages"].max(),
-                            data["durations"].min()*1e9, data["durations"].max()*1e9],
-                     cmap='viridis', vmin=0, vmax=1)
-    ax1.set_xlabel("Voltage (V)", fontsize=12)
-    ax1.set_ylabel("Duration (ns)", fontsize=12)
-    ax1.set_title("Final Crystalline Fraction", fontsize=14)
-    cbar1 = plt.colorbar(im1, ax=ax1)
-    cbar1.set_label("X", fontsize=12)
-    
-    # Peak temperature
-    im2 = ax2.imshow(data["peak_T"], aspect='auto', origin='lower',
-                     extent=[data["voltages"].min(), data["voltages"].max(),
-                            data["durations"].min()*1e9, data["durations"].max()*1e9],
-                     cmap='hot')
-    ax2.set_xlabel("Voltage (V)", fontsize=12)
-    ax2.set_ylabel("Duration (ns)", fontsize=12)
-    ax2.set_title("Peak Temperature", fontsize=14)
-    cbar2 = plt.colorbar(im2, ax=ax2)
-    cbar2.set_label("T (K)", fontsize=12)
-    
-    fig.suptitle("Switching Parameter Map", fontsize=16)
-    plt.tight_layout()
-    
-    return fig
-
-
-def analyze_variability(mc_results: pd.DataFrame) -> Dict:
-    """Analyze Monte Carlo variability results."""
-    analysis = {
-        "mean_X": mc_results['final_X'].mean(),
-        "std_X": mc_results['final_X'].std(),
-        "cv_X": mc_results['final_X'].std() / mc_results['final_X'].mean(),
-        "mean_T": mc_results['peak_T'].mean(),
-        "std_T": mc_results['peak_T'].std(),
-        "mean_R": mc_results['final_R'].mean(),
-        "std_R": mc_results['final_R'].std(),
-        "success_rate": (mc_results['final_X'] > 0.9).mean()
-    }
-    
-    return analysis
