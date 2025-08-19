@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attention Visualizer - Neural Networks Suite</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #f59e0b;
+            --secondary: #d97706;
+            --accent: #fbbf24;
+            --dark: #0a0a0a;
+            --light: #f9fafb;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #451a03 100%);
+            color: var(--light);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            background: linear-gradient(135deg, #f59e0b 0%, #dc2626 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .panel {
+            background: rgba(245, 158, 11, 0.05);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .panel-title {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .attention-canvas {
+            width: 100%;
+            height: 400px;
+            border: 2px solid rgba(245, 158, 11, 0.3);
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .layer-selector {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .layer-btn {
+            padding: 0.5rem 1rem;
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 0.5rem;
+            color: var(--accent);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .layer-btn:hover {
+            background: rgba(245, 158, 11, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .layer-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .control-group {
+            margin-bottom: 1rem;
+        }
+
+        .control-label {
+            color: #fbbf24;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .slider {
+            width: 100%;
+            -webkit-appearance: none;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(245, 158, 11, 0.2);
+            outline: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+        }
+
+        .attention-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 2px;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 0.5rem;
+        }
+
+        .attention-cell {
+            aspect-ratio: 1;
+            background: rgba(245, 158, 11, 0.1);
+            border-radius: 2px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .attention-cell:hover {
+            transform: scale(1.1);
+            z-index: 10;
+        }
+
+        .heatmap-legend {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1rem;
+            padding: 0.5rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 0.5rem;
+        }
+
+        .legend-gradient {
+            flex: 1;
+            height: 20px;
+            background: linear-gradient(90deg, 
+                rgba(10, 10, 10, 1) 0%, 
+                rgba(245, 158, 11, 0.3) 25%,
+                rgba(245, 158, 11, 0.6) 50%,
+                rgba(245, 158, 11, 0.9) 75%,
+                rgba(245, 158, 11, 1) 100%);
+            border-radius: 10px;
+        }
+
+        .feature-cards {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .feature-card {
+            background: rgba(245, 158, 11, 0.1);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            background: rgba(245, 158, 11, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .feature-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .feature-label {
+            color: #fed7aa;
+            font-size: 0.85rem;
+            margin-top: 0.25rem;
+        }
+
+        .sample-selector {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .sample-thumb {
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .sample-thumb:hover {
+            border-color: var(--primary);
+            transform: scale(1.05);
+        }
+
+        .sample-thumb.active {
+            border-color: var(--primary);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            width: 100%;
+            justify-content: center;
+            margin-top: 1rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(245, 158, 11, 0.3);
+        }
+
+        .attention-type-selector {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .type-btn {
+            flex: 1;
+            padding: 0.5rem;
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 0.5rem;
+            color: var(--accent);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .type-btn:hover {
+            background: rgba(245, 158, 11, 0.2);
+        }
+
+        .type-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        @media (max-width: 1024px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-eye"></i> Attention Visualizer</h1>
+            <p style="color: #fed7aa;">Explore how attention mechanisms focus on critical image regions</p>
+        </div>
+
+        <div class="main-grid">
+            <!-- Left Panel - Input Selection -->
+            <div class="panel">
+                <h2 class="panel-title">
+                    <i class="fas fa-image"></i> Input Selection
+                </h2>
+                
+                <div class="sample-selector">
+                    <canvas class="sample-thumb active" id="sample0" onclick="selectSample(0)"></canvas>
+                    <canvas class="sample-thumb" id="sample1" onclick="selectSample(1)"></canvas>
+                    <canvas class="sample-thumb" id="sample2" onclick="selectSample(2)"></canvas>
+                    <canvas class="sample-thumb" id="sample3" onclick="selectSample(3)"></canvas>
+                </div>
+
+                <button class="btn btn-primary" onclick="uploadImage()">
+                    <i class="fas fa-upload"></i> Upload Image
+                </button>
+
+                <div class="control-group" style="margin-top: 2rem;">
+                    <label class="control-label">Attention Threshold</label>
+                    <input type="range" class="slider" id="threshold" min="0" max="100" value="30">
+                    <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
+                        <span style="color: #fed7aa;">Low</span>
+                        <span id="thresholdValue" style="color: var(--accent);">30%</span>
+                        <span style="color: #fed7aa;">High</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Visualization Opacity</label>
+                    <input type="range" class="slider" id="opacity" min="0" max="100" value="70">
+                    <div style="text-align: center; margin-top: 0.5rem;">
+                        <span id="opacityValue" style="color: var(--accent);">70%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Center Panel - Visualization -->
+            <div class="panel">
+                <h2 class="panel-title">
+                    <i class="fas fa-brain"></i> Attention Visualization
+                </h2>
+
+                <div class="attention-type-selector">
+                    <div class="type-btn active" onclick="selectAttentionType('cbam')">CBAM</div>
+                    <div class="type-btn" onclick="selectAttentionType('se')">SE Block</div>
+                    <div class="type-btn" onclick="selectAttentionType('spatial')">Spatial</div>
+                    <div class="type-btn" onclick="selectAttentionType('channel')">Channel</div>
+                </div>
+
+                <div class="layer-selector">
+                    <button class="layer-btn active" onclick="selectLayer(1)">Layer 1</button>
+                    <button class="layer-btn" onclick="selectLayer(2)">Layer 2</button>
+                    <button class="layer-btn" onclick="selectLayer(3)">Layer 3</button>
+                    <button class="layer-btn" onclick="selectLayer(4)">Layer 4</button>
+                    <button class="layer-btn" onclick="selectLayer(5)">Layer 5</button>
+                </div>
+
+                <canvas class="attention-canvas" id="attentionCanvas"></canvas>
+
+                <div id="heatmapPlot"></div>
+
+                <div class="heatmap-legend">
+                    <span style="color: #fed7aa;">Low Attention</span>
+                    <div class="legend-gradient"></div>
+                    <span style="color: #fed7aa;">High Attention</span>
+                </div>
+            </div>
+
+            <!-- Right Panel - Analysis -->
+            <div class="panel">
+                <h2 class="panel-title">
+                    <i class="fas fa-chart-bar"></i> Attention Analysis
+                </h2>
+
+                <div class="feature-cards">
+                    <div class="feature-card">
+                        <div class="feature-value" id="maxAttention">0.95</div>
+                        <div class="feature-label">Max Attention</div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-value" id="avgAttention">0.42</div>
+                        <div class="feature-label">Avg Attention</div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-value" id="focusRegions">3</div>
+                        <div class="feature-label">Focus Regions</div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-value" id="sparsity">68%</div>
+                        <div class="feature-label">Sparsity</div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 2rem;">
+                    <h3 style="color: var(--accent); margin-bottom: 1rem;">
+                        <i class="fas fa-info-circle"></i> Attention Insights
+                    </h3>
+                    <div style="background: rgba(0, 0, 0, 0.3); padding: 1rem; border-radius: 0.5rem;">
+                        <ul style="list-style: none; color: #fed7aa;">
+                            <li style="margin-bottom: 0.5rem;">
+                                <i class="fas fa-check" style="color: var(--primary); margin-right: 0.5rem;"></i>
+                                CBAM combines channel and spatial attention
+                            </li>
+                            <li style="margin-bottom: 0.5rem;">
+                                <i class="fas fa-check" style="color: var(--primary); margin-right: 0.5rem;"></i>
+                                SE blocks focus on channel relationships
+                            </li>
+                            <li style="margin-bottom: 0.5rem;">
+                                <i class="fas fa-check" style="color: var(--primary); margin-right: 0.5rem;"></i>
+                                Spatial attention highlights important regions
+                            </li>
+                            <li>
+                                <i class="fas fa-check" style="color: var(--primary); margin-right: 0.5rem;"></i>
+                                Higher layers capture semantic features
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="exportVisualization()">
+                    <i class="fas fa-download"></i> Export Visualization
+                </button>
+            </div>
+        </div>
+
+        <!-- Attention Grid Visualization -->
+        <div class="panel">
+            <h2 class="panel-title">
+                <i class="fas fa-th"></i> Attention Weight Matrix
+            </h2>
+            <div class="attention-grid" id="attentionGrid"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentSample = 0;
+        let currentLayer = 1;
+        let currentAttentionType = 'cbam';
+
+        // Generate sample images
+        function generateSamples() {
+            for (let i = 0; i < 4; i++) {
+                const canvas = document.getElementById(`sample${i}`);
+                const ctx = canvas.getContext('2d');
+                canvas.width = 100;
+                canvas.height = 100;
+                
+                // Create different patterns
+                const gradient = ctx.createLinearGradient(0, 0, 100, 100);
+                gradient.addColorStop(0, '#451a03');
+                gradient.addColorStop(1, '#78350f');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, 100, 100);
+                
+                // Add pattern based on index
+                ctx.strokeStyle = '#f59e0b';
+                ctx.lineWidth = 2;
+                
+                switch(i) {
+                    case 0:
+                        // Grid pattern
+                        for(let j = 0; j < 5; j++) {
+                            ctx.beginPath();
+                            ctx.moveTo(j * 20, 0);
+                            ctx.lineTo(j * 20, 100);
+                            ctx.stroke();
+                            ctx.beginPath();
+                            ctx.moveTo(0, j * 20);
+                            ctx.lineTo(100, j * 20);
+                            ctx.stroke();
+                        }
+                        break;
+                    case 1:
+                        // Circle pattern
+                        ctx.beginPath();
+                        ctx.arc(50, 50, 30, 0, Math.PI * 2);
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.arc(50, 50, 20, 0, Math.PI * 2);
+                        ctx.stroke();
+                        break;
+                    case 2:
+                        // Diagonal lines
+                        for(let j = 0; j < 10; j++) {
+                            ctx.beginPath();
+                            ctx.moveTo(j * 10, 0);
+                            ctx.lineTo(0, j * 10);
+                            ctx.stroke();
+                            ctx.beginPath();
+                            ctx.moveTo(100, j * 10);
+                            ctx.lineTo(j * 10, 100);
+                            ctx.stroke();
+                        }
+                        break;
+                    case 3:
+                        // Random dots
+                        ctx.fillStyle = '#f59e0b';
+                        for(let j = 0; j < 20; j++) {
+                            ctx.beginPath();
+                            ctx.arc(Math.random() * 100, Math.random() * 100, 3, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                        break;
+                }
+            }
+        }
+
+        generateSamples();
+
+        // Initialize attention canvas
+        function initializeAttentionCanvas() {
+            const canvas = document.getElementById('attentionCanvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.offsetWidth;
+            canvas.height = 400;
+            
+            // Draw base image
+            const sampleCanvas = document.getElementById(`sample${currentSample}`);
+            ctx.drawImage(sampleCanvas, 0, 0, canvas.width, canvas.height);
+            
+            // Apply attention overlay
+            const opacity = document.getElementById('opacity').value / 100;
+            ctx.globalAlpha = opacity;
+            
+            // Generate attention map
+            for(let i = 0; i < 20; i++) {
+                for(let j = 0; j < 20; j++) {
+                    const attention = Math.random();
+                    const x = (i / 20) * canvas.width;
+                    const y = (j / 20) * canvas.height;
+                    const w = canvas.width / 20;
+                    const h = canvas.height / 20;
+                    
+                    if (attention > 0.3) {
+                        const intensity = attention;
+                        ctx.fillStyle = `rgba(245, 158, 11, ${intensity})`;
+                        ctx.fillRect(x, y, w, h);
+                    }
+                }
+            }
+            
+            ctx.globalAlpha = 1;
+        }
+
+        // Initialize heatmap
+        function initializeHeatmap() {
+            const size = 14;
+            const z = Array(size).fill().map(() => 
+                Array(size).fill().map(() => Math.random())
+            );
+            
+            const data = [{
+                z: z,
+                type: 'heatmap',
+                colorscale: [
+                    [0, 'rgb(10, 10, 10)'],
+                    [0.25, 'rgb(120, 53, 15)'],
+                    [0.5, 'rgb(245, 158, 11)'],
+                    [0.75, 'rgb(251, 191, 36)'],
+                    [1, 'rgb(254, 243, 199)']
+                ],
+                showscale: false
+            }];
+            
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                margin: { t: 10, r: 10, b: 10, l: 10 },
+                xaxis: { showgrid: false, showticklabels: false },
+                yaxis: { showgrid: false, showticklabels: false },
+                height: 300
+            };
+            
+            Plotly.newPlot('heatmapPlot', data, layout, {displayModeBar: false});
+        }
+
+        // Initialize attention grid
+        function initializeAttentionGrid() {
+            const grid = document.getElementById('attentionGrid');
+            grid.innerHTML = '';
+            
+            for(let i = 0; i < 64; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'attention-cell';
+                const intensity = Math.random();
+                cell.style.background = `rgba(245, 158, 11, ${intensity})`;
+                cell.style.boxShadow = intensity > 0.5 ? `0 0 10px rgba(245, 158, 11, ${intensity})` : 'none';
+                grid.appendChild(cell);
+            }
+        }
+
+        function selectSample(index) {
+            currentSample = index;
+            document.querySelectorAll('.sample-thumb').forEach((thumb, i) => {
+                thumb.classList.toggle('active', i === index);
+            });
+            updateVisualization();
+        }
+
+        function selectLayer(layer) {
+            currentLayer = layer;
+            document.querySelectorAll('.layer-btn').forEach((btn, i) => {
+                btn.classList.toggle('active', i === layer - 1);
+            });
+            updateVisualization();
+        }
+
+        function selectAttentionType(type) {
+            currentAttentionType = type;
+            document.querySelectorAll('.type-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.textContent.toLowerCase().includes(type));
+            });
+            updateVisualization();
+        }
+
+        function updateVisualization() {
+            initializeAttentionCanvas();
+            initializeHeatmap();
+            initializeAttentionGrid();
+            
+            // Update metrics
+            document.getElementById('maxAttention').textContent = (0.8 + Math.random() * 0.2).toFixed(2);
+            document.getElementById('avgAttention').textContent = (0.3 + Math.random() * 0.3).toFixed(2);
+            document.getElementById('focusRegions').textContent = Math.floor(Math.random() * 5) + 1;
+            document.getElementById('sparsity').textContent = Math.floor(50 + Math.random() * 40) + '%';
+        }
+
+        // Event listeners
+        document.getElementById('threshold').addEventListener('input', (e) => {
+            document.getElementById('thresholdValue').textContent = e.target.value + '%';
+            updateVisualization();
+        });
+
+        document.getElementById('opacity').addEventListener('input', (e) => {
+            document.getElementById('opacityValue').textContent = e.target.value + '%';
+            updateVisualization();
+        });
+
+        function uploadImage() {
+            alert('Image upload would open file selector in production');
+        }
+
+        function exportVisualization() {
+            alert('Visualization export would download PNG/SVG in production');
+        }
+
+        // Initialize
+        updateVisualization();
+    </script>
+</body>
+</html>
