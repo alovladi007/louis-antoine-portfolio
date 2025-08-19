@@ -43,46 +43,40 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // GSAP Animations for hero section
+    // GSAP Animations - only for specific elements, not backgrounds
     if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
         gsap.registerPlugin(ScrollTrigger);
         
-        // Parallax effect for hero background
-        gsap.to('.hero-bg-elements', {
-            yPercent: -50,
-            ease: 'none',
-            scrollTrigger: {
-                trigger: '.hero',
-                start: 'top top',
-                end: 'bottom top',
-                scrub: true
-            }
-        });
+        // Only animate floating shapes if they exist, not background images
+        const floatingShapes = document.querySelectorAll('.floating-shape');
+        if (floatingShapes.length > 0) {
+            gsap.to('.floating-shape', {
+                y: '+=30',
+                rotation: 360,
+                duration: 10,
+                repeat: -1,
+                yoyo: true,
+                ease: 'sine.inOut',
+                stagger: {
+                    each: 2,
+                    from: 'random'
+                }
+            });
+        }
         
-        // Animate floating shapes
-        gsap.to('.floating-shape', {
-            y: '+=30',
-            rotation: 360,
-            duration: 10,
-            repeat: -1,
-            yoyo: true,
-            ease: 'sine.inOut',
-            stagger: {
-                each: 2,
-                from: 'random'
-            }
-        });
-        
-        // Animate gradient orbs
-        gsap.to('.gradient-orb', {
-            scale: 1.2,
-            opacity: 0.7,
-            duration: 4,
-            repeat: -1,
-            yoyo: true,
-            ease: 'power1.inOut',
-            stagger: 1
-        });
+        // Only animate gradient orbs if they exist
+        const gradientOrbs = document.querySelectorAll('.gradient-orb');
+        if (gradientOrbs.length > 0) {
+            gsap.to('.gradient-orb', {
+                scale: 1.2,
+                opacity: 0.7,
+                duration: 4,
+                repeat: -1,
+                yoyo: true,
+                ease: 'power1.inOut',
+                stagger: 1
+            });
+        }
     }
     
     // 3D Tilt effect on project cards
@@ -150,23 +144,26 @@ document.addEventListener('DOMContentLoaded', function() {
         skillObserver.observe(skillsSection);
     }
     
-    // Smooth reveal for sections
-    const sections = document.querySelectorAll('section');
-    const sectionObserver = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('section-visible');
-            }
+    // Smooth reveal for sections - disabled to not affect existing design
+    // Only apply to elements with specific class
+    const animatedSections = document.querySelectorAll('.animate-on-scroll');
+    if (animatedSections.length > 0) {
+        const sectionObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('section-visible');
+                }
+            });
+        }, {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
         });
-    }, {
-        threshold: 0.1,
-        rootMargin: '0px 0px -50px 0px'
-    });
-    
-    sections.forEach(section => {
-        section.classList.add('section-hidden');
-        sectionObserver.observe(section);
-    });
+        
+        animatedSections.forEach(section => {
+            section.classList.add('section-hidden');
+            sectionObserver.observe(section);
+        });
+    }
     
     // Enhanced navbar with hide/show on scroll
     let lastScroll = 0;
@@ -298,16 +295,14 @@ document.addEventListener('DOMContentLoaded', function() {
 // Add necessary CSS for new effects
 const style = document.createElement('style');
 style.textContent = `
-    /* Section animations */
+    /* Section animations - reduced to avoid affecting backgrounds */
     .section-hidden {
         opacity: 0;
-        transform: translateY(30px);
     }
     
     .section-visible {
         opacity: 1;
-        transform: translateY(0);
-        transition: opacity 0.8s ease, transform 0.8s ease;
+        transition: opacity 0.8s ease;
     }
     
     /* Navbar enhancements */
