@@ -1,0 +1,251 @@
+version: '3.9'
+
+services:
+  # PostgreSQL with TimescaleDB
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    container_name: powerelec-postgres
+    environment:
+      POSTGRES_DB: powerelec
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+      TS_TUNE_MAX_CONNS: 100
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/init-sql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - powerelec
+
+  # Redis for caching and job queue
+  redis:
+    image: redis:7-alpine
+    container_name: powerelec-redis
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - powerelec
+
+  # MQTT Broker
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: powerelec-mqtt
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+    networks:
+      - powerelec
+
+  # NestJS API Gateway
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: powerelec-api
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres123@postgres:5432/powerelec
+      REDIS_URL: redis://redis:6379
+      MQTT_URL: mqtt://mosquitto:1883
+      JWT_SECRET: your-secret-key-change-in-production
+      PORT: 4000
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
+    volumes:
+      - ./apps/api:/app
+      - /app/node_modules
+    command: npm run start:dev
+    networks:
+      - powerelec
+
+  # Next.js Web Application
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:4000
+    container_name: powerelec-web
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: your-nextauth-secret-change-in-production
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
+      - /app/.next
+    command: npm run dev
+    networks:
+      - powerelec
+
+  # Python Simulation Service
+  sim:
+    build:
+      context: ./services/sim
+      dockerfile: Dockerfile
+    container_name: powerelec-sim
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres123@postgres:5432/powerelec
+      REDIS_URL: redis://redis:6379
+      MQTT_URL: mqtt://mosquitto:1883
+      PORT: 5000
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/sim:/app
+    command: uvicorn src.main:app --host 0.0.0.0 --port 5000 --reload
+    networks:
+      - powerelec
+
+  # Python ML Service
+  ml:
+    build:
+      context: ./services/ml
+      dockerfile: Dockerfile
+    container_name: powerelec-ml
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres123@postgres:5432/powerelec
+      REDIS_URL: redis://redis:6379
+      MQTT_URL: mqtt://mosquitto:1883
+      PORT: 5001
+    ports:
+      - "5001:5001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/ml:/app
+      - ml_models:/app/models
+    command: uvicorn src.main:app --host 0.0.0.0 --port 5001 --reload
+    networks:
+      - powerelec
+
+  # MQTT Stream Gateway
+  stream:
+    build:
+      context: ./services/stream
+      dockerfile: Dockerfile
+    container_name: powerelec-stream
+    environment:
+      MQTT_URL: mqtt://mosquitto:1883
+      REDIS_URL: redis://redis:6379
+      PORT: 5002
+    ports:
+      - "5002:5002"
+    depends_on:
+      - mosquitto
+      - redis
+    volumes:
+      - ./services/stream:/app
+      - /app/node_modules
+    command: npm run start:dev
+    networks:
+      - powerelec
+
+  # Grafana for monitoring
+  grafana:
+    image: grafana/grafana:latest
+    container_name: powerelec-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - postgres
+    networks:
+      - powerelec
+
+  # Docusaurus Documentation (development only)
+  docs:
+    build:
+      context: ./apps/docs
+      dockerfile: Dockerfile
+    container_name: powerelec-docs
+    ports:
+      - "3002:3000"
+    volumes:
+      - ./apps/docs:/app
+      - /app/node_modules
+    command: npm run start -- --host 0.0.0.0
+    networks:
+      - powerelec
+    profiles:
+      - docs
+
+  # HIL Agent (for Raspberry Pi deployment)
+  hil-agent:
+    build:
+      context: ./services/hil-agent
+      dockerfile: Dockerfile
+    container_name: powerelec-hil
+    environment:
+      MQTT_URL: mqtt://mosquitto:1883
+      DATABASE_URL: postgresql://postgres:postgres123@postgres:5432/powerelec
+      CAN_INTERFACE: vcan0  # Change to can0 for real hardware
+      DEVICE_ID: hil-dev-001
+    ports:
+      - "5003:5003"
+    depends_on:
+      - mosquitto
+      - postgres
+    volumes:
+      - ./services/hil-agent:/app
+      - ./shared/can:/app/dbc:ro
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw  # For CAN tools GUI if needed
+    privileged: true  # Required for CAN access
+    network_mode: host  # Required for CAN interface access
+    profiles:
+      - hil
+
+networks:
+  powerelec:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  mosquitto_data:
+  mosquitto_log:
+  grafana_data:
+  ml_models:
