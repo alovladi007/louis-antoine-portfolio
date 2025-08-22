@@ -2316,57 +2316,147 @@ print(f"Energy Efficiency: {core.energy_efficiency:.2f} fJ/OP")</code></pre>
         }
         
         function drawCrossbarArchitecture() {
-            const canvas = document.getElementById('crossbarCanvas');
-            if (!canvas) return;
-            const ctx = canvas.getContext('2d');
+            // Create 3D visualization using Three.js
+            const container = document.getElementById('architecture3D');
+            if (!container) return;
             
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Clear previous content
+            container.innerHTML = '';
             
-            // Draw crossbar array
-            const rows = 8;
-            const cols = 8;
-            const cellSize = 50;
-            const startX = (canvas.width - cols * cellSize) / 2;
-            const startY = (canvas.height - rows * cellSize) / 2;
+            // Check if Three.js is loaded
+            if (typeof THREE === 'undefined') {
+                // Fallback to 2D canvas if Three.js not available
+                const canvas = document.createElement('canvas');
+                canvas.width = container.clientWidth || 800;
+                canvas.height = 600;
+                container.appendChild(canvas);
+                const ctx = canvas.getContext('2d');
             
-            for (let i = 0; i < rows; i++) {
-                for (let j = 0; j < cols; j++) {
-                    const x = startX + j * cellSize;
-                    const y = startY + i * cellSize;
+                // Draw 2D fallback
+                ctx.fillStyle = '#0a0e27';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw layers
+                const layers = [
+                    { name: 'PCM Layer', color: '#00ff88', y: 100 },
+                    { name: 'Photonic IC', color: '#00aaff', y: 200 },
+                    { name: 'DBI', color: '#ffaa00', y: 300 },
+                    { name: 'CMOS EIC', color: '#1a1a2e', y: 400 }
+                ];
+                
+                layers.forEach((layer, idx) => {
+                    ctx.fillStyle = layer.color;
+                    ctx.globalAlpha = 0.8;
+                    ctx.fillRect(200, layer.y, 400, 80);
                     
-                    // Draw cell
-                    ctx.fillStyle = `rgba(0, 255, 136, ${0.1 + Math.random() * 0.3})`;
-                    ctx.fillRect(x, y, cellSize - 2, cellSize - 2);
-                    
-                    // Draw ring resonator
-                    ctx.strokeStyle = '#00ff88';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.arc(x + cellSize/2, y + cellSize/2, 15, 0, 2 * Math.PI);
-                    ctx.stroke();
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '16px Arial';
+                    ctx.fillText(layer.name, 220, layer.y + 45);
+                });
+                
+                return;
+            }
+            
+            // Three.js 3D visualization
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0e27);
+            
+            const camera = new THREE.PerspectiveCamera(
+                60,
+                container.clientWidth / 600,
+                0.1,
+                1000
+            );
+            
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth || 800, 600);
+            container.appendChild(renderer.domElement);
+            
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0x404040, 2);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0x00ff88, 1);
+            directionalLight.position.set(5, 5, 5);
+            scene.add(directionalLight);
+            
+            const directionalLight2 = new THREE.DirectionalLight(0x00aaff, 0.5);
+            directionalLight2.position.set(-5, 5, -5);
+            scene.add(directionalLight2);
+            
+            // Create 3D EPIC Stack
+            const group = new THREE.Group();
+            
+            // Layer definitions
+            const layers = [
+                { name: 'CMOS EIC', color: 0x1a1a2e, height: 0.5, y: 0, opacity: 0.9 },
+                { name: 'DBI', color: 0xffaa00, height: 0.2, y: 0.6, opacity: 0.7 },
+                { name: 'Photonic IC', color: 0x00aaff, height: 0.8, y: 1.0, opacity: 0.8 },
+                { name: 'PCM Layer', color: 0x00ff88, height: 0.3, y: 1.9, opacity: 0.8 }
+            ];
+            
+            // Create each layer
+            layers.forEach(layer => {
+                const geometry = new THREE.BoxGeometry(4, layer.height, 4);
+                const material = new THREE.MeshPhongMaterial({
+                    color: layer.color,
+                    transparent: true,
+                    opacity: layer.opacity,
+                    emissive: layer.color,
+                    emissiveIntensity: 0.2
+                });
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.y = layer.y;
+                group.add(mesh);
+                
+                // Add edges
+                const edges = new THREE.EdgesGeometry(geometry);
+                const lineMaterial = new THREE.LineBasicMaterial({ 
+                    color: 0xffffff,
+                    linewidth: 2
+                });
+                const lineSegments = new THREE.LineSegments(edges, lineMaterial);
+                lineSegments.position.y = layer.y;
+                group.add(lineSegments);
+            });
+            
+            // Add ring resonators on photonic layer
+            const ringGeometry = new THREE.TorusGeometry(0.15, 0.05, 8, 16);
+            const ringMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x00ff88,
+                emissive: 0x00ff88,
+                emissiveIntensity: 0.5
+            });
+            
+            for (let i = -1; i <= 1; i++) {
+                for (let j = -1; j <= 1; j++) {
+                    const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+                    ring.position.set(i * 0.8, 1.4, j * 0.8);
+                    ring.rotation.x = Math.PI / 2;
+                    group.add(ring);
                 }
             }
             
-            // Draw input/output waveguides
-            ctx.strokeStyle = '#00aaff';
-            ctx.lineWidth = 3;
+            scene.add(group);
             
-            // Horizontal waveguides
-            for (let i = 0; i < rows; i++) {
-                ctx.beginPath();
-                ctx.moveTo(startX - 20, startY + i * cellSize + cellSize/2);
-                ctx.lineTo(startX + cols * cellSize + 20, startY + i * cellSize + cellSize/2);
-                ctx.stroke();
-            }
+            // Set camera position
+            camera.position.set(6, 4, 6);
+            camera.lookAt(0, 1, 0);
             
-            // Vertical waveguides
-            for (let j = 0; j < cols; j++) {
-                ctx.beginPath();
-                ctx.moveTo(startX + j * cellSize + cellSize/2, startY - 20);
-                ctx.lineTo(startX + j * cellSize + cellSize/2, startY + rows * cellSize + 20);
-                ctx.stroke();
+            // Animation loop
+            let animationId;
+            function animate() {
+                animationId = requestAnimationFrame(animate);
+                group.rotation.y += 0.005;
+                renderer.render(scene, camera);
             }
+            animate();
+            
+            // Store references for cleanup
+            container._renderer = renderer;
+            container._animationId = animationId;
         }
+
         
         function runSimulation() {
             const progressBar = document.getElementById('progressBar');
@@ -2844,23 +2934,36 @@ print(f"Energy Efficiency: {core.energy_efficiency:.2f} fJ/OP")</code></pre>
         }
         
         // Complete implementation functions for all demos
+        
+        // Global chart instances
+        window.demoCharts = {};
+        
         function initializeResonatorDemo() {
+            // Initialize with proper chart
+            const pcmLevel = parseInt(document.getElementById('pcmState').value);
+            const eoLevel = parseInt(document.getElementById('eoVoltage').value);
+            
             updateResonatorDemo();
             
             // Main resonator transmission chart
             const ctx = document.getElementById('resonatorDemoChart');
-            if (ctx) {
+            if (ctx && !window.demoCharts.resonator) {
                 const wavelengths = [];
                 const transmission = [];
+                
+                // Generate initial data
+                const deltaIndex = (pcmLevel / 31) * 0.54;
+                const biasVoltage = (eoLevel / 255) * 5;
+                const resonance = 1550 + deltaIndex * 3.7 + biasVoltage * 0.1;
+                
                 for (let i = 1540; i <= 1560; i += 0.1) {
                     wavelengths.push(i);
-                    // Simulate resonance dip
-                    const resonance = 1550 + parseFloat(document.getElementById('demoPhase').value) * 2;
-                    const t = 1 - 0.9 * Math.exp(-Math.pow((i - resonance) / 2, 2));
+                    const detuning = (i - resonance) / 0.5;
+                    const t = 1 - 0.95 / (1 + detuning * detuning);
                     transmission.push(t);
                 }
                 
-                new Chart(ctx.getContext('2d'), {
+                window.demoCharts.resonator = new Chart(ctx.getContext('2d'), {
                     type: 'line',
                     data: {
                         labels: wavelengths,
@@ -2925,21 +3028,95 @@ print(f"Energy Efficiency: {core.energy_efficiency:.2f} fJ/OP")</code></pre>
             document.getElementById('totalBits').textContent = enob.toFixed(1);
             
             // Update resonator transmission if chart exists
-            if (window.resonatorDemoChart) {
+            if (window.demoCharts.resonator) {
                 const wavelengths = [];
                 const transmission = [];
                 const resonance = 1550 + deltaIndex * 3.7 + biasVoltage * 0.1;
                 
-                for (let i = 1540; i <= 1560; i += 0.05) {
+                for (let i = 1540; i <= 1560; i += 0.1) {
                     wavelengths.push(i);
-                    const detuning = (i - resonance) / 0.01; // FSR = 10pm
+                    const detuning = (i - resonance) / 0.5;
                     const t = 1 - 0.95 / (1 + detuning * detuning);
                     transmission.push(t);
                 }
                 
-                window.resonatorDemoChart.data.labels = wavelengths;
-                window.resonatorDemoChart.data.datasets[0].data = transmission;
-                window.resonatorDemoChart.update();
+                window.demoCharts.resonator.data.labels = wavelengths;
+                window.demoCharts.resonator.data.datasets[0].data = transmission;
+                window.demoCharts.resonator.update();
+            }
+            
+            // Update additional charts if they exist
+            const transCtx = document.getElementById('transmissionChart');
+            if (transCtx && !window.demoCharts.transmission) {
+                window.demoCharts.transmission = new Chart(transCtx.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: ['PCM (5-bit)', 'E-O (8-bit)', 'Combined'],
+                        datasets: [{
+                            label: 'Precision Contribution',
+                            data: [5, 8, 13],
+                            backgroundColor: ['#00ff88', '#00aaff', '#ffaa00']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Precision Breakdown',
+                                color: '#00aaff'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                title: { display: true, text: 'Bits', color: '#e0e0e0' },
+                                ticks: { color: '#e0e0e0' },
+                                grid: { color: 'rgba(255,255,255,0.1)' }
+                            },
+                            x: {
+                                ticks: { color: '#e0e0e0' },
+                                grid: { color: 'rgba(255,255,255,0.1)' }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            const phaseCtx = document.getElementById('phaseChart');
+            if (phaseCtx && !window.demoCharts.phase) {
+                const phaseData = [];
+                for (let i = 0; i <= 31; i++) {
+                    phaseData.push({x: i, y: (i/31) * 0.54});
+                }
+                
+                window.demoCharts.phase = new Chart(phaseCtx.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        datasets: [{
+                            label: 'Index Change vs PCM Level',
+                            data: phaseData,
+                            borderColor: '#00ff88',
+                            backgroundColor: 'rgba(0,255,136,0.1)',
+                            pointRadius: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: {
+                                type: 'linear',
+                                title: { display: true, text: 'PCM Level', color: '#e0e0e0' },
+                                ticks: { color: '#e0e0e0' },
+                                grid: { color: 'rgba(255,255,255,0.1)' }
+                            },
+                            y: {
+                                title: { display: true, text: 'Δn', color: '#e0e0e0' },
+                                ticks: { color: '#e0e0e0' },
+                                grid: { color: 'rgba(255,255,255,0.1)' }
+                            }
+                        }
+                    }
+                });
             }
         }
         
@@ -3126,6 +3303,9 @@ print(f"Energy Efficiency: {core.energy_efficiency:.2f} fJ/OP")</code></pre>
             const colors = ['#ff6b6b', '#ffaa00', '#00aaff', '#00ff88'];
             const datasets = [];
             
+            // Update results in the HTML
+            const resultDivs = document.querySelectorAll('#convergenceResults div');
+            
             precisions.forEach((bits, idx) => {
                 const iterations = Math.ceil(condNum * Math.log10(size) / bits);
                 const data = [];
@@ -3145,9 +3325,12 @@ print(f"Energy Efficiency: {core.energy_efficiency:.2f} fJ/OP")</code></pre>
                 });
                 
                 // Update results summary
-                const resultSpans = document.querySelectorAll('#convergenceResults span');
-                if (resultSpans[idx]) {
-                    resultSpans[idx].textContent = `${iterations} iterations`;
+                if (resultDivs[idx]) {
+                    const span = resultDivs[idx].querySelector('span');
+                    if (span) {
+                        span.textContent = `${iterations} iterations`;
+                        span.style.color = colors[idx];
+                    }
                 }
             });
             
@@ -3188,6 +3371,49 @@ print(f"Energy Efficiency: {core.energy_efficiency:.2f} fJ/OP")</code></pre>
                 } else {
                     window.convergenceTestChart.data.datasets = datasets;
                     window.convergenceTestChart.update();
+                }
+            }
+            
+            // Add performance comparison chart
+            const perfCtx = document.getElementById('performanceChart');
+            if (perfCtx) {
+                if (!window.performanceCompChart) {
+                    window.performanceCompChart = new Chart(perfCtx.getContext('2d'), {
+                        type: 'bar',
+                        data: {
+                            labels: precisions.map(p => `${p}-bit`),
+                            datasets: [{
+                                label: 'Iterations to Converge',
+                                data: precisions.map(bits => Math.ceil(condNum * Math.log10(size) / bits)),
+                                backgroundColor: colors
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'Iterations vs Precision',
+                                    color: '#00aaff'
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    title: { display: true, text: 'Iterations', color: '#e0e0e0' },
+                                    ticks: { color: '#e0e0e0' },
+                                    grid: { color: 'rgba(255,255,255,0.1)' }
+                                },
+                                x: {
+                                    ticks: { color: '#e0e0e0' },
+                                    grid: { color: 'rgba(255,255,255,0.1)' }
+                                }
+                            }
+                        }
+                    });
+                } else {
+                    window.performanceCompChart.data.datasets[0].data = 
+                        precisions.map(bits => Math.ceil(condNum * Math.log10(size) / bits));
+                    window.performanceCompChart.update();
                 }
             }
         }
