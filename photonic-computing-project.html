@@ -566,31 +566,31 @@
                 
                 <!-- Enhanced Navigation Tabs -->
                 <div class="advanced-tabs">
-                    <div class="advanced-tab active" onclick="switchTab('simulation')">
+                    <div class="advanced-tab active" onclick="switchTab('simulation', this)">
                         <i class="fas fa-chart-line"></i> Simulation
                     </div>
-                    <div class="advanced-tab" onclick="switchTab('theory')">
+                    <div class="advanced-tab" onclick="switchTab('theory', this)">
                         <i class="fas fa-graduation-cap"></i> Theory
                     </div>
-                    <div class="advanced-tab" onclick="switchTab('technical')">
+                    <div class="advanced-tab" onclick="switchTab('technical', this)">
                         <i class="fas fa-file-alt"></i> Technical Paper
                     </div>
-                    <div class="advanced-tab" onclick="switchTab('demos')">
+                    <div class="advanced-tab" onclick="switchTab('demos', this)">
                         <i class="fas fa-flask"></i> Demos
                     </div>
-                    <div class="advanced-tab" onclick="switchTab('benchmarks')">
+                    <div class="advanced-tab" onclick="switchTab('benchmarks', this)">
                         <i class="fas fa-chart-bar"></i> Benchmarks
                     </div>
-                    <div class="advanced-tab" onclick="switchTab('architecture')">
+                    <div class="advanced-tab" onclick="switchTab('architecture', this)">
                         <i class="fas fa-cube"></i> 3D Architecture
                     </div>
-                    <div class="advanced-tab" onclick="switchTab('analysis')">
+                    <div class="advanced-tab" onclick="switchTab('analysis', this)">
                         <i class="fas fa-chart-area"></i> Analysis
                     </div>
-                    <div class="advanced-tab" onclick="switchTab('materials')">
+                    <div class="advanced-tab" onclick="switchTab('materials', this)">
                         <i class="fas fa-atom"></i> Materials
                     </div>
-                    <div class="advanced-tab" onclick="switchTab('code')">
+                    <div class="advanced-tab" onclick="switchTab('code', this)">
                         <i class="fas fa-code"></i> Code
                     </div>
                 </div>
@@ -2348,7 +2348,7 @@ print(f"Energy Efficiency: {core.energy_efficiency:.2f} fJ/OP")</code></pre>
             }
         };
         
-        function switchTab(tabName) {
+        function switchTab(tabName, element) {
             // Hide all tabs
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.style.display = 'none';
@@ -2360,8 +2360,18 @@ print(f"Energy Efficiency: {core.energy_efficiency:.2f} fJ/OP")</code></pre>
             });
             
             // Show selected tab and make it active
-            document.getElementById(tabName + '-tab').style.display = 'block';
-            if (event && event.currentTarget) {
+            const targetTab = document.getElementById(tabName + '-tab');
+            if (targetTab) {
+                targetTab.style.display = 'block';
+                console.log('Switched to tab:', tabName);
+            } else {
+                console.error('Tab not found:', tabName + '-tab');
+            }
+            
+            // Add active class to clicked element
+            if (element) {
+                element.classList.add('active');
+            } else if (event && event.currentTarget) {
                 event.currentTarget.classList.add('active');
             }
             
@@ -2439,6 +2449,57 @@ print(f"Energy Efficiency: {core.energy_efficiency:.2f} fJ/OP")</code></pre>
         
         function initializeResonatorDemo() {
             updateResonatorDemo();
+            // Create resonator response chart
+            const ctx = document.getElementById('resonatorDemoChart');
+            if (ctx) {
+                const wavelengths = [];
+                const transmission = [];
+                for (let i = 1540; i <= 1560; i += 0.1) {
+                    wavelengths.push(i);
+                    // Simulate resonance dip
+                    const resonance = 1550 + parseFloat(document.getElementById('demoPhase').value) * 2;
+                    const t = 1 - 0.9 * Math.exp(-Math.pow((i - resonance) / 2, 2));
+                    transmission.push(t);
+                }
+                
+                new Chart(ctx.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: wavelengths,
+                        datasets: [{
+                            label: 'Transmission',
+                            data: transmission,
+                            borderColor: '#00ff88',
+                            backgroundColor: 'rgba(0,255,136,0.1)',
+                            borderWidth: 2,
+                            pointRadius: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { labels: { color: '#e0e0e0' } },
+                            title: {
+                                display: true,
+                                text: 'Ring Resonator Spectral Response',
+                                color: '#00aaff'
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: { display: true, text: 'Wavelength (nm)', color: '#e0e0e0' },
+                                ticks: { color: '#e0e0e0' },
+                                grid: { color: 'rgba(255,255,255,0.1)' }
+                            },
+                            y: {
+                                title: { display: true, text: 'Transmission', color: '#e0e0e0' },
+                                ticks: { color: '#e0e0e0' },
+                                grid: { color: 'rgba(255,255,255,0.1)' }
+                            }
+                        }
+                    }
+                });
+            }
         }
         
         function updateResonatorDemo() {
@@ -2447,6 +2508,22 @@ print(f"Energy Efficiency: {core.energy_efficiency:.2f} fJ/OP")</code></pre>
             
             document.getElementById('phaseValue').textContent = Math.round(phase * 100) + '%';
             document.getElementById('voltageValue').textContent = voltage + 'V';
+            
+            // Update chart if it exists
+            if (window.resonatorDemoChart) {
+                const wavelengths = [];
+                const transmission = [];
+                const resonance = 1550 + parseFloat(phase) * 2 + parseFloat(voltage) * 0.5;
+                
+                for (let i = 1540; i <= 1560; i += 0.1) {
+                    wavelengths.push(i);
+                    const t = 1 - 0.9 * Math.exp(-Math.pow((i - resonance) / 2, 2));
+                    transmission.push(t);
+                }
+                
+                window.resonatorDemoChart.data.datasets[0].data = transmission;
+                window.resonatorDemoChart.update();
+            }
         }
         
         function initializePDEDemo() {
@@ -2538,6 +2615,29 @@ print(f"Energy Efficiency: {core.energy_efficiency:.2f} fJ/OP")</code></pre>
             }
         `;
         document.head.appendChild(style);
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeSimulation();
+            updatePerformanceMetrics();
+            
+            // Verify all tabs are present
+            const tabs = ['simulation', 'theory', 'technical', 'demos', 'benchmarks', 
+                         'architecture', 'analysis', 'materials', 'code'];
+            tabs.forEach(tab => {
+                const element = document.getElementById(tab + '-tab');
+                if (!element) {
+                    console.error('Missing tab content:', tab + '-tab');
+                } else {
+                    console.log('Tab found:', tab);
+                }
+            });
+            
+            // Ensure MathJax processes the content if available
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                MathJax.typesetPromise().catch((e) => console.log('MathJax processing error:', e));
+            }
+        });
     </script>
 </body>
 </html>
