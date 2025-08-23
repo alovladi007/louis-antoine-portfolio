@@ -1380,11 +1380,21 @@ node server.js</pre>
         window.startTimeSyncDemo = function() {
             if (window.timeSyncInterval) return;
             
-            const ctx = document.getElementById('timing-chart').getContext('2d');
+            // Check if Chart.js is loaded
+            if (typeof Chart === 'undefined') {
+                console.log('Chart.js not loaded, skipping time sync demo');
+                return;
+            }
+            
+            const ctx = document.getElementById('timing-chart');
+            if (!ctx) {
+                console.log('Timing chart element not found');
+                return;
+            }
             
             // Initialize or update chart
             if (!window.timingChart) {
-                window.timingChart = new Chart(ctx, {
+                window.timingChart = new Chart(ctx.getContext('2d'), {
                     type: 'line',
                     data: {
                         labels: [],
@@ -1645,6 +1655,12 @@ node server.js</pre>
 
         // RUL Prediction
         window.runRULPrediction = function() {
+            // Check if Plotly is loaded
+            if (typeof Plotly === 'undefined') {
+                console.log('Plotly not loaded yet, skipping RUL prediction chart');
+                return;
+            }
+            
             const vibration = parseFloat(document.getElementById('vibration-level').value);
             const confidence = parseFloat(document.getElementById('confidence-level').value);
             
@@ -1834,7 +1850,7 @@ node server.js</pre>
         window.robotStates = {};
         
         // Connect to backend WebSocket
-        window.connectToBackend = async function() {
+        window.connectToBackend = function() {
             if (window.robotWS && window.robotWS.readyState === WebSocket.OPEN) return;
             
             // Update connection status display
@@ -1848,76 +1864,72 @@ node server.js</pre>
                 }
             };
             
+            // Just try to connect to localhost - if it fails, use simulation
+            console.log('Attempting to connect to backend...');
+            
             try {
-                // Try multiple connection URLs
-                const wsUrls = [
-                    'ws://localhost:4001',
-                    'ws://127.0.0.1:4001',
-                    `ws://${window.location.hostname}:4001`
-                ];
+                window.robotWS = new WebSocket('ws://localhost:4001');
                 
-                let connected = false;
-                
-                for (const wsUrl of wsUrls) {
-                    if (connected) break;
+                window.robotWS.onopen = () => {
+                    console.log('Connected to robot control backend');
+                    updateConnectionStatus('connected', 'Connected to backend');
                     
-                    try {
-                        console.log(`Attempting WebSocket connection to ${wsUrl}`);
-                        window.robotWS = new WebSocket(wsUrl);
-                        
-                        window.robotWS.onopen = () => {
-                            connected = true;
-                            console.log(`Connected to robot control backend at ${wsUrl}`);
-                            updateConnectionStatus('connected', 'Connected to backend');
-                            
-                            // Subscribe to robot control channel
-                            window.robotWS.send(JSON.stringify({
-                                type: 'subscribe',
-                                channel: 'robot_control'
-                            }));
-                        };
-                        
-                        window.robotWS.onmessage = (event) => {
-                            try {
-                                const data = JSON.parse(event.data);
-                                handleBackendMessage(data);
-                            } catch (e) {
-                                console.error('Error parsing message:', e);
-                            }
-                        };
-                        
-                        window.robotWS.onerror = (error) => {
-                            console.error(`WebSocket error on ${wsUrl}:`, error);
-                            updateConnectionStatus('error', 'Connection error');
-                        };
-                        
-                        window.robotWS.onclose = () => {
-                            console.log('WebSocket connection closed');
-                            updateConnectionStatus('disconnected', 'Disconnected - Retrying...');
-                            connected = false;
-                            // Attempt reconnection after 3 seconds
-                            setTimeout(window.connectToBackend, 3000);
-                        };
-                        
-                        // Give it time to connect
-                        await new Promise(resolve => setTimeout(resolve, 500));
-                        if (window.robotWS.readyState === WebSocket.OPEN) {
-                            connected = true;
-                            break;
-                        }
-                    } catch (error) {
-                        console.error(`Failed to connect to ${wsUrl}:`, error);
-                    }
-                }
+                    // Subscribe to robot control channel
+                    window.robotWS.send(JSON.stringify({
+                        type: 'subscribe',
+                        channel: 'robot_control'
+                    }));
+                };
                 
-                if (!connected) {
-                    throw new Error('Could not connect to any WebSocket URL');
-                }
+                window.robotWS.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        handleBackendMessage(data);
+                    } catch (e) {
+                        console.error('Error parsing message:', e);
+                    }
+                };
+                
+                window.robotWS.onerror = (error) => {
+                    console.log('WebSocket connection failed - using simulation mode');
+                    updateConnectionStatus('offline', 'Simulation Mode');
+                    // Start simulation
+                    if (!window.simulationStarted) {
+                        window.simulationStarted = true;
+                        simulateRobotData();
+                    }
+                };
+                
+                window.robotWS.onclose = () => {
+                    console.log('WebSocket connection closed');
+                    updateConnectionStatus('offline', 'Simulation Mode');
+                    // Start simulation if not already started
+                    if (!window.simulationStarted) {
+                        window.simulationStarted = true;
+                        simulateRobotData();
+                    }
+                };
+                
+                // Set a timeout to start simulation if connection doesn't work
+                setTimeout(() => {
+                    if (!window.robotWS || window.robotWS.readyState !== WebSocket.OPEN) {
+                        console.log('Connection timeout - starting simulation mode');
+                        updateConnectionStatus('offline', 'Simulation Mode');
+                        if (!window.simulationStarted) {
+                            window.simulationStarted = true;
+                            simulateRobotData();
+                        }
+                    }
+                }, 2000);
+                
             } catch (error) {
                 console.log('Backend not available - running in simulation mode');
                 updateConnectionStatus('offline', 'Simulation Mode');
                 // Fallback to simulation mode
-                simulateRobotData();
+                if (!window.simulationStarted) {
+                    window.simulationStarted = true;
+                    simulateRobotData();
+                }
             }
         };
         
@@ -2029,6 +2041,12 @@ node server.js</pre>
         window.initRobot3D = function() {
             const container = document.getElementById('robot-3d');
             if (!container || window.robotScene) return;
+            
+            // Check if Three.js is loaded
+            if (typeof THREE === 'undefined') {
+                console.log('Three.js not loaded yet, skipping 3D visualization');
+                return;
+            }
             
             const scene = new THREE.Scene();
             scene.background = new THREE.Color(0x0a0a0a);
@@ -2322,6 +2340,12 @@ node server.js</pre>
         };
 
         function createLatencyHistogram() {
+            // Check if Plotly is loaded
+            if (typeof Plotly === 'undefined') {
+                console.log('Plotly not loaded yet, skipping histogram');
+                return;
+            }
+            
             const data = [];
             for (let i = 0; i < 1000; i++) {
                 data.push(Math.random() * 2 + 0.2);
@@ -2474,6 +2498,10 @@ node server.js</pre>
         // Architecture Diagram
         function createArchitectureDiagram() {
             const container = document.getElementById('architecture-diagram');
+            if (!container) {
+                console.log('Architecture diagram container not found');
+                return;
+            }
             
             const nodes = [
                 {id: 'cloud', label: 'Cloud Platform', level: 0, color: '#0088ff'},
@@ -2572,39 +2600,69 @@ node server.js</pre>
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', () => {
+            // Initialize simulation flag
+            window.simulationStarted = false;
+            
             // Connect to backend for robot control
             window.connectToBackend();
             
+            // Ensure simulation starts if backend doesn't connect
+            setTimeout(() => {
+                if (!window.simulationStarted && (!window.robotWS || window.robotWS.readyState !== WebSocket.OPEN)) {
+                    console.log('Starting simulation mode as fallback');
+                    window.simulationStarted = true;
+                    window.simulateRobotData();
+                }
+            }, 3000);
+            
             // Add initial SEMI messages
             const semiConsole = document.getElementById('semi-console');
-            const initialMessages = [
-                { time: '2024-01-15 10:23:45.123', type: 'info', msg: '→ S1F13 (Select.req): Establishing communication' },
-                { time: '2024-01-15 10:23:45.234', type: 'success', msg: '← S1F14 (Select.rsp): COMMACK=0 (Success)' },
-                { time: '2024-01-15 10:23:45.345', type: 'info', msg: '→ S1F1 (Are You There)' },
-                { time: '2024-01-15 10:23:45.456', type: 'success', msg: '← S1F2 (Online Data): Model=FAB-CTRL-2000, Rev=2.0.0' },
-                { time: '2024-01-15 10:23:45.567', type: 'warning', msg: '← S6F11 (Event): CEID=2 (EquipmentOnline)' }
-            ];
-            
-            initialMessages.forEach(msg => {
-                const line = document.createElement('div');
-                line.className = 'console-line';
-                line.innerHTML = `
-                    <span class="console-timestamp">${msg.time}</span>
-                    <span class="console-message ${msg.type}">${msg.msg}</span>
-                `;
-                semiConsole.appendChild(line);
-            });
+            if (semiConsole) {
+                const initialMessages = [
+                    { time: '2024-01-15 10:23:45.123', type: 'info', msg: '→ S1F13 (Select.req): Establishing communication' },
+                    { time: '2024-01-15 10:23:45.234', type: 'success', msg: '← S1F14 (Select.rsp): COMMACK=0 (Success)' },
+                    { time: '2024-01-15 10:23:45.345', type: 'info', msg: '→ S1F1 (Are You There)' },
+                    { time: '2024-01-15 10:23:45.456', type: 'success', msg: '← S1F2 (Online Data): Model=FAB-CTRL-2000, Rev=2.0.0' },
+                    { time: '2024-01-15 10:23:45.567', type: 'warning', msg: '← S6F11 (Event): CEID=2 (EquipmentOnline)' }
+                ];
+                
+                initialMessages.forEach(msg => {
+                    const line = document.createElement('div');
+                    line.className = 'console-line';
+                    line.innerHTML = `
+                        <span class="console-timestamp">${msg.time}</span>
+                        <span class="console-message ${msg.type}">${msg.msg}</span>
+                    `;
+                    semiConsole.appendChild(line);
+                });
+            }
             
             // Initialize 3D robot
             setTimeout(() => {
-                window.initRobot3D();
-                createArchitectureDiagram();
+                try {
+                    window.initRobot3D();
+                } catch (e) {
+                    console.log('Error initializing 3D robot:', e);
+                }
+                try {
+                    createArchitectureDiagram();
+                } catch (e) {
+                    console.log('Error creating architecture diagram:', e);
+                }
             }, 500);
             
             // Start with some default visualizations
             setTimeout(() => {
-                window.runRULPrediction();
-                createLatencyHistogram();
+                try {
+                    window.runRULPrediction();
+                } catch (e) {
+                    console.log('Error running RUL prediction:', e);
+                }
+                try {
+                    createLatencyHistogram();
+                } catch (e) {
+                    console.log('Error creating latency histogram:', e);
+                }
             }, 1000);
         });
     </script>
