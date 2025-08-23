@@ -790,7 +790,19 @@
                                     speechSynthesis.cancel();
                                     
                                     currentUtterance = new SpeechSynthesisUtterance(text);
-                                    currentUtterance.rate = 0.9; // Slightly slower for better sync
+                                    
+                                    // Adjust rate based on text length to fit scene duration
+                                    const wordCount = text.split(' ').length;
+                                    // Assuming average speaking rate of 150 words per minute
+                                    // Calculate rate to fit the scene duration
+                                    if (wordCount > 40) {
+                                        currentUtterance.rate = 1.1; // Faster for longer texts
+                                    } else if (wordCount > 30) {
+                                        currentUtterance.rate = 1.0; // Normal speed
+                                    } else {
+                                        currentUtterance.rate = 0.85; // Slower for shorter texts
+                                    }
+                                    
                                     currentUtterance.pitch = 1.0; // Normal pitch
                                     currentUtterance.volume = 0.9; // Slightly lower volume
                                     
@@ -851,39 +863,31 @@
                                 // Draw animated elements based on current scene
                                 const scene = scenes.find(s => currentTime >= s.start && currentTime < s.end);
                                 if (scene) {
-                                    // Calculate progress within the scene
-                                    const sceneProgress = (currentTime - scene.start) / (scene.end - scene.start);
                                     const sceneIndex = scenes.indexOf(scene);
                                     
                                     // Speak narration when entering new scene
                                     if (sceneIndex !== lastSpokenScene && isPlaying) {
                                         lastSpokenScene = sceneIndex;
-                                        speak(scene.text);
+                                        // Delay speech slightly to sync with display
+                                        setTimeout(() => {
+                                            speak(scene.text);
+                                        }, 100);
                                     }
                                     
-                                    // Split narration text into words for progressive display
-                                    const words = scene.text.split(' ');
-                                    const wordsToShow = Math.floor(words.length * sceneProgress);
-                                    const currentText = words.slice(0, Math.max(1, wordsToShow)).join(' ');
-                                    
-                                    // Draw scene title
+                                    // Draw main scene title only (no small text)
                                     ctx.fillStyle = scene.color;
-                                    ctx.font = 'bold 60px Arial';
+                                    ctx.font = 'bold 72px Arial';
                                     ctx.textAlign = 'center';
-                                    ctx.fillText(scene.display, canvas.width / 2, canvas.height / 2 - 100);
+                                    ctx.shadowColor = scene.color;
+                                    ctx.shadowBlur = 20;
                                     
-                                    // Draw synchronized narration text (word by word)
-                                    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-                                    ctx.font = '28px Arial';
-                                    ctx.textAlign = 'center';
-                                    
-                                    // Word wrap the current text
-                                    const maxWidth = canvas.width - 200;
-                                    const lineHeight = 35;
+                                    // Word wrap the display text if needed
+                                    const maxWidth = canvas.width - 300;
+                                    const words = scene.display.split(' ');
                                     const lines = [];
                                     let currentLine = '';
                                     
-                                    currentText.split(' ').forEach(word => {
+                                    words.forEach(word => {
                                         const testLine = currentLine + (currentLine ? ' ' : '') + word;
                                         const metrics = ctx.measureText(testLine);
                                         if (metrics.width > maxWidth && currentLine) {
@@ -897,29 +901,20 @@
                                         lines.push(currentLine);
                                     }
                                     
-                                    // Draw wrapped text
+                                    // Draw the main title centered
+                                    const lineHeight = 90;
+                                    const startY = canvas.height / 2 - (lines.length * lineHeight) / 2;
                                     lines.forEach((line, index) => {
-                                        ctx.fillText(line, canvas.width / 2, canvas.height / 2 + index * lineHeight);
+                                        ctx.fillText(line, canvas.width / 2, startY + index * lineHeight);
                                     });
                                     
-                                    // Highlight the last word being spoken
-                                    let displayText = currentText;
-                                    if (wordsToShow > 0 && wordsToShow < words.length) {
-                                        const wordsArray = currentText.split(' ');
-                                        const lastWord = wordsArray[wordsArray.length - 1];
-                                        const previousWords = wordsArray.slice(0, -1).join(' ');
-                                        displayText = `${previousWords} <span style="color: ${scene.color}; text-shadow: 0 0 10px ${scene.color};">${lastWord}</span>`;
-                                    }
+                                    ctx.shadowBlur = 0;
                                     
-                                    // Update captions with synchronized text
+                                    // Simple caption showing just the title
                                     captions.innerHTML = `
-                                        <div style="margin-bottom: 0.5rem;">
-                                            <span style="color: ${scene.color}; font-size: 1.2rem; font-weight: bold;">${scene.display}</span>
-                                        </div>
-                                        <div style="color: white; font-size: 1rem; line-height: 1.4;">
-                                            ${displayText}
-                                            <span style="opacity: 0.3; animation: blink 1s infinite;">|</span>
-                                        </div>
+                                        <span style="color: ${scene.color}; font-size: 1.5rem; font-weight: bold; text-shadow: 0 0 20px ${scene.color};">
+                                            ${scene.display}
+                                        </span>
                                     `;
                                     
                                     // Draw animated circles
