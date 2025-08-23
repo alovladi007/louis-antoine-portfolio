@@ -3154,10 +3154,16 @@ print(f"Energy Efficiency: {core.energy_efficiency:.2f} fJ/OP")</code></pre>
         }
         
         function initializePDEDemo() {
-            solvePDE();
+            // Call solvePDE using the global reference
+            if (typeof window.solvePDE === 'function') {
+                window.solvePDE();
+            } else {
+                console.error('solvePDE function not found');
+            }
         }
         
-        function solvePDE() {
+        // Make solvePDE globally accessible
+        window.solvePDE = function() {
             console.log('Solving PDE...');
             
             const gridSizeEl = document.getElementById('pdeGridSize');
@@ -3765,7 +3771,8 @@ print(f"Energy Efficiency: {core.energy_efficiency:.2f} fJ/OP")</code></pre>
             }
         }
         
-        function updateScalingAnalysis() {
+        // Make updateScalingAnalysis globally accessible
+        window.updateScalingAnalysis = function() {
             const sizeExp = parseInt(document.getElementById('arraySize').value);
             const arraySize = Math.pow(2, sizeExp);
             const channels = parseInt(document.getElementById('wdmChannels').value);
@@ -3775,14 +3782,21 @@ print(f"Energy Efficiency: {core.energy_efficiency:.2f} fJ/OP")</code></pre>
             document.getElementById('channelsValue').textContent = `${channels} λ`;
             document.getElementById('clockValue').textContent = `${clockRate.toFixed(1)} GHz`;
             
-            // Calculate performance metrics
-            const ops = 2 * arraySize * arraySize * channels * clockRate * 1e9;
-            const tops = ops / 1e12;
-            const power = 0.025 * arraySize + 0.01 * channels + 0.5; // W
-            const efficiency = (ops * 1e-15) / power * 1000; // fJ/op
-            const area = Math.sqrt(arraySize) * 0.5 + channels * 0.02; // mm²
+            // Calculate performance metrics - Fixed calculations
+            const macs_per_cycle = arraySize * arraySize * channels; // MAC operations per clock cycle
+            const ops_per_second = macs_per_cycle * clockRate * 1e9 * 2; // 2 ops per MAC
+            const tops = ops_per_second / 1e12;
             
-            document.getElementById('peakTops').textContent = tops.toFixed(0);
+            // More realistic power model
+            const power = 0.5 + (arraySize / 32) * 0.3 + (channels / 32) * 0.1; // W
+            
+            // Energy efficiency in fJ/op
+            const efficiency = (power * 1e15) / ops_per_second; // fJ/op
+            
+            // Chip area scaling
+            const area = 4 + (arraySize / 32) * 2 + (channels / 32) * 0.5; // mm²
+            
+            document.getElementById('peakTops').textContent = tops.toFixed(1);
             document.getElementById('totalPower').textContent = power.toFixed(2);
             document.getElementById('efficiency').textContent = efficiency.toFixed(1);
             document.getElementById('chipArea').textContent = area.toFixed(1);
