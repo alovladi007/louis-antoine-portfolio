@@ -366,7 +366,7 @@
             background: #0a0a0a;
         }
 
-        /* Neural Network Background */
+        /* Cosmic Sky Background */
         #canvas-background {
             position: fixed;
             top: 0;
@@ -374,7 +374,7 @@
             width: 100%;
             height: 100%;
             z-index: -1;
-            background: linear-gradient(135deg, #0a0a0a 0%, #0f0f1a 50%, #0a0a0a 100%);
+            background: radial-gradient(ellipse at center, #0a0015 0%, #000005 50%, #000000 100%);
         }
 
         .particle-overlay {
@@ -386,9 +386,10 @@
             pointer-events: none;
             z-index: 0;
             background: 
-                radial-gradient(ellipse at top left, rgba(102, 126, 234, 0.1) 0%, transparent 40%),
-                radial-gradient(ellipse at bottom right, rgba(118, 75, 162, 0.1) 0%, transparent 40%),
-                radial-gradient(ellipse at center, transparent 0%, rgba(10, 10, 10, 0.3) 100%);
+                radial-gradient(ellipse at 30% 20%, rgba(138, 43, 226, 0.05) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, rgba(75, 0, 130, 0.05) 0%, transparent 50%),
+                radial-gradient(ellipse at center, transparent 0%, rgba(0, 0, 5, 0.4) 100%);
+            mix-blend-mode: screen;
         }
 
         .detail-page {
@@ -623,7 +624,7 @@
     <script src="script.js"></script>
     
     <script>
-        // Neural Network Visualization Background
+        // Cosmic Sky with 3D Stars and Black Hole Portal
         const canvas = document.getElementById('canvas-background');
         const ctx = canvas.getContext('2d');
         
@@ -634,166 +635,331 @@
         let targetMouseX = width / 2;
         let targetMouseY = height / 2;
         
-        // Neural Network Nodes
-        class Node {
-            constructor(x, y, layer) {
-                this.x = x;
-                this.y = y;
-                this.baseX = x;
-                this.baseY = y;
-                this.vx = 0;
-                this.vy = 0;
-                this.radius = 3 + Math.random() * 2;
-                this.layer = layer;
-                this.connections = [];
-                this.pulsePhase = Math.random() * Math.PI * 2;
-                this.activity = Math.random();
-                this.color = this.getLayerColor();
-            }
-            
-            getLayerColor() {
-                const colors = [
-                    { r: 102, g: 126, b: 234 },  // Blue
-                    { r: 118, g: 75, b: 162 },   // Purple
-                    { r: 240, g: 147, b: 251 },  // Pink
-                    { r: 245, g: 87, b: 108 }    // Red
-                ];
-                return colors[this.layer % colors.length];
-            }
-            
-            update() {
-                // Gentle floating motion
-                this.pulsePhase += 0.02;
-                const floatX = Math.sin(this.pulsePhase) * 2;
-                const floatY = Math.cos(this.pulsePhase * 0.7) * 2;
+        // Black Hole Portal
+        class BlackHole {
+            constructor() {
+                this.x = width / 2;
+                this.y = height / 2;
+                this.radius = 80;
+                this.eventHorizon = 50;
+                this.rotation = 0;
+                this.portalPhase = 0;
+                this.swirls = [];
+                this.particles = [];
+                this.lightningBolts = [];
                 
-                // Mouse influence
-                const dx = mouseX - this.x;
-                const dy = mouseY - this.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                const maxDistance = 200;
-                
-                if (distance < maxDistance) {
-                    const force = (1 - distance / maxDistance) * 0.5;
-                    this.vx += (dx / distance) * force;
-                    this.vy += (dy / distance) * force;
+                // Create swirl layers
+                for (let i = 0; i < 5; i++) {
+                    this.swirls.push({
+                        radius: this.radius + i * 30,
+                        rotation: Math.random() * Math.PI * 2,
+                        speed: (0.01 + i * 0.003) * (i % 2 === 0 ? 1 : -1),
+                        opacity: 0.3 - i * 0.05
+                    });
                 }
                 
-                // Apply physics
-                this.vx *= 0.95;
-                this.vy *= 0.95;
-                
-                this.x = this.baseX + floatX + this.vx;
-                this.y = this.baseY + floatY + this.vy;
-                
-                // Update activity
-                this.activity = 0.3 + Math.sin(this.pulsePhase * 0.5) * 0.7;
-            }
-            
-            draw() {
-                // Glow effect
-                const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius * 3);
-                gradient.addColorStop(0, `rgba(${this.color.r}, ${this.color.g}, ${this.color.b}, ${this.activity * 0.8})`);
-                gradient.addColorStop(0.5, `rgba(${this.color.r}, ${this.color.g}, ${this.color.b}, ${this.activity * 0.3})`);
-                gradient.addColorStop(1, 'transparent');
-                
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius * 3, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Core node
-                ctx.fillStyle = `rgba(${this.color.r}, ${this.color.g}, ${this.color.b}, ${this.activity})`;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }
-        
-        // Signal traveling along connections
-        class Signal {
-            constructor(startNode, endNode) {
-                this.start = startNode;
-                this.end = endNode;
-                this.progress = 0;
-                this.speed = 0.005 + Math.random() * 0.01;
-                this.size = 2 + Math.random() * 2;
-                this.opacity = 0.6 + Math.random() * 0.4;
+                // Create particles being sucked in
+                for (let i = 0; i < 50; i++) {
+                    this.particles.push({
+                        angle: Math.random() * Math.PI * 2,
+                        distance: 100 + Math.random() * 200,
+                        speed: 0.5 + Math.random() * 1.5,
+                        size: Math.random() * 2,
+                        color: `hsl(${280 + Math.random() * 60}, 100%, 70%)`
+                    });
+                }
             }
             
             update() {
-                this.progress += this.speed;
-                return this.progress < 1;
+                // Follow mouse smoothly
+                this.x += (mouseX - this.x) * 0.05;
+                this.y += (mouseY - this.y) * 0.05;
+                
+                this.rotation += 0.005;
+                this.portalPhase += 0.02;
+                
+                // Update swirls
+                this.swirls.forEach(swirl => {
+                    swirl.rotation += swirl.speed;
+                });
+                
+                // Update particles
+                this.particles.forEach(particle => {
+                    particle.distance -= particle.speed;
+                    particle.angle += 0.05 / (particle.distance * 0.01);
+                    
+                    if (particle.distance < this.eventHorizon) {
+                        particle.distance = 200 + Math.random() * 100;
+                        particle.angle = Math.random() * Math.PI * 2;
+                    }
+                });
+                
+                // Generate lightning occasionally
+                if (Math.random() < 0.02 && this.lightningBolts.length < 3) {
+                    this.lightningBolts.push({
+                        angle: Math.random() * Math.PI * 2,
+                        length: 100 + Math.random() * 100,
+                        life: 1.0,
+                        branches: this.generateLightningBranches()
+                    });
+                }
+                
+                // Update lightning
+                this.lightningBolts = this.lightningBolts.filter(bolt => {
+                    bolt.life -= 0.05;
+                    return bolt.life > 0;
+                });
+            }
+            
+            generateLightningBranches() {
+                const branches = [];
+                const numBranches = 3 + Math.floor(Math.random() * 3);
+                for (let i = 0; i < numBranches; i++) {
+                    branches.push({
+                        offset: 0.3 + Math.random() * 0.5,
+                        angle: (Math.random() - 0.5) * Math.PI / 3,
+                        length: 0.3 + Math.random() * 0.4
+                    });
+                }
+                return branches;
             }
             
             draw() {
-                const x = this.start.x + (this.end.x - this.start.x) * this.progress;
-                const y = this.start.y + (this.end.y - this.start.y) * this.progress;
+                ctx.save();
+                ctx.translate(this.x, this.y);
                 
-                // Glow
-                const gradient = ctx.createRadialGradient(x, y, 0, x, y, this.size * 2);
-                gradient.addColorStop(0, `rgba(255, 255, 255, ${this.opacity})`);
-                gradient.addColorStop(0.5, `rgba(102, 126, 234, ${this.opacity * 0.5})`);
-                gradient.addColorStop(1, 'transparent');
+                // Draw portal effect (behind black hole)
+                const portalGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, this.radius * 2);
+                portalGradient.addColorStop(0, 'rgba(138, 43, 226, 0.8)');
+                portalGradient.addColorStop(0.3, 'rgba(75, 0, 130, 0.6)');
+                portalGradient.addColorStop(0.6, 'rgba(147, 112, 219, 0.3)');
+                portalGradient.addColorStop(1, 'transparent');
                 
-                ctx.fillStyle = gradient;
+                ctx.fillStyle = portalGradient;
                 ctx.beginPath();
-                ctx.arc(x, y, this.size * 2, 0, Math.PI * 2);
+                ctx.arc(0, 0, this.radius * 2, 0, Math.PI * 2);
                 ctx.fill();
+                
+                // Draw swirling accretion disk
+                this.swirls.forEach((swirl, index) => {
+                    ctx.save();
+                    ctx.rotate(swirl.rotation);
+                    
+                    for (let i = 0; i < 8; i++) {
+                        const angle = (Math.PI * 2 / 8) * i;
+                        const x = Math.cos(angle) * swirl.radius;
+                        const y = Math.sin(angle) * swirl.radius * 0.3; // Elliptical
+                        
+                        const gradient = ctx.createRadialGradient(x, y, 0, x, y, 20);
+                        gradient.addColorStop(0, `rgba(147, 112, 219, ${swirl.opacity})`);
+                        gradient.addColorStop(1, 'transparent');
+                        
+                        ctx.fillStyle = gradient;
+                        ctx.beginPath();
+                        ctx.arc(x, y, 20, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    
+                    ctx.restore();
+                });
+                
+                // Draw particles being sucked in
+                this.particles.forEach(particle => {
+                    const x = Math.cos(particle.angle) * particle.distance;
+                    const y = Math.sin(particle.angle) * particle.distance;
+                    
+                    ctx.fillStyle = particle.color;
+                    ctx.globalAlpha = Math.min(1, particle.distance / 100);
+                    ctx.beginPath();
+                    ctx.arc(x, y, particle.size, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                
+                ctx.globalAlpha = 1;
+                
+                // Draw lightning bolts
+                this.lightningBolts.forEach(bolt => {
+                    ctx.strokeStyle = `rgba(147, 112, 219, ${bolt.life})`;
+                    ctx.lineWidth = 2 * bolt.life;
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = 'rgba(147, 112, 219, 0.8)';
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    const endX = Math.cos(bolt.angle) * bolt.length;
+                    const endY = Math.sin(bolt.angle) * bolt.length;
+                    
+                    // Main bolt with zigzag
+                    const segments = 10;
+                    for (let i = 0; i <= segments; i++) {
+                        const t = i / segments;
+                        const x = endX * t + (Math.random() - 0.5) * 10;
+                        const y = endY * t + (Math.random() - 0.5) * 10;
+                        ctx.lineTo(x, y);
+                    }
+                    ctx.stroke();
+                    
+                    // Draw branches
+                    bolt.branches.forEach(branch => {
+                        ctx.beginPath();
+                        const branchStart = bolt.length * branch.offset;
+                        const startX = Math.cos(bolt.angle) * branchStart;
+                        const startY = Math.sin(bolt.angle) * branchStart;
+                        ctx.moveTo(startX, startY);
+                        
+                        const branchEndX = startX + Math.cos(bolt.angle + branch.angle) * bolt.length * branch.length;
+                        const branchEndY = startY + Math.sin(bolt.angle + branch.angle) * bolt.length * branch.length;
+                        ctx.lineTo(branchEndX, branchEndY);
+                        ctx.stroke();
+                    });
+                });
+                
+                ctx.shadowBlur = 0;
+                
+                // Draw event horizon (the actual black hole)
+                const blackGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, this.eventHorizon);
+                blackGradient.addColorStop(0, 'rgba(0, 0, 0, 1)');
+                blackGradient.addColorStop(0.7, 'rgba(0, 0, 0, 0.9)');
+                blackGradient.addColorStop(1, 'rgba(25, 0, 51, 0.8)');
+                
+                ctx.fillStyle = blackGradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, this.eventHorizon, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Draw portal center glow
+                const centerGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, this.eventHorizon);
+                centerGlow.addColorStop(0, `rgba(138, 43, 226, ${0.3 + Math.sin(this.portalPhase) * 0.2})`);
+                centerGlow.addColorStop(0.5, 'rgba(75, 0, 130, 0.2)');
+                centerGlow.addColorStop(1, 'transparent');
+                
+                ctx.fillStyle = centerGlow;
+                ctx.beginPath();
+                ctx.arc(0, 0, this.eventHorizon * 1.5, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
             }
         }
         
-        // Constellation-like connections
-        class Connection {
-            constructor(node1, node2) {
-                this.node1 = node1;
-                this.node2 = node2;
-                this.strength = Math.random() * 0.3 + 0.1;
+        // 3D Star Class
+        class Star {
+            constructor() {
+                this.x = Math.random() * width - width / 2;
+                this.y = Math.random() * height - height / 2;
+                this.z = Math.random() * 2000;
+                this.prevX = this.x;
+                this.prevY = this.y;
+                this.size = Math.random() * 2;
+                this.brightness = Math.random();
+                this.twinklePhase = Math.random() * Math.PI * 2;
+                this.color = this.getStarColor();
+            }
+            
+            getStarColor() {
+                const colors = [
+                    { r: 255, g: 255, b: 255 },  // White
+                    { r: 255, g: 244, b: 234 },  // Warm white
+                    { r: 202, g: 216, b: 255 },  // Blue white
+                    { r: 255, g: 210, b: 161 },  // Yellow
+                    { r: 255, g: 204, b: 111 }   // Orange
+                ];
+                return colors[Math.floor(Math.random() * colors.length)];
+            }
+            
+            update() {
+                this.prevX = this.x / (this.z * 0.001);
+                this.prevY = this.y / (this.z * 0.001);
+                
+                this.z -= 10; // Move stars toward viewer
+                
+                if (this.z <= 0) {
+                    this.x = Math.random() * width - width / 2;
+                    this.y = Math.random() * height - height / 2;
+                    this.z = 2000;
+                    this.prevX = this.x / (this.z * 0.001);
+                    this.prevY = this.y / (this.z * 0.001);
+                }
+                
+                this.twinklePhase += 0.05;
             }
             
             draw() {
-                const dx = this.node2.x - this.node1.x;
-                const dy = this.node2.y - this.node1.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
+                const x = this.x / (this.z * 0.001) + width / 2;
+                const y = this.y / (this.z * 0.001) + height / 2;
+                const prevX = this.prevX + width / 2;
+                const prevY = this.prevY + height / 2;
                 
-                if (distance < 300) {
-                    const opacity = (1 - distance / 300) * this.strength * 0.5;
-                    
-                    // Create gradient along the line
-                    const gradient = ctx.createLinearGradient(
-                        this.node1.x, this.node1.y,
-                        this.node2.x, this.node2.y
-                    );
-                    gradient.addColorStop(0, `rgba(${this.node1.color.r}, ${this.node1.color.g}, ${this.node1.color.b}, ${opacity})`);
-                    gradient.addColorStop(1, `rgba(${this.node2.color.r}, ${this.node2.color.g}, ${this.node2.color.b}, ${opacity})`);
-                    
-                    ctx.strokeStyle = gradient;
+                const size = (1 - this.z / 2000) * 3 * this.size;
+                const opacity = (1 - this.z / 2000) * (0.5 + Math.sin(this.twinklePhase) * 0.5);
+                
+                // Draw star trail
+                const gradient = ctx.createLinearGradient(prevX, prevY, x, y);
+                gradient.addColorStop(0, 'transparent');
+                gradient.addColorStop(1, `rgba(${this.color.r}, ${this.color.g}, ${this.color.b}, ${opacity * 0.5})`);
+                
+                ctx.strokeStyle = gradient;
+                ctx.lineWidth = size * 0.5;
+                ctx.beginPath();
+                ctx.moveTo(prevX, prevY);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+                
+                // Draw star
+                const starGradient = ctx.createRadialGradient(x, y, 0, x, y, size * 2);
+                starGradient.addColorStop(0, `rgba(${this.color.r}, ${this.color.g}, ${this.color.b}, ${opacity})`);
+                starGradient.addColorStop(0.5, `rgba(${this.color.r}, ${this.color.g}, ${this.color.b}, ${opacity * 0.5})`);
+                starGradient.addColorStop(1, 'transparent');
+                
+                ctx.fillStyle = starGradient;
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Draw star cross flare for bright stars
+                if (this.brightness > 0.8 && size > 1.5) {
+                    ctx.strokeStyle = `rgba(${this.color.r}, ${this.color.g}, ${this.color.b}, ${opacity * 0.3})`;
                     ctx.lineWidth = 0.5;
+                    
+                    // Horizontal flare
                     ctx.beginPath();
-                    ctx.moveTo(this.node1.x, this.node1.y);
-                    ctx.lineTo(this.node2.x, this.node2.y);
+                    ctx.moveTo(x - size * 4, y);
+                    ctx.lineTo(x + size * 4, y);
+                    ctx.stroke();
+                    
+                    // Vertical flare
+                    ctx.beginPath();
+                    ctx.moveTo(x, y - size * 4);
+                    ctx.lineTo(x, y + size * 4);
                     ctx.stroke();
                 }
             }
         }
         
-        // Floating geometric shapes
-        class FloatingShape {
+        // Nebula clouds
+        class Nebula {
             constructor() {
                 this.x = Math.random() * width;
                 this.y = Math.random() * height;
-                this.size = 50 + Math.random() * 100;
-                this.rotation = Math.random() * Math.PI * 2;
-                this.rotationSpeed = (Math.random() - 0.5) * 0.01;
-                this.type = Math.floor(Math.random() * 3);
+                this.radius = 100 + Math.random() * 200;
+                this.color = this.getNebulaColor();
                 this.opacity = 0.02 + Math.random() * 0.03;
-                this.pulsePhase = Math.random() * Math.PI * 2;
+                this.rotation = Math.random() * Math.PI * 2;
+                this.rotationSpeed = (Math.random() - 0.5) * 0.001;
+            }
+            
+            getNebulaColor() {
+                const colors = [
+                    { r: 138, g: 43, b: 226 },   // Purple
+                    { r: 30, g: 144, b: 255 },   // Blue
+                    { r: 255, g: 20, b: 147 },   // Pink
+                    { r: 0, g: 191, b: 255 }     // Cyan
+                ];
+                return colors[Math.floor(Math.random() * colors.length)];
             }
             
             update() {
                 this.rotation += this.rotationSpeed;
-                this.pulsePhase += 0.01;
-                this.opacity = 0.02 + Math.sin(this.pulsePhase) * 0.02;
             }
             
             draw() {
@@ -801,130 +967,58 @@
                 ctx.translate(this.x, this.y);
                 ctx.rotate(this.rotation);
                 
-                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, this.size);
-                gradient.addColorStop(0, `rgba(102, 126, 234, ${this.opacity})`);
-                gradient.addColorStop(0.5, `rgba(118, 75, 162, ${this.opacity * 0.5})`);
+                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, this.radius);
+                gradient.addColorStop(0, `rgba(${this.color.r}, ${this.color.g}, ${this.color.b}, ${this.opacity})`);
+                gradient.addColorStop(0.5, `rgba(${this.color.r}, ${this.color.g}, ${this.color.b}, ${this.opacity * 0.5})`);
                 gradient.addColorStop(1, 'transparent');
                 
                 ctx.fillStyle = gradient;
-                ctx.strokeStyle = `rgba(102, 126, 234, ${this.opacity * 2})`;
-                ctx.lineWidth = 1;
-                
-                ctx.beginPath();
-                if (this.type === 0) {
-                    // Hexagon
-                    for (let i = 0; i < 6; i++) {
-                        const angle = (Math.PI / 3) * i;
-                        const x = Math.cos(angle) * this.size;
-                        const y = Math.sin(angle) * this.size;
-                        if (i === 0) ctx.moveTo(x, y);
-                        else ctx.lineTo(x, y);
-                    }
-                } else if (this.type === 1) {
-                    // Triangle
-                    for (let i = 0; i < 3; i++) {
-                        const angle = (Math.PI * 2 / 3) * i;
-                        const x = Math.cos(angle) * this.size;
-                        const y = Math.sin(angle) * this.size;
-                        if (i === 0) ctx.moveTo(x, y);
-                        else ctx.lineTo(x, y);
-                    }
-                } else {
-                    // Circle
-                    ctx.arc(0, 0, this.size, 0, Math.PI * 2);
-                }
-                ctx.closePath();
-                ctx.fill();
-                ctx.stroke();
+                ctx.fillRect(-this.radius, -this.radius, this.radius * 2, this.radius * 2);
                 
                 ctx.restore();
             }
         }
         
-        // Initialize network
-        const nodes = [];
-        const connections = [];
-        const signals = [];
-        const shapes = [];
+        // Initialize cosmic elements
+        const stars = [];
+        const nebulae = [];
+        const blackHole = new BlackHole();
         
-        // Create neural network structure
-        const layers = 5;
-        const nodesPerLayer = 8;
-        const layerSpacing = width / (layers + 1);
-        const nodeSpacing = height / (nodesPerLayer + 1);
-        
-        for (let layer = 0; layer < layers; layer++) {
-            for (let i = 0; i < nodesPerLayer; i++) {
-                const x = layerSpacing * (layer + 1) + (Math.random() - 0.5) * 50;
-                const y = nodeSpacing * (i + 1) + (Math.random() - 0.5) * 50;
-                nodes.push(new Node(x, y, layer));
-            }
+        // Create stars
+        for (let i = 0; i < 300; i++) {
+            stars.push(new Star());
         }
         
-        // Create connections between adjacent layers
-        for (let layer = 0; layer < layers - 1; layer++) {
-            const currentLayerStart = layer * nodesPerLayer;
-            const nextLayerStart = (layer + 1) * nodesPerLayer;
-            
-            for (let i = 0; i < nodesPerLayer; i++) {
-                for (let j = 0; j < nodesPerLayer; j++) {
-                    if (Math.random() < 0.3) {  // 30% connection probability
-                        const node1 = nodes[currentLayerStart + i];
-                        const node2 = nodes[nextLayerStart + j];
-                        connections.push(new Connection(node1, node2));
-                        node1.connections.push(node2);
-                    }
-                }
-            }
-        }
-        
-        // Create floating shapes
+        // Create nebulae
         for (let i = 0; i < 5; i++) {
-            shapes.push(new FloatingShape());
+            nebulae.push(new Nebula());
         }
         
         // Animation loop
         function animate() {
-            // Smooth fade effect
-            ctx.fillStyle = 'rgba(10, 10, 10, 0.05)';
+            // Create deep space background
+            ctx.fillStyle = 'rgba(0, 0, 5, 0.1)';
             ctx.fillRect(0, 0, width, height);
             
             // Update mouse position with smoothing
             mouseX += (targetMouseX - mouseX) * 0.1;
             mouseY += (targetMouseY - mouseY) * 0.1;
             
-            // Draw and update shapes (background layer)
-            shapes.forEach(shape => {
-                shape.update();
-                shape.draw();
+            // Draw nebulae (background layer)
+            nebulae.forEach(nebula => {
+                nebula.update();
+                nebula.draw();
             });
             
-            // Draw connections
-            connections.forEach(conn => conn.draw());
-            
-            // Update and draw nodes
-            nodes.forEach(node => {
-                node.update();
-                node.draw();
+            // Draw and update stars
+            stars.forEach(star => {
+                star.update();
+                star.draw();
             });
             
-            // Create new signals
-            if (Math.random() < 0.1 && signals.length < 20) {
-                const node1 = nodes[Math.floor(Math.random() * nodes.length)];
-                if (node1.connections.length > 0) {
-                    const node2 = node1.connections[Math.floor(Math.random() * node1.connections.length)];
-                    signals.push(new Signal(node1, node2));
-                }
-            }
-            
-            // Update and draw signals
-            for (let i = signals.length - 1; i >= 0; i--) {
-                if (!signals[i].update()) {
-                    signals.splice(i, 1);
-                } else {
-                    signals[i].draw();
-                }
-            }
+            // Draw black hole portal (foreground)
+            blackHole.update();
+            blackHole.draw();
             
             requestAnimationFrame(animate);
         }
@@ -936,6 +1030,30 @@
         document.addEventListener('mousemove', (e) => {
             targetMouseX = e.clientX;
             targetMouseY = e.clientY;
+        });
+        
+        // Click to create portal burst
+        canvas.addEventListener('click', (e) => {
+            // Create explosion of particles
+            for (let i = 0; i < 20; i++) {
+                blackHole.particles.push({
+                    angle: Math.random() * Math.PI * 2,
+                    distance: 50,
+                    speed: 2 + Math.random() * 3,
+                    size: 1 + Math.random() * 2,
+                    color: `hsl(${280 + Math.random() * 60}, 100%, 70%)`
+                });
+            }
+            
+            // Create lightning burst
+            for (let i = 0; i < 5; i++) {
+                blackHole.lightningBolts.push({
+                    angle: (Math.PI * 2 / 5) * i + Math.random() * 0.5,
+                    length: 150 + Math.random() * 100,
+                    life: 1.0,
+                    branches: blackHole.generateLightningBranches()
+                });
+            }
         });
         
         // Resize handler
