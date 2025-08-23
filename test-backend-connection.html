@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backend Connection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 { color: #00ff88; }
+        .test { 
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 5px;
+            background: #2a2a2a;
+        }
+        .success { border-color: #00ff88; background: rgba(0,255,136,0.1); }
+        .error { border-color: #ff4444; background: rgba(255,68,68,0.1); }
+        .pending { border-color: #ffaa00; background: rgba(255,170,0,0.1); }
+        button {
+            background: #0088ff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #00aaff; }
+        pre {
+            background: #0a0a0a;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        #log {
+            background: #0a0a0a;
+            padding: 10px;
+            border-radius: 5px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Backend Connection Test</h1>
+    
+    <div class="test pending" id="http-test">
+        <h3>HTTP API Test (Port 4000)</h3>
+        <button onclick="testHTTP()">Test HTTP</button>
+        <pre id="http-result">Not tested yet</pre>
+    </div>
+    
+    <div class="test pending" id="ws-test">
+        <h3>WebSocket Test (Port 4001)</h3>
+        <button onclick="testWebSocket()">Test WebSocket</button>
+        <button onclick="closeWebSocket()">Close WebSocket</button>
+        <pre id="ws-result">Not tested yet</pre>
+    </div>
+    
+    <div class="test pending" id="robot-test">
+        <h3>Robot Control Test</h3>
+        <button onclick="testRobotControl()">Test Robot Control</button>
+        <pre id="robot-result">Not tested yet</pre>
+    </div>
+    
+    <h3>Live Log:</h3>
+    <div id="log"></div>
+    
+    <div style="margin-top: 20px;">
+        <button onclick="runAllTests()">🚀 Run All Tests</button>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <script>
+        let ws = null;
+        
+        function log(message, type = 'info') {
+            const logEl = document.getElementById('log');
+            const time = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ff4444' : type === 'success' ? '#00ff88' : '#0088ff';
+            logEl.innerHTML += `<div style="color: ${color}">[${time}] ${message}</div>`;
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+        
+        async function testHTTP() {
+            const testEl = document.getElementById('http-test');
+            const resultEl = document.getElementById('http-result');
+            
+            testEl.className = 'test pending';
+            resultEl.textContent = 'Testing...';
+            log('Testing HTTP connection...', 'info');
+            
+            const urls = [
+                'http://localhost:4000/health',
+                'http://127.0.0.1:4000/health',
+                `http://${window.location.hostname}:4000/health`
+            ];
+            
+            for (const url of urls) {
+                try {
+                    log(`Trying ${url}...`, 'info');
+                    const response = await fetch(url);
+                    if (response.ok) {
+                        const data = await response.json();
+                        testEl.className = 'test success';
+                        resultEl.textContent = `✅ Success!\nURL: ${url}\nResponse: ${JSON.stringify(data, null, 2)}`;
+                        log(`HTTP connection successful via ${url}`, 'success');
+                        
+                        // Also test robot endpoint
+                        const robotResponse = await fetch(url.replace('/health', '/api/robots'));
+                        const robotData = await robotResponse.json();
+                        resultEl.textContent += `\n\nRobots API: ${JSON.stringify(robotData[0], null, 2)}`;
+                        
+                        return true;
+                    }
+                } catch (error) {
+                    log(`Failed ${url}: ${error.message}`, 'error');
+                }
+            }
+            
+            testEl.className = 'test error';
+            resultEl.textContent = '❌ Failed to connect to HTTP API on all URLs';
+            log('HTTP connection failed', 'error');
+            return false;
+        }
+        
+        async function testWebSocket() {
+            const testEl = document.getElementById('ws-test');
+            const resultEl = document.getElementById('ws-result');
+            
+            testEl.className = 'test pending';
+            resultEl.textContent = 'Testing...';
+            log('Testing WebSocket connection...', 'info');
+            
+            // Close existing connection if any
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+            
+            const urls = [
+                'ws://localhost:4001',
+                'ws://127.0.0.1:4001',
+                `ws://${window.location.hostname}:4001`
+            ];
+            
+            for (const url of urls) {
+                try {
+                    log(`Trying WebSocket ${url}...`, 'info');
+                    
+                    const connected = await new Promise((resolve) => {
+                        ws = new WebSocket(url);
+                        
+                        const timeout = setTimeout(() => {
+                            ws.close();
+                            resolve(false);
+                        }, 3000);
+                        
+                        ws.onopen = () => {
+                            clearTimeout(timeout);
+                            log(`WebSocket connected to ${url}`, 'success');
+                            testEl.className = 'test success';
+                            resultEl.textContent = `✅ Connected to ${url}\nState: ${ws.readyState} (OPEN)`;
+                            
+                            // Subscribe to robot control
+                            ws.send(JSON.stringify({
+                                type: 'subscribe',
+                                channel: 'robot_control'
+                            }));
+                            
+                            resolve(true);
+                        };
+                        
+                        ws.onmessage = (event) => {
+                            const data = JSON.parse(event.data);
+                            log(`Received: ${data.type}`, 'info');
+                            resultEl.textContent += `\n\nReceived message:\n${JSON.stringify(data, null, 2).substring(0, 200)}...`;
+                        };
+                        
+                        ws.onerror = (error) => {
+                            log(`WebSocket error: ${error}`, 'error');
+                            clearTimeout(timeout);
+                            resolve(false);
+                        };
+                        
+                        ws.onclose = () => {
+                            log('WebSocket closed', 'info');
+                        };
+                    });
+                    
+                    if (connected) return true;
+                    
+                } catch (error) {
+                    log(`WebSocket error on ${url}: ${error.message}`, 'error');
+                }
+            }
+            
+            testEl.className = 'test error';
+            resultEl.textContent = '❌ Failed to connect to WebSocket on all URLs';
+            log('WebSocket connection failed', 'error');
+            return false;
+        }
+        
+        function closeWebSocket() {
+            if (ws) {
+                ws.close();
+                ws = null;
+                log('WebSocket closed manually', 'info');
+                document.getElementById('ws-test').className = 'test pending';
+                document.getElementById('ws-result').textContent = 'Connection closed';
+            }
+        }
+        
+        async function testRobotControl() {
+            const testEl = document.getElementById('robot-test');
+            const resultEl = document.getElementById('robot-result');
+            
+            testEl.className = 'test pending';
+            resultEl.textContent = 'Testing...';
+            log('Testing robot control...', 'info');
+            
+            // First ensure WebSocket is connected
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                const wsConnected = await testWebSocket();
+                if (!wsConnected) {
+                    testEl.className = 'test error';
+                    resultEl.textContent = '❌ WebSocket must be connected first';
+                    return false;
+                }
+            }
+            
+            // Send a jog command
+            log('Sending robot jog command...', 'info');
+            ws.send(JSON.stringify({
+                type: 'robot_jog',
+                robotId: 'robot-001',
+                axis: 0,
+                direction: 1,
+                speed: 0.5
+            }));
+            
+            // Test REST API for robot state
+            try {
+                const response = await fetch('http://localhost:4000/api/robots/robot-001/state');
+                const state = await response.json();
+                
+                testEl.className = 'test success';
+                resultEl.textContent = `✅ Robot control working!\n\nRobot State:\n${JSON.stringify(state, null, 2)}`;
+                log('Robot control test successful', 'success');
+                return true;
+            } catch (error) {
+                testEl.className = 'test error';
+                resultEl.textContent = `❌ Robot control error: ${error.message}`;
+                log(`Robot control error: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        async function runAllTests() {
+            log('=== Starting All Tests ===', 'info');
+            
+            const httpOk = await testHTTP();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            const wsOk = await testWebSocket();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            if (httpOk && wsOk) {
+                const robotOk = await testRobotControl();
+                
+                if (robotOk) {
+                    log('=== ✅ ALL TESTS PASSED ===', 'success');
+                    alert('✅ Backend is fully operational!\n\nYou can now use the IoT Robotics project.');
+                } else {
+                    log('=== ⚠️ Robot control test failed ===', 'error');
+                }
+            } else {
+                log('=== ❌ Connection tests failed ===', 'error');
+                log('Make sure the backend is running:', 'info');
+                log('cd /workspace/iot-robotics-backend/backend && node server.js', 'info');
+            }
+        }
+        
+        // Auto-test on load
+        window.addEventListener('load', () => {
+            log('Test page loaded. Click "Run All Tests" or test individually.', 'info');
+        });
+    </script>
+</body>
+</html>
