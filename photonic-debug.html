@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photonic Computing Debug Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a2e;
+            color: #e0e0e0;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid #00ff88;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        h1 { color: #00ff88; }
+        h2 { color: #00aaff; }
+        .success { color: #00ff88; }
+        .error { color: #ff6b6b; }
+        button {
+            background: linear-gradient(135deg, #00ff88, #00aaff);
+            color: #0a0e27;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-weight: bold;
+        }
+        button:hover {
+            transform: scale(1.05);
+        }
+        .log {
+            background: #000;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            max-height: 200px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+        input[type="range"] {
+            width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Photonic Computing Debug Page</h1>
+    
+    <div class="test-section">
+        <h2>1. Link Test</h2>
+        <p>Testing documentation link paths:</p>
+        <button onclick="testLink('photonic-computing-technical-docs.html')">Test Relative Path</button>
+        <button onclick="testLink('./photonic-computing-technical-docs.html')">Test ./Relative Path</button>
+        <button onclick="testLink('/photonic-computing-technical-docs.html')">Test Absolute Path</button>
+        <div id="linkResult" class="log"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Function Availability Test</h2>
+        <p>Check if demo functions are globally accessible:</p>
+        <button onclick="checkFunctions()">Check All Functions</button>
+        <div id="functionResult" class="log"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. PDE Solver Test</h2>
+        <p>Test PDE solver directly:</p>
+        <select id="pdeGridSize">
+            <option value="16">16×16</option>
+            <option value="32" selected>32×32</option>
+        </select>
+        <input type="range" id="photonicBits" min="4" max="10" value="6">
+        <select id="problemType">
+            <option value="heat">Heat Diffusion</option>
+        </select>
+        <button onclick="testPDESolver()">Test PDE Solver</button>
+        <div>
+            <span>Iterations: <span id="iterations">0</span></span><br>
+            <span>Error: <span id="convergenceError">--</span></span><br>
+            <span>TOPS: <span id="photOps">0</span></span><br>
+            <span>Energy: <span id="energyUsed">0</span> pJ</span>
+        </div>
+        <div id="pdeResult" class="log"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. Scaling Analysis Test</h2>
+        <p>Test scaling calculations:</p>
+        <input type="range" id="arraySize" min="4" max="8" value="5" oninput="testScaling()">
+        <span id="arraySizeValue">32×32</span><br>
+        <input type="range" id="wdmChannels" min="4" max="64" value="32" oninput="testScaling()">
+        <span id="channelsValue">32</span><br>
+        <input type="range" id="clockRate" min="1" max="10" value="10" oninput="testScaling()">
+        <span id="clockValue">10 GHz</span><br>
+        <div>
+            <span>TOPS: <span id="peakTops">0</span></span><br>
+            <span>Power: <span id="totalPower">0</span> W</span><br>
+            <span>Efficiency: <span id="efficiency">0</span> fJ/op</span><br>
+            <span>Area: <span id="chipArea">0</span> mm²</span>
+        </div>
+        <div id="scalingResult" class="log"></div>
+    </div>
+    
+    <script>
+        function log(elementId, message, isError = false) {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const color = isError ? '#ff6b6b' : '#00ff88';
+            element.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            element.scrollTop = element.scrollHeight;
+        }
+        
+        function testLink(path) {
+            log('linkResult', `Testing link: ${path}`);
+            // Try to fetch the file to see if it exists
+            fetch(path)
+                .then(response => {
+                    if (response.ok) {
+                        log('linkResult', `✓ Link works: ${path}`);
+                    } else {
+                        log('linkResult', `✗ Link failed (${response.status}): ${path}`, true);
+                    }
+                })
+                .catch(error => {
+                    log('linkResult', `✗ Error accessing: ${path} - ${error.message}`, true);
+                });
+        }
+        
+        function checkFunctions() {
+            const functions = [
+                'solvePDE',
+                'updateScalingAnalysis', 
+                'updateResonatorDemo',
+                'updateNoiseAnalysis',
+                'updateMaterialAnalysis',
+                'runConvergenceTest',
+                'updateConvergence'
+            ];
+            
+            functions.forEach(funcName => {
+                if (typeof window[funcName] === 'function') {
+                    log('functionResult', `✓ ${funcName} is available`);
+                } else {
+                    log('functionResult', `✗ ${funcName} is NOT available`, true);
+                }
+            });
+        }
+        
+        function testPDESolver() {
+            log('pdeResult', 'Testing PDE solver...');
+            
+            const gridSize = parseInt(document.getElementById('pdeGridSize').value);
+            const precision = parseInt(document.getElementById('photonicBits').value);
+            const problemType = document.getElementById('problemType').value;
+            
+            log('pdeResult', `Grid: ${gridSize}, Precision: ${precision}, Type: ${problemType}`);
+            
+            // Simulate PDE solving
+            const n = gridSize * gridSize;
+            const iterations = Math.ceil(50 / precision);
+            const error = Math.pow(2, -precision) * 0.01;
+            const opsPerIteration = 2 * n * n;
+            const totalOps = iterations * opsPerIteration;
+            const tops = (totalOps / 1e12) * 10; // At 10GHz
+            const energy = totalOps * 2.4e-15 * 1e12; // 2.4 fJ/op in pJ
+            
+            document.getElementById('iterations').textContent = iterations;
+            document.getElementById('convergenceError').textContent = error.toExponential(2);
+            document.getElementById('photOps').textContent = tops.toFixed(1);
+            document.getElementById('energyUsed').textContent = energy.toFixed(2);
+            
+            log('pdeResult', `Results: ${iterations} iterations, ${tops.toFixed(1)} TOPS`);
+        }
+        
+        function testScaling() {
+            const sizeExp = parseInt(document.getElementById('arraySize').value);
+            const arraySize = Math.pow(2, sizeExp);
+            const channels = parseInt(document.getElementById('wdmChannels').value);
+            const clockRate = parseFloat(document.getElementById('clockRate').value);
+            
+            document.getElementById('arraySizeValue').textContent = `${arraySize}×${arraySize}`;
+            document.getElementById('channelsValue').textContent = `${channels}`;
+            document.getElementById('clockValue').textContent = `${clockRate} GHz`;
+            
+            // Fixed calculations
+            const macs_per_cycle = arraySize * arraySize * channels;
+            const ops_per_second = macs_per_cycle * clockRate * 1e9 * 2;
+            const tops = ops_per_second / 1e12;
+            const power = 0.5 + (arraySize / 32) * 0.3 + (channels / 32) * 0.1;
+            const efficiency = (power * 1e15) / ops_per_second;
+            const area = 4 + (arraySize / 32) * 2 + (channels / 32) * 0.5;
+            
+            document.getElementById('peakTops').textContent = tops.toFixed(1);
+            document.getElementById('totalPower').textContent = power.toFixed(2);
+            document.getElementById('efficiency').textContent = efficiency.toFixed(1);
+            document.getElementById('chipArea').textContent = area.toFixed(1);
+            
+            log('scalingResult', `Array: ${arraySize}×${arraySize}, TOPS: ${tops.toFixed(1)}, Power: ${power.toFixed(2)}W`);
+        }
+        
+        // Test on load
+        window.onload = function() {
+            log('functionResult', 'Page loaded, checking environment...');
+            testScaling(); // Initialize scaling values
+        };
+    </script>
+</body>
+</html>
