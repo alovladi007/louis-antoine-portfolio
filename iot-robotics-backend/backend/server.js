@@ -3,6 +3,7 @@ const WebSocket = require('ws');
 const mqtt = require('mqtt');
 const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
+const RobotController = require('./robot-controller');
 require('dotenv').config();
 
 const app = express();
@@ -16,6 +17,7 @@ app.use(express.json());
 // In-memory storage for demo (replace with database in production)
 const telemetryBuffer = [];
 const robotStatus = new Map();
+const robotControllers = new Map();
 const cleanroomData = {
   particles: 152,
   airflow: 0.52,
@@ -23,8 +25,13 @@ const cleanroomData = {
   temperature: 21.5
 };
 
-// Initialize robot status
+// Initialize robot status and controllers
 ['robot-001', 'robot-002', 'robot-003'].forEach(id => {
+  // Create robot controller
+  const controller = new RobotController(id);
+  robotControllers.set(id, controller);
+  
+  // Initialize status
   robotStatus.set(id, {
     id,
     name: `Robot ${id.split('-')[1]}`,
@@ -34,6 +41,7 @@ const cleanroomData = {
     temperature: 30,
     vibration: 0.1,
     current: 5.0,
+    controller: controller.getState(),
     lastUpdate: new Date()
   });
 });
@@ -184,10 +192,94 @@ function handleCleanroomUpdate(data) {
 }
 
 // Handle WebSocket messages from clients
-function handleWebSocketMessage(ws, data) {
+async function handleWebSocketMessage(ws, data) {
   switch (data.type) {
     case 'subscribe':
       console.log(`Client ${ws.clientId} subscribed to ${data.channel}`);
+      if (data.channel === 'robot_control') {
+        // Send current robot states
+        const states = {};
+        robotControllers.forEach((controller, id) => {
+          states[id] = controller.getState();
+        });
+        ws.send(JSON.stringify({
+          type: 'robot_states',
+          payload: states
+        }));
+      }
+      break;
+      
+    case 'robot_jog':
+      const jogController = robotControllers.get(data.robotId);
+      if (jogController) {
+        const result = jogController.jog(data.axis, data.direction, data.speed);
+        broadcast({
+          type: 'robot_state_update',
+          payload: {
+            robotId: data.robotId,
+            state: jogController.getState(),
+            jogResult: result
+          }
+        });
+      }
+      break;
+      
+    case 'robot_move':
+      const moveController = robotControllers.get(data.robotId);
+      if (moveController) {
+        try {
+          const result = await moveController.moveTo(data.target, data.options);
+          broadcast({
+            type: 'robot_motion_complete',
+            payload: {
+              robotId: data.robotId,
+              state: moveController.getState(),
+              result
+            }
+          });
+        } catch (error) {
+          ws.send(JSON.stringify({
+            type: 'error',
+            payload: { robotId: data.robotId, error: error.message }
+          }));
+        }
+      }
+      break;
+      
+    case 'robot_stop':
+      const stopController = robotControllers.get(data.robotId);
+      if (stopController) {
+        stopController.stop();
+        broadcast({
+          type: 'emergency_stop',
+          payload: {
+            robotId: data.robotId,
+            state: stopController.getState()
+          }
+        });
+      }
+      break;
+      
+    case 'robot_home':
+      const homeController = robotControllers.get(data.robotId);
+      if (homeController) {
+        try {
+          const result = await homeController.home();
+          broadcast({
+            type: 'robot_home_complete',
+            payload: {
+              robotId: data.robotId,
+              state: homeController.getState(),
+              result
+            }
+          });
+        } catch (error) {
+          ws.send(JSON.stringify({
+            type: 'error',
+            payload: { robotId: data.robotId, error: error.message }
+          }));
+        }
+      }
       break;
       
     case 'command':
@@ -213,15 +305,176 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/api/robots', (req, res) => {
-  res.json(Array.from(robotStatus.values()));
+  const robots = Array.from(robotStatus.values()).map(robot => ({
+    ...robot,
+    controller: robotControllers.get(robot.id).getState()
+  }));
+  res.json(robots);
 });
 
 app.get('/api/robots/:id', (req, res) => {
   const robot = robotStatus.get(req.params.id);
-  if (robot) {
-    res.json(robot);
+  const controller = robotControllers.get(req.params.id);
+  
+  if (robot && controller) {
+    res.json({
+      ...robot,
+      controller: controller.getState()
+    });
   } else {
     res.status(404).json({ error: 'Robot not found' });
+  }
+});
+
+app.get('/api/robots/:id/state', (req, res) => {
+  const controller = robotControllers.get(req.params.id);
+  
+  if (controller) {
+    res.json(controller.getState());
+  } else {
+    res.status(404).json({ error: 'Robot not found' });
+  }
+});
+
+app.post('/api/robots/:id/move', async (req, res) => {
+  const controller = robotControllers.get(req.params.id);
+  
+  if (!controller) {
+    return res.status(404).json({ error: 'Robot not found' });
+  }
+  
+  try {
+    const result = await controller.moveTo(req.body.target, req.body.options);
+    
+    // Broadcast state update
+    broadcast({
+      type: 'robot_motion',
+      payload: {
+        robotId: req.params.id,
+        state: controller.getState(),
+        result
+      }
+    });
+    
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.post('/api/robots/:id/jog', (req, res) => {
+  const controller = robotControllers.get(req.params.id);
+  
+  if (!controller) {
+    return res.status(404).json({ error: 'Robot not found' });
+  }
+  
+  const { axis, direction, speed } = req.body;
+  const result = controller.jog(axis, direction, speed);
+  
+  // Broadcast state update
+  broadcast({
+    type: 'robot_jog',
+    payload: {
+      robotId: req.params.id,
+      state: controller.getState()
+    }
+  });
+  
+  res.json(result);
+});
+
+app.post('/api/robots/:id/home', async (req, res) => {
+  const controller = robotControllers.get(req.params.id);
+  
+  if (!controller) {
+    return res.status(404).json({ error: 'Robot not found' });
+  }
+  
+  try {
+    const result = await controller.home();
+    
+    // Broadcast state update
+    broadcast({
+      type: 'robot_home',
+      payload: {
+        robotId: req.params.id,
+        state: controller.getState(),
+        result
+      }
+    });
+    
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.post('/api/robots/:id/stop', (req, res) => {
+  const controller = robotControllers.get(req.params.id);
+  
+  if (!controller) {
+    return res.status(404).json({ error: 'Robot not found' });
+  }
+  
+  const result = controller.stop();
+  
+  // Broadcast emergency stop
+  broadcast({
+    type: 'emergency_stop',
+    payload: {
+      robotId: req.params.id,
+      state: controller.getState()
+    }
+  });
+  
+  res.json(result);
+});
+
+app.post('/api/robots/:id/reset', (req, res) => {
+  const controller = robotControllers.get(req.params.id);
+  
+  if (!controller) {
+    return res.status(404).json({ error: 'Robot not found' });
+  }
+  
+  const result = controller.reset();
+  
+  // Broadcast reset
+  broadcast({
+    type: 'robot_reset',
+    payload: {
+      robotId: req.params.id,
+      state: controller.getState()
+    }
+  });
+  
+  res.json(result);
+});
+
+app.post('/api/robots/:id/program', async (req, res) => {
+  const controller = robotControllers.get(req.params.id);
+  
+  if (!controller) {
+    return res.status(404).json({ error: 'Robot not found' });
+  }
+  
+  try {
+    const results = await controller.executeProgram(req.body.program);
+    
+    // Broadcast completion
+    broadcast({
+      type: 'program_complete',
+      payload: {
+        robotId: req.params.id,
+        state: controller.getState(),
+        results
+      }
+    });
+    
+    res.json({ success: true, results });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
   }
 });
 
@@ -262,6 +515,29 @@ app.post('/api/ml/predict', async (req, res) => {
     res.status(500).json({ error: 'ML service unavailable' });
   }
 });
+
+// Broadcast robot states periodically
+function broadcastRobotStates() {
+  setInterval(() => {
+    const states = {};
+    robotControllers.forEach((controller, id) => {
+      const state = controller.getState();
+      states[id] = state;
+      
+      // Update robot status
+      const robot = robotStatus.get(id);
+      if (robot) {
+        robot.controller = state;
+        robot.lastUpdate = new Date();
+      }
+    });
+    
+    broadcast({
+      type: 'robot_states_update',
+      payload: states
+    });
+  }, 100); // 10Hz update rate
+}
 
 // Simulate data generation (remove in production)
 function simulateData() {
@@ -313,6 +589,7 @@ function simulateData() {
 // Start simulation in development mode
 if (process.env.NODE_ENV !== 'production') {
   simulateData();
+  broadcastRobotStates();
 }
 
 // Start HTTP server

@@ -1731,6 +1731,128 @@
             }, 5000);
         };
 
+        // WebSocket connection to backend
+        window.robotWS = null;
+        window.selectedRobotId = 'robot-001';
+        window.robotStates = {};
+        
+        // Connect to backend WebSocket
+        window.connectToBackend = function() {
+            if (window.robotWS && window.robotWS.readyState === WebSocket.OPEN) return;
+            
+            try {
+                window.robotWS = new WebSocket('ws://localhost:4001');
+                
+                window.robotWS.onopen = () => {
+                    console.log('Connected to robot control backend');
+                    // Subscribe to robot control channel
+                    window.robotWS.send(JSON.stringify({
+                        type: 'subscribe',
+                        channel: 'robot_control'
+                    }));
+                };
+                
+                window.robotWS.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    handleBackendMessage(data);
+                };
+                
+                window.robotWS.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                };
+                
+                window.robotWS.onclose = () => {
+                    console.log('WebSocket connection closed');
+                    // Attempt reconnection after 3 seconds
+                    setTimeout(window.connectToBackend, 3000);
+                };
+            } catch (error) {
+                console.error('Failed to connect to backend:', error);
+                // Fallback to simulation mode
+                console.log('Running in simulation mode');
+            }
+        };
+        
+        // Handle messages from backend
+        function handleBackendMessage(data) {
+            switch(data.type) {
+                case 'robot_states':
+                    window.robotStates = data.payload;
+                    updateRobotDisplay();
+                    break;
+                case 'robot_state_update':
+                    if (data.payload.robotId === window.selectedRobotId) {
+                        updateRobotPosition(data.payload.state);
+                    }
+                    break;
+                case 'robot_motion_complete':
+                    console.log('Motion complete:', data.payload);
+                    updateRobotPosition(data.payload.state);
+                    break;
+                case 'emergency_stop':
+                    console.log('Emergency stop activated for', data.payload.robotId);
+                    alert('Emergency stop activated!');
+                    break;
+            }
+        }
+        
+        // Update robot display with real data
+        function updateRobotDisplay() {
+            const state = window.robotStates[window.selectedRobotId];
+            if (!state) return;
+            
+            // Update joint sliders
+            if (state.jointPositions) {
+                const joint1Deg = (state.jointPositions[0] * 180 / Math.PI).toFixed(0);
+                const joint2Deg = (state.jointPositions[1] * 180 / Math.PI).toFixed(0);
+                const joint3Deg = (state.jointPositions[2] * 180 / Math.PI).toFixed(0);
+                
+                document.getElementById('joint1').value = joint1Deg;
+                document.getElementById('joint2').value = joint2Deg;
+                document.getElementById('joint3').value = joint3Deg;
+                
+                document.getElementById('joint1-value').textContent = joint1Deg + '°';
+                document.getElementById('joint2-value').textContent = joint2Deg + '°';
+                document.getElementById('joint3-value').textContent = joint3Deg + '°';
+            }
+            
+            // Update position display
+            if (state.cartesianPosition) {
+                document.getElementById('pos-x').textContent = (state.cartesianPosition[0] * 1000).toFixed(2);
+                document.getElementById('pos-y').textContent = (state.cartesianPosition[1] * 1000).toFixed(2);
+                document.getElementById('pos-z').textContent = (state.cartesianPosition[2] * 1000).toFixed(2);
+            }
+            
+            // Update 3D visualization
+            updateRobot3DPosition(state);
+        }
+        
+        // Update robot position from state
+        function updateRobotPosition(state) {
+            if (state.jointPositions && window.robotBase) {
+                window.robotBase.rotation.y = state.jointPositions[0];
+                if (window.robotArm1) window.robotArm1.rotation.z = state.jointPositions[1];
+                if (window.robotArm2) window.robotArm2.rotation.z = state.jointPositions[2];
+            }
+            
+            if (state.cartesianPosition) {
+                document.getElementById('pos-x').textContent = (state.cartesianPosition[0] * 1000).toFixed(2);
+                document.getElementById('pos-y').textContent = (state.cartesianPosition[1] * 1000).toFixed(2);
+                document.getElementById('pos-z').textContent = (state.cartesianPosition[2] * 1000).toFixed(2);
+            }
+        }
+        
+        // Update 3D visualization
+        function updateRobot3DPosition(state) {
+            if (!window.robotBase) return;
+            
+            if (state.jointPositions) {
+                window.robotBase.rotation.y = state.jointPositions[0];
+                if (window.robotArm1) window.robotArm1.rotation.z = state.jointPositions[1];
+                if (window.robotArm2) window.robotArm2.rotation.z = state.jointPositions[2];
+            }
+        }
+
         // 3D Robot Visualization
         window.initRobot3D = function() {
             const container = document.getElementById('robot-3d');
@@ -1800,54 +1922,169 @@
             }
             animate();
             
-            // Handle joint controls
+            // Handle joint controls with backend integration
+            let jogTimeout = null;
+            
             document.getElementById('joint1').addEventListener('input', (e) => {
                 const value = parseFloat(e.target.value);
                 document.getElementById('joint1-value').textContent = value + '°';
+                
+                // Update 3D visualization immediately
                 if (window.robotBase) {
                     window.robotBase.rotation.y = THREE.MathUtils.degToRad(value);
+                }
+                
+                // Send jog command to backend (debounced)
+                if (window.robotWS && window.robotWS.readyState === WebSocket.OPEN) {
+                    clearTimeout(jogTimeout);
+                    jogTimeout = setTimeout(() => {
+                        const currentValue = parseFloat(document.getElementById('joint1').value);
+                        const targetRad = THREE.MathUtils.degToRad(currentValue);
+                        window.robotWS.send(JSON.stringify({
+                            type: 'robot_jog',
+                            robotId: window.selectedRobotId,
+                            axis: 0,
+                            direction: Math.sign(targetRad - (window.robotStates[window.selectedRobotId]?.jointPositions?.[0] || 0)),
+                            speed: 0.5
+                        }));
+                    }, 100);
                 }
             });
             
             document.getElementById('joint2').addEventListener('input', (e) => {
                 const value = parseFloat(e.target.value);
                 document.getElementById('joint2-value').textContent = value + '°';
+                
                 if (window.robotArm1) {
                     window.robotArm1.rotation.z = THREE.MathUtils.degToRad(value);
+                }
+                
+                if (window.robotWS && window.robotWS.readyState === WebSocket.OPEN) {
+                    clearTimeout(jogTimeout);
+                    jogTimeout = setTimeout(() => {
+                        const currentValue = parseFloat(document.getElementById('joint2').value);
+                        const targetRad = THREE.MathUtils.degToRad(currentValue);
+                        window.robotWS.send(JSON.stringify({
+                            type: 'robot_jog',
+                            robotId: window.selectedRobotId,
+                            axis: 1,
+                            direction: Math.sign(targetRad - (window.robotStates[window.selectedRobotId]?.jointPositions?.[1] || 0)),
+                            speed: 0.5
+                        }));
+                    }, 100);
                 }
             });
             
             document.getElementById('joint3').addEventListener('input', (e) => {
                 const value = parseFloat(e.target.value);
                 document.getElementById('joint3-value').textContent = value + '°';
+                
                 if (window.robotArm2) {
                     window.robotArm2.rotation.z = THREE.MathUtils.degToRad(value);
+                }
+                
+                if (window.robotWS && window.robotWS.readyState === WebSocket.OPEN) {
+                    clearTimeout(jogTimeout);
+                    jogTimeout = setTimeout(() => {
+                        const currentValue = parseFloat(document.getElementById('joint3').value);
+                        const targetRad = THREE.MathUtils.degToRad(currentValue);
+                        window.robotWS.send(JSON.stringify({
+                            type: 'robot_jog',
+                            robotId: window.selectedRobotId,
+                            axis: 2,
+                            direction: Math.sign(targetRad - (window.robotStates[window.selectedRobotId]?.jointPositions?.[2] || 0)),
+                            speed: 0.5
+                        }));
+                    }, 100);
                 }
             });
         };
 
         window.executeRobotProgram = function() {
-            alert('Executing robot program with deterministic control loop...');
+            if (window.robotWS && window.robotWS.readyState === WebSocket.OPEN) {
+                // Define a simple pick-and-place program
+                const program = [
+                    { name: 'Move to Pick Position', target: [0.5, -0.3, 1.0, 0, 0, 0], options: { motionType: 'joint', velocityScale: 0.5 }, delay: 1000 },
+                    { name: 'Close Gripper', target: [0.5, -0.3, 1.0, 0, 0, 0], options: { motionType: 'joint', velocityScale: 0.3 }, delay: 500 },
+                    { name: 'Lift Object', target: [0.5, -0.3, 0.5, 0, 0, 0], options: { motionType: 'joint', velocityScale: 0.3 }, delay: 1000 },
+                    { name: 'Move to Place Position', target: [-0.5, 0.3, 0.5, 0, 0, 0], options: { motionType: 'joint', velocityScale: 0.5 }, delay: 1000 },
+                    { name: 'Lower Object', target: [-0.5, 0.3, 1.0, 0, 0, 0], options: { motionType: 'joint', velocityScale: 0.3 }, delay: 1000 },
+                    { name: 'Open Gripper', target: [-0.5, 0.3, 1.0, 0, 0, 0], options: { motionType: 'joint', velocityScale: 0.3 }, delay: 500 },
+                    { name: 'Return Home', target: [0, 0, 0, 0, 0, 0], options: { motionType: 'joint', velocityScale: 0.5 }, delay: 0 }
+                ];
+                
+                // Send program via REST API
+                fetch(`http://localhost:4000/api/robots/${window.selectedRobotId}/program`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ program })
+                })
+                .then(res => res.json())
+                .then(result => {
+                    console.log('Program execution result:', result);
+                    if (result.success) {
+                        alert('Robot program executed successfully!');
+                    }
+                })
+                .catch(error => {
+                    console.error('Program execution failed:', error);
+                    alert('Failed to execute program: ' + error.message);
+                });
+            } else {
+                alert('Not connected to backend. Please ensure the backend is running.');
+            }
         };
 
         window.homeRobot = function() {
-            document.getElementById('joint1').value = 0;
-            document.getElementById('joint2').value = 0;
-            document.getElementById('joint3').value = 0;
-            document.getElementById('gripper').value = 50;
-            
-            document.getElementById('joint1-value').textContent = '0°';
-            document.getElementById('joint2-value').textContent = '0°';
-            document.getElementById('joint3-value').textContent = '0°';
-            document.getElementById('gripper-value').textContent = '50%';
-            
-            if (window.robotBase) window.robotBase.rotation.y = 0;
-            if (window.robotArm1) window.robotArm1.rotation.z = 0;
-            if (window.robotArm2) window.robotArm2.rotation.z = 0;
+            if (window.robotWS && window.robotWS.readyState === WebSocket.OPEN) {
+                // Send home command via WebSocket
+                window.robotWS.send(JSON.stringify({
+                    type: 'robot_home',
+                    robotId: window.selectedRobotId
+                }));
+                
+                // Update UI optimistically
+                document.getElementById('joint1').value = 0;
+                document.getElementById('joint2').value = 0;
+                document.getElementById('joint3').value = 0;
+                document.getElementById('gripper').value = 50;
+                
+                document.getElementById('joint1-value').textContent = '0°';
+                document.getElementById('joint2-value').textContent = '0°';
+                document.getElementById('joint3-value').textContent = '0°';
+                document.getElementById('gripper-value').textContent = '50%';
+                
+                if (window.robotBase) window.robotBase.rotation.y = 0;
+                if (window.robotArm1) window.robotArm1.rotation.z = 0;
+                if (window.robotArm2) window.robotArm2.rotation.z = 0;
+            } else {
+                // Fallback to local update
+                document.getElementById('joint1').value = 0;
+                document.getElementById('joint2').value = 0;
+                document.getElementById('joint3').value = 0;
+                document.getElementById('gripper').value = 50;
+                
+                document.getElementById('joint1-value').textContent = '0°';
+                document.getElementById('joint2-value').textContent = '0°';
+                document.getElementById('joint3-value').textContent = '0°';
+                document.getElementById('gripper-value').textContent = '50%';
+                
+                if (window.robotBase) window.robotBase.rotation.y = 0;
+                if (window.robotArm1) window.robotArm1.rotation.z = 0;
+                if (window.robotArm2) window.robotArm2.rotation.z = 0;
+            }
         };
 
         window.emergencyStop = function() {
             if (confirm('Execute Emergency Stop? All robot operations will halt immediately.')) {
+                if (window.robotWS && window.robotWS.readyState === WebSocket.OPEN) {
+                    // Send emergency stop to backend
+                    window.robotWS.send(JSON.stringify({
+                        type: 'robot_stop',
+                        robotId: window.selectedRobotId
+                    }));
+                }
+                
                 alert('EMERGENCY STOP ACTIVATED - All systems halted');
                 window.stopTimeSyncDemo();
                 if (window.cleanroomInterval) {
@@ -2127,6 +2364,9 @@
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', () => {
+            // Connect to backend for robot control
+            window.connectToBackend();
+            
             // Add initial SEMI messages
             const semiConsole = document.getElementById('semi-console');
             const initialMessages = [
