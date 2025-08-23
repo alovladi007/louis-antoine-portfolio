@@ -6,6 +6,51 @@
     <title>Master's Coursework - Louis Antoine</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Library Background Styles */
+        .detail-page {
+            position: relative;
+            background: linear-gradient(135deg, #1a1410 0%, #0f0b08 50%, #0a0705 100%);
+            min-height: 100vh;
+        }
+
+        #library-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+        }
+
+        .library-bg-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: radial-gradient(circle at 50% 50%, transparent 0%, rgba(10, 7, 5, 0.3) 40%, rgba(10, 7, 5, 0.8) 100%);
+            pointer-events: none;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+        }
+
+        .detail-header, .course-category {
+            background: rgba(20, 15, 10, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(139, 69, 19, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .course-item {
+            background: rgba(25, 18, 12, 0.9);
+            border-left: 3px solid rgba(139, 69, 19, 0.4);
+        }
+    </style>
 </head>
 <body>
     <nav class="navbar">
@@ -25,6 +70,8 @@
     </nav>
 
     <section class="detail-page">
+        <canvas id="library-canvas"></canvas>
+        <div class="library-bg-overlay"></div>
         <div class="container">
             <div class="back-link">
                 <a href="index.html#experience"><i class="fas fa-arrow-left"></i> Back to Experience</a>
@@ -325,5 +372,278 @@
     </style>
 
     <script src="script.js"></script>
+    
+    <!-- Library Background Animation -->
+    <script>
+        // Library Background Animation
+        const canvas = document.getElementById('library-canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        let books = [];
+        let particles = [];
+        let mouseX = 0;
+        let mouseY = 0;
+
+        // Book class for background bookshelves
+        class Book {
+            constructor(x, y, width, height, color, title) {
+                this.x = x;
+                this.y = y;
+                this.width = width;
+                this.height = height;
+                this.color = color;
+                this.title = title;
+                this.angle = (Math.random() - 0.5) * 0.1; // Slight tilt
+                this.hoverGlow = 0;
+                this.targetGlow = 0;
+            }
+
+            update() {
+                // Smooth glow animation
+                this.hoverGlow += (this.targetGlow - this.hoverGlow) * 0.1;
+                
+                // Check mouse proximity
+                const dx = mouseX - (this.x + this.width / 2);
+                const dy = mouseY - (this.y + this.height / 2);
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < 100) {
+                    this.targetGlow = 1 - distance / 100;
+                } else {
+                    this.targetGlow = 0;
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+                ctx.rotate(this.angle);
+                
+                // Book shadow
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                ctx.shadowBlur = 5;
+                ctx.shadowOffsetX = 2;
+                ctx.shadowOffsetY = 2;
+                
+                // Book spine gradient
+                const gradient = ctx.createLinearGradient(-this.width / 2, 0, this.width / 2, 0);
+                gradient.addColorStop(0, this.color);
+                gradient.addColorStop(0.3, this.lightenColor(this.color, 20));
+                gradient.addColorStop(0.7, this.lightenColor(this.color, 20));
+                gradient.addColorStop(1, this.color);
+                
+                // Draw book
+                ctx.fillStyle = gradient;
+                ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                
+                // Book edge highlight
+                ctx.strokeStyle = `rgba(255, 255, 255, ${0.1 + this.hoverGlow * 0.3})`;
+                ctx.lineWidth = 1;
+                ctx.strokeRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                
+                // Golden glow on hover
+                if (this.hoverGlow > 0) {
+                    ctx.shadowColor = 'rgba(255, 215, 0, ' + this.hoverGlow * 0.5 + ')';
+                    ctx.shadowBlur = 20;
+                    ctx.strokeStyle = `rgba(255, 215, 0, ${this.hoverGlow * 0.5})`;
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                }
+                
+                // Book title (decorative lines)
+                ctx.strokeStyle = `rgba(255, 215, 0, ${0.3 + this.hoverGlow * 0.4})`;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(-this.width / 2 + 5, -this.height / 2 + 10);
+                ctx.lineTo(this.width / 2 - 5, -this.height / 2 + 10);
+                ctx.stroke();
+                
+                if (this.height > 40) {
+                    ctx.beginPath();
+                    ctx.moveTo(-this.width / 2 + 5, this.height / 2 - 10);
+                    ctx.lineTo(this.width / 2 - 5, this.height / 2 - 10);
+                    ctx.stroke();
+                }
+                
+                ctx.restore();
+            }
+
+            lightenColor(color, percent) {
+                const num = parseInt(color.replace("#", ""), 16);
+                const amt = Math.round(2.55 * percent);
+                const R = (num >> 16) + amt;
+                const G = (num >> 8 & 0x00FF) + amt;
+                const B = (num & 0x0000FF) + amt;
+                return "#" + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
+                    (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
+                    (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1);
+            }
+        }
+
+        // Floating particle class
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.size = Math.random() * 2 + 0.5;
+                this.speedX = (Math.random() - 0.5) * 0.5;
+                this.speedY = Math.random() * 0.5 + 0.2;
+                this.opacity = Math.random() * 0.5;
+            }
+
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.opacity -= 0.002;
+                
+                if (this.opacity <= 0 || this.y > height) {
+                    this.reset();
+                    this.y = -10;
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.opacity;
+                ctx.fillStyle = '#d4af37'; // Golden dust
+                ctx.shadowColor = '#d4af37';
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function initLibrary() {
+            resize();
+            createBookshelves();
+            createParticles();
+            animate();
+        }
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+
+        function createBookshelves() {
+            books = [];
+            const bookColors = [
+                '#4a2c2a', '#2c4a3d', '#3d2c4a', '#4a3d2c', 
+                '#2a3d4a', '#4a2a3d', '#3d4a2c', '#2c3d4a',
+                '#5a3c3a', '#3c5a4d', '#4d3c5a', '#5a4d3c'
+            ];
+            
+            // Create multiple shelves
+            const shelfCount = Math.floor(height / 150);
+            const booksPerShelf = Math.floor(width / 30);
+            
+            for (let shelf = 0; shelf < shelfCount; shelf++) {
+                const shelfY = shelf * 150 + 80;
+                let currentX = 10;
+                
+                for (let i = 0; i < booksPerShelf; i++) {
+                    const bookWidth = Math.random() * 20 + 15;
+                    const bookHeight = Math.random() * 40 + 80;
+                    const color = bookColors[Math.floor(Math.random() * bookColors.length)];
+                    
+                    if (currentX + bookWidth < width - 10) {
+                        books.push(new Book(
+                            currentX,
+                            shelfY - bookHeight,
+                            bookWidth,
+                            bookHeight,
+                            color,
+                            ''
+                        ));
+                        currentX += bookWidth + Math.random() * 3;
+                    }
+                }
+                
+                // Add shelf line
+                books.push({
+                    isShelf: true,
+                    y: shelfY,
+                    update: () => {},
+                    draw: function() {
+                        ctx.strokeStyle = 'rgba(139, 69, 19, 0.6)';
+                        ctx.lineWidth = 3;
+                        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                        ctx.shadowBlur = 5;
+                        ctx.shadowOffsetY = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(0, this.y);
+                        ctx.lineTo(width, this.y);
+                        ctx.stroke();
+                        
+                        // Shelf highlight
+                        ctx.strokeStyle = 'rgba(160, 82, 45, 0.3)';
+                        ctx.lineWidth = 1;
+                        ctx.shadowBlur = 0;
+                        ctx.beginPath();
+                        ctx.moveTo(0, this.y - 2);
+                        ctx.lineTo(width, this.y - 2);
+                        ctx.stroke();
+                    }
+                });
+            }
+        }
+
+        function createParticles() {
+            particles = [];
+            const particleCount = 50;
+            for (let i = 0; i < particleCount; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function animate() {
+            // Clear with warm library ambiance
+            ctx.fillStyle = 'rgba(26, 20, 16, 0.1)';
+            ctx.fillRect(0, 0, width, height);
+            
+            // Add warm ambient light
+            const gradient = ctx.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, Math.max(width, height));
+            gradient.addColorStop(0, 'rgba(255, 215, 0, 0.02)');
+            gradient.addColorStop(0.5, 'rgba(139, 69, 19, 0.03)');
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0.05)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, width, height);
+            
+            // Update and draw books
+            books.forEach(book => {
+                book.update();
+                book.draw();
+            });
+            
+            // Update and draw particles
+            particles.forEach(particle => {
+                particle.update();
+                particle.draw();
+            });
+            
+            requestAnimationFrame(animate);
+        }
+
+        // Mouse tracking
+        window.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+
+        // Window resize
+        window.addEventListener('resize', () => {
+            resize();
+            createBookshelves();
+        });
+
+        // Initialize
+        window.addEventListener('load', initLibrary);
+    </script>
 </body>
 </html>
