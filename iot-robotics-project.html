@@ -102,6 +102,30 @@
             background: radial-gradient(circle at 50% 50%, rgba(0, 255, 136, 0.1) 0%, transparent 70%);
             animation: pulse 4s ease-in-out infinite;
         }
+        
+        /* Connection Status Styles */
+        .connection-status {
+            transition: all 0.3s ease;
+        }
+        
+        .connection-status.connected {
+            background: rgba(0, 255, 136, 0.2) !important;
+            border-color: #00ff88 !important;
+            color: #00ff88 !important;
+        }
+        
+        .connection-status.disconnected,
+        .connection-status.error {
+            background: rgba(255, 68, 68, 0.2) !important;
+            border-color: #ff4444 !important;
+            color: #ff4444 !important;
+        }
+        
+        .connection-status.offline {
+            background: rgba(255, 170, 0, 0.2) !important;
+            border-color: #ffaa00 !important;
+            color: #ffaa00 !important;
+        }
 
         @keyframes pulse {
             0%, 100% { opacity: 0.5; }
@@ -1139,6 +1163,14 @@
             <h2 class="section-title">
                 <i class="fas fa-robot"></i>
                 Interactive Robot Control
+                <span id="connection-status" class="connection-status" style="
+                    font-size: 0.5em;
+                    margin-left: 1rem;
+                    padding: 0.25rem 0.75rem;
+                    border-radius: 20px;
+                    background: rgba(255, 255, 255, 0.1);
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                ">Connecting...</span>
             </h2>
             
             <div class="card">
@@ -1737,40 +1769,116 @@
         window.robotStates = {};
         
         // Connect to backend WebSocket
-        window.connectToBackend = function() {
+        window.connectToBackend = async function() {
             if (window.robotWS && window.robotWS.readyState === WebSocket.OPEN) return;
             
+            // Update connection status display
+            const updateConnectionStatus = (status, message) => {
+                console.log(`Connection status: ${status} - ${message}`);
+                // Add visual indicator if element exists
+                const statusEl = document.getElementById('connection-status');
+                if (statusEl) {
+                    statusEl.textContent = message;
+                    statusEl.className = `connection-status ${status}`;
+                }
+            };
+            
             try {
-                window.robotWS = new WebSocket('ws://localhost:4001');
+                // Try multiple connection URLs
+                const wsUrls = [
+                    'ws://localhost:4001',
+                    'ws://127.0.0.1:4001',
+                    `ws://${window.location.hostname}:4001`
+                ];
                 
-                window.robotWS.onopen = () => {
-                    console.log('Connected to robot control backend');
-                    // Subscribe to robot control channel
-                    window.robotWS.send(JSON.stringify({
-                        type: 'subscribe',
-                        channel: 'robot_control'
-                    }));
-                };
+                let connected = false;
                 
-                window.robotWS.onmessage = (event) => {
-                    const data = JSON.parse(event.data);
-                    handleBackendMessage(data);
-                };
+                for (const wsUrl of wsUrls) {
+                    if (connected) break;
+                    
+                    try {
+                        console.log(`Attempting WebSocket connection to ${wsUrl}`);
+                        window.robotWS = new WebSocket(wsUrl);
+                        
+                        window.robotWS.onopen = () => {
+                            connected = true;
+                            console.log(`Connected to robot control backend at ${wsUrl}`);
+                            updateConnectionStatus('connected', 'Connected to backend');
+                            
+                            // Subscribe to robot control channel
+                            window.robotWS.send(JSON.stringify({
+                                type: 'subscribe',
+                                channel: 'robot_control'
+                            }));
+                        };
+                        
+                        window.robotWS.onmessage = (event) => {
+                            try {
+                                const data = JSON.parse(event.data);
+                                handleBackendMessage(data);
+                            } catch (e) {
+                                console.error('Error parsing message:', e);
+                            }
+                        };
+                        
+                        window.robotWS.onerror = (error) => {
+                            console.error(`WebSocket error on ${wsUrl}:`, error);
+                            updateConnectionStatus('error', 'Connection error');
+                        };
+                        
+                        window.robotWS.onclose = () => {
+                            console.log('WebSocket connection closed');
+                            updateConnectionStatus('disconnected', 'Disconnected - Retrying...');
+                            connected = false;
+                            // Attempt reconnection after 3 seconds
+                            setTimeout(window.connectToBackend, 3000);
+                        };
+                        
+                        // Give it time to connect
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        if (window.robotWS.readyState === WebSocket.OPEN) {
+                            connected = true;
+                            break;
+                        }
+                    } catch (error) {
+                        console.error(`Failed to connect to ${wsUrl}:`, error);
+                    }
+                }
                 
-                window.robotWS.onerror = (error) => {
-                    console.error('WebSocket error:', error);
-                };
-                
-                window.robotWS.onclose = () => {
-                    console.log('WebSocket connection closed');
-                    // Attempt reconnection after 3 seconds
-                    setTimeout(window.connectToBackend, 3000);
-                };
+                if (!connected) {
+                    throw new Error('Could not connect to any WebSocket URL');
+                }
             } catch (error) {
                 console.error('Failed to connect to backend:', error);
+                updateConnectionStatus('offline', 'Running in simulation mode');
                 // Fallback to simulation mode
-                console.log('Running in simulation mode');
+                console.log('Running in simulation mode - backend not available');
+                simulateRobotData();
             }
+        };
+        
+        // Simulation mode fallback
+        window.simulateRobotData = function() {
+            // Simulate robot state updates
+            setInterval(() => {
+                const simulatedState = {
+                    robotId: 'robot-001',
+                    jointPositions: [
+                        Math.sin(Date.now() / 1000) * 0.5,
+                        Math.cos(Date.now() / 1000) * 0.3,
+                        Math.sin(Date.now() / 2000) * 0.4,
+                        0, 0, 0
+                    ],
+                    cartesianPosition: [
+                        0.5 + Math.sin(Date.now() / 1000) * 0.1,
+                        0.3 + Math.cos(Date.now() / 1000) * 0.1,
+                        0.4
+                    ]
+                };
+                
+                window.robotStates['robot-001'] = simulatedState;
+                updateRobotDisplay();
+            }, 100);
         };
         
         // Handle messages from backend
