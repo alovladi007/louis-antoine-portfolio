@@ -528,15 +528,9 @@
                     Revolutionary Phase Change Material Enhanced Ring Resonators for Ultra-Fast PDE Solving
                 </p>
                 <div style="margin-top: 30px; text-align: center;">
-                    <a href="./photonic-computing-technical-docs.html" class="project-link" style="display: inline-block; background: linear-gradient(135deg, #00ff88, #00aaff); padding: 12px 30px; border-radius: 25px; text-decoration: none; color: #0a0e27; font-weight: bold; font-size: 1.1em; transition: transform 0.3s;" onclick="openTechnicalDocs(event)">
+                    <a href="photonic-computing-technical-docs.html" class="project-link" style="display: inline-block; background: linear-gradient(135deg, #00ff88, #00aaff); padding: 12px 30px; border-radius: 25px; text-decoration: none; color: #0a0e27; font-weight: bold; font-size: 1.1em; transition: transform 0.3s;">
                         <i class="fas fa-book"></i> View Full Technical Documentation
                     </a>
-                    <script>
-                        function openTechnicalDocs(e) {
-                            // Don't prevent default - let the link work normally
-                            console.log('Opening technical documentation...');
-                        }
-                    </script>
                 </div>
             </div>
 
@@ -1646,14 +1640,8 @@ print(f"Energy Efficiency: {core.energy_efficiency:.2f} fJ/OP")</code></pre>
             sbse: { name: 'Sb₂Se₃', deltaN: 0.76, kc: 0, loss: 0, levels: 32 }
         };
         
-        // Initialize on page load
-        window.onload = function() {
-            initializeSliders();
-            initializeCharts();
-            drawResonatorVisualization();
-            init3DArchitecture();
-            updateAllValues();
-        };
+        // Initialize on page load - using DOMContentLoaded instead of window.onload to avoid conflicts
+        // This initialization is now handled in the DOMContentLoaded event at the bottom
         
         function initializeSliders() {
             // Phase State Slider
@@ -2601,16 +2589,8 @@ print(f"Energy Efficiency: {core.energy_efficiency:.2f} fJ/OP")</code></pre>
             }
         }
         
-        // Global loadDemo function
-        window.loadDemo = function(demoType) {
-            console.log('Loading demo:', demoType);
-            const workspace = document.getElementById('demoWorkspace');
-            if (!workspace) {
-                console.error('Demo workspace not found!');
-                return;
-            }
-            loadDemoInternal(demoType);
-        };
+        // Global loadDemo function - make it directly handle the demos
+        window.loadDemo = loadDemoInternal;
         
         // Complete demo implementations with real simulations
         function loadDemoInternal(demoType) {
@@ -3501,7 +3481,117 @@ print(f"Energy Efficiency: {core.energy_efficiency:.2f} fJ/OP")</code></pre>
         
         function initializeNoiseDemo() {
             console.log('Initializing noise demo...');
-            setTimeout(() => updateNoiseAnalysis(), 100);
+            setTimeout(() => {
+                updateNoiseAnalysis();
+                
+                // Initialize ENOB vs Power chart
+                const enobCtx = document.getElementById('enobVsPowerChart');
+                if (enobCtx && !window.enobVsPowerChart) {
+                    const powers = [];
+                    const enobData = [];
+                    for (let p = -3; p <= 1; p += 0.1) {
+                        powers.push(Math.pow(10, p).toFixed(2));
+                        const snr = 10 * Math.log10(Math.pow(10, p) * 1000) + 160 - 1.13;
+                        enobData.push(Math.min((snr - 1.76) / 6.02, 13));
+                    }
+                    
+                    window.enobVsPowerChart = new Chart(enobCtx.getContext('2d'), {
+                        type: 'line',
+                        data: {
+                            labels: powers,
+                            datasets: [{
+                                label: 'ENOB vs Power',
+                                data: enobData,
+                                borderColor: '#00ff88',
+                                backgroundColor: 'rgba(0,255,136,0.1)',
+                                borderWidth: 2
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'ENOB vs Optical Power',
+                                    color: '#00aaff'
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    title: { display: true, text: 'Power (mW)', color: '#e0e0e0' },
+                                    ticks: { color: '#e0e0e0' },
+                                    grid: { color: 'rgba(255,255,255,0.1)' }
+                                },
+                                y: {
+                                    title: { display: true, text: 'ENOB (bits)', color: '#e0e0e0' },
+                                    ticks: { color: '#e0e0e0' },
+                                    grid: { color: 'rgba(255,255,255,0.1)' }
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                // Initialize Noise Spectrum chart
+                const spectrumCtx = document.getElementById('noiseSpectrumChart');
+                if (spectrumCtx && !window.noiseSpectrumChart) {
+                    const frequencies = [];
+                    const rinData = [];
+                    const thermalData = [];
+                    
+                    for (let f = 0.1; f <= 100; f *= 1.5) {
+                        frequencies.push(f.toFixed(1));
+                        rinData.push(-160 - Math.log10(f) * 3);
+                        thermalData.push(-170 - Math.log10(f) * 2);
+                    }
+                    
+                    window.noiseSpectrumChart = new Chart(spectrumCtx.getContext('2d'), {
+                        type: 'line',
+                        data: {
+                            labels: frequencies,
+                            datasets: [{
+                                label: 'RIN',
+                                data: rinData,
+                                borderColor: '#00aaff',
+                                borderWidth: 2,
+                                fill: false
+                            }, {
+                                label: 'Thermal',
+                                data: thermalData,
+                                borderColor: '#ffaa00',
+                                borderWidth: 2,
+                                fill: false
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'Noise Spectral Density',
+                                    color: '#00aaff'
+                                },
+                                legend: {
+                                    labels: { color: '#e0e0e0' }
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    type: 'logarithmic',
+                                    title: { display: true, text: 'Frequency (GHz)', color: '#e0e0e0' },
+                                    ticks: { color: '#e0e0e0' },
+                                    grid: { color: 'rgba(255,255,255,0.1)' }
+                                },
+                                y: {
+                                    title: { display: true, text: 'Noise (dBc/Hz)', color: '#e0e0e0' },
+                                    ticks: { color: '#e0e0e0' },
+                                    grid: { color: 'rgba(255,255,255,0.1)' }
+                                }
+                            }
+                        }
+                    });
+                }
+            }, 100);
         }
         
         function updateNoiseAnalysis() {
@@ -3589,6 +3679,90 @@ print(f"Energy Efficiency: {core.energy_efficiency:.2f} fJ/OP")</code></pre>
         
         function initializeScalingDemo() {
             updateScalingAnalysis();
+            
+            // Initialize Power Scaling chart
+            const powerCtx = document.getElementById('powerScalingChart');
+            if (powerCtx && !window.powerScalingChart) {
+                const sizes = [16, 32, 64, 128, 256];
+                const powerData = sizes.map(s => 0.025 * s + 0.5);
+                
+                window.powerScalingChart = new Chart(powerCtx.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: sizes.map(s => `${s}×${s}`),
+                        datasets: [{
+                            label: 'Power Consumption (W)',
+                            data: powerData,
+                            borderColor: '#ffaa00',
+                            backgroundColor: 'rgba(255,170,0,0.1)',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Power vs Array Size',
+                                color: '#00aaff'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                title: { display: true, text: 'Power (W)', color: '#e0e0e0' },
+                                ticks: { color: '#e0e0e0' },
+                                grid: { color: 'rgba(255,255,255,0.1)' }
+                            },
+                            x: {
+                                ticks: { color: '#e0e0e0' },
+                                grid: { color: 'rgba(255,255,255,0.1)' }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Initialize Area Scaling chart
+            const areaCtx = document.getElementById('areaScalingChart');
+            if (areaCtx && !window.areaScalingChart) {
+                const sizes = [16, 32, 64, 128, 256];
+                const areaData = sizes.map(s => Math.sqrt(s) * 0.5 + 32 * 0.02);
+                
+                window.areaScalingChart = new Chart(areaCtx.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: sizes.map(s => `${s}×${s}`),
+                        datasets: [{
+                            label: 'Chip Area (mm²)',
+                            data: areaData,
+                            borderColor: '#00aaff',
+                            backgroundColor: 'rgba(0,170,255,0.1)',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Area vs Array Size',
+                                color: '#00aaff'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                title: { display: true, text: 'Area (mm²)', color: '#e0e0e0' },
+                                ticks: { color: '#e0e0e0' },
+                                grid: { color: 'rgba(255,255,255,0.1)' }
+                            },
+                            x: {
+                                ticks: { color: '#e0e0e0' },
+                                grid: { color: 'rgba(255,255,255,0.1)' }
+                            }
+                        }
+                    }
+                });
+            }
         }
         
         function updateScalingAnalysis() {
@@ -3664,6 +3838,82 @@ print(f"Energy Efficiency: {core.energy_efficiency:.2f} fJ/OP")</code></pre>
         
         function initializeMaterialsDemo() {
             updateMaterialAnalysis();
+            
+            // Initialize Switching Speed chart
+            const switchCtx = document.getElementById('switchingChart');
+            if (switchCtx && !window.switchingChart) {
+                window.switchingChart = new Chart(switchCtx.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: ['Sb₂S₃', 'GST', 'Sb₂Se₃', 'GSST'],
+                        datasets: [{
+                            label: 'Switching Speed (ns)',
+                            data: [100, 50, 150, 200],
+                            backgroundColor: ['#00ff88', '#ff6b6b', '#00aaff', '#ffaa00']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'PCM Switching Speed',
+                                color: '#00aaff'
+                            },
+                            legend: { display: false }
+                        },
+                        scales: {
+                            y: {
+                                title: { display: true, text: 'Time (ns)', color: '#e0e0e0' },
+                                ticks: { color: '#e0e0e0' },
+                                grid: { color: 'rgba(255,255,255,0.1)' }
+                            },
+                            x: {
+                                ticks: { color: '#e0e0e0' },
+                                grid: { color: 'rgba(255,255,255,0.1)' }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Initialize Endurance chart
+            const enduranceCtx = document.getElementById('enduranceChart');
+            if (enduranceCtx && !window.enduranceChart) {
+                window.enduranceChart = new Chart(enduranceCtx.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: ['Sb₂S₃', 'GST', 'Sb₂Se₃', 'GSST'],
+                        datasets: [{
+                            label: 'Endurance (log cycles)',
+                            data: [9, 6, 9, 8],
+                            backgroundColor: ['#00ff88', '#ff6b6b', '#00aaff', '#ffaa00']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Cycling Endurance (10^x cycles)',
+                                color: '#00aaff'
+                            },
+                            legend: { display: false }
+                        },
+                        scales: {
+                            y: {
+                                title: { display: true, text: 'Log₁₀(Cycles)', color: '#e0e0e0' },
+                                ticks: { color: '#e0e0e0' },
+                                grid: { color: 'rgba(255,255,255,0.1)' }
+                            },
+                            x: {
+                                ticks: { color: '#e0e0e0' },
+                                grid: { color: 'rgba(255,255,255,0.1)' }
+                            }
+                        }
+                    }
+                });
+            }
             
             // Create comparison chart
             const ctx = document.getElementById('materialsComparisonChart');
@@ -3822,6 +4072,34 @@ print(f"Energy Efficiency: {core.energy_efficiency:.2f} fJ/OP")</code></pre>
             }
         `;
         document.head.appendChild(style);
+        
+        // Missing initialization functions
+        function initializeSimulation() {
+            console.log('Initializing simulation environment...');
+            // Initialize all sliders and charts
+            if (typeof initializeSliders === 'function') {
+                initializeSliders();
+            }
+            if (typeof initializeCharts === 'function') {
+                initializeCharts();
+            }
+            if (typeof drawResonatorVisualization === 'function') {
+                drawResonatorVisualization();
+            }
+            if (typeof init3DArchitecture === 'function') {
+                init3DArchitecture();
+            }
+            if (typeof updateAllValues === 'function') {
+                updateAllValues();
+            }
+        }
+        
+        function updatePerformanceMetrics() {
+            console.log('Updating performance metrics...');
+            if (typeof updateSystemMetrics === 'function') {
+                updateSystemMetrics();
+            }
+        }
         
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
