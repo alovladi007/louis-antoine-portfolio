@@ -286,27 +286,30 @@
     <script src="script.js"></script>
     
     <script>
-        // Inside Black Hole Animation
+        // Space Bending Effect with Cursor
         const canvas = document.getElementById('blackhole-interior');
         const ctx = canvas.getContext('2d');
         
         let width = canvas.width = window.innerWidth;
         let height = canvas.height = window.innerHeight;
-        let centerX = width / 2;
-        let centerY = height / 2;
-        let time = 0;
+        let mouseX = width / 2;
+        let mouseY = height / 2;
+        let targetMouseX = width / 2;
+        let targetMouseY = height / 2;
         
-        // Spacetime Grid
-        class SpacetimeGrid {
+        // Spacetime Bending Grid
+        class SpaceBendingGrid {
             constructor() {
-                this.gridSize = 30;
+                this.gridSize = 40;
                 this.points = [];
+                this.lines = [];
                 this.generateGrid();
             }
             
             generateGrid() {
-                for (let x = 0; x <= width; x += this.gridSize) {
-                    for (let y = 0; y <= height; y += this.gridSize) {
+                // Create grid points
+                for (let x = 0; x <= width + this.gridSize; x += this.gridSize) {
+                    for (let y = 0; y <= height + this.gridSize; y += this.gridSize) {
                         this.points.push({
                             baseX: x,
                             baseY: y,
@@ -315,292 +318,108 @@
                         });
                     }
                 }
+                
+                // Create horizontal lines
+                for (let y = 0; y <= height + this.gridSize; y += this.gridSize) {
+                    const line = [];
+                    for (let x = 0; x <= width + this.gridSize; x += this.gridSize) {
+                        line.push(this.points.find(p => Math.abs(p.baseX - x) < 1 && Math.abs(p.baseY - y) < 1));
+                    }
+                    this.lines.push({ type: 'horizontal', points: line.filter(p => p) });
+                }
+                
+                // Create vertical lines
+                for (let x = 0; x <= width + this.gridSize; x += this.gridSize) {
+                    const line = [];
+                    for (let y = 0; y <= height + this.gridSize; y += this.gridSize) {
+                        line.push(this.points.find(p => Math.abs(p.baseX - x) < 1 && Math.abs(p.baseY - y) < 1));
+                    }
+                    this.lines.push({ type: 'vertical', points: line.filter(p => p) });
+                }
             }
             
             update() {
                 this.points.forEach(point => {
-                    const dx = point.baseX - centerX;
-                    const dy = point.baseY - centerY;
+                    // Calculate distance from mouse
+                    const dx = point.baseX - mouseX;
+                    const dy = point.baseY - mouseY;
                     const distance = Math.sqrt(dx * dx + dy * dy);
-                    const maxDistance = Math.min(width, height) / 2;
                     
-                    // Warping effect - stronger near center
-                    const warpStrength = Math.max(0, 1 - distance / maxDistance);
-                    const angle = Math.atan2(dy, dx);
-                    const warpAngle = angle + time * warpStrength * 0.5;
-                    const warpDistance = distance * (1 - warpStrength * 0.3 * Math.sin(time * 2));
+                    // Bending parameters
+                    const bendRadius = 250;
+                    const maxBend = 100;
                     
-                    point.x = centerX + Math.cos(warpAngle) * warpDistance;
-                    point.y = centerY + Math.sin(warpAngle) * warpDistance;
-                });
-            }
-            
-                        draw() {
-                ctx.strokeStyle = 'rgba(138, 43, 226, 0.08)';
-                ctx.lineWidth = 0.3;
-                
-                // Draw horizontal lines
-                for (let y = 0; y <= height; y += this.gridSize) {
-                    ctx.beginPath();
-                    this.points.filter(p => Math.abs(p.baseY - y) < 1).forEach((point, i) => {
-                        if (i === 0) ctx.moveTo(point.x, point.y);
-                        else ctx.lineTo(point.x, point.y);
-                    });
-                    ctx.stroke();
-                }
-                
-                // Draw vertical lines
-                for (let x = 0; x <= width; x += this.gridSize) {
-                    ctx.beginPath();
-                    this.points.filter(p => Math.abs(p.baseX - x) < 1).forEach((point, i) => {
-                        if (i === 0) ctx.moveTo(point.x, point.y);
-                        else ctx.lineTo(point.x, point.y);
-                    });
-                    ctx.stroke();
-                }
-            }
-        }
-        
-        // Energy Streams
-        class EnergyStream {
-            constructor(angle) {
-                this.angle = angle;
-                this.radius = 0;
-                this.maxRadius = Math.sqrt(width * width + height * height);
-                this.speed = 2 + Math.random() * 3;
-                this.thickness = 1 + Math.random() * 3;
-                this.color = this.getStreamColor();
-                this.particles = [];
-                this.generateParticles();
-            }
-            
-            getStreamColor() {
-                const colors = [
-                    { r: 138, g: 43, b: 226 },   // Purple
-                    { r: 255, g: 0, b: 255 },     // Magenta
-                    { r: 0, g: 255, b: 255 },     // Cyan
-                    { r: 147, g: 112, b: 219 }    // Medium Purple
-                ];
-                return colors[Math.floor(Math.random() * colors.length)];
-            }
-            
-            generateParticles() {
-                for (let i = 0; i < 20; i++) {
-                    this.particles.push({
-                        offset: Math.random() * Math.PI * 2,
-                        distance: Math.random() * 100,
-                        size: Math.random() * 2
-                    });
-                }
-            }
-            
-            update() {
-                this.radius += this.speed;
-                if (this.radius > this.maxRadius) {
-                    this.radius = 0;
-                }
-                
-                this.particles.forEach(p => {
-                    p.offset += 0.05;
-                    p.distance = 50 + Math.sin(p.offset) * 30;
-                });
-            }
-            
-            draw() {
-                const spiralTurns = 3;
-                const angleOffset = time * 0.5;
-                
-                ctx.strokeStyle = `rgba(${this.color.r}, ${this.color.g}, ${this.color.b}, ${0.15 * (1 - this.radius / this.maxRadius)})`;
-                ctx.lineWidth = this.thickness * (1 - this.radius / this.maxRadius * 0.5) * 0.5;
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = `rgba(${this.color.r}, ${this.color.g}, ${this.color.b}, 0.2)`;
-                
-                ctx.beginPath();
-                for (let t = 0; t <= 1; t += 0.01) {
-                    const spiralAngle = this.angle + angleOffset + t * Math.PI * 2 * spiralTurns;
-                    const spiralRadius = this.radius * t;
-                    const wobble = Math.sin(t * Math.PI * 4 + time * 2) * 10;
-                    const x = centerX + Math.cos(spiralAngle) * (spiralRadius + wobble);
-                    const y = centerY + Math.sin(spiralAngle) * (spiralRadius + wobble);
-                    
-                    if (t === 0) ctx.moveTo(x, y);
-                    else ctx.lineTo(x, y);
-                }
-                ctx.stroke();
-                
-                // Draw particles along the stream
-                this.particles.forEach(p => {
-                    const t = (this.radius + p.distance) / this.maxRadius;
-                    const spiralAngle = this.angle + angleOffset + t * Math.PI * 2 * spiralTurns;
-                    const spiralRadius = (this.radius + p.distance) * t;
-                    const x = centerX + Math.cos(spiralAngle) * spiralRadius;
-                    const y = centerY + Math.sin(spiralAngle) * spiralRadius;
-                    
-                    ctx.fillStyle = `rgba(${this.color.r}, ${this.color.g}, ${this.color.b}, ${0.3 * (1 - t)})`;
-                    ctx.beginPath();
-                    ctx.arc(x, y, p.size * 0.5, 0, Math.PI * 2);
-                    ctx.fill();
-                });
-                
-                ctx.shadowBlur = 0;
-            }
-        }
-        
-        // Singularity Core
-        class SingularityCore {
-            constructor() {
-                this.radius = 50;
-                this.pulsePhase = 0;
-                this.rings = [];
-                this.generateRings();
-            }
-            
-            generateRings() {
-                for (let i = 0; i < 5; i++) {
-                    this.rings.push({
-                        radius: this.radius + i * 20,
-                        rotation: Math.random() * Math.PI * 2,
-                        speed: (0.02 + i * 0.01) * (i % 2 === 0 ? 1 : -1),
-                        opacity: 0.5 - i * 0.08
-                    });
-                }
-            }
-            
-            update() {
-                this.pulsePhase += 0.03;
-                this.rings.forEach(ring => {
-                    ring.rotation += ring.speed;
-                });
-            }
-            
-            draw() {
-                // Draw rotating rings
-                this.rings.forEach(ring => {
-                    ctx.save();
-                    ctx.translate(centerX, centerY);
-                    ctx.rotate(ring.rotation);
-                    
-                    const gradient = ctx.createRadialGradient(0, 0, ring.radius - 10, 0, 0, ring.radius + 10);
-                    gradient.addColorStop(0, 'transparent');
-                    gradient.addColorStop(0.5, `rgba(138, 43, 226, ${ring.opacity * 0.3})`);
-                    gradient.addColorStop(1, 'transparent');
-                    
-                    ctx.strokeStyle = gradient;
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.arc(0, 0, ring.radius, 0, Math.PI * 2);
-                    ctx.stroke();
-                    
-                    // Add energy points on rings
-                    for (let i = 0; i < 8; i++) {
-                        const angle = (Math.PI * 2 / 8) * i;
-                        const x = Math.cos(angle) * ring.radius;
-                        const y = Math.sin(angle) * ring.radius;
+                    if (distance < bendRadius) {
+                        // Calculate bend strength (stronger when closer to mouse)
+                        const bendStrength = Math.pow(1 - distance / bendRadius, 2);
                         
-                        ctx.fillStyle = `rgba(255, 255, 255, ${ring.opacity * 0.8})`;
-                        ctx.beginPath();
-                        ctx.arc(x, y, 2, 0, Math.PI * 2);
-                        ctx.fill();
+                        // Calculate bend direction (away from mouse)
+                        const angle = Math.atan2(dy, dx);
+                        
+                        // Apply gravitational lensing effect
+                        const bendAmount = bendStrength * maxBend;
+                        const pullAmount = bendStrength * 30;
+                        
+                        // Bend space away from cursor but also slightly pull inward for realism
+                        point.x = point.baseX + Math.cos(angle) * bendAmount - Math.cos(angle) * pullAmount;
+                        point.y = point.baseY + Math.sin(angle) * bendAmount - Math.sin(angle) * pullAmount;
+                    } else {
+                        // Smoothly return to base position
+                        point.x = point.baseX;
+                        point.y = point.baseY;
+                    }
+                });
+            }
+            
+            draw() {
+                ctx.strokeStyle = 'rgba(100, 120, 255, 0.15)';
+                ctx.lineWidth = 1;
+                
+                this.lines.forEach(line => {
+                    if (line.points.length < 2) return;
+                    
+                    ctx.beginPath();
+                    
+                    // Use quadratic curves for smooth bending
+                    ctx.moveTo(line.points[0].x, line.points[0].y);
+                    
+                    for (let i = 1; i < line.points.length - 1; i++) {
+                        const xc = (line.points[i].x + line.points[i + 1].x) / 2;
+                        const yc = (line.points[i].y + line.points[i + 1].y) / 2;
+                        ctx.quadraticCurveTo(line.points[i].x, line.points[i].y, xc, yc);
                     }
                     
-                    ctx.restore();
+                    // Last point
+                    const lastPoint = line.points[line.points.length - 1];
+                    ctx.lineTo(lastPoint.x, lastPoint.y);
+                    
+                    ctx.stroke();
                 });
-                
-                // Draw subtle pulsing core
-                const coreGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, this.radius);
-                coreGradient.addColorStop(0, `rgba(138, 43, 226, ${0.2 + Math.sin(this.pulsePhase) * 0.1})`);
-                coreGradient.addColorStop(0.3, 'rgba(138, 43, 226, 0.15)');
-                coreGradient.addColorStop(0.6, 'rgba(75, 0, 130, 0.1)');
-                coreGradient.addColorStop(1, 'transparent');
-                
-                ctx.fillStyle = coreGradient;
-                ctx.beginPath();
-                ctx.arc(centerX, centerY, this.radius * (1 + Math.sin(this.pulsePhase) * 0.1), 0, Math.PI * 2);
-                ctx.fill();
             }
         }
         
-        // Quantum Particles
-        class QuantumParticle {
-            constructor() {
-                this.reset();
-            }
-            
-            reset() {
-                this.angle = Math.random() * Math.PI * 2;
-                this.distance = 50 + Math.random() * 200;
-                this.speed = 0.5 + Math.random() * 2;
-                this.size = 1 + Math.random() * 2;
-                this.lifetime = 0;
-                this.maxLifetime = 100 + Math.random() * 100;
-                this.color = `hsl(${260 + Math.random() * 60}, 100%, 70%)`;
-            }
-            
-            update() {
-                this.lifetime++;
-                this.distance -= this.speed;
-                this.angle += 0.02 / (this.distance * 0.01);
-                
-                if (this.distance < 20 || this.lifetime > this.maxLifetime) {
-                    this.reset();
-                }
-            }
-            
-            draw() {
-                const x = centerX + Math.cos(this.angle) * this.distance;
-                const y = centerY + Math.sin(this.angle) * this.distance;
-                const opacity = (1 - this.lifetime / this.maxLifetime) * (this.distance / 200);
-                
-                ctx.fillStyle = this.color.replace('70%', `70%, ${opacity}`);
-                ctx.beginPath();
-                ctx.arc(x, y, this.size, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }
+        // Initialize the bending grid
+        const grid = new SpaceBendingGrid();
         
-        // Initialize elements
-        const grid = new SpacetimeGrid();
-        const streams = [];
-        const particles = [];
-        const singularity = new SingularityCore();
-        
-        // Create energy streams
-        for (let i = 0; i < 6; i++) {
-            streams.push(new EnergyStream((Math.PI * 2 / 6) * i));
-        }
-        
-        // Create fewer quantum particles for subtlety
-        for (let i = 0; i < 30; i++) {
-            particles.push(new QuantumParticle());
-        }
+        // Mouse tracking
+        document.addEventListener('mousemove', (e) => {
+            targetMouseX = e.clientX;
+            targetMouseY = e.clientY;
+        });
         
         // Animation loop
         function animate() {
-            // Create subtle trailing effect
-            ctx.fillStyle = 'rgba(10, 10, 15, 0.08)';
+            // Clear canvas with dark background
+            ctx.fillStyle = 'rgba(5, 5, 15, 1)';
             ctx.fillRect(0, 0, width, height);
             
-            time += 0.01;
+            // Smooth mouse movement
+            mouseX += (targetMouseX - mouseX) * 0.1;
+            mouseY += (targetMouseY - mouseY) * 0.1;
             
-            // Update and draw spacetime grid
+            // Update and draw the bending grid
             grid.update();
             grid.draw();
-            
-            // Update and draw energy streams
-            streams.forEach(stream => {
-                stream.update();
-                stream.draw();
-            });
-            
-            // Update and draw particles
-            particles.forEach(particle => {
-                particle.update();
-                particle.draw();
-            });
-            
-            // Draw singularity core (on top)
-            singularity.update();
-            singularity.draw();
             
             requestAnimationFrame(animate);
         }
@@ -611,8 +430,6 @@
         window.addEventListener('resize', () => {
             width = canvas.width = window.innerWidth;
             height = canvas.height = window.innerHeight;
-            centerX = width / 2;
-            centerY = height / 2;
             grid.generateGrid();
         });
     </script>
