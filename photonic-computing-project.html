@@ -2584,6 +2584,79 @@ print(f"Energy Efficiency: {core.energy_efficiency:.2f} fJ/OP")</code></pre>
             }
         }
         
+        // Make ALL demo functions globally accessible FIRST
+        window.updateScalingAnalysis = function() {
+            const sizeExp = parseInt(document.getElementById('arraySize').value);
+            const arraySize = Math.pow(2, sizeExp);
+            const channels = parseInt(document.getElementById('wdmChannels').value);
+            const clockRate = parseFloat(document.getElementById('clockRate').value);
+            
+            document.getElementById('arraySizeValue').textContent = `${arraySize}×${arraySize}`;
+            document.getElementById('channelsValue').textContent = `${channels} λ`;
+            document.getElementById('clockValue').textContent = `${clockRate.toFixed(1)} GHz`;
+            
+            // Calculate performance metrics - Fixed calculations
+            const macs_per_cycle = arraySize * arraySize * channels; // MAC operations per clock cycle
+            const ops_per_second = macs_per_cycle * clockRate * 1e9 * 2; // 2 ops per MAC
+            const tops = ops_per_second / 1e12;
+            
+            // More realistic power model
+            const power = 0.5 + (arraySize / 32) * 0.3 + (channels / 32) * 0.1; // W
+            
+            // Energy efficiency in fJ/op
+            const efficiency = (power * 1e15) / ops_per_second; // fJ/op
+            
+            // Chip area scaling
+            const area = 4 + (arraySize / 32) * 2 + (channels / 32) * 0.5; // mm²
+            
+            document.getElementById('peakTops').textContent = tops.toFixed(1);
+            document.getElementById('totalPower').textContent = power.toFixed(2);
+            document.getElementById('efficiency').textContent = efficiency.toFixed(1);
+            document.getElementById('chipArea').textContent = area.toFixed(1);
+        };
+        
+        window.solvePDE = function() {
+            console.log('Solving PDE...');
+            
+            const gridSizeEl = document.getElementById('pdeGridSize');
+            const precisionEl = document.getElementById('photonicBits');
+            const problemTypeEl = document.getElementById('problemType');
+            
+            if (!gridSizeEl || !precisionEl || !problemTypeEl) {
+                console.error('PDE solver controls not found');
+                return;
+            }
+            
+            const gridSize = parseInt(gridSizeEl.value);
+            const precision = parseInt(precisionEl.value);
+            const problemType = problemTypeEl.value;
+            
+            const precisionValueEl = document.getElementById('precisionValue');
+            if (precisionValueEl) precisionValueEl.textContent = precision + ' bits';
+            
+            // Build system matrix (Laplacian)
+            const n = gridSize * gridSize;
+            const h = 1.0 / (gridSize + 1);
+            
+            // Simulate mixed-precision iterative refinement
+            let iterations = Math.ceil(50 / precision); // More precision = fewer iterations
+            const error = Math.pow(2, -precision) * 0.01;
+            
+            // Calculate performance metrics
+            const opsPerIteration = 2 * n * n; // Matrix-vector multiply
+            const totalOps = iterations * opsPerIteration;
+            const tops = (totalOps / 1e12) * 10; // At 10GHz
+            const energy = totalOps * 2.4e-15 * 1e12; // 2.4 fJ/op in pJ
+            
+            // Update metrics display
+            document.getElementById('iterations').textContent = iterations;
+            document.getElementById('convergenceError').textContent = error.toExponential(2);
+            document.getElementById('photOps').textContent = tops.toFixed(1);
+            document.getElementById('energyUsed').textContent = energy.toFixed(2);
+            
+            console.log('PDE solved: ' + iterations + ' iterations');
+        };
+        
         // Global loadDemo function - make it directly handle the demos
         window.loadDemo = loadDemoInternal;
         
@@ -2691,7 +2764,7 @@ print(f"Energy Efficiency: {core.energy_efficiency:.2f} fJ/OP")</code></pre>
                                     </div>
                                 </div>
                                 
-                                <button id="runPDEButton" style="width: 100%; margin-top: 15px; padding: 10px; background: linear-gradient(135deg, #00ff88, #00aaff); color: #0a0e27; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">
+                                <button onclick="window.solvePDE()" style="width: 100%; margin-top: 15px; padding: 10px; background: linear-gradient(135deg, #00ff88, #00aaff); color: #0a0e27; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">
                                     <i class="fas fa-play"></i> Run Photonic Solver
                                 </button>
                             </div>
@@ -2701,37 +2774,11 @@ print(f"Energy Efficiency: {core.energy_efficiency:.2f} fJ/OP")</code></pre>
                             </div>
                         </div>
                     `;
-                    // Add event listeners after HTML is created
+                    // Simple initialization - just call solvePDE once to show initial values
                     setTimeout(() => {
-                        const runButton = document.getElementById('runPDEButton');
-                        if (runButton) {
-                            runButton.addEventListener('click', function() {
-                                console.log('PDE button clicked');
-                                if (typeof window.solvePDE === 'function') {
-                                    window.solvePDE();
-                                } else {
-                                    console.error('solvePDE function not found');
-                                }
-                            });
+                        if (window.solvePDE) {
+                            window.solvePDE();
                         }
-                        
-                        // Add change listeners for auto-update
-                        const gridSize = document.getElementById('pdeGridSize');
-                        const bits = document.getElementById('photonicBits');
-                        const problem = document.getElementById('problemType');
-                        
-                        if (gridSize) gridSize.addEventListener('change', () => window.solvePDE && window.solvePDE());
-                        if (bits) {
-                            bits.addEventListener('input', () => {
-                                const val = document.getElementById('photonicBits').value;
-                                const label = document.getElementById('precisionValue');
-                                if (label) label.textContent = val + ' bits';
-                                if (window.solvePDE) window.solvePDE();
-                            });
-                        }
-                        if (problem) problem.addEventListener('change', () => window.solvePDE && window.solvePDE());
-                        
-                        initializePDEDemo();
                     }, 100);
                     break;
                     
@@ -2848,15 +2895,15 @@ print(f"Energy Efficiency: {core.energy_efficiency:.2f} fJ/OP")</code></pre>
                                 <div style="background: rgba(0,255,136,0.1); padding: 15px; border-radius: 10px;">
                                     <h4 style="color: #00aaff;">Array Configuration</h4>
                                     <label style="color: #00ff88;">Array Size:</label>
-                                    <input type="range" id="arraySize" min="4" max="8" step="1" value="5" style="width: 100%;">
+                                    <input type="range" id="arraySize" min="4" max="8" step="1" value="5" oninput="window.updateScalingAnalysis()" style="width: 100%;">
                                     <span id="arraySizeValue" style="color: #e0e0e0;">32×32</span>
                                     
                                     <label style="color: #00ff88; margin-top: 10px; display: block;">WDM Channels:</label>
-                                    <input type="range" id="wdmChannels" min="4" max="64" step="4" value="32" style="width: 100%;">
+                                    <input type="range" id="wdmChannels" min="4" max="64" step="4" value="32" oninput="window.updateScalingAnalysis()" style="width: 100%;">
                                     <span id="channelsValue" style="color: #e0e0e0;">32 λ</span>
                                     
                                     <label style="color: #00ff88; margin-top: 10px; display: block;">Clock Rate:</label>
-                                    <input type="range" id="clockRate" min="1" max="10" step="0.5" value="10" style="width: 100%;">
+                                    <input type="range" id="clockRate" min="1" max="10" step="0.5" value="10" oninput="window.updateScalingAnalysis()" style="width: 100%;">
                                     <span id="clockValue" style="color: #e0e0e0;">10.0 GHz</span>
                                 </div>
                                 
@@ -2889,29 +2936,11 @@ print(f"Energy Efficiency: {core.energy_efficiency:.2f} fJ/OP")</code></pre>
                             </div>
                         </div>
                     `;
-                    // Add event listeners after HTML is created
+                    // Simple initialization
                     setTimeout(() => {
-                        const arraySizeSlider = document.getElementById('arraySize');
-                        const channelsSlider = document.getElementById('wdmChannels');
-                        const clockSlider = document.getElementById('clockRate');
-                        
-                        if (arraySizeSlider) {
-                            arraySizeSlider.addEventListener('input', () => {
-                                if (window.updateScalingAnalysis) window.updateScalingAnalysis();
-                            });
+                        if (window.updateScalingAnalysis) {
+                            window.updateScalingAnalysis();
                         }
-                        if (channelsSlider) {
-                            channelsSlider.addEventListener('input', () => {
-                                if (window.updateScalingAnalysis) window.updateScalingAnalysis();
-                            });
-                        }
-                        if (clockSlider) {
-                            clockSlider.addEventListener('input', () => {
-                                if (window.updateScalingAnalysis) window.updateScalingAnalysis();
-                            });
-                        }
-                        
-                        initializeScalingDemo();
                     }, 100);
                     break;
                     
@@ -3203,17 +3232,10 @@ print(f"Energy Efficiency: {core.energy_efficiency:.2f} fJ/OP")</code></pre>
             }
         }
         
-        function initializePDEDemo() {
-            // Call solvePDE using the global reference
-            if (typeof window.solvePDE === 'function') {
-                window.solvePDE();
-            } else {
-                console.error('solvePDE function not found');
-            }
-        }
+        // Removed duplicate solvePDE - it's already defined globally above
         
-        // Make solvePDE globally accessible
-        window.solvePDE = function() {
+        // Old duplicate solvePDE was here - removed to avoid conflicts
+        window.solvePDE_OLD_REMOVED = function() {
             console.log('Solving PDE...');
             
             const gridSizeEl = document.getElementById('pdeGridSize');
@@ -3733,8 +3755,8 @@ print(f"Energy Efficiency: {core.energy_efficiency:.2f} fJ/OP")</code></pre>
             }
         }
         
-        function initializeScalingDemo() {
-            window.updateScalingAnalysis();
+        function initializeScalingDemo_OLD_REMOVED() {
+            // Removed - no longer needed
             
             // Initialize Power Scaling chart
             const powerCtx = document.getElementById('powerScalingChart');
@@ -3821,8 +3843,8 @@ print(f"Energy Efficiency: {core.energy_efficiency:.2f} fJ/OP")</code></pre>
             }
         }
         
-        // Make updateScalingAnalysis globally accessible
-        window.updateScalingAnalysis = function() {
+        // Removed duplicate updateScalingAnalysis - already defined at top
+        window.updateScalingAnalysis_OLD_REMOVED = function() {
             const sizeExp = parseInt(document.getElementById('arraySize').value);
             const arraySize = Math.pow(2, sizeExp);
             const channels = parseInt(document.getElementById('wdmChannels').value);
