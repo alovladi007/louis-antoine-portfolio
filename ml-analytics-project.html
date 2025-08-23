@@ -345,38 +345,64 @@
                     const dy = point.baseY - mouseY;
                     const distance = Math.sqrt(dx * dx + dy * dy);
                     
-                    // Bending parameters
-                    const bendRadius = 250;
-                    const maxBend = 100;
+                    // Stronger bending parameters
+                    const bendRadius = 400;  // Increased from 250
+                    const maxBend = 200;     // Doubled from 100
                     
                     if (distance < bendRadius) {
-                        // Calculate bend strength (stronger when closer to mouse)
-                        const bendStrength = Math.pow(1 - distance / bendRadius, 2);
+                        // Calculate bend strength with more aggressive curve
+                        const bendStrength = Math.pow(1 - distance / bendRadius, 1.5);  // Changed from 2 to 1.5 for wider effect
                         
                         // Calculate bend direction (away from mouse)
                         const angle = Math.atan2(dy, dx);
                         
-                        // Apply gravitational lensing effect
+                        // Apply stronger gravitational lensing effect
                         const bendAmount = bendStrength * maxBend;
-                        const pullAmount = bendStrength * 30;
+                        const pullAmount = bendStrength * 50;  // Increased from 30
                         
-                        // Bend space away from cursor but also slightly pull inward for realism
-                        point.x = point.baseX + Math.cos(angle) * bendAmount - Math.cos(angle) * pullAmount;
-                        point.y = point.baseY + Math.sin(angle) * bendAmount - Math.sin(angle) * pullAmount;
+                        // Create a swirling effect around the cursor
+                        const swirlAngle = angle + bendStrength * 0.5;  // Add rotation
+                        
+                        // Bend space with swirl effect
+                        point.x = point.baseX + Math.cos(swirlAngle) * bendAmount - Math.cos(angle) * pullAmount;
+                        point.y = point.baseY + Math.sin(swirlAngle) * bendAmount - Math.sin(angle) * pullAmount;
                     } else {
-                        // Smoothly return to base position
-                        point.x = point.baseX;
-                        point.y = point.baseY;
+                        // Smoothly return to base position with some elasticity
+                        const returnSpeed = 0.15;
+                        point.x = point.x + (point.baseX - point.x) * returnSpeed;
+                        point.y = point.y + (point.baseY - point.y) * returnSpeed;
                     }
                 });
             }
             
             draw() {
-                ctx.strokeStyle = 'rgba(100, 120, 255, 0.15)';
-                ctx.lineWidth = 1;
-                
                 this.lines.forEach(line => {
                     if (line.points.length < 2) return;
+                    
+                    // Calculate average distance from mouse for this line
+                    let avgDistance = 0;
+                    line.points.forEach(point => {
+                        const dx = point.x - mouseX;
+                        const dy = point.y - mouseY;
+                        avgDistance += Math.sqrt(dx * dx + dy * dy);
+                    });
+                    avgDistance /= line.points.length;
+                    
+                    // Brighter lines closer to cursor
+                    const proximity = Math.max(0, 1 - avgDistance / 400);
+                    const brightness = 0.2 + proximity * 0.6;
+                    const lineWidth = 1 + proximity * 2;
+                    
+                    ctx.strokeStyle = `rgba(100, 150, 255, ${brightness})`;
+                    ctx.lineWidth = lineWidth;
+                    
+                    // Add glow for lines very close to cursor
+                    if (proximity > 0.5) {
+                        ctx.shadowBlur = 10;
+                        ctx.shadowColor = 'rgba(100, 150, 255, 0.5)';
+                    } else {
+                        ctx.shadowBlur = 0;
+                    }
                     
                     ctx.beginPath();
                     
@@ -395,6 +421,19 @@
                     
                     ctx.stroke();
                 });
+                
+                ctx.shadowBlur = 0;
+                
+                // Draw cursor glow effect
+                const gradient = ctx.createRadialGradient(mouseX, mouseY, 0, mouseX, mouseY, 200);
+                gradient.addColorStop(0, 'rgba(150, 180, 255, 0.3)');
+                gradient.addColorStop(0.5, 'rgba(100, 150, 255, 0.1)');
+                gradient.addColorStop(1, 'transparent');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(mouseX, mouseY, 200, 0, Math.PI * 2);
+                ctx.fill();
             }
         }
         
@@ -413,9 +452,9 @@
             ctx.fillStyle = 'rgba(5, 5, 15, 1)';
             ctx.fillRect(0, 0, width, height);
             
-            // Smooth mouse movement
-            mouseX += (targetMouseX - mouseX) * 0.1;
-            mouseY += (targetMouseY - mouseY) * 0.1;
+            // Faster, more responsive mouse tracking
+            mouseX += (targetMouseX - mouseX) * 0.25;
+            mouseY += (targetMouseY - mouseY) * 0.25;
             
             // Update and draw the bending grid
             grid.update();
