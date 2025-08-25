@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Metamaterial Dispersion Analysis - Interactive Demo</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
+    <style>
+        body {
+            background: #0a0a0a;
+            color: #e5e7eb;
+        }
+        
+        .demo-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .control-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .control-group {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        
+        .control-group label {
+            display: block;
+            color: #a855f7;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        
+        .control-group input[type="range"] {
+            width: 100%;
+            margin: 10px 0;
+        }
+        
+        .control-group select {
+            width: 100%;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            color: #e5e7eb;
+        }
+        
+        .value-display {
+            background: #8e24aa;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            display: inline-block;
+            font-size: 0.9em;
+        }
+        
+        .visualization-panel {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .sim-button {
+            background: linear-gradient(135deg, #9333ea 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .sim-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(147, 51, 234, 0.4);
+        }
+        
+        .info-panel {
+            background: rgba(147, 51, 234, 0.1);
+            border: 1px solid rgba(147, 51, 234, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .info-panel h3 {
+            color: #a855f7;
+            margin-top: 0;
+        }
+        
+        .equation {
+            font-family: 'Courier New', monospace;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        
+        .model-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .model-button {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: #e5e7eb;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .model-button.active {
+            background: #8e24aa;
+            border-color: #8e24aa;
+        }
+        
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .result-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .result-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #a855f7;
+        }
+        
+        .result-label {
+            color: #9ca3af;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <a href="../index.html" class="logo">LA</a>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="../metamaterials-research.html" class="nav-link">← Back to Research</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="demo-container">
+        <h1 style="color: #f59e0b; text-align: center; margin: 30px 0;">
+            <i class="fas fa-chart-line"></i> Metamaterial Dispersion Analysis & Band Structure
+        </h1>
+
+        <!-- Model Selector -->
+        <div class="model-selector">
+            <button class="model-button active" onclick="selectModel('lorentz-drude')">Lorentz-Drude Model</button>
+            <button class="model-button" onclick="selectModel('srr')">Split-Ring Resonator</button>
+            <button class="model-button" onclick="selectModel('fishnet')">Fishnet Structure</button>
+            <button class="model-button" onclick="selectModel('custom')">Custom Parameters</button>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <h2 style="color: #a855f7;">Dispersion Parameters</h2>
+            
+            <div class="control-grid">
+                <div class="control-group">
+                    <label>Plasma Frequency ωp (THz)</label>
+                    <input type="range" id="plasmaFreq" min="0.5" max="5" value="2" step="0.1">
+                    <span class="value-display" id="plasmaFreqValue">2.0</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>Magnetic Resonance ω0 (THz)</label>
+                    <input type="range" id="resonanceFreq" min="0.5" max="3" value="1.2" step="0.1">
+                    <span class="value-display" id="resonanceFreqValue">1.2</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>Electric Damping γe (THz)</label>
+                    <input type="range" id="electricDamping" min="0.01" max="0.5" value="0.1" step="0.01">
+                    <span class="value-display" id="electricDampingValue">0.10</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>Magnetic Damping γm (THz)</label>
+                    <input type="range" id="magneticDamping" min="0.01" max="0.5" value="0.06" step="0.01">
+                    <span class="value-display" id="magneticDampingValue">0.06</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>Oscillator Strength F</label>
+                    <input type="range" id="oscillatorStrength" min="0.1" max="1" value="0.9" step="0.05">
+                    <span class="value-display" id="oscillatorStrengthValue">0.90</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>Lattice Period (nm)</label>
+                    <input type="range" id="latticePeriod" min="100" max="1000" value="300" step="50">
+                    <span class="value-display" id="latticePeriodValue">300</span>
+                </div>
+            </div>
+            
+            <div class="button-group">
+                <button class="sim-button" onclick="calculateDispersion()">
+                    <i class="fas fa-calculator"></i> Calculate Dispersion
+                </button>
+                <button class="sim-button" onclick="findNegativeRegion()">
+                    <i class="fas fa-search"></i> Find Negative Index
+                </button>
+                <button class="sim-button" onclick="optimizeParameters()">
+                    <i class="fas fa-magic"></i> Optimize for Bandwidth
+                </button>
+                <button class="sim-button" onclick="exportDispersionData()">
+                    <i class="fas fa-download"></i> Export Data
+                </button>
+            </div>
+        </div>
+
+        <!-- Results Summary -->
+        <div class="results-grid">
+            <div class="result-card">
+                <div class="result-value" id="negIndexStart">--</div>
+                <div class="result-label">Negative Index Start (THz)</div>
+            </div>
+            <div class="result-card">
+                <div class="result-value" id="negIndexEnd">--</div>
+                <div class="result-label">Negative Index End (THz)</div>
+            </div>
+            <div class="result-card">
+                <div class="result-value" id="bandwidth">--</div>
+                <div class="result-label">Bandwidth (THz)</div>
+            </div>
+            <div class="result-card">
+                <div class="result-value" id="minIndex">--</div>
+                <div class="result-label">Minimum Index</div>
+            </div>
+            <div class="result-card">
+                <div class="result-value" id="fom">--</div>
+                <div class="result-label">Figure of Merit</div>
+            </div>
+            <div class="result-card">
+                <div class="result-value" id="groupVelocity">--</div>
+                <div class="result-label">Group Velocity (c)</div>
+            </div>
+        </div>
+
+        <!-- Main Dispersion Plot -->
+        <div class="visualization-panel">
+            <h2 style="color: #f59e0b;">Dispersion Relation & Band Structure</h2>
+            <div id="dispersionPlot" style="height: 500px;"></div>
+        </div>
+
+        <!-- Permittivity and Permeability -->
+        <div class="visualization-panel">
+            <h2 style="color: #f59e0b;">Effective Medium Parameters</h2>
+            <div id="parametersPlot" style="height: 400px;"></div>
+        </div>
+
+        <!-- Refractive Index -->
+        <div class="visualization-panel">
+            <h2 style="color: #f59e0b;">Complex Refractive Index</h2>
+            <div id="indexPlot" style="height: 400px;"></div>
+        </div>
+
+        <!-- Transmission/Reflection -->
+        <div class="visualization-panel">
+            <h2 style="color: #f59e0b;">Transmission & Reflection Spectra</h2>
+            <div id="transmissionPlot" style="height: 400px;"></div>
+        </div>
+
+        <!-- Group/Phase Velocity -->
+        <div class="visualization-panel">
+            <h2 style="color: #f59e0b;">Group and Phase Velocity</h2>
+            <div id="velocityPlot" style="height: 400px;"></div>
+        </div>
+
+        <!-- Theory Panel -->
+        <div class="info-panel">
+            <h3>Dispersion Theory</h3>
+            <p>The dispersion relation describes how electromagnetic waves propagate through the metamaterial as a function of frequency.</p>
+            
+            <h4>Lorentz-Drude Model:</h4>
+            <div class="equation">
+                ε(ω) = 1 - ωp²/(ω² + iγeω)  (Drude for metals)<br>
+                μ(ω) = 1 + Fω²/(ω0² - ω² - iγmω)  (Lorentz for magnetic resonance)<br>
+                n(ω) = √(ε(ω)μ(ω))  (Refractive index)<br>
+                k(ω) = nω/c  (Wave vector)
+            </div>
+            
+            <h4>Key Features:</h4>
+            <ul style="color: #e5e7eb;">
+                <li><strong>Negative Index Band:</strong> Region where Re(n) < 0</li>
+                <li><strong>Backward Waves:</strong> Phase velocity opposite to group velocity</li>
+                <li><strong>Figure of Merit:</strong> FOM = |Re(n)|/Im(n)</li>
+                <li><strong>Bandwidth:</strong> Frequency range with negative index</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let currentModel = 'lorentz-drude';
+        let dispersionData = null;
+        
+        // Physical constants
+        const c = 299792458; // Speed of light in m/s
+        
+        function selectModel(model) {
+            currentModel = model;
+            
+            // Update button states
+            document.querySelectorAll('.model-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Set parameters based on model
+            switch(model) {
+                case 'lorentz-drude':
+                    setParameters(2.0, 1.2, 0.1, 0.06, 0.9, 300);
+                    break;
+                case 'srr':
+                    setParameters(1.6, 1.0, 0.08, 0.04, 0.85, 200);
+                    break;
+                case 'fishnet':
+                    setParameters(2.5, 1.5, 0.12, 0.08, 0.95, 400);
+                    break;
+                case 'custom':
+                    // Keep current parameters
+                    break;
+            }
+            
+            calculateDispersion();
+        }
+        
+        function setParameters(wp, w0, ge, gm, F, a) {
+            document.getElementById('plasmaFreq').value = wp;
+            document.getElementById('resonanceFreq').value = w0;
+            document.getElementById('electricDamping').value = ge;
+            document.getElementById('magneticDamping').value = gm;
+            document.getElementById('oscillatorStrength').value = F;
+            document.getElementById('latticePeriod').value = a;
+            updateAllValues();
+        }
+        
+        function calculateDispersion() {
+            const wp = parseFloat(document.getElementById('plasmaFreq').value);
+            const w0 = parseFloat(document.getElementById('resonanceFreq').value);
+            const ge = parseFloat(document.getElementById('electricDamping').value);
+            const gm = parseFloat(document.getElementById('magneticDamping').value);
+            const F = parseFloat(document.getElementById('oscillatorStrength').value);
+            const a = parseFloat(document.getElementById('latticePeriod').value) * 1e-9; // Convert to meters
+            
+            // Frequency array
+            const freqTHz = [];
+            const epsilon_real = [];
+            const epsilon_imag = [];
+            const mu_real = [];
+            const mu_imag = [];
+            const n_real = [];
+            const n_imag = [];
+            const k_real = [];
+            const k_imag = [];
+            
+            for (let f = 0.1; f <= 3; f += 0.01) {
+                freqTHz.push(f);
+                const omega = 2 * Math.PI * f * 1e12; // Convert to rad/s
+                
+                // Drude model for permittivity
+                const eps_denom = omega * omega + ge * ge * 1e24;
+                const eps_r = 1 - (wp * wp * 1e24) / eps_denom;
+                const eps_i = (wp * wp * ge * 1e36) / (omega * eps_denom);
+                epsilon_real.push(eps_r);
+                epsilon_imag.push(eps_i);
+                
+                // Lorentz model for permeability
+                const mu_denom = (w0 * w0 - f * f) * (w0 * w0 - f * f) + gm * gm * f * f;
+                const mu_r = 1 + F * f * f * (w0 * w0 - f * f) / mu_denom;
+                const mu_i = F * f * f * gm * f / mu_denom;
+                mu_real.push(mu_r);
+                mu_imag.push(mu_i);
+                
+                // Calculate complex refractive index
+                const eps_complex = math.complex(eps_r, eps_i);
+                const mu_complex = math.complex(mu_r, mu_i);
+                const n_complex = math.sqrt(math.multiply(eps_complex, mu_complex));
+                
+                n_real.push(n_complex.re);
+                n_imag.push(n_complex.im);
+                
+                // Calculate wave vector k = nω/c
+                const k_r = n_complex.re * omega / c;
+                const k_i = n_complex.im * omega / c;
+                k_real.push(k_r);
+                k_imag.push(k_i);
+            }
+            
+            // Store data for export
+            dispersionData = {
+                frequency: freqTHz,
+                epsilon_real: epsilon_real,
+                epsilon_imag: epsilon_imag,
+                mu_real: mu_real,
+                mu_imag: mu_imag,
+                n_real: n_real,
+                n_imag: n_imag,
+                k_real: k_real,
+                k_imag: k_imag
+            };
+            
+            // Create plots
+            plotDispersion(freqTHz, k_real, k_imag);
+            plotParameters(freqTHz, epsilon_real, epsilon_imag, mu_real, mu_imag);
+            plotRefractiveIndex(freqTHz, n_real, n_imag);
+            plotTransmission(freqTHz, n_real, n_imag);
+            plotVelocity(freqTHz, n_real, k_real);
+            
+            // Update statistics
+            updateStatistics(freqTHz, n_real, n_imag);
+        }
+        
+        function plotDispersion(freq, k_real, k_imag) {
+            // Normal dispersion for comparison
+            const k_normal = freq.map(f => 2 * Math.PI * f * 1e12 / c);
+            
+            // Create Brillouin zone boundaries
+            const a = parseFloat(document.getElementById('latticePeriod').value) * 1e-9;
+            const k_max = Math.PI / a;
+            
+            const data = [
+                {
+                    x: k_real.map(k => k / 1000), // Convert to 1/mm
+                    y: freq,
+                    name: 'Metamaterial',
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: {color: 'purple', width: 3}
+                },
+                {
+                    x: k_normal.map(k => k / 1000),
+                    y: freq,
+                    name: 'Free Space',
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: {color: 'gray', width: 2, dash: 'dash'}
+                },
+                {
+                    x: k_real.map(k => -k / 1000), // Negative k branch
+                    y: freq,
+                    name: 'Backward Wave',
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: {color: 'red', width: 2},
+                    visible: 'legendonly'
+                }
+            ];
+            
+            const layout = {
+                title: {
+                    text: 'Dispersion Relation ω(k)',
+                    font: {color: '#f59e0b'}
+                },
+                xaxis: {
+                    title: 'Wave Vector k (1/mm)',
+                    gridcolor: '#374151',
+                    titlefont: {color: '#9ca3af'},
+                    zeroline: true,
+                    zerolinecolor: '#666'
+                },
+                yaxis: {
+                    title: 'Frequency (THz)',
+                    gridcolor: '#374151',
+                    titlefont: {color: '#9ca3af'}
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                showlegend: true,
+                legend: {
+                    bgcolor: 'rgba(0,0,0,0.5)',
+                    bordercolor: '#374151',
+                    borderwidth: 1,
+                    font: {color: '#e5e7eb'}
+                },
+                shapes: [
+                    {
+                        type: 'line',
+                        x0: -k_max/1000,
+                        x1: -k_max/1000,
+                        y0: 0,
+                        y1: 3,
+                        line: {color: 'orange', width: 1, dash: 'dot'}
+                    },
+                    {
+                        type: 'line',
+                        x0: k_max/1000,
+                        x1: k_max/1000,
+                        y0: 0,
+                        y1: 3,
+                        line: {color: 'orange', width: 1, dash: 'dot'}
+                    }
+                ],
+                annotations: [
+                    {
+                        x: 0,
+                        y: 2.8,
+                        text: 'First Brillouin Zone',
+                        showarrow: false,
+                        font: {color: 'orange', size: 12}
+                    }
+                ]
+            };
+            
+            Plotly.newPlot('dispersionPlot', data, layout);
+        }
+        
+        function plotParameters(freq, eps_real, eps_imag, mu_real, mu_imag) {
+            const data = [
+                {
+                    x: freq,
+                    y: eps_real,
+                    name: 'Re(ε)',
+                    type: 'scatter',
+                    line: {color: 'blue', width: 2}
+                },
+                {
+                    x: freq,
+                    y: eps_imag,
+                    name: 'Im(ε)',
+                    type: 'scatter',
+                    line: {color: 'lightblue', width: 2, dash: 'dash'},
+                    visible: 'legendonly'
+                },
+                {
+                    x: freq,
+                    y: mu_real,
+                    name: 'Re(μ)',
+                    type: 'scatter',
+                    line: {color: 'red', width: 2}
+                },
+                {
+                    x: freq,
+                    y: mu_imag,
+                    name: 'Im(μ)',
+                    type: 'scatter',
+                    line: {color: 'pink', width: 2, dash: 'dash'},
+                    visible: 'legendonly'
+                }
+            ];
+            
+            const layout = {
+                title: {
+                    text: 'Frequency-Dependent Permittivity and Permeability',
+                    font: {color: '#f59e0b'}
+                },
+                xaxis: {
+                    title: 'Frequency (THz)',
+                    gridcolor: '#374151',
+                    titlefont: {color: '#9ca3af'}
+                },
+                yaxis: {
+                    title: 'Parameter Value',
+                    gridcolor: '#374151',
+                    titlefont: {color: '#9ca3af'},
+                    range: [-5, 5]
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                showlegend: true,
+                legend: {
+                    bgcolor: 'rgba(0,0,0,0.5)',
+                    bordercolor: '#374151',
+                    borderwidth: 1,
+                    font: {color: '#e5e7eb'}
+                },
+                shapes: [{
+                    type: 'line',
+                    x0: 0,
+                    x1: 3,
+                    y0: 0,
+                    y1: 0,
+                    line: {color: 'gray', width: 1, dash: 'dot'}
+                }]
+            };
+            
+            Plotly.newPlot('parametersPlot', data, layout);
+        }
+        
+        function plotRefractiveIndex(freq, n_real, n_imag) {
+            // Calculate FOM
+            const fom = n_real.map((n, i) => Math.abs(n) / Math.abs(n_imag[i]));
+            
+            const data = [
+                {
+                    x: freq,
+                    y: n_real,
+                    name: 'Re(n)',
+                    type: 'scatter',
+                    line: {color: 'purple', width: 3}
+                },
+                {
+                    x: freq,
+                    y: n_imag,
+                    name: 'Im(n)',
+                    type: 'scatter',
+                    line: {color: 'orange', width: 2},
+                    yaxis: 'y2'
+                },
+                {
+                    x: freq,
+                    y: fom,
+                    name: 'FOM',
+                    type: 'scatter',
+                    line: {color: 'green', width: 2, dash: 'dash'},
+                    yaxis: 'y2',
+                    visible: 'legendonly'
+                }
+            ];
+            
+            // Find negative index region
+            const negRegion = [];
+            n_real.forEach((n, i) => {
+                if (n < 0) negRegion.push(i);
+            });
+            
+            const shapes = [];
+            if (negRegion.length > 0) {
+                shapes.push({
+                    type: 'rect',
+                    x0: freq[negRegion[0]],
+                    x1: freq[negRegion[negRegion.length - 1]],
+                    y0: -10,
+                    y1: 10,
+                    fillcolor: 'rgba(147, 51, 234, 0.1)',
+                    line: {width: 0}
+                });
+            }
+            
+            const layout = {
+                title: {
+                    text: 'Complex Refractive Index',
+                    font: {color: '#f59e0b'}
+                },
+                xaxis: {
+                    title: 'Frequency (THz)',
+                    gridcolor: '#374151',
+                    titlefont: {color: '#9ca3af'}
+                },
+                yaxis: {
+                    title: 'Re(n)',
+                    gridcolor: '#374151',
+                    titlefont: {color: '#9ca3af'},
+                    range: [-3, 3]
+                },
+                yaxis2: {
+                    title: 'Im(n) / FOM',
+                    overlaying: 'y',
+                    side: 'right',
+                    titlefont: {color: '#fb923c'},
+                    tickfont: {color: '#fb923c'}
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                showlegend: true,
+                legend: {
+                    bgcolor: 'rgba(0,0,0,0.5)',
+                    bordercolor: '#374151',
+                    borderwidth: 1,
+                    font: {color: '#e5e7eb'}
+                },
+                shapes: shapes,
+                annotations: negRegion.length > 0 ? [{
+                    x: (freq[negRegion[0]] + freq[negRegion[negRegion.length - 1]]) / 2,
+                    y: -2.5,
+                    text: 'Negative Index Band',
+                    showarrow: false,
+                    font: {color: '#a855f7', size: 14}
+                }] : []
+            };
+            
+            Plotly.newPlot('indexPlot', data, layout);
+        }
+        
+        function plotTransmission(freq, n_real, n_imag) {
+            // Calculate transmission and reflection for a slab
+            const thickness = 200e-6; // 200 μm slab
+            const transmission = [];
+            const reflection = [];
+            const absorption = [];
+            
+            freq.forEach((f, i) => {
+                const n = math.complex(n_real[i], n_imag[i]);
+                const k = math.multiply(n, 2 * Math.PI * f * 1e12 / c);
+                const z = math.divide(n, 1); // Normalized impedance
+                
+                // Fresnel coefficients
+                const r = math.divide(math.subtract(z, 1), math.add(z, 1));
+                const t = math.divide(math.multiply(2, z), math.add(z, 1));
+                
+                // Fabry-Perot for slab
+                const phase = math.multiply(k, thickness);
+                const exp_phase = math.exp(math.multiply(math.complex(0, -2), phase));
+                const denom = math.subtract(1, math.multiply(math.pow(r, 2), exp_phase));
+                
+                const T = math.abs(math.divide(math.multiply(t, t), denom));
+                const R = math.abs(r);
+                
+                transmission.push(T * T);
+                reflection.push(R * R);
+                absorption.push(1 - T * T - R * R);
+            });
+            
+            const data = [
+                {
+                    x: freq,
+                    y: transmission,
+                    name: 'Transmission',
+                    type: 'scatter',
+                    line: {color: 'green', width: 2},
+                    fill: 'tozeroy'
+                },
+                {
+                    x: freq,
+                    y: reflection,
+                    name: 'Reflection',
+                    type: 'scatter',
+                    line: {color: 'red', width: 2}
+                },
+                {
+                    x: freq,
+                    y: absorption,
+                    name: 'Absorption',
+                    type: 'scatter',
+                    line: {color: 'orange', width: 2},
+                    visible: 'legendonly'
+                }
+            ];
+            
+            const layout = {
+                title: {
+                    text: 'Transmission and Reflection Spectra (200 μm slab)',
+                    font: {color: '#f59e0b'}
+                },
+                xaxis: {
+                    title: 'Frequency (THz)',
+                    gridcolor: '#374151',
+                    titlefont: {color: '#9ca3af'}
+                },
+                yaxis: {
+                    title: 'Coefficient',
+                    gridcolor: '#374151',
+                    titlefont: {color: '#9ca3af'},
+                    range: [0, 1]
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                showlegend: true,
+                legend: {
+                    bgcolor: 'rgba(0,0,0,0.5)',
+                    bordercolor: '#374151',
+                    borderwidth: 1,
+                    font: {color: '#e5e7eb'}
+                }
+            };
+            
+            Plotly.newPlot('transmissionPlot', data, layout);
+        }
+        
+        function plotVelocity(freq, n_real, k_real) {
+            const vPhase = [];
+            const vGroup = [];
+            
+            for (let i = 0; i < freq.length; i++) {
+                // Phase velocity: vp = ω/k = c/n
+                const vp = n_real[i] !== 0 ? 1 / n_real[i] : 0;
+                vPhase.push(vp);
+                
+                // Group velocity: vg = dω/dk
+                if (i > 0 && i < freq.length - 1) {
+                    const dw = (freq[i+1] - freq[i-1]) * 2 * Math.PI * 1e12;
+                    const dk = k_real[i+1] - k_real[i-1];
+                    const vg = dk !== 0 ? (dw / dk) / c : 0;
+                    vGroup.push(vg);
+                } else {
+                    vGroup.push(0);
+                }
+            }
+            
+            const data = [
+                {
+                    x: freq,
+                    y: vPhase,
+                    name: 'Phase Velocity',
+                    type: 'scatter',
+                    line: {color: 'blue', width: 2}
+                },
+                {
+                    x: freq,
+                    y: vGroup,
+                    name: 'Group Velocity',
+                    type: 'scatter',
+                    line: {color: 'red', width: 2}
+                }
+            ];
+            
+            const layout = {
+                title: {
+                    text: 'Phase and Group Velocity',
+                    font: {color: '#f59e0b'}
+                },
+                xaxis: {
+                    title: 'Frequency (THz)',
+                    gridcolor: '#374151',
+                    titlefont: {color: '#9ca3af'}
+                },
+                yaxis: {
+                    title: 'Velocity (c)',
+                    gridcolor: '#374151',
+                    titlefont: {color: '#9ca3af'},
+                    range: [-2, 2]
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                showlegend: true,
+                legend: {
+                    bgcolor: 'rgba(0,0,0,0.5)',
+                    bordercolor: '#374151',
+                    borderwidth: 1,
+                    font: {color: '#e5e7eb'}
+                },
+                shapes: [{
+                    type: 'line',
+                    x0: 0,
+                    x1: 3,
+                    y0: 0,
+                    y1: 0,
+                    line: {color: 'gray', width: 1, dash: 'dot'}
+                }],
+                annotations: [{
+                    x: 1.5,
+                    y: -1.5,
+                    text: 'Backward wave: vp < 0, vg > 0',
+                    showarrow: false,
+                    font: {color: '#a855f7', size: 12}
+                }]
+            };
+            
+            Plotly.newPlot('velocityPlot', data, layout);
+        }
+        
+        function updateStatistics(freq, n_real, n_imag) {
+            // Find negative index region
+            const negIndices = [];
+            n_real.forEach((n, i) => {
+                if (n < 0) negIndices.push(i);
+            });
+            
+            if (negIndices.length > 0) {
+                const startFreq = freq[negIndices[0]];
+                const endFreq = freq[negIndices[negIndices.length - 1]];
+                const bandwidth = endFreq - startFreq;
+                
+                // Find minimum index
+                const minIndex = Math.min(...n_real.filter(n => n < 0));
+                
+                // Calculate average FOM in negative region
+                let avgFOM = 0;
+                negIndices.forEach(i => {
+                    avgFOM += Math.abs(n_real[i]) / Math.abs(n_imag[i]);
+                });
+                avgFOM /= negIndices.length;
+                
+                // Calculate group velocity at center frequency
+                const centerIdx = negIndices[Math.floor(negIndices.length / 2)];
+                let vg = 0;
+                if (centerIdx > 0 && centerIdx < freq.length - 1) {
+                    const dw = (freq[centerIdx+1] - freq[centerIdx-1]) * 2 * Math.PI * 1e12;
+                    const dk = 2 * Math.PI * (freq[centerIdx+1] - freq[centerIdx-1]) * 1e12 * 
+                              (n_real[centerIdx+1] - n_real[centerIdx-1]) / c;
+                    vg = dk !== 0 ? (dw / dk) / c : 0;
+                }
+                
+                // Update display
+                document.getElementById('negIndexStart').textContent = startFreq.toFixed(2);
+                document.getElementById('negIndexEnd').textContent = endFreq.toFixed(2);
+                document.getElementById('bandwidth').textContent = bandwidth.toFixed(3);
+                document.getElementById('minIndex').textContent = minIndex.toFixed(2);
+                document.getElementById('fom').textContent = avgFOM.toFixed(1);
+                document.getElementById('groupVelocity').textContent = vg.toFixed(3);
+            } else {
+                document.getElementById('negIndexStart').textContent = '--';
+                document.getElementById('negIndexEnd').textContent = '--';
+                document.getElementById('bandwidth').textContent = '--';
+                document.getElementById('minIndex').textContent = '--';
+                document.getElementById('fom').textContent = '--';
+                document.getElementById('groupVelocity').textContent = '--';
+            }
+        }
+        
+        function findNegativeRegion() {
+            calculateDispersion();
+            
+            // Highlight negative index region
+            const negStart = document.getElementById('negIndexStart').textContent;
+            const negEnd = document.getElementById('negIndexEnd').textContent;
+            
+            if (negStart !== '--' && negEnd !== '--') {
+                alert(`Negative index region found:\n${negStart} - ${negEnd} THz\n\nBandwidth: ${document.getElementById('bandwidth').textContent} THz`);
+            } else {
+                alert('No negative index region found with current parameters.\nTry adjusting the resonance frequencies.');
+            }
+        }
+        
+        function optimizeParameters() {
+            // Simple optimization to maximize bandwidth
+            let bestBandwidth = 0;
+            let bestParams = {};
+            
+            // Grid search over parameter space
+            for (let wp = 1.5; wp <= 2.5; wp += 0.2) {
+                for (let w0 = 0.8; w0 <= 1.5; w0 += 0.1) {
+                    for (let F = 0.7; F <= 1.0; F += 0.1) {
+                        // Set parameters
+                        document.getElementById('plasmaFreq').value = wp;
+                        document.getElementById('resonanceFreq').value = w0;
+                        document.getElementById('oscillatorStrength').value = F;
+                        
+                        // Calculate dispersion
+                        calculateDispersion();
+                        
+                        // Check bandwidth
+                        const bw = document.getElementById('bandwidth').textContent;
+                        if (bw !== '--') {
+                            const bandwidth = parseFloat(bw);
+                            if (bandwidth > bestBandwidth) {
+                                bestBandwidth = bandwidth;
+                                bestParams = {wp: wp, w0: w0, F: F};
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Apply best parameters
+            if (bestBandwidth > 0) {
+                setParameters(bestParams.wp, bestParams.w0, 
+                            parseFloat(document.getElementById('electricDamping').value),
+                            parseFloat(document.getElementById('magneticDamping').value),
+                            bestParams.F,
+                            parseFloat(document.getElementById('latticePeriod').value));
+                calculateDispersion();
+                alert(`Optimization complete!\n\nBest bandwidth: ${bestBandwidth.toFixed(3)} THz\nωp = ${bestParams.wp.toFixed(1)} THz\nω0 = ${bestParams.w0.toFixed(1)} THz\nF = ${bestParams.F.toFixed(2)}`);
+            } else {
+                alert('Optimization failed to find negative index region.\nTry different initial parameters.');
+            }
+        }
+        
+        function exportDispersionData() {
+            if (!dispersionData) {
+                alert('Please calculate dispersion first!');
+                return;
+            }
+            
+            // Create CSV content
+            let csvContent = "Frequency_THz,Epsilon_Real,Epsilon_Imag,Mu_Real,Mu_Imag,n_Real,n_Imag,k_Real,k_Imag\n";
+            
+            for (let i = 0; i < dispersionData.frequency.length; i++) {
+                csvContent += `${dispersionData.frequency[i].toFixed(3)},`;
+                csvContent += `${dispersionData.epsilon_real[i].toFixed(6)},`;
+                csvContent += `${dispersionData.epsilon_imag[i].toFixed(6)},`;
+                csvContent += `${dispersionData.mu_real[i].toFixed(6)},`;
+                csvContent += `${dispersionData.mu_imag[i].toFixed(6)},`;
+                csvContent += `${dispersionData.n_real[i].toFixed(6)},`;
+                csvContent += `${dispersionData.n_imag[i].toFixed(6)},`;
+                csvContent += `${dispersionData.k_real[i].toFixed(3)},`;
+                csvContent += `${dispersionData.k_imag[i].toFixed(3)}\n`;
+            }
+            
+            // Download CSV
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `metamaterial_dispersion_${currentModel}.csv`;
+            a.click();
+        }
+        
+        function updateAllValues() {
+            document.getElementById('plasmaFreqValue').textContent = 
+                parseFloat(document.getElementById('plasmaFreq').value).toFixed(1);
+            document.getElementById('resonanceFreqValue').textContent = 
+                parseFloat(document.getElementById('resonanceFreq').value).toFixed(1);
+            document.getElementById('electricDampingValue').textContent = 
+                parseFloat(document.getElementById('electricDamping').value).toFixed(2);
+            document.getElementById('magneticDampingValue').textContent = 
+                parseFloat(document.getElementById('magneticDamping').value).toFixed(2);
+            document.getElementById('oscillatorStrengthValue').textContent = 
+                parseFloat(document.getElementById('oscillatorStrength').value).toFixed(2);
+            document.getElementById('latticePeriodValue').textContent = 
+                document.getElementById('latticePeriod').value;
+        }
+        
+        // Event listeners
+        document.getElementById('plasmaFreq').addEventListener('input', (e) => {
+            document.getElementById('plasmaFreqValue').textContent = 
+                parseFloat(e.target.value).toFixed(1);
+        });
+        
+        document.getElementById('resonanceFreq').addEventListener('input', (e) => {
+            document.getElementById('resonanceFreqValue').textContent = 
+                parseFloat(e.target.value).toFixed(1);
+        });
+        
+        document.getElementById('electricDamping').addEventListener('input', (e) => {
+            document.getElementById('electricDampingValue').textContent = 
+                parseFloat(e.target.value).toFixed(2);
+        });
+        
+        document.getElementById('magneticDamping').addEventListener('input', (e) => {
+            document.getElementById('magneticDampingValue').textContent = 
+                parseFloat(e.target.value).toFixed(2);
+        });
+        
+        document.getElementById('oscillatorStrength').addEventListener('input', (e) => {
+            document.getElementById('oscillatorStrengthValue').textContent = 
+                parseFloat(e.target.value).toFixed(2);
+        });
+        
+        document.getElementById('latticePeriod').addEventListener('input', (e) => {
+            document.getElementById('latticePeriodValue').textContent = e.target.value;
+        });
+        
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', () => {
+            calculateDispersion();
+        });
+    </script>
+</body>
+</html>

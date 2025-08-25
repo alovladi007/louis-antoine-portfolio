@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wave Propagation Through Metamaterials - Interactive Demo</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
+    <style>
+        body {
+            background: #0a0a0a;
+            color: #e5e7eb;
+        }
+        
+        .demo-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .control-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .control-group {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        
+        .control-group label {
+            display: block;
+            color: #a855f7;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        
+        .control-group input[type="range"] {
+            width: 100%;
+            margin: 10px 0;
+        }
+        
+        .value-display {
+            background: #8e24aa;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            display: inline-block;
+            font-size: 0.9em;
+        }
+        
+        .visualization-panel {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .sim-button {
+            background: linear-gradient(135deg, #9333ea 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .sim-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(147, 51, 234, 0.4);
+        }
+        
+        .sim-button.stop {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+        
+        .info-panel {
+            background: rgba(147, 51, 234, 0.1);
+            border: 1px solid rgba(147, 51, 234, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .info-panel h3 {
+            color: #a855f7;
+            margin-top: 0;
+        }
+        
+        .equation {
+            font-family: 'Courier New', monospace;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .tab-button {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: #e5e7eb;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .tab-button.active {
+            background: #8e24aa;
+            border-color: #8e24aa;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <a href="../index.html" class="logo">LA</a>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="../metamaterials-research.html" class="nav-link">← Back to Research</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="demo-container">
+        <h1 style="color: #f59e0b; text-align: center; margin: 30px 0;">
+            <i class="fas fa-wave-square"></i> Electromagnetic Wave Propagation Through Metamaterials
+        </h1>
+
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <h2 style="color: #a855f7;">Simulation Parameters</h2>
+            
+            <div class="control-grid">
+                <div class="control-group">
+                    <label>Frequency (THz)</label>
+                    <input type="range" id="frequency" min="0.5" max="2.0" value="1.0" step="0.01">
+                    <span class="value-display" id="frequencyValue">1.00</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>Refractive Index (n)</label>
+                    <input type="range" id="refractiveIndex" min="-3" max="3" value="-1.5" step="0.1">
+                    <span class="value-display" id="nValue">-1.5</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>Slab Thickness (μm)</label>
+                    <input type="range" id="thickness" min="50" max="500" value="200" step="10">
+                    <span class="value-display" id="thicknessValue">200</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>Incident Angle (degrees)</label>
+                    <input type="range" id="angle" min="0" max="60" value="0" step="1">
+                    <span class="value-display" id="angleValue">0°</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>Loss Factor (Im(n))</label>
+                    <input type="range" id="loss" min="0" max="1" value="0.1" step="0.01">
+                    <span class="value-display" id="lossValue">0.10</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>Animation Speed</label>
+                    <input type="range" id="speed" min="1" max="10" value="5" step="1">
+                    <span class="value-display" id="speedValue">5</span>
+                </div>
+            </div>
+            
+            <div class="button-group">
+                <button class="sim-button" onclick="startSimulation()">
+                    <i class="fas fa-play"></i> Start Simulation
+                </button>
+                <button class="sim-button stop" onclick="stopSimulation()">
+                    <i class="fas fa-stop"></i> Stop
+                </button>
+                <button class="sim-button" onclick="resetSimulation()">
+                    <i class="fas fa-redo"></i> Reset
+                </button>
+                <button class="sim-button" onclick="exportData()">
+                    <i class="fas fa-download"></i> Export Data
+                </button>
+            </div>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="tab-buttons">
+            <button class="tab-button active" onclick="switchTab('wave')">Wave Propagation</button>
+            <button class="tab-button" onclick="switchTab('field')">Field Distribution</button>
+            <button class="tab-button" onclick="switchTab('sparams')">S-Parameters</button>
+            <button class="tab-button" onclick="switchTab('retrieval')">Parameter Retrieval</button>
+        </div>
+
+        <!-- Wave Propagation Tab -->
+        <div id="waveTab" class="tab-content active">
+            <div class="visualization-panel">
+                <h2 style="color: #f59e0b;">Real-Time Wave Propagation</h2>
+                <div id="wavePlot" style="height: 500px;"></div>
+            </div>
+            
+            <div class="info-panel">
+                <h3>Physics Model</h3>
+                <p>This simulation demonstrates electromagnetic wave propagation through a metamaterial slab with adjustable refractive index, including negative values.</p>
+                <div class="equation">
+                    E(x,t) = E₀ exp(i(kx - ωt))
+                    <br>k = nω/c (n can be negative)
+                    <br>For n < 0: Phase velocity opposite to group velocity (backward wave)
+                </div>
+            </div>
+        </div>
+
+        <!-- Field Distribution Tab -->
+        <div id="fieldTab" class="tab-content">
+            <div class="visualization-panel">
+                <h2 style="color: #f59e0b;">Electric Field Distribution</h2>
+                <div id="fieldPlot" style="height: 500px;"></div>
+            </div>
+            
+            <div class="visualization-panel">
+                <h2 style="color: #f59e0b;">Magnetic Field Distribution</h2>
+                <div id="magneticPlot" style="height: 500px;"></div>
+            </div>
+        </div>
+
+        <!-- S-Parameters Tab -->
+        <div id="sparamsTab" class="tab-content">
+            <div class="visualization-panel">
+                <h2 style="color: #f59e0b;">Scattering Parameters</h2>
+                <div id="sparamsPlot" style="height: 400px;"></div>
+            </div>
+            
+            <div class="visualization-panel">
+                <h2 style="color: #f59e0b;">Phase Response</h2>
+                <div id="phasePlot" style="height: 400px;"></div>
+            </div>
+        </div>
+
+        <!-- Parameter Retrieval Tab -->
+        <div id="retrievalTab" class="tab-content">
+            <div class="visualization-panel">
+                <h2 style="color: #f59e0b;">Retrieved Effective Parameters</h2>
+                <div id="retrievalPlot" style="height: 400px;"></div>
+            </div>
+            
+            <div class="info-panel">
+                <h3>NRW Retrieval Method</h3>
+                <p>Extracting effective permittivity (ε) and permeability (μ) from S-parameters using the Nicolson-Ross-Weir method with branch selection.</p>
+                <div class="equation">
+                    Z = √[(1+S₁₁)²-S₂₁²]/[(1-S₁₁)²-S₂₁²]
+                    <br>n = (1/k₀d) arccos[(1-S₁₁²+S₂₁²)/(2S₂₁)]
+                    <br>ε = n/Z, μ = nZ
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let animationId = null;
+        let time = 0;
+        
+        // Initialize all plots
+        function initializePlots() {
+            createWavePlot();
+            createFieldPlots();
+            createSparamsPlots();
+            createRetrievalPlot();
+        }
+        
+        function createWavePlot() {
+            const x = [];
+            const y = [];
+            const z = [];
+            
+            // Create 2D wave pattern
+            for (let i = 0; i < 100; i++) {
+                const row_x = [];
+                const row_y = [];
+                const row_z = [];
+                for (let j = 0; j < 100; j++) {
+                    row_x.push(j);
+                    row_y.push(i);
+                    row_z.push(0);
+                }
+                x.push(row_x);
+                y.push(row_y);
+                z.push(row_z);
+            }
+            
+            const data = [{
+                type: 'surface',
+                x: x,
+                y: y,
+                z: z,
+                colorscale: 'Viridis',
+                showscale: false,
+                contours: {
+                    z: {
+                        show: true,
+                        usecolormap: true,
+                        highlightcolor: "#42f462",
+                        project: {z: true}
+                    }
+                }
+            }];
+            
+            const layout = {
+                title: {
+                    text: 'Wave Propagation (Click and drag to rotate)',
+                    font: {color: '#f59e0b'}
+                },
+                scene: {
+                    camera: {
+                        eye: {x: 1.5, y: -1.5, z: 1.5}
+                    },
+                    xaxis: {
+                        title: 'X Position (μm)',
+                        gridcolor: '#374151',
+                        titlefont: {color: '#9ca3af'}
+                    },
+                    yaxis: {
+                        title: 'Y Position (μm)',
+                        gridcolor: '#374151',
+                        titlefont: {color: '#9ca3af'}
+                    },
+                    zaxis: {
+                        title: 'Field Amplitude',
+                        gridcolor: '#374151',
+                        titlefont: {color: '#9ca3af'}
+                    },
+                    bgcolor: 'rgba(0,0,0,0)'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)'
+            };
+            
+            Plotly.newPlot('wavePlot', data, layout);
+        }
+        
+        function createFieldPlots() {
+            // Electric field
+            const x = Array.from({length: 200}, (_, i) => i - 100);
+            const y = x.map(() => 0);
+            
+            const eData = [{
+                x: x,
+                y: y,
+                name: 'E-field',
+                type: 'scatter',
+                mode: 'lines',
+                line: {color: 'blue', width: 2}
+            }];
+            
+            const eLayout = {
+                title: {text: 'Electric Field Profile', font: {color: '#f59e0b'}},
+                xaxis: {title: 'Position (μm)', gridcolor: '#374151', titlefont: {color: '#9ca3af'}},
+                yaxis: {title: 'E-field (V/m)', gridcolor: '#374151', titlefont: {color: '#9ca3af'}},
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)'
+            };
+            
+            Plotly.newPlot('fieldPlot', eData, eLayout);
+            
+            // Magnetic field
+            const hData = [{
+                x: x,
+                y: y,
+                name: 'H-field',
+                type: 'scatter',
+                mode: 'lines',
+                line: {color: 'red', width: 2}
+            }];
+            
+            const hLayout = {
+                title: {text: 'Magnetic Field Profile', font: {color: '#f59e0b'}},
+                xaxis: {title: 'Position (μm)', gridcolor: '#374151', titlefont: {color: '#9ca3af'}},
+                yaxis: {title: 'H-field (A/m)', gridcolor: '#374151', titlefont: {color: '#9ca3af'}},
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)'
+            };
+            
+            Plotly.newPlot('magneticPlot', hData, hLayout);
+        }
+        
+        function createSparamsPlots() {
+            const freq = Array.from({length: 100}, (_, i) => 0.5 + i * 0.015);
+            const s11 = freq.map(() => Math.random() * 0.3);
+            const s21 = freq.map(() => 0.7 + Math.random() * 0.2);
+            
+            const data = [
+                {
+                    x: freq,
+                    y: s21,
+                    name: '|S21| Transmission',
+                    type: 'scatter',
+                    line: {color: 'green', width: 2}
+                },
+                {
+                    x: freq,
+                    y: s11,
+                    name: '|S11| Reflection',
+                    type: 'scatter',
+                    line: {color: 'red', width: 2}
+                }
+            ];
+            
+            const layout = {
+                title: {text: 'S-Parameters vs Frequency', font: {color: '#f59e0b'}},
+                xaxis: {title: 'Frequency (THz)', gridcolor: '#374151', titlefont: {color: '#9ca3af'}},
+                yaxis: {title: 'Magnitude', gridcolor: '#374151', titlefont: {color: '#9ca3af'}},
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                showlegend: true,
+                legend: {
+                    bgcolor: 'rgba(0,0,0,0.5)',
+                    bordercolor: '#374151',
+                    borderwidth: 1,
+                    font: {color: '#e5e7eb'}
+                }
+            };
+            
+            Plotly.newPlot('sparamsPlot', data, layout);
+            
+            // Phase plot
+            const phase11 = freq.map(() => Math.random() * 180 - 90);
+            const phase21 = freq.map(() => Math.random() * 360 - 180);
+            
+            const phaseData = [
+                {
+                    x: freq,
+                    y: phase21,
+                    name: 'S21 Phase',
+                    type: 'scatter',
+                    line: {color: 'blue', width: 2}
+                },
+                {
+                    x: freq,
+                    y: phase11,
+                    name: 'S11 Phase',
+                    type: 'scatter',
+                    line: {color: 'orange', width: 2}
+                }
+            ];
+            
+            const phaseLayout = {
+                title: {text: 'Phase Response', font: {color: '#f59e0b'}},
+                xaxis: {title: 'Frequency (THz)', gridcolor: '#374151', titlefont: {color: '#9ca3af'}},
+                yaxis: {title: 'Phase (degrees)', gridcolor: '#374151', titlefont: {color: '#9ca3af'}},
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                showlegend: true,
+                legend: {
+                    bgcolor: 'rgba(0,0,0,0.5)',
+                    bordercolor: '#374151',
+                    borderwidth: 1,
+                    font: {color: '#e5e7eb'}
+                }
+            };
+            
+            Plotly.newPlot('phasePlot', phaseData, phaseLayout);
+        }
+        
+        function createRetrievalPlot() {
+            const freq = Array.from({length: 100}, (_, i) => 0.5 + i * 0.015);
+            
+            // Simulated retrieved parameters
+            const n_real = freq.map(f => {
+                if (f > 0.9 && f < 1.3) return -1.5 + Math.random() * 0.3;
+                return 1.5 + Math.random() * 0.2;
+            });
+            
+            const eps_real = freq.map(f => {
+                if (f > 1.0) return -2 + Math.random() * 0.5;
+                return 2 + Math.random() * 0.3;
+            });
+            
+            const mu_real = freq.map(f => {
+                if (f > 0.8 && f < 1.2) return -1 + Math.random() * 0.3;
+                return 1 + Math.random() * 0.2;
+            });
+            
+            const data = [
+                {
+                    x: freq,
+                    y: n_real,
+                    name: 'Re(n)',
+                    type: 'scatter',
+                    line: {color: 'purple', width: 2}
+                },
+                {
+                    x: freq,
+                    y: eps_real,
+                    name: 'Re(ε)',
+                    type: 'scatter',
+                    line: {color: 'blue', width: 2}
+                },
+                {
+                    x: freq,
+                    y: mu_real,
+                    name: 'Re(μ)',
+                    type: 'scatter',
+                    line: {color: 'red', width: 2}
+                }
+            ];
+            
+            const layout = {
+                title: {text: 'Retrieved Effective Parameters', font: {color: '#f59e0b'}},
+                xaxis: {title: 'Frequency (THz)', gridcolor: '#374151', titlefont: {color: '#9ca3af'}},
+                yaxis: {title: 'Parameter Value', gridcolor: '#374151', titlefont: {color: '#9ca3af'}},
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                showlegend: true,
+                legend: {
+                    bgcolor: 'rgba(0,0,0,0.5)',
+                    bordercolor: '#374151',
+                    borderwidth: 1,
+                    font: {color: '#e5e7eb'}
+                },
+                shapes: [{
+                    type: 'line',
+                    x0: 0.5,
+                    x1: 2.0,
+                    y0: 0,
+                    y1: 0,
+                    line: {
+                        color: 'gray',
+                        width: 1,
+                        dash: 'dash'
+                    }
+                }],
+                annotations: [{
+                    x: 1.1,
+                    y: -1.5,
+                    text: 'Negative Index Region',
+                    showarrow: true,
+                    arrowhead: 2,
+                    arrowcolor: '#a855f7',
+                    font: {color: '#a855f7'}
+                }]
+            };
+            
+            Plotly.newPlot('retrievalPlot', data, layout);
+        }
+        
+        function updateWaveAnimation() {
+            const frequency = parseFloat(document.getElementById('frequency').value);
+            const n = parseFloat(document.getElementById('refractiveIndex').value);
+            const thickness = parseFloat(document.getElementById('thickness').value);
+            const angle = parseFloat(document.getElementById('angle').value) * Math.PI / 180;
+            const loss = parseFloat(document.getElementById('loss').value);
+            const speed = parseInt(document.getElementById('speed').value);
+            
+            time += 0.1 * speed;
+            
+            const x = [];
+            const y = [];
+            const z = [];
+            
+            // Generate wave pattern with metamaterial region
+            for (let i = 0; i < 100; i++) {
+                const row_x = [];
+                const row_y = [];
+                const row_z = [];
+                for (let j = 0; j < 100; j++) {
+                    row_x.push(j);
+                    row_y.push(i);
+                    
+                    // Define metamaterial region (30-70)
+                    let amplitude;
+                    if (j >= 30 && j <= 70) {
+                        // Inside metamaterial - negative phase velocity if n < 0
+                        const k = 2 * Math.PI * frequency * n / 10;
+                        const damping = Math.exp(-loss * Math.abs(j - 50) / 10);
+                        amplitude = damping * Math.sin(k * j - frequency * time);
+                    } else {
+                        // Normal medium
+                        const k = 2 * Math.PI * frequency / 10;
+                        amplitude = Math.sin(k * j + frequency * time);
+                    }
+                    
+                    // Add transverse variation
+                    amplitude *= Math.cos(2 * Math.PI * i / 100 * Math.sin(angle));
+                    row_z.push(amplitude);
+                }
+                x.push(row_x);
+                y.push(row_y);
+                z.push(row_z);
+            }
+            
+            Plotly.restyle('wavePlot', {
+                z: [z]
+            });
+            
+            // Update field plots
+            updateFieldPlots(frequency, n, thickness, loss);
+        }
+        
+        function updateFieldPlots(frequency, n, thickness, loss) {
+            const x = Array.from({length: 200}, (_, i) => i - 100);
+            
+            // Electric field
+            const eField = x.map(pos => {
+                if (Math.abs(pos) < thickness/4) {
+                    // Inside metamaterial
+                    return Math.sin(2 * Math.PI * frequency * n * pos / 100 - frequency * time) * 
+                           Math.exp(-loss * Math.abs(pos) / 50);
+                }
+                return Math.sin(2 * Math.PI * frequency * pos / 100 + frequency * time);
+            });
+            
+            // Magnetic field (90 degrees out of phase)
+            const hField = x.map(pos => {
+                if (Math.abs(pos) < thickness/4) {
+                    // Inside metamaterial
+                    return Math.cos(2 * Math.PI * frequency * n * pos / 100 - frequency * time) * 
+                           Math.exp(-loss * Math.abs(pos) / 50) / n;
+                }
+                return Math.cos(2 * Math.PI * frequency * pos / 100 + frequency * time);
+            });
+            
+            Plotly.restyle('fieldPlot', {
+                y: [eField]
+            });
+            
+            Plotly.restyle('magneticPlot', {
+                y: [hField]
+            });
+        }
+        
+        function startSimulation() {
+            if (animationId) return;
+            
+            function animate() {
+                updateWaveAnimation();
+                animationId = requestAnimationFrame(animate);
+            }
+            animate();
+        }
+        
+        function stopSimulation() {
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+        }
+        
+        function resetSimulation() {
+            stopSimulation();
+            time = 0;
+            initializePlots();
+        }
+        
+        function exportData() {
+            // Generate CSV data
+            const frequency = parseFloat(document.getElementById('frequency').value);
+            const n = parseFloat(document.getElementById('refractiveIndex').value);
+            const thickness = parseFloat(document.getElementById('thickness').value);
+            
+            let csvContent = "Position,E-Field,H-Field\n";
+            for (let i = -100; i <= 100; i++) {
+                const eField = Math.sin(2 * Math.PI * frequency * i / 100);
+                const hField = Math.cos(2 * Math.PI * frequency * i / 100);
+                csvContent += `${i},${eField},${hField}\n`;
+            }
+            
+            // Download CSV
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'metamaterial_wave_data.csv';
+            a.click();
+        }
+        
+        function switchTab(tab) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+            
+            // Show selected tab
+            document.getElementById(tab + 'Tab').classList.add('active');
+            event.target.classList.add('active');
+        }
+        
+        // Update value displays
+        document.getElementById('frequency').addEventListener('input', (e) => {
+            document.getElementById('frequencyValue').textContent = parseFloat(e.target.value).toFixed(2);
+        });
+        
+        document.getElementById('refractiveIndex').addEventListener('input', (e) => {
+            document.getElementById('nValue').textContent = e.target.value;
+        });
+        
+        document.getElementById('thickness').addEventListener('input', (e) => {
+            document.getElementById('thicknessValue').textContent = e.target.value;
+        });
+        
+        document.getElementById('angle').addEventListener('input', (e) => {
+            document.getElementById('angleValue').textContent = e.target.value + '°';
+        });
+        
+        document.getElementById('loss').addEventListener('input', (e) => {
+            document.getElementById('lossValue').textContent = parseFloat(e.target.value).toFixed(2);
+        });
+        
+        document.getElementById('speed').addEventListener('input', (e) => {
+            document.getElementById('speedValue').textContent = e.target.value;
+        });
+        
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', initializePlots);
+    </script>
+</body>
+</html>
