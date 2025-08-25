@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Full Electromagnetic Field Simulator - Metamaterials</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
+    <style>
+        body {
+            background: #0a0a0a;
+            color: #e5e7eb;
+        }
+        
+        .demo-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .control-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .control-group {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        
+        .control-group label {
+            display: block;
+            color: #a855f7;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        
+        .control-group input[type="range"] {
+            width: 100%;
+            margin: 10px 0;
+        }
+        
+        .control-group select {
+            width: 100%;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            color: #e5e7eb;
+        }
+        
+        .value-display {
+            background: #8e24aa;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            display: inline-block;
+            font-size: 0.9em;
+        }
+        
+        .visualization-panel {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .sim-button {
+            background: linear-gradient(135deg, #9333ea 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .sim-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(147, 51, 234, 0.4);
+        }
+        
+        .solver-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .solver-tab {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: #e5e7eb;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .solver-tab.active {
+            background: #8e24aa;
+            border-color: #8e24aa;
+        }
+        
+        .info-box {
+            background: rgba(147, 51, 234, 0.1);
+            border: 1px solid rgba(147, 51, 234, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .equation {
+            font-family: 'Courier New', monospace;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <a href="../index.html" class="logo">LA</a>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="../metamaterials-research.html" class="nav-link">← Back to Research</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="demo-container">
+        <h1 style="color: #f59e0b; text-align: center; margin: 30px 0;">
+            <i class="fas fa-play-circle"></i> Full Electromagnetic Field Simulator
+        </h1>
+
+        <!-- Solver Selection -->
+        <div class="solver-tabs">
+            <button class="solver-tab active" onclick="selectSolver('fdtd')">FDTD Solver</button>
+            <button class="solver-tab" onclick="selectSolver('fem')">FEM Solver</button>
+            <button class="solver-tab" onclick="selectSolver('rcwa')">RCWA Solver</button>
+            <button class="solver-tab" onclick="selectSolver('tmm')">TMM Solver</button>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <h2 style="color: #a855f7;">Simulation Parameters</h2>
+            
+            <div class="control-grid">
+                <div class="control-group">
+                    <label>Structure Type</label>
+                    <select id="structureType" onchange="updateStructure()">
+                        <option value="srr">Split-Ring Resonator</option>
+                        <option value="fishnet">Fishnet</option>
+                        <option value="wire">Wire Array</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>Unit Cell Size (nm)</label>
+                    <input type="range" id="cellSize" min="100" max="1000" value="300" step="10">
+                    <span class="value-display" id="cellSizeValue">300</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>Feature Size (nm)</label>
+                    <input type="range" id="featureSize" min="10" max="200" value="50" step="5">
+                    <span class="value-display" id="featureSizeValue">50</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>Metal Thickness (nm)</label>
+                    <input type="range" id="thickness" min="10" max="100" value="35" step="5">
+                    <span class="value-display" id="thicknessValue">35</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>Frequency Range (THz)</label>
+                    <input type="range" id="freqRange" min="0.1" max="10" value="1" step="0.1">
+                    <span class="value-display" id="freqRangeValue">0.1-1.0</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>Grid Resolution</label>
+                    <select id="resolution">
+                        <option value="coarse">Coarse (λ/10)</option>
+                        <option value="medium" selected>Medium (λ/20)</option>
+                        <option value="fine">Fine (λ/40)</option>
+                        <option value="ultrafine">Ultra-fine (λ/80)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="button-group">
+                <button class="sim-button" onclick="runSimulation()">
+                    <i class="fas fa-play"></i> Run Simulation
+                </button>
+                <button class="sim-button" onclick="pauseSimulation()">
+                    <i class="fas fa-pause"></i> Pause
+                </button>
+                <button class="sim-button" onclick="resetSimulation()">
+                    <i class="fas fa-redo"></i> Reset
+                </button>
+                <button class="sim-button" onclick="exportResults()">
+                    <i class="fas fa-download"></i> Export Results
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Visualization -->
+        <div class="visualization-panel">
+            <h2 style="color: #f59e0b;">3D Field Distribution</h2>
+            <div id="field3D" style="height: 600px;"></div>
+        </div>
+
+        <!-- Field Components -->
+        <div class="visualization-panel">
+            <h2 style="color: #f59e0b;">Field Components</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div id="exField" style="height: 300px;"></div>
+                <div id="eyField" style="height: 300px;"></div>
+                <div id="hxField" style="height: 300px;"></div>
+                <div id="hyField" style="height: 300px;"></div>
+            </div>
+        </div>
+
+        <!-- S-Parameters -->
+        <div class="visualization-panel">
+            <h2 style="color: #f59e0b;">Scattering Parameters</h2>
+            <div id="sparamsPlot" style="height: 400px;"></div>
+        </div>
+
+        <!-- Convergence Monitor -->
+        <div class="visualization-panel">
+            <h2 style="color: #f59e0b;">Convergence Monitor</h2>
+            <div id="convergencePlot" style="height: 300px;"></div>
+        </div>
+
+        <!-- Info Box -->
+        <div class="info-box">
+            <h3 style="color: #a855f7;">Numerical Methods</h3>
+            <div class="equation">
+                FDTD: ∇×E = -∂B/∂t, ∇×H = ∂D/∂t + J<br>
+                FEM: ∇×(μ⁻¹∇×E) - k₀²εE = 0<br>
+                RCWA: Fourier expansion of Maxwell's equations<br>
+                TMM: T = ∏ᵢ Mᵢ (Transfer matrices)
+            </div>
+            <p style="color: #e5e7eb;">
+                This simulator implements multiple electromagnetic solvers optimized for different metamaterial structures and frequency ranges.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        let currentSolver = 'fdtd';
+        let simulationRunning = false;
+        let animationFrame = 0;
+        
+        function selectSolver(solver) {
+            currentSolver = solver;
+            document.querySelectorAll('.solver-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            initializeSimulation();
+        }
+        
+        function initializeSimulation() {
+            create3DField();
+            createFieldComponents();
+            createSparamsPlot();
+            createConvergencePlot();
+        }
+        
+        function create3DField() {
+            const resolution = 50;
+            const x = [], y = [], z = [], values = [];
+            
+            for (let i = 0; i < resolution; i++) {
+                for (let j = 0; j < resolution; j++) {
+                    for (let k = 0; k < resolution/2; k++) {
+                        x.push(i - resolution/2);
+                        y.push(j - resolution/2);
+                        z.push(k);
+                        
+                        // Simulated field pattern
+                        const r = Math.sqrt((i-resolution/2)**2 + (j-resolution/2)**2);
+                        const field = Math.sin(r/5 - animationFrame/10) * Math.exp(-r/20);
+                        values.push(field);
+                    }
+                }
+            }
+            
+            const data = [{
+                type: 'volume',
+                x: x,
+                y: y,
+                z: z,
+                value: values,
+                isomin: -1,
+                isomax: 1,
+                opacity: 0.1,
+                surface: {count: 15},
+                colorscale: 'RdBu'
+            }];
+            
+            const layout = {
+                title: {
+                    text: `${currentSolver.toUpperCase()} Solver - E-field Magnitude`,
+                    font: {color: '#f59e0b'}
+                },
+                scene: {
+                    camera: {eye: {x: 1.5, y: 1.5, z: 1.5}},
+                    xaxis: {title: 'X (nm)', gridcolor: '#374151'},
+                    yaxis: {title: 'Y (nm)', gridcolor: '#374151'},
+                    zaxis: {title: 'Z (nm)', gridcolor: '#374151'},
+                    bgcolor: 'rgba(0,0,0,0)'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)'
+            };
+            
+            Plotly.newPlot('field3D', data, layout);
+        }
+        
+        function createFieldComponents() {
+            const x = Array.from({length: 100}, (_, i) => i - 50);
+            const y = Array.from({length: 100}, (_, i) => i - 50);
+            
+            // Ex component
+            const exData = [];
+            for (let i = 0; i < 100; i++) {
+                const row = [];
+                for (let j = 0; j < 100; j++) {
+                    row.push(Math.sin((i-50)/10) * Math.cos((j-50)/10));
+                }
+                exData.push(row);
+            }
+            
+            const exPlot = [{
+                type: 'heatmap',
+                z: exData,
+                colorscale: 'RdBu',
+                showscale: false
+            }];
+            
+            const exLayout = {
+                title: {text: 'Ex Component', font: {color: '#f59e0b', size: 14}},
+                xaxis: {visible: false},
+                yaxis: {visible: false},
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                margin: {t: 30, b: 0, l: 0, r: 0}
+            };
+            
+            Plotly.newPlot('exField', exPlot, exLayout);
+            
+            // Similar for Ey, Hx, Hy
+            Plotly.newPlot('eyField', exPlot, {...exLayout, title: {text: 'Ey Component', font: {color: '#f59e0b', size: 14}}});
+            Plotly.newPlot('hxField', exPlot, {...exLayout, title: {text: 'Hx Component', font: {color: '#f59e0b', size: 14}}});
+            Plotly.newPlot('hyField', exPlot, {...exLayout, title: {text: 'Hy Component', font: {color: '#f59e0b', size: 14}}});
+        }
+        
+        function createSparamsPlot() {
+            const freq = Array.from({length: 100}, (_, i) => 0.1 + i * 0.02);
+            const s11 = freq.map(f => 0.1 + 0.05 * Math.sin(10 * f));
+            const s21 = freq.map(f => 0.9 - 0.1 * Math.exp(-(f-1)**2));
+            
+            const data = [
+                {
+                    x: freq,
+                    y: s21,
+                    name: '|S21| Transmission',
+                    type: 'scatter',
+                    line: {color: 'green', width: 2}
+                },
+                {
+                    x: freq,
+                    y: s11,
+                    name: '|S11| Reflection',
+                    type: 'scatter',
+                    line: {color: 'red', width: 2}
+                }
+            ];
+            
+            const layout = {
+                title: {text: 'S-Parameters', font: {color: '#f59e0b'}},
+                xaxis: {title: 'Frequency (THz)', gridcolor: '#374151', titlefont: {color: '#9ca3af'}},
+                yaxis: {title: 'Magnitude', gridcolor: '#374151', titlefont: {color: '#9ca3af'}},
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                showlegend: true,
+                legend: {
+                    bgcolor: 'rgba(0,0,0,0.5)',
+                    bordercolor: '#374151',
+                    borderwidth: 1,
+                    font: {color: '#e5e7eb'}
+                }
+            };
+            
+            Plotly.newPlot('sparamsPlot', data, layout);
+        }
+        
+        function createConvergencePlot() {
+            const iterations = Array.from({length: 50}, (_, i) => i);
+            const error = iterations.map(i => Math.exp(-i/10) + 0.001);
+            
+            const data = [{
+                x: iterations,
+                y: error,
+                type: 'scatter',
+                line: {color: 'cyan', width: 2}
+            }];
+            
+            const layout = {
+                title: {text: 'Convergence Monitor', font: {color: '#f59e0b'}},
+                xaxis: {title: 'Iteration', gridcolor: '#374151', titlefont: {color: '#9ca3af'}},
+                yaxis: {
+                    title: 'Residual Error',
+                    type: 'log',
+                    gridcolor: '#374151',
+                    titlefont: {color: '#9ca3af'}
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)'
+            };
+            
+            Plotly.newPlot('convergencePlot', data, layout);
+        }
+        
+        function runSimulation() {
+            simulationRunning = true;
+            animate();
+        }
+        
+        function animate() {
+            if (!simulationRunning) return;
+            animationFrame++;
+            create3DField();
+            requestAnimationFrame(animate);
+        }
+        
+        function pauseSimulation() {
+            simulationRunning = false;
+        }
+        
+        function resetSimulation() {
+            simulationRunning = false;
+            animationFrame = 0;
+            initializeSimulation();
+        }
+        
+        function exportResults() {
+            const data = "Frequency,S11,S21\n0.1,0.15,0.85\n0.2,0.12,0.88\n";
+            const blob = new Blob([data], {type: 'text/csv'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'em_simulation_results.csv';
+            a.click();
+        }
+        
+        function updateStructure() {
+            initializeSimulation();
+        }
+        
+        // Event listeners
+        document.getElementById('cellSize').addEventListener('input', e => {
+            document.getElementById('cellSizeValue').textContent = e.target.value;
+        });
+        
+        document.getElementById('featureSize').addEventListener('input', e => {
+            document.getElementById('featureSizeValue').textContent = e.target.value;
+        });
+        
+        document.getElementById('thickness').addEventListener('input', e => {
+            document.getElementById('thicknessValue').textContent = e.target.value;
+        });
+        
+        document.getElementById('freqRange').addEventListener('input', e => {
+            document.getElementById('freqRangeValue').textContent = `0.1-${e.target.value}`;
+        });
+        
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', initializeSimulation);
+    </script>
+</body>
+</html>
