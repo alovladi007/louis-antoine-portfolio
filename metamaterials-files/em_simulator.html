@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EM Field Simulator</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f0f0f;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { 
+            color: #ffd700; 
+            text-align: center; 
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        
+        /* Solver Tabs */
+        .solver-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+        .solver-tab {
+            padding: 12px 24px;
+            background: #2a2a2a;
+            border: 2px solid #444;
+            border-radius: 10px;
+            color: #e0e0e0;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1em;
+            font-weight: 600;
+        }
+        .solver-tab:hover {
+            background: #3a3a3a;
+            border-color: #666;
+        }
+        .solver-tab.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-color: #667eea;
+            color: white;
+        }
+        
+        /* Control Panel */
+        .control-panel {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        .control-panel h2 {
+            color: #ffd700;
+            margin-bottom: 20px;
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .control-group {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #444;
+        }
+        .control-group label {
+            display: block;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        .control-group select,
+        .control-group input[type="range"] {
+            width: 100%;
+            padding: 8px;
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 5px;
+            color: #e0e0e0;
+        }
+        .control-group input[type="range"] {
+            margin-top: 5px;
+        }
+        .value-display {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.9em;
+            margin-left: 10px;
+        }
+        
+        /* Buttons */
+        .button-group {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 25px;
+        }
+        .sim-button {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .sim-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+        .sim-button:active {
+            transform: translateY(0);
+        }
+        
+        /* Visualization */
+        .viz-panel {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        .viz-panel h2 {
+            color: #ffd700;
+            margin-bottom: 20px;
+        }
+        canvas {
+            display: block;
+            margin: 0 auto;
+            border: 1px solid #444;
+            border-radius: 10px;
+            background: #0a0a0a;
+        }
+        
+        /* Status */
+        .status {
+            background: #1a1a1a;
+            border: 1px solid #10b981;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            margin-bottom: 30px;
+            color: #10b981;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚡ EM Field Simulator</h1>
+        
+        <div id="status" class="status">
+            Ready to simulate. Select parameters and click Run.
+        </div>
+        
+        <!-- Solver Selection -->
+        <div class="solver-tabs">
+            <div class="solver-tab active" data-solver="fdtd">FDTD Solver</div>
+            <div class="solver-tab" data-solver="fem">FEM Solver</div>
+            <div class="solver-tab" data-solver="rcwa">RCWA Solver</div>
+            <div class="solver-tab" data-solver="tmm">TMM Solver</div>
+        </div>
+        
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <h2>Simulation Parameters</h2>
+            <div class="controls">
+                <div class="control-group">
+                    <label>Structure Type</label>
+                    <select id="structure">
+                        <option value="srr">Split-Ring Resonator</option>
+                        <option value="fishnet">Fishnet</option>
+                        <option value="wire">Wire Array</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>Cell Size (nm) <span class="value-display" id="cellSizeVal">300</span></label>
+                    <input type="range" id="cellSize" min="100" max="1000" value="300" step="10">
+                </div>
+                
+                <div class="control-group">
+                    <label>Feature Size (nm) <span class="value-display" id="featureSizeVal">50</span></label>
+                    <input type="range" id="featureSize" min="10" max="200" value="50" step="5">
+                </div>
+                
+                <div class="control-group">
+                    <label>Metal Thickness (nm) <span class="value-display" id="thicknessVal">35</span></label>
+                    <input type="range" id="thickness" min="10" max="100" value="35" step="5">
+                </div>
+                
+                <div class="control-group">
+                    <label>Frequency (THz) <span class="value-display" id="frequencyVal">1.0</span></label>
+                    <input type="range" id="frequency" min="0.1" max="5" value="1" step="0.1">
+                </div>
+                
+                <div class="control-group">
+                    <label>Grid Resolution</label>
+                    <select id="resolution">
+                        <option value="10">Coarse (λ/10)</option>
+                        <option value="20" selected>Medium (λ/20)</option>
+                        <option value="40">Fine (λ/40)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="button-group">
+                <button class="sim-button" id="runBtn">▶ Run Simulation</button>
+                <button class="sim-button" id="pauseBtn">⏸ Pause</button>
+                <button class="sim-button" id="resetBtn">🔄 Reset</button>
+                <button class="sim-button" id="exportBtn">💾 Export</button>
+            </div>
+        </div>
+        
+        <!-- Field Visualization -->
+        <div class="viz-panel">
+            <h2>Field Distribution</h2>
+            <canvas id="fieldCanvas" width="800" height="400"></canvas>
+        </div>
+        
+        <!-- S-Parameters -->
+        <div class="viz-panel">
+            <h2>S-Parameters</h2>
+            <canvas id="sparamsCanvas" width="800" height="300"></canvas>
+        </div>
+    </div>
+    
+    <script>
+        // Global variables
+        let currentSolver = 'fdtd';
+        let isRunning = false;
+        let animationId = null;
+        let time = 0;
+        
+        // Get elements
+        const fieldCanvas = document.getElementById('fieldCanvas');
+        const fieldCtx = fieldCanvas.getContext('2d');
+        const sparamsCanvas = document.getElementById('sparamsCanvas');
+        const sparamsCtx = sparamsCanvas.getContext('2d');
+        const status = document.getElementById('status');
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Simulator initialized');
+            setupEventListeners();
+            drawField();
+            drawSParams();
+        });
+        
+        // Setup event listeners
+        function setupEventListeners() {
+            // Solver tabs
+            document.querySelectorAll('.solver-tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    document.querySelectorAll('.solver-tab').forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    currentSolver = this.dataset.solver;
+                    updateStatus(`Switched to ${currentSolver.toUpperCase()} solver`);
+                });
+            });
+            
+            // Sliders
+            document.getElementById('cellSize').addEventListener('input', function() {
+                document.getElementById('cellSizeVal').textContent = this.value;
+            });
+            
+            document.getElementById('featureSize').addEventListener('input', function() {
+                document.getElementById('featureSizeVal').textContent = this.value;
+            });
+            
+            document.getElementById('thickness').addEventListener('input', function() {
+                document.getElementById('thicknessVal').textContent = this.value;
+            });
+            
+            document.getElementById('frequency').addEventListener('input', function() {
+                document.getElementById('frequencyVal').textContent = parseFloat(this.value).toFixed(1);
+            });
+            
+            // Buttons
+            document.getElementById('runBtn').addEventListener('click', runSimulation);
+            document.getElementById('pauseBtn').addEventListener('click', pauseSimulation);
+            document.getElementById('resetBtn').addEventListener('click', resetSimulation);
+            document.getElementById('exportBtn').addEventListener('click', exportData);
+        }
+        
+        // Update status
+        function updateStatus(message) {
+            status.textContent = message;
+        }
+        
+        // Draw field
+        function drawField() {
+            const width = fieldCanvas.width;
+            const height = fieldCanvas.height;
+            
+            // Clear canvas
+            fieldCtx.fillStyle = '#0a0a0a';
+            fieldCtx.fillRect(0, 0, width, height);
+            
+            // Draw field pattern
+            const freq = parseFloat(document.getElementById('frequency').value);
+            const cellSize = parseInt(document.getElementById('cellSize').value);
+            
+            for (let x = 0; x < width; x += 5) {
+                for (let y = 0; y < height; y += 5) {
+                    const r = Math.sqrt((x - width/2)**2 + (y - height/2)**2);
+                    const field = Math.sin(r/20 - time * freq) * Math.exp(-r/300);
+                    const intensity = Math.abs(field);
+                    
+                    const hue = 240 - intensity * 240;
+                    fieldCtx.fillStyle = `hsla(${hue}, 100%, 50%, ${intensity})`;
+                    fieldCtx.fillRect(x, y, 5, 5);
+                }
+            }
+            
+            // Draw metamaterial structure
+            fieldCtx.strokeStyle = '#667eea';
+            fieldCtx.lineWidth = 2;
+            fieldCtx.strokeRect(width/2 - 100, height/2 - 50, 200, 100);
+            
+            // Label
+            fieldCtx.fillStyle = '#e0e0e0';
+            fieldCtx.font = '14px sans-serif';
+            fieldCtx.fillText(`${currentSolver.toUpperCase()} | Time: ${time.toFixed(1)}`, 10, 20);
+        }
+        
+        // Draw S-parameters
+        function drawSParams() {
+            const width = sparamsCanvas.width;
+            const height = sparamsCanvas.height;
+            
+            // Clear
+            sparamsCtx.fillStyle = '#0a0a0a';
+            sparamsCtx.fillRect(0, 0, width, height);
+            
+            // Draw axes
+            sparamsCtx.strokeStyle = '#444';
+            sparamsCtx.lineWidth = 1;
+            sparamsCtx.beginPath();
+            sparamsCtx.moveTo(50, height - 30);
+            sparamsCtx.lineTo(width - 20, height - 30);
+            sparamsCtx.moveTo(50, 20);
+            sparamsCtx.lineTo(50, height - 30);
+            sparamsCtx.stroke();
+            
+            // Draw S21 (transmission)
+            sparamsCtx.strokeStyle = '#10b981';
+            sparamsCtx.lineWidth = 2;
+            sparamsCtx.beginPath();
+            for (let x = 0; x < width - 70; x += 2) {
+                const freq = x / (width - 70) * 5;
+                const s21 = 0.9 - 0.3 * Math.exp(-(freq - 2.5)**2);
+                const y = height - 30 - s21 * (height - 50);
+                if (x === 0) sparamsCtx.moveTo(x + 50, y);
+                else sparamsCtx.lineTo(x + 50, y);
+            }
+            sparamsCtx.stroke();
+            
+            // Draw S11 (reflection)
+            sparamsCtx.strokeStyle = '#ef4444';
+            sparamsCtx.lineWidth = 2;
+            sparamsCtx.beginPath();
+            for (let x = 0; x < width - 70; x += 2) {
+                const freq = x / (width - 70) * 5;
+                const s11 = 0.1 + 0.05 * Math.sin(freq * 10);
+                const y = height - 30 - s11 * (height - 50);
+                if (x === 0) sparamsCtx.moveTo(x + 50, y);
+                else sparamsCtx.lineTo(x + 50, y);
+            }
+            sparamsCtx.stroke();
+            
+            // Labels
+            sparamsCtx.fillStyle = '#e0e0e0';
+            sparamsCtx.font = '12px sans-serif';
+            sparamsCtx.fillText('Frequency (THz)', width/2 - 40, height - 5);
+            
+            // Legend
+            sparamsCtx.fillStyle = '#10b981';
+            sparamsCtx.fillRect(width - 100, 30, 10, 10);
+            sparamsCtx.fillStyle = '#e0e0e0';
+            sparamsCtx.fillText('S21', width - 85, 39);
+            
+            sparamsCtx.fillStyle = '#ef4444';
+            sparamsCtx.fillRect(width - 100, 50, 10, 10);
+            sparamsCtx.fillStyle = '#e0e0e0';
+            sparamsCtx.fillText('S11', width - 85, 59);
+        }
+        
+        // Animation
+        function animate() {
+            if (!isRunning) return;
+            
+            time += 0.1;
+            drawField();
+            
+            animationId = requestAnimationFrame(animate);
+        }
+        
+        // Control functions
+        function runSimulation() {
+            if (isRunning) return;
+            isRunning = true;
+            updateStatus('🔄 Simulation running...');
+            animate();
+        }
+        
+        function pauseSimulation() {
+            isRunning = false;
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+            updateStatus('⏸ Simulation paused');
+        }
+        
+        function resetSimulation() {
+            isRunning = false;
+            time = 0;
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+            drawField();
+            drawSParams();
+            updateStatus('🔄 Simulation reset');
+        }
+        
+        function exportData() {
+            const data = [];
+            for (let f = 0.5; f <= 5; f += 0.1) {
+                const s21 = 0.9 - 0.3 * Math.exp(-(f - 2.5)**2);
+                const s11 = 0.1 + 0.05 * Math.sin(f * 10);
+                data.push(`${f.toFixed(2)},${s11.toFixed(4)},${s21.toFixed(4)}`);
+            }
+            
+            const csv = 'Frequency(THz),S11,S21\n' + data.join('\n');
+            const blob = new Blob([csv], {type: 'text/csv'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `simulation_${currentSolver}_${Date.now()}.csv`;
+            a.click();
+            
+            updateStatus('✅ Data exported successfully!');
+        }
+    </script>
+</body>
+</html>

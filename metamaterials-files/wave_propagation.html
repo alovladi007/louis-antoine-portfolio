@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wave Propagation Through Metamaterials</title>
+    <style>
+        body { background: #0f0f0f; color: #e0e0e0; font-family: Arial, sans-serif; padding: 20px; margin: 0; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { color: #ffd700; text-align: center; margin-bottom: 30px; }
+        .control-panel { background: #1a1a1a; border: 1px solid #333; border-radius: 15px; padding: 20px; margin-bottom: 20px; }
+        .controls { display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
+        label { color: #667eea; font-weight: 600; }
+        input[type="range"] { width: 150px; }
+        .value { background: #667eea; color: white; padding: 2px 8px; border-radius: 10px; margin-left: 5px; }
+        button { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; margin: 5px; }
+        button:hover { transform: scale(1.05); }
+        canvas { display: block; margin: 20px auto; border: 1px solid #444; border-radius: 10px; background: #0a0a0a; }
+        .info { background: #1a1a1a; border: 1px solid #333; border-radius: 10px; padding: 15px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌊 Wave Propagation Through Metamaterials</h1>
+        
+        <div class="control-panel">
+            <div class="controls">
+                <div>
+                    <label>Refractive Index: <span class="value" id="nVal">-1.5</span></label>
+                    <input type="range" id="refIndex" min="-3" max="3" value="-1.5" step="0.1">
+                </div>
+                <div>
+                    <label>Frequency (THz): <span class="value" id="freqVal">1.0</span></label>
+                    <input type="range" id="frequency" min="0.5" max="3" value="1" step="0.1">
+                </div>
+                <div>
+                    <label>Speed: <span class="value" id="speedVal">5</span></label>
+                    <input type="range" id="speed" min="1" max="10" value="5">
+                </div>
+                <button id="playBtn">▶ Play</button>
+                <button id="pauseBtn">⏸ Pause</button>
+                <button id="resetBtn">🔄 Reset</button>
+            </div>
+        </div>
+        
+        <canvas id="waveCanvas" width="900" height="500"></canvas>
+        
+        <div class="info">
+            <h3 style="color: #667eea;">Physics Explanation</h3>
+            <p>This simulation shows electromagnetic waves propagating through a metamaterial slab. When the refractive index is negative (n < 0), the phase velocity is opposite to the group velocity, creating a "backward wave" effect.</p>
+            <ul>
+                <li><strong>Blue region:</strong> Normal material (n > 0)</li>
+                <li><strong>Purple region:</strong> Metamaterial (adjustable n)</li>
+                <li><strong>Wave pattern:</strong> Shows phase propagation</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        const canvas = document.getElementById('waveCanvas');
+        const ctx = canvas.getContext('2d');
+        let animating = false;
+        let time = 0;
+        
+        // Controls
+        const refIndexSlider = document.getElementById('refIndex');
+        const frequencySlider = document.getElementById('frequency');
+        const speedSlider = document.getElementById('speed');
+        
+        refIndexSlider.addEventListener('input', e => {
+            document.getElementById('nVal').textContent = parseFloat(e.target.value).toFixed(1);
+        });
+        
+        frequencySlider.addEventListener('input', e => {
+            document.getElementById('freqVal').textContent = parseFloat(e.target.value).toFixed(1);
+        });
+        
+        speedSlider.addEventListener('input', e => {
+            document.getElementById('speedVal').textContent = e.target.value;
+        });
+        
+        document.getElementById('playBtn').addEventListener('click', () => {
+            animating = true;
+            animate();
+        });
+        
+        document.getElementById('pauseBtn').addEventListener('click', () => {
+            animating = false;
+        });
+        
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            animating = false;
+            time = 0;
+            drawWave();
+        });
+        
+        function drawWave() {
+            const width = canvas.width;
+            const height = canvas.height;
+            const n = parseFloat(refIndexSlider.value);
+            const freq = parseFloat(frequencySlider.value);
+            const speed = parseInt(speedSlider.value);
+            
+            // Clear canvas
+            ctx.fillStyle = '#0a0a0a';
+            ctx.fillRect(0, 0, width, height);
+            
+            // Draw regions
+            ctx.fillStyle = 'rgba(66, 135, 245, 0.1)';
+            ctx.fillRect(0, 0, 300, height);
+            ctx.fillRect(600, 0, 300, height);
+            
+            ctx.fillStyle = 'rgba(147, 51, 234, 0.1)';
+            ctx.fillRect(300, 0, 300, height);
+            
+            // Draw wave
+            ctx.strokeStyle = '#00ff00';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            
+            for (let x = 0; x < width; x++) {
+                let y;
+                if (x < 300) {
+                    // Before metamaterial
+                    y = height/2 + 100 * Math.sin(2 * Math.PI * freq * (x/100 - time * speed/10));
+                } else if (x < 600) {
+                    // Inside metamaterial
+                    const localX = x - 300;
+                    if (n < 0) {
+                        // Backward wave
+                        y = height/2 + 100 * Math.sin(2 * Math.PI * freq * n * (localX/100 + time * speed/10));
+                    } else {
+                        y = height/2 + 100 * Math.sin(2 * Math.PI * freq * n * (localX/100 - time * speed/10));
+                    }
+                } else {
+                    // After metamaterial
+                    y = height/2 + 100 * Math.sin(2 * Math.PI * freq * ((x-600)/100 - time * speed/10));
+                }
+                
+                if (x === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            
+            // Draw boundaries
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(300, 0);
+            ctx.lineTo(300, height);
+            ctx.moveTo(600, 0);
+            ctx.lineTo(600, height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Labels
+            ctx.fillStyle = '#fff';
+            ctx.font = '14px Arial';
+            ctx.fillText('Air (n=1)', 120, 30);
+            ctx.fillText(`Metamaterial (n=${n.toFixed(1)})`, 380, 30);
+            ctx.fillText('Air (n=1)', 720, 30);
+        }
+        
+        function animate() {
+            if (!animating) return;
+            time += 0.01;
+            drawWave();
+            requestAnimationFrame(animate);
+        }
+        
+        // Initial draw
+        drawWave();
+    </script>
+</body>
+</html>
