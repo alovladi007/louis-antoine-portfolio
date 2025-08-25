@@ -190,10 +190,10 @@
 
         <!-- Model Selector -->
         <div class="model-selector">
-            <button class="model-button active" onclick="selectModel('lorentz-drude')">Lorentz-Drude Model</button>
-            <button class="model-button" onclick="selectModel('srr')">Split-Ring Resonator</button>
-            <button class="model-button" onclick="selectModel('fishnet')">Fishnet Structure</button>
-            <button class="model-button" onclick="selectModel('custom')">Custom Parameters</button>
+            <button class="model-button active" onclick="selectModel('lorentz-drude', event)">Lorentz-Drude Model</button>
+            <button class="model-button" onclick="selectModel('srr', event)">Split-Ring Resonator</button>
+            <button class="model-button" onclick="selectModel('fishnet', event)">Fishnet Structure</button>
+            <button class="model-button" onclick="selectModel('custom', event)">Custom Parameters</button>
         </div>
 
         <!-- Control Panel -->
@@ -342,14 +342,27 @@
         // Physical constants
         const c = 299792458; // Speed of light in m/s
         
-        function selectModel(model) {
+        function selectModel(model, event) {
             currentModel = model;
             
             // Update button states
             document.querySelectorAll('.model-button').forEach(btn => {
                 btn.classList.remove('active');
             });
-            event.target.classList.add('active');
+            if (event && event.target) {
+                event.target.classList.add('active');
+            } else {
+                // Find and activate the button by model name
+                document.querySelectorAll('.model-button').forEach(btn => {
+                    if (btn.textContent.toLowerCase().includes(model.toLowerCase()) || 
+                        (model === 'lorentz-drude' && btn.textContent.includes('Lorentz-Drude')) ||
+                        (model === 'srr' && btn.textContent.includes('Split-Ring')) ||
+                        (model === 'fishnet' && btn.textContent.includes('Fishnet')) ||
+                        (model === 'custom' && btn.textContent.includes('Custom'))) {
+                        btn.classList.add('active');
+                    }
+                });
+            }
             
             // Set parameters based on model
             switch(model) {
@@ -381,12 +394,15 @@
         }
         
         function calculateDispersion() {
-            const wp = parseFloat(document.getElementById('plasmaFreq').value);
-            const w0 = parseFloat(document.getElementById('resonanceFreq').value);
-            const ge = parseFloat(document.getElementById('electricDamping').value);
-            const gm = parseFloat(document.getElementById('magneticDamping').value);
-            const F = parseFloat(document.getElementById('oscillatorStrength').value);
-            const a = parseFloat(document.getElementById('latticePeriod').value) * 1e-9; // Convert to meters
+            try {
+                const wp = parseFloat(document.getElementById('plasmaFreq').value);
+                const w0 = parseFloat(document.getElementById('resonanceFreq').value);
+                const ge = parseFloat(document.getElementById('electricDamping').value);
+                const gm = parseFloat(document.getElementById('magneticDamping').value);
+                const F = parseFloat(document.getElementById('oscillatorStrength').value);
+                const a = parseFloat(document.getElementById('latticePeriod').value) * 1e-9; // Convert to meters
+                
+                console.log('Calculating dispersion with params:', {wp, w0, ge, gm, F, a});
             
             // Frequency array
             const freqTHz = [];
@@ -454,6 +470,10 @@
             
             // Update statistics
             updateStatistics(freqTHz, n_real, n_imag);
+            } catch (error) {
+                console.error('Error calculating dispersion:', error);
+                alert('Error calculating dispersion. Please check the console for details.');
+            }
         }
         
         function plotDispersion(freq, k_real, k_imag) {
@@ -1068,7 +1088,21 @@
         
         // Initialize on load
         document.addEventListener('DOMContentLoaded', () => {
-            calculateDispersion();
+            // Initialize values display
+            updateAllValues();
+            
+            // Wait for Plotly to load
+            if (typeof Plotly === 'undefined') {
+                console.error('Plotly library not loaded!');
+                alert('Error: Plotly library not loaded. Please refresh the page.');
+                return;
+            }
+            
+            // Calculate initial dispersion
+            setTimeout(() => {
+                console.log('Initializing dispersion calculation...');
+                calculateDispersion();
+            }, 100);
         });
     </script>
 </body>
