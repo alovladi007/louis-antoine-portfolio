@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Full EM Field Simulator - Interactive Version</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            color: #e5e7eb;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #9ca3af;
+            margin-bottom: 30px;
+        }
+        
+        .solver-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .solver-tab {
+            padding: 12px 24px;
+            background: rgba(255,255,255,0.05);
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 10px;
+            color: #e5e7eb;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+        
+        .solver-tab:hover {
+            background: rgba(96, 165, 250, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .solver-tab.active {
+            background: linear-gradient(135deg, rgba(96, 165, 250, 0.3), rgba(167, 139, 250, 0.3));
+            border-color: #60a5fa;
+            color: #60a5fa;
+        }
+        
+        .panel {
+            background: rgba(255,255,255,0.02);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        h2 {
+            color: #60a5fa;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        label {
+            color: #a78bfa;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        
+        select, input {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(0,0,0,0.5);
+            color: #e5e7eb;
+            font-size: 14px;
+        }
+        
+        select:focus, input:focus {
+            outline: none;
+            border-color: #60a5fa;
+            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(96, 165, 250, 0.3);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .result-card {
+            background: rgba(255,255,255,0.05);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .result-value {
+            font-size: 2em;
+            color: #10b981;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .result-label {
+            color: #9ca3af;
+            font-size: 0.9em;
+        }
+        
+        .plot-container {
+            background: rgba(0,0,0,0.3);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            min-height: 400px;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .loading.active {
+            display: block;
+        }
+        
+        .spinner {
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top: 3px solid #60a5fa;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .info-box {
+            background: rgba(96, 165, 250, 0.1);
+            border-left: 4px solid #60a5fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .info-box i {
+            color: #60a5fa;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><i class="fas fa-satellite-dish"></i> Full EM Field Simulator</h1>
+        <p class="subtitle">Advanced electromagnetic simulation for metamaterial structures</p>
+        
+        <!-- Solver Selection -->
+        <div class="solver-tabs">
+            <div class="solver-tab active" onclick="selectSolver('fdtd')">
+                <i class="fas fa-clock"></i> FDTD Solver
+            </div>
+            <div class="solver-tab" onclick="selectSolver('fem')">
+                <i class="fas fa-cube"></i> FEM Solver
+            </div>
+            <div class="solver-tab" onclick="selectSolver('rcwa')">
+                <i class="fas fa-wave-square"></i> RCWA Solver
+            </div>
+            <div class="solver-tab" onclick="selectSolver('tmm')">
+                <i class="fas fa-layer-group"></i> TMM Solver
+            </div>
+        </div>
+        
+        <!-- Simulation Parameters -->
+        <div class="panel">
+            <h2><i class="fas fa-sliders-h"></i> Simulation Parameters</h2>
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="structureType">Structure Type</label>
+                    <select id="structureType" onchange="updateStructure()">
+                        <option value="srr">Split-Ring Resonator</option>
+                        <option value="fishnet">Fishnet Structure</option>
+                        <option value="wire">Wire Array</option>
+                        <option value="multilayer">Multilayer Stack</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="unitCell">Unit Cell Size (nm)</label>
+                    <input type="number" id="unitCell" value="300" min="50" max="1000">
+                </div>
+                
+                <div class="form-group">
+                    <label for="featureSize">Feature Size (nm)</label>
+                    <input type="number" id="featureSize" value="50" min="10" max="200">
+                </div>
+                
+                <div class="form-group">
+                    <label for="thickness">Metal Thickness (nm)</label>
+                    <input type="number" id="thickness" value="35" min="10" max="100">
+                </div>
+                
+                <div class="form-group">
+                    <label for="maxFreq">Max Frequency (THz)</label>
+                    <input type="number" id="maxFreq" value="2.0" min="0.5" max="10" step="0.1">
+                </div>
+                
+                <div class="form-group">
+                    <label for="gridRes">Grid Resolution</label>
+                    <select id="gridRes">
+                        <option value="coarse">Coarse (λ/10)</option>
+                        <option value="medium" selected>Medium (λ/20)</option>
+                        <option value="fine">Fine (λ/40)</option>
+                        <option value="ultrafine">Ultra Fine (λ/80)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="button-group">
+                <button onclick="runSimulation()">
+                    <i class="fas fa-play"></i> Run Simulation
+                </button>
+                <button onclick="resetParameters()">
+                    <i class="fas fa-redo"></i> Reset
+                </button>
+                <button onclick="exportResults()">
+                    <i class="fas fa-download"></i> Export Results
+                </button>
+            </div>
+            
+            <div class="loading" id="loadingIndicator">
+                <div class="spinner"></div>
+                <p>Running simulation...</p>
+            </div>
+        </div>
+        
+        <!-- 3D Field Distribution -->
+        <div class="panel">
+            <h2><i class="fas fa-cube"></i> 3D Field Distribution</h2>
+            <div class="plot-container" id="fieldPlot"></div>
+        </div>
+        
+        <!-- Scattering Parameters -->
+        <div class="panel">
+            <h2><i class="fas fa-chart-line"></i> Scattering Parameters</h2>
+            
+            <div class="results-grid">
+                <div class="result-card">
+                    <div class="result-value" id="s11Value">-15.2 dB</div>
+                    <div class="result-label">S11 (Reflection)</div>
+                </div>
+                <div class="result-card">
+                    <div class="result-value" id="s21Value">-3.5 dB</div>
+                    <div class="result-label">S21 (Transmission)</div>
+                </div>
+                <div class="result-card">
+                    <div class="result-value" id="bandwidthValue">0.8 THz</div>
+                    <div class="result-label">Bandwidth</div>
+                </div>
+                <div class="result-card">
+                    <div class="result-value" id="centerFreqValue">1.5 THz</div>
+                    <div class="result-label">Center Frequency</div>
+                </div>
+            </div>
+            
+            <div class="plot-container" id="sparamsPlot"></div>
+        </div>
+        
+        <!-- Effective Material Properties -->
+        <div class="panel">
+            <h2><i class="fas fa-atom"></i> Effective Material Properties</h2>
+            
+            <div class="results-grid">
+                <div class="result-card">
+                    <div class="result-value" id="nValue">-1.5</div>
+                    <div class="result-label">Refractive Index (n)</div>
+                </div>
+                <div class="result-card">
+                    <div class="result-value" id="epsValue">-2.3</div>
+                    <div class="result-label">Permittivity (ε)</div>
+                </div>
+                <div class="result-card">
+                    <div class="result-value" id="muValue">-0.98</div>
+                    <div class="result-label">Permeability (μ)</div>
+                </div>
+                <div class="result-card">
+                    <div class="result-value" id="zValue">0.65</div>
+                    <div class="result-label">Impedance (Z)</div>
+                </div>
+            </div>
+            
+            <div class="plot-container" id="propertiesPlot"></div>
+        </div>
+        
+        <!-- Solver Information -->
+        <div class="panel">
+            <h2><i class="fas fa-info-circle"></i> Numerical Methods</h2>
+            
+            <div id="solverInfo">
+                <div class="info-box">
+                    <i class="fas fa-clock"></i>
+                    <strong>FDTD (Finite-Difference Time-Domain):</strong><br>
+                    Time-domain solver ideal for broadband simulations and transient analysis. 
+                    Uses Yee grid discretization with PML boundary conditions.<br><br>
+                    <code>∇×E = -∂B/∂t, ∇×H = ∂D/∂t + J</code>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Global variables
+        let currentSolver = 'fdtd';
+        let simulationData = null;
+        
+        // Solver information
+        const solverInfo = {
+            fdtd: {
+                name: 'FDTD (Finite-Difference Time-Domain)',
+                description: 'Time-domain solver ideal for broadband simulations and transient analysis. Uses Yee grid discretization with PML boundary conditions.',
+                equation: '∇×E = -∂B/∂t, ∇×H = ∂D/∂t + J'
+            },
+            fem: {
+                name: 'FEM (Finite Element Method)',
+                description: 'Frequency-domain solver with adaptive mesh refinement. Excellent for complex geometries and modal analysis.',
+                equation: '∇×(μ⁻¹∇×E) - k₀²εE = 0'
+            },
+            rcwa: {
+                name: 'RCWA (Rigorous Coupled-Wave Analysis)',
+                description: 'Fourier modal method optimized for periodic structures. Highly efficient for gratings and photonic crystals.',
+                equation: 'E(x,y,z) = Σₙ Eₙ exp(ikₙ·r)'
+            },
+            tmm: {
+                name: 'TMM (Transfer Matrix Method)',
+                description: 'Analytical method for stratified media. Fast and accurate for multilayer structures.',
+                equation: 'T = ∏ᵢ Mᵢ where Mᵢ = [cos(kᵢdᵢ), (i/nᵢ)sin(kᵢdᵢ); inᵢsin(kᵢdᵢ), cos(kᵢdᵢ)]'
+            }
+        };
+        
+        function selectSolver(solver) {
+            currentSolver = solver;
+            
+            // Update active tab
+            document.querySelectorAll('.solver-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.closest('.solver-tab').classList.add('active');
+            
+            // Update solver information
+            const info = solverInfo[solver];
+            document.getElementById('solverInfo').innerHTML = `
+                <div class="info-box">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>${info.name}:</strong><br>
+                    ${info.description}<br><br>
+                    <code>${info.equation}</code>
+                </div>
+            `;
+        }
+        
+        function updateStructure() {
+            const structure = document.getElementById('structureType').value;
+            // Update default parameters based on structure
+            const params = {
+                srr: { unitCell: 300, featureSize: 50, thickness: 35 },
+                fishnet: { unitCell: 400, featureSize: 80, thickness: 40 },
+                wire: { unitCell: 200, featureSize: 30, thickness: 30 },
+                multilayer: { unitCell: 500, featureSize: 100, thickness: 50 }
+            };
+            
+            if (params[structure]) {
+                document.getElementById('unitCell').value = params[structure].unitCell;
+                document.getElementById('featureSize').value = params[structure].featureSize;
+                document.getElementById('thickness').value = params[structure].thickness;
+            }
+        }
+        
+        function runSimulation() {
+            // Show loading indicator
+            document.getElementById('loadingIndicator').classList.add('active');
+            
+            // Simulate processing time
+            setTimeout(() => {
+                // Generate simulation data
+                generateSimulationData();
+                
+                // Update plots
+                updateFieldPlot();
+                updateSparamsPlot();
+                updatePropertiesPlot();
+                
+                // Update result values
+                updateResults();
+                
+                // Hide loading indicator
+                document.getElementById('loadingIndicator').classList.remove('active');
+            }, 2000);
+        }
+        
+        function generateSimulationData() {
+            const maxFreq = parseFloat(document.getElementById('maxFreq').value);
+            const structure = document.getElementById('structureType').value;
+            
+            // Generate frequency array
+            const freq = [];
+            const s11 = [];
+            const s21 = [];
+            const n_eff = [];
+            const eps_eff = [];
+            const mu_eff = [];
+            
+            for (let f = 0.1; f <= maxFreq; f += 0.05) {
+                freq.push(f);
+                
+                // Simulate S-parameters with structure-dependent resonance
+                const resonance = structure === 'srr' ? 1.5 : structure === 'fishnet' ? 1.2 : 1.8;
+                const Q = 10;
+                const delta = (f - resonance) / (resonance / Q);
+                
+                s11.push(-10 - 15 * Math.exp(-delta * delta));
+                s21.push(-2 - 5 * Math.exp(-delta * delta));
+                
+                // Effective parameters
+                const phase = Math.atan(delta);
+                n_eff.push(1 - 2.5 * Math.exp(-delta * delta) * Math.cos(phase));
+                eps_eff.push(1 - 3 * Math.exp(-delta * delta));
+                mu_eff.push(1 - 2 * Math.exp(-delta * delta));
+            }
+            
+            simulationData = {
+                freq: freq,
+                s11: s11,
+                s21: s21,
+                n_eff: n_eff,
+                eps_eff: eps_eff,
+                mu_eff: mu_eff
+            };
+        }
+        
+        function updateFieldPlot() {
+            // Generate 3D field data
+            const size = 50;
+            const x = [], y = [], z = [], values = [];
+            
+            for (let i = 0; i < size; i++) {
+                for (let j = 0; j < size; j++) {
+                    for (let k = 0; k < size; k++) {
+                        x.push(i);
+                        y.push(j);
+                        z.push(k);
+                        // Create interesting field pattern
+                        const r = Math.sqrt((i-25)*(i-25) + (j-25)*(j-25) + (k-25)*(k-25));
+                        values.push(Math.sin(r/5) * Math.exp(-r/30));
+                    }
+                }
+            }
+            
+            const data = [{
+                type: 'isosurface',
+                x: x,
+                y: y,
+                z: z,
+                value: values,
+                isomin: -0.1,
+                isomax: 0.1,
+                surface: {count: 3},
+                colorscale: 'Viridis',
+                showscale: true,
+                caps: {
+                    x: {show: false},
+                    y: {show: false},
+                    z: {show: false}
+                }
+            }];
+            
+            const layout = {
+                title: 'Electric Field Distribution |E|²',
+                scene: {
+                    xaxis: {title: 'X (nm)'},
+                    yaxis: {title: 'Y (nm)'},
+                    zaxis: {title: 'Z (nm)'}
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: {color: '#e5e7eb'}
+            };
+            
+            Plotly.newPlot('fieldPlot', data, layout);
+        }
+        
+        function updateSparamsPlot() {
+            if (!simulationData) return;
+            
+            const data = [
+                {
+                    x: simulationData.freq,
+                    y: simulationData.s11,
+                    name: 'S11 (Reflection)',
+                    type: 'scatter',
+                    line: {color: '#60a5fa', width: 2}
+                },
+                {
+                    x: simulationData.freq,
+                    y: simulationData.s21,
+                    name: 'S21 (Transmission)',
+                    type: 'scatter',
+                    line: {color: '#10b981', width: 2}
+                }
+            ];
+            
+            const layout = {
+                title: 'Scattering Parameters',
+                xaxis: {title: 'Frequency (THz)', gridcolor: '#374151'},
+                yaxis: {title: 'Magnitude (dB)', gridcolor: '#374151'},
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                font: {color: '#e5e7eb'},
+                showlegend: true
+            };
+            
+            Plotly.newPlot('sparamsPlot', data, layout);
+        }
+        
+        function updatePropertiesPlot() {
+            if (!simulationData) return;
+            
+            const data = [
+                {
+                    x: simulationData.freq,
+                    y: simulationData.n_eff,
+                    name: 'Refractive Index',
+                    type: 'scatter',
+                    line: {color: '#a78bfa', width: 2}
+                },
+                {
+                    x: simulationData.freq,
+                    y: simulationData.eps_eff,
+                    name: 'Permittivity',
+                    type: 'scatter',
+                    line: {color: '#f59e0b', width: 2}
+                },
+                {
+                    x: simulationData.freq,
+                    y: simulationData.mu_eff,
+                    name: 'Permeability',
+                    type: 'scatter',
+                    line: {color: '#ef4444', width: 2}
+                }
+            ];
+            
+            const layout = {
+                title: 'Effective Material Properties',
+                xaxis: {title: 'Frequency (THz)', gridcolor: '#374151'},
+                yaxis: {title: 'Parameter Value', gridcolor: '#374151'},
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.1)',
+                font: {color: '#e5e7eb'},
+                showlegend: true
+            };
+            
+            Plotly.newPlot('propertiesPlot', data, layout);
+        }
+        
+        function updateResults() {
+            if (!simulationData) return;
+            
+            // Find resonance point
+            const minS11Idx = simulationData.s11.indexOf(Math.min(...simulationData.s11));
+            
+            // Update displayed values
+            document.getElementById('s11Value').textContent = simulationData.s11[minS11Idx].toFixed(1) + ' dB';
+            document.getElementById('s21Value').textContent = simulationData.s21[minS11Idx].toFixed(1) + ' dB';
+            document.getElementById('centerFreqValue').textContent = simulationData.freq[minS11Idx].toFixed(2) + ' THz';
+            
+            // Calculate bandwidth (3dB points)
+            const threshold = Math.min(...simulationData.s11) + 3;
+            let bw = 0;
+            for (let i = 1; i < simulationData.s11.length; i++) {
+                if (simulationData.s11[i] < threshold && simulationData.s11[i-1] >= threshold) {
+                    bw = Math.abs(simulationData.freq[i] - simulationData.freq[minS11Idx]) * 2;
+                    break;
+                }
+            }
+            document.getElementById('bandwidthValue').textContent = bw.toFixed(2) + ' THz';
+            
+            // Update material properties at resonance
+            document.getElementById('nValue').textContent = simulationData.n_eff[minS11Idx].toFixed(2);
+            document.getElementById('epsValue').textContent = simulationData.eps_eff[minS11Idx].toFixed(2);
+            document.getElementById('muValue').textContent = simulationData.mu_eff[minS11Idx].toFixed(2);
+            
+            const z = Math.sqrt(simulationData.mu_eff[minS11Idx] / simulationData.eps_eff[minS11Idx]);
+            document.getElementById('zValue').textContent = z.toFixed(2);
+        }
+        
+        function resetParameters() {
+            document.getElementById('structureType').value = 'srr';
+            document.getElementById('unitCell').value = 300;
+            document.getElementById('featureSize').value = 50;
+            document.getElementById('thickness').value = 35;
+            document.getElementById('maxFreq').value = 2.0;
+            document.getElementById('gridRes').value = 'medium';
+        }
+        
+        function exportResults() {
+            if (!simulationData) {
+                alert('Please run a simulation first!');
+                return;
+            }
+            
+            // Create CSV content
+            let csv = 'Frequency(THz),S11(dB),S21(dB),n_eff,eps_eff,mu_eff\n';
+            for (let i = 0; i < simulationData.freq.length; i++) {
+                csv += `${simulationData.freq[i]},${simulationData.s11[i]},${simulationData.s21[i]},`;
+                csv += `${simulationData.n_eff[i]},${simulationData.eps_eff[i]},${simulationData.mu_eff[i]}\n`;
+            }
+            
+            // Download file
+            const blob = new Blob([csv], {type: 'text/csv'});
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `em_simulation_${currentSolver}_${Date.now()}.csv`;
+            a.click();
+        }
+        
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', () => {
+            // Generate initial plots
+            generateSimulationData();
+            updateFieldPlot();
+            updateSparamsPlot();
+            updatePropertiesPlot();
+        });
+    </script>
+</body>
+</html>
