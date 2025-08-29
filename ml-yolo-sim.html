@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLO Detection - Real-time Defect Localization</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a0a 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: rgba(245, 158, 11, 0.05);
+            border-radius: 20px;
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+        
+        h1 {
+            font-size: 3rem;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+        
+        .control-panel {
+            background: rgba(20, 20, 20, 0.9);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            border-radius: 15px;
+            padding: 1.5rem;
+            max-width: 350px;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 0.75rem;
+            margin-top: 0.5rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(245, 158, 11, 0.3);
+        }
+        
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .control-group label {
+            display: block;
+            color: #f59e0b;
+            margin-bottom: 0.5rem;
+        }
+        
+        .control-group input,
+        .control-group select {
+            width: 100%;
+            padding: 0.5rem;
+            background: #222;
+            border: 1px solid #444;
+            color: #e0e0e0;
+            border-radius: 5px;
+        }
+        
+        .viz-panel {
+            background: rgba(20, 20, 20, 0.9);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .panel-title {
+            color: #f59e0b;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
+        
+        .simulation-layout {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 2rem;
+        }
+        
+        .viz-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+        
+        .metric {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 8px;
+            padding: 0.75rem;
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .metric-value {
+            font-size: 1.3rem;
+            color: #f59e0b;
+            font-weight: bold;
+        }
+        
+        .metric-label {
+            color: #888;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>YOLO Real-time Detection</h1>
+            <p>You Only Look Once - Fast Defect Localization</p>
+        </div>
+        
+        <div class="simulation-layout">
+            <div class="control-panel">
+                <h3 class="panel-title">
+                    <i class="fas fa-cog"></i> Detection Settings
+                </h3>
+                
+                <div class="control-group">
+                    <label>YOLO Version</label>
+                    <select id="version">
+                        <option value="v5">YOLOv5</option>
+                        <option value="v7">YOLOv7</option>
+                        <option value="v8" selected>YOLOv8</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>Confidence Threshold</label>
+                    <input type="range" id="confidence" min="10" max="90" value="50">
+                    <div style="text-align: right; color: #888; font-size: 0.8rem;">
+                        <span id="conf-val">50</span>%
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label>NMS Threshold</label>
+                    <input type="number" id="nms" value="0.45" step="0.05" min="0.1" max="0.9">
+                </div>
+                
+                <button class="btn" onclick="runDetection()">
+                    <i class="fas fa-search"></i> Run Detection
+                </button>
+                
+                <button class="btn" onclick="streamDetection()">
+                    <i class="fas fa-video"></i> Start Stream
+                </button>
+                
+                <button class="btn" onclick="benchmarkSpeed()">
+                    <i class="fas fa-tachometer-alt"></i> Benchmark
+                </button>
+                
+                <div style="margin-top: 2rem;">
+                    <h4 style="color: #f59e0b; margin-bottom: 1rem;">Detection Metrics</h4>
+                    <div class="metric">
+                        <div class="metric-value" id="fps">0</div>
+                        <div class="metric-label">FPS</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value" id="detections">0</div>
+                        <div class="metric-label">Detections</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value" id="latency">0ms</div>
+                        <div class="metric-label">Latency</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value" id="map">0.00</div>
+                        <div class="metric-label">mAP@0.5</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="viz-area">
+                <div class="viz-grid">
+                    <div class="viz-panel">
+                        <h3 class="panel-title">
+                            <i class="fas fa-image"></i> Detection Result
+                        </h3>
+                        <div id="detection-result"></div>
+                    </div>
+                    
+                    <div class="viz-panel">
+                        <h3 class="panel-title">
+                            <i class="fas fa-th"></i> Feature Pyramid
+                        </h3>
+                        <div id="feature-pyramid"></div>
+                    </div>
+                    
+                    <div class="viz-panel">
+                        <h3 class="panel-title">
+                            <i class="fas fa-chart-bar"></i> Class Distribution
+                        </h3>
+                        <div id="class-dist"></div>
+                    </div>
+                    
+                    <div class="viz-panel">
+                        <h3 class="panel-title">
+                            <i class="fas fa-chart-line"></i> Speed Comparison
+                        </h3>
+                        <div id="speed-chart"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.getElementById('confidence').addEventListener('input', function() {
+            document.getElementById('conf-val').textContent = this.value;
+        });
+        
+        function runDetection() {
+            console.log('Running YOLO detection...');
+            alert('Detecting defects with YOLO...');
+            
+            // Update metrics
+            const fps = Math.floor(Math.random() * 20 + 25);
+            const detections = Math.floor(Math.random() * 15 + 5);
+            const latency = (1000 / fps).toFixed(1);
+            const map = (Math.random() * 0.2 + 0.75).toFixed(2);
+            
+            document.getElementById('fps').textContent = fps;
+            document.getElementById('detections').textContent = detections;
+            document.getElementById('latency').textContent = latency + 'ms';
+            document.getElementById('map').textContent = map;
+            
+            updateDetectionResult();
+            updateClassDistribution();
+        }
+        
+        function streamDetection() {
+            alert('Starting real-time detection stream...');
+        }
+        
+        function benchmarkSpeed() {
+            alert('Running speed benchmark...');
+            updateSpeedChart();
+        }
+        
+        function updateDetectionResult() {
+            // Generate detection boxes
+            const x = [];
+            const y = [];
+            const text = [];
+            
+            for (let i = 0; i < 10; i++) {
+                x.push(Math.random() * 100);
+                y.push(Math.random() * 100);
+                text.push('Defect ' + (i + 1));
+            }
+            
+            const data = [{
+                x: x,
+                y: y,
+                mode: 'markers+text',
+                marker: {
+                    size: 20,
+                    color: '#f59e0b',
+                    symbol: 'square'
+                },
+                text: text,
+                textposition: 'top'
+            }];
+            
+            const layout = {
+                paper_bgcolor: '#111',
+                plot_bgcolor: '#111',
+                font: { color: '#e0e0e0' },
+                xaxis: { range: [0, 100] },
+                yaxis: { range: [0, 100] },
+                showlegend: false
+            };
+            
+            Plotly.newPlot('detection-result', data, layout);
+        }
+        
+        function updateClassDistribution() {
+            const classes = ['Particle', 'Scratch', 'Bridge', 'Void', 'Short'];
+            const counts = classes.map(() => Math.floor(Math.random() * 20));
+            
+            const data = [{
+                x: classes,
+                y: counts,
+                type: 'bar',
+                marker: {
+                    color: '#f59e0b'
+                }
+            }];
+            
+            const layout = {
+                paper_bgcolor: '#111',
+                plot_bgcolor: '#111',
+                font: { color: '#e0e0e0' },
+                yaxis: { title: 'Count' }
+            };
+            
+            Plotly.newPlot('class-dist', data, layout);
+        }
+        
+        function updateSpeedChart() {
+            const models = ['YOLOv5', 'YOLOv7', 'YOLOv8', 'Faster R-CNN', 'SSD'];
+            const fps = [45, 38, 52, 12, 28];
+            
+            const data = [{
+                x: models,
+                y: fps,
+                type: 'bar',
+                marker: {
+                    color: ['#f59e0b', '#f59e0b', '#f59e0b', '#888', '#888']
+                }
+            }];
+            
+            const layout = {
+                title: 'FPS Comparison',
+                paper_bgcolor: '#111',
+                plot_bgcolor: '#111',
+                font: { color: '#e0e0e0' },
+                yaxis: { title: 'Frames Per Second' }
+            };
+            
+            Plotly.newPlot('speed-chart', data, layout);
+        }
+        
+        function initializeFeaturePyramid() {
+            // Generate feature pyramid visualization
+            const levels = ['P3 (8x)', 'P4 (16x)', 'P5 (32x)', 'P6 (64x)', 'P7 (128x)'];
+            const sizes = [640, 320, 160, 80, 40];
+            
+            const data = [{
+                x: levels,
+                y: sizes,
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: { color: '#f59e0b', width: 2 },
+                marker: { size: 10 }
+            }];
+            
+            const layout = {
+                title: 'Feature Pyramid Network',
+                paper_bgcolor: '#111',
+                plot_bgcolor: '#111',
+                font: { color: '#e0e0e0' },
+                yaxis: { title: 'Feature Map Size', type: 'log' }
+            };
+            
+            Plotly.newPlot('feature-pyramid', data, layout);
+        }
+        
+        window.addEventListener('load', function() {
+            updateDetectionResult();
+            updateClassDistribution();
+            updateSpeedChart();
+            initializeFeaturePyramid();
+        });
+    </script>
+</body>
+</html>
