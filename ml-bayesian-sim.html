@@ -86,13 +86,326 @@
     </div>
     
     <script>
+        let isProcessing = false;
+        
         function runBayesianInference() {
-            alert('Running Monte Carlo Dropout inference...');
+            if (isProcessing) return;
+            isProcessing = true;
+            
+            console.log('Running Monte Carlo Dropout inference...');
+            const btn = event.target;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Running MC Dropout...';
+            btn.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
+            
+            setTimeout(() => {
+                generateUncertaintyPlot();
+                generateCalibrationPlot();
+                generatePredictionDistribution();
+                generateReliabilityDiagram();
+                
+                btn.innerHTML = '<i class="fas fa-check"></i> Inference Complete!';
+                btn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+                
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="fas fa-chart-area"></i> Run MC Dropout';
+                    btn.style.background = 'linear-gradient(135deg, #3b82f6, #2563eb)';
+                    isProcessing = false;
+                }, 2000);
+            }, 1500);
         }
         
         function calibrateModel() {
-            alert('Calibrating uncertainty estimates...');
+            console.log('Calibrating uncertainty estimates...');
+            const btn = event.target;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Calibrating...';
+            
+            setTimeout(() => {
+                updateCalibration();
+                btn.innerHTML = '<i class="fas fa-check"></i> Calibrated!';
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="fas fa-balance-scale"></i> Calibrate Uncertainty';
+                }, 2000);
+            }, 1000);
         }
+        
+        function generateUncertaintyPlot() {
+            // Generate uncertainty quantification data
+            const x = [];
+            const epistemic = [];
+            const aleatoric = [];
+            const total = [];
+            const predictions = [];
+            
+            for (let i = 0; i < 100; i++) {
+                x.push(i);
+                const epi = Math.random() * 0.3 + 0.1;
+                const ale = Math.random() * 0.2 + 0.05;
+                epistemic.push(epi);
+                aleatoric.push(ale);
+                total.push(epi + ale);
+                predictions.push(0.5 + Math.sin(i * 0.1) * 0.3 + (Math.random() - 0.5) * 0.1);
+            }
+            
+            const traces = [
+                {
+                    x: x,
+                    y: predictions,
+                    name: 'Mean Prediction',
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#3b82f6', width: 2 }
+                },
+                {
+                    x: x,
+                    y: predictions.map((p, i) => p + total[i]),
+                    name: 'Upper Bound',
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#3b82f6', width: 1, dash: 'dash' },
+                    showlegend: false
+                },
+                {
+                    x: x,
+                    y: predictions.map((p, i) => p - total[i]),
+                    name: 'Lower Bound',
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#3b82f6', width: 1, dash: 'dash' },
+                    fill: 'tonexty',
+                    fillcolor: 'rgba(59, 130, 246, 0.2)',
+                    showlegend: false
+                },
+                {
+                    x: x,
+                    y: epistemic,
+                    name: 'Epistemic Uncertainty',
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#ef4444', width: 2 },
+                    yaxis: 'y2'
+                },
+                {
+                    x: x,
+                    y: aleatoric,
+                    name: 'Aleatoric Uncertainty',
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#f59e0b', width: 2 },
+                    yaxis: 'y2'
+                }
+            ];
+            
+            const layout = {
+                title: 'Bayesian Uncertainty Quantification',
+                paper_bgcolor: '#111',
+                plot_bgcolor: '#111',
+                font: { color: '#e0e0e0' },
+                xaxis: { title: 'Sample Index' },
+                yaxis: { title: 'Prediction', side: 'left' },
+                yaxis2: {
+                    title: 'Uncertainty',
+                    overlaying: 'y',
+                    side: 'right'
+                },
+                showlegend: true,
+                legend: {
+                    x: 0.5,
+                    y: -0.2,
+                    orientation: 'h'
+                }
+            };
+            
+            Plotly.newPlot('uncertainty-plot', traces, layout);
+        }
+        
+        function generateCalibrationPlot() {
+            // Create calibration plot container
+            const container = document.getElementById('uncertainty-plot').parentElement;
+            const calibDiv = document.createElement('div');
+            calibDiv.id = 'calibration-plot';
+            calibDiv.style.marginTop = '2rem';
+            container.appendChild(calibDiv);
+            
+            // Generate calibration data
+            const expected = [];
+            const observed = [];
+            
+            for (let i = 0; i <= 10; i++) {
+                const exp = i / 10;
+                expected.push(exp);
+                // Add some calibration error
+                observed.push(exp + (Math.random() - 0.5) * 0.1);
+            }
+            
+            const data = [
+                {
+                    x: expected,
+                    y: observed,
+                    name: 'Observed',
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    line: { color: '#3b82f6', width: 2 },
+                    marker: { size: 8 }
+                },
+                {
+                    x: [0, 1],
+                    y: [0, 1],
+                    name: 'Perfect Calibration',
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#888', width: 1, dash: 'dash' }
+                }
+            ];
+            
+            const layout = {
+                title: 'Calibration Plot',
+                paper_bgcolor: '#111',
+                plot_bgcolor: '#111',
+                font: { color: '#e0e0e0' },
+                xaxis: { title: 'Expected Confidence', range: [0, 1] },
+                yaxis: { title: 'Observed Accuracy', range: [0, 1] },
+                width: 400,
+                height: 400
+            };
+            
+            Plotly.newPlot('calibration-plot', data, layout);
+        }
+        
+        function generatePredictionDistribution() {
+            // Create prediction distribution container
+            const container = document.getElementById('uncertainty-plot').parentElement;
+            const distDiv = document.createElement('div');
+            distDiv.id = 'prediction-dist';
+            distDiv.style.marginTop = '2rem';
+            container.appendChild(distDiv);
+            
+            // Generate MC dropout samples
+            const samples = [];
+            const classes = ['Particle', 'Scratch', 'Bridge', 'Void', 'Normal'];
+            
+            // Generate multiple forward passes
+            for (let i = 0; i < 50; i++) {
+                const probs = [];
+                let sum = 0;
+                for (let j = 0; j < classes.length; j++) {
+                    const p = Math.random();
+                    probs.push(p);
+                    sum += p;
+                }
+                samples.push(probs.map(p => p / sum));
+            }
+            
+            // Calculate mean and std for each class
+            const traces = [];
+            classes.forEach((cls, idx) => {
+                const values = samples.map(s => s[idx]);
+                traces.push({
+                    y: values,
+                    name: cls,
+                    type: 'box',
+                    boxpoints: 'all',
+                    jitter: 0.3,
+                    pointpos: -1.8,
+                    marker: { size: 3 }
+                });
+            });
+            
+            const layout = {
+                title: 'MC Dropout Prediction Distribution',
+                paper_bgcolor: '#111',
+                plot_bgcolor: '#111',
+                font: { color: '#e0e0e0' },
+                yaxis: { title: 'Probability' },
+                showlegend: false
+            };
+            
+            Plotly.newPlot('prediction-dist', traces, layout);
+        }
+        
+        function generateReliabilityDiagram() {
+            // Create reliability diagram container
+            const container = document.getElementById('uncertainty-plot').parentElement;
+            const relDiv = document.createElement('div');
+            relDiv.id = 'reliability-diagram';
+            relDiv.style.marginTop = '2rem';
+            container.appendChild(relDiv);
+            
+            // Generate reliability data
+            const bins = 10;
+            const counts = [];
+            const accuracy = [];
+            const confidence = [];
+            
+            for (let i = 0; i < bins; i++) {
+                const binCenter = (i + 0.5) / bins;
+                confidence.push(binCenter);
+                // Add some variation around perfect calibration
+                accuracy.push(binCenter + (Math.random() - 0.5) * 0.15);
+                counts.push(Math.floor(Math.random() * 100) + 20);
+            }
+            
+            const data = [
+                {
+                    x: confidence,
+                    y: accuracy,
+                    type: 'bar',
+                    marker: {
+                        color: counts,
+                        colorscale: 'Viridis',
+                        showscale: true,
+                        colorbar: {
+                            title: 'Count'
+                        }
+                    }
+                },
+                {
+                    x: [0, 1],
+                    y: [0, 1],
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#ef4444', width: 2, dash: 'dash' },
+                    name: 'Perfect'
+                }
+            ];
+            
+            const layout = {
+                title: 'Reliability Diagram',
+                paper_bgcolor: '#111',
+                plot_bgcolor: '#111',
+                font: { color: '#e0e0e0' },
+                xaxis: { title: 'Mean Predicted Confidence' },
+                yaxis: { title: 'Observed Accuracy' },
+                showlegend: false
+            };
+            
+            Plotly.newPlot('reliability-diagram', data, layout);
+        }
+        
+        function updateCalibration() {
+            // Update calibration plot with temperature scaling
+            const calibPlot = document.getElementById('calibration-plot');
+            if (calibPlot) {
+                const expected = [];
+                const observed = [];
+                
+                for (let i = 0; i <= 10; i++) {
+                    const exp = i / 10;
+                    expected.push(exp);
+                    // Better calibration after temperature scaling
+                    observed.push(exp + (Math.random() - 0.5) * 0.02);
+                }
+                
+                Plotly.restyle('calibration-plot', {
+                    y: [observed]
+                }, 0);
+            }
+        }
+        
+        // Initialize on load
+        window.addEventListener('load', function() {
+            console.log('Initializing Bayesian NN demo...');
+            generateUncertaintyPlot();
+        });
     </script>
 </body>
 </html>

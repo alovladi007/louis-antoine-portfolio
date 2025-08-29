@@ -134,22 +134,152 @@
     </div>
     
     <script>
+        let isProcessing = false;
+        
         function runSegmentation() {
-            alert('Running U-Net segmentation...');
-            generateSegmentationMask();
+            if (isProcessing) return;
+            isProcessing = true;
+            
+            console.log('Starting U-Net segmentation...');
+            const btn = event.target;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            btn.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
+            
+            // Generate all visualizations
+            setTimeout(() => {
+                generateInputImage();
+                generateSegmentationMask();
+                generateEncoderFeatures();
+                generateDecoderOutput();
+                
+                btn.innerHTML = '<i class="fas fa-check"></i> Segmentation Complete!';
+                btn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+                
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="fas fa-play"></i> Run Segmentation';
+                    btn.style.background = 'linear-gradient(135deg, #06b6d4, #0891b2)';
+                    isProcessing = false;
+                }, 2000);
+            }, 1500);
         }
         
         function visualizeArchitecture() {
-            alert('Visualizing U-Net architecture...');
+            console.log('Visualizing U-Net architecture...');
+            
+            // Create U-Net architecture diagram
+            const layers = [
+                { name: 'Input', size: 256, type: 'input' },
+                { name: 'Conv1', size: 64, type: 'encoder' },
+                { name: 'Conv2', size: 128, type: 'encoder' },
+                { name: 'Conv3', size: 256, type: 'encoder' },
+                { name: 'Conv4', size: 512, type: 'encoder' },
+                { name: 'Bottleneck', size: 1024, type: 'bottleneck' },
+                { name: 'UpConv4', size: 512, type: 'decoder' },
+                { name: 'UpConv3', size: 256, type: 'decoder' },
+                { name: 'UpConv2', size: 128, type: 'decoder' },
+                { name: 'UpConv1', size: 64, type: 'decoder' },
+                { name: 'Output', size: 2, type: 'output' }
+            ];
+            
+            const x = layers.map((_, i) => i);
+            const y = layers.map(l => l.size);
+            const colors = layers.map(l => {
+                if (l.type === 'encoder') return '#06b6d4';
+                if (l.type === 'decoder') return '#0891b2';
+                if (l.type === 'bottleneck') return '#0e7490';
+                return '#164e63';
+            });
+            
+            Plotly.newPlot('encoder', [{
+                x: x,
+                y: y,
+                type: 'bar',
+                marker: { color: colors },
+                text: layers.map(l => l.name),
+                textposition: 'outside'
+            }], {
+                title: 'U-Net Architecture',
+                paper_bgcolor: '#111',
+                plot_bgcolor: '#111',
+                font: { color: '#e0e0e0' },
+                xaxis: { showticklabels: false },
+                yaxis: { title: 'Feature Channels' }
+            });
+        }
+        
+        function generateInputImage() {
+            const size = 128;
+            const image = [];
+            
+            // Generate synthetic wafer image with defects
+            for (let i = 0; i < size; i++) {
+                const row = [];
+                for (let j = 0; j < size; j++) {
+                    // Create circular wafer pattern
+                    const cx = size / 2, cy = size / 2;
+                    const dist = Math.sqrt(Math.pow(i - cx, 2) + Math.pow(j - cy, 2));
+                    let value = dist < size / 2 ? 0.8 : 0;
+                    
+                    // Add some defects
+                    if (Math.random() > 0.98 && dist < size / 2) {
+                        // Add defect patterns
+                        value = Math.random() * 0.3;
+                    }
+                    
+                    // Add some noise
+                    value += (Math.random() - 0.5) * 0.1;
+                    row.push(Math.max(0, Math.min(1, value)));
+                }
+                image.push(row);
+            }
+            
+            Plotly.newPlot('input-image', [{
+                z: image,
+                type: 'heatmap',
+                colorscale: 'Greys',
+                showscale: false
+            }], {
+                title: 'Input Wafer Image',
+                paper_bgcolor: '#111',
+                plot_bgcolor: '#111',
+                font: { color: '#e0e0e0' },
+                margin: { t: 40, b: 20, l: 20, r: 20 }
+            });
         }
         
         function generateSegmentationMask() {
             const size = 128;
             const mask = [];
+            
             for (let i = 0; i < size; i++) {
                 const row = [];
                 for (let j = 0; j < size; j++) {
-                    const value = Math.random() > 0.7 ? 1 : 0;
+                    const cx = size / 2, cy = size / 2;
+                    const dist = Math.sqrt(Math.pow(i - cx, 2) + Math.pow(j - cy, 2));
+                    
+                    // Background
+                    let value = 0;
+                    
+                    // Wafer area
+                    if (dist < size / 2) {
+                        value = 0.2;
+                    }
+                    
+                    // Defect regions (clustered)
+                    const defectCenters = [
+                        { x: 30, y: 40, r: 15 },
+                        { x: 80, y: 60, r: 10 },
+                        { x: 60, y: 90, r: 12 },
+                        { x: 45, y: 70, r: 8 }
+                    ];
+                    
+                    for (let defect of defectCenters) {
+                        const defectDist = Math.sqrt(Math.pow(i - defect.y, 2) + Math.pow(j - defect.x, 2));
+                        if (defectDist < defect.r && dist < size / 2) {
+                            value = 1;
+                        }
+                    }
+                    
                     row.push(value);
                 }
                 mask.push(row);
@@ -158,17 +288,123 @@
             Plotly.newPlot('seg-mask', [{
                 z: mask,
                 type: 'heatmap',
-                colorscale: 'Viridis',
-                showscale: false
+                colorscale: [
+                    [0, '#111111'],
+                    [0.2, '#164e63'],
+                    [1, '#06b6d4']
+                ],
+                showscale: true,
+                colorbar: {
+                    title: 'Class',
+                    tickvals: [0, 0.5, 1],
+                    ticktext: ['Background', 'Wafer', 'Defect']
+                }
             }], {
+                title: 'Segmentation Output',
                 paper_bgcolor: '#111',
                 plot_bgcolor: '#111',
-                font: { color: '#e0e0e0' }
+                font: { color: '#e0e0e0' },
+                margin: { t: 40, b: 20, l: 20, r: 20 }
             });
         }
         
+        function generateEncoderFeatures() {
+            // Generate feature maps from encoder
+            const sizes = [64, 32, 16, 8];
+            const traces = [];
+            
+            sizes.forEach((size, idx) => {
+                const feature = [];
+                for (let i = 0; i < size; i++) {
+                    const row = [];
+                    for (let j = 0; j < size; j++) {
+                        // Generate feature activation patterns
+                        const value = Math.sin(i * 0.5 + idx) * Math.cos(j * 0.5 + idx) + Math.random() * 0.3;
+                        row.push(value);
+                    }
+                    feature.push(row);
+                }
+                
+                traces.push({
+                    z: feature,
+                    type: 'heatmap',
+                    colorscale: 'Electric',
+                    showscale: false,
+                    xaxis: 'x' + (idx + 1),
+                    yaxis: 'y' + (idx + 1)
+                });
+            });
+            
+            const layout = {
+                title: 'Encoder Feature Maps (Multi-scale)',
+                paper_bgcolor: '#111',
+                plot_bgcolor: '#111',
+                font: { color: '#e0e0e0' },
+                grid: { rows: 2, columns: 2, pattern: 'independent' },
+                showlegend: false,
+                margin: { t: 40, b: 20, l: 20, r: 20 }
+            };
+            
+            Plotly.newPlot('encoder', traces, layout);
+        }
+        
+        function generateDecoderOutput() {
+            // Generate probability maps
+            const size = 128;
+            const probMap = [];
+            
+            for (let i = 0; i < size; i++) {
+                const row = [];
+                for (let j = 0; j < size; j++) {
+                    // Generate smooth probability distribution
+                    const cx = size / 2, cy = size / 2;
+                    const dist = Math.sqrt(Math.pow(i - cx, 2) + Math.pow(j - cy, 2));
+                    
+                    let prob = 0;
+                    if (dist < size / 2) {
+                        // Add probability peaks for defects
+                        const defectCenters = [
+                            { x: 30, y: 40, r: 15 },
+                            { x: 80, y: 60, r: 10 },
+                            { x: 60, y: 90, r: 12 }
+                        ];
+                        
+                        for (let defect of defectCenters) {
+                            const defectDist = Math.sqrt(Math.pow(i - defect.y, 2) + Math.pow(j - defect.x, 2));
+                            prob += Math.exp(-defectDist * defectDist / (2 * defect.r * defect.r));
+                        }
+                    }
+                    
+                    row.push(Math.min(1, prob));
+                }
+                probMap.push(row);
+            }
+            
+            Plotly.newPlot('decoder', [{
+                z: probMap,
+                type: 'heatmap',
+                colorscale: 'Hot',
+                showscale: true,
+                colorbar: {
+                    title: 'Probability',
+                    tickformat: '.0%'
+                }
+            }], {
+                title: 'Defect Probability Map',
+                paper_bgcolor: '#111',
+                plot_bgcolor: '#111',
+                font: { color: '#e0e0e0' },
+                margin: { t: 40, b: 20, l: 20, r: 20 }
+            });
+        }
+        
+        // Initialize on load
         window.addEventListener('load', function() {
+            console.log('Initializing U-Net demo...');
+            generateInputImage();
             generateSegmentationMask();
+            generateEncoderFeatures();
+            generateDecoderOutput();
         });
     </script>
 </body>
