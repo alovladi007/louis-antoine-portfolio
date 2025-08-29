@@ -1349,18 +1349,81 @@ print(f"Process Cpk: {mc_results['cpk']:.2f}")
                 console.log('Adding event listener to Start button');
                 startBtn.addEventListener('click', function() {
                     console.log('Start Live Simulation clicked');
-                    alert('Starting Live Simulation!');
                     
                     const btn = this;
                     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Simulating...';
                     btn.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
                     btn.disabled = true;
                     
+                    // Get current parameters
+                    const wavelength = parseFloat(document.getElementById('wavelength').value) || 193;
+                    const na = parseFloat(document.getElementById('na').value) || 1.35;
+                    const sigma = parseFloat(document.getElementById('sigma').value) || 0.85;
+                    const pitch = parseFloat(document.getElementById('pitch').value) || 65;
+                    
+                    // Update display values immediately
+                    document.getElementById('na-value').textContent = na.toFixed(2);
+                    document.getElementById('sigma-value').textContent = sigma.toFixed(2);
+                    document.getElementById('pitch-value').textContent = pitch;
+                    
+                    // Calculate and update metrics
+                    const k1 = 0.61;
+                    const resolution = k1 * wavelength / na;
+                    const dof = wavelength / (na * na);
+                    const k1Factor = (pitch * na) / wavelength;
+                    const contrast = Math.min(0.95, sigma * 1.1);
+                    
+                    document.getElementById('resolution').textContent = resolution.toFixed(0);
+                    document.getElementById('dof').textContent = dof.toFixed(0);
+                    document.getElementById('k1-factor').textContent = k1Factor.toFixed(2);
+                    document.getElementById('contrast').textContent = contrast.toFixed(2);
+                    
+                    // Generate new simulation plot
                     setTimeout(function() {
+                        // Generate aerial image data
+                        const size = 100;
+                        const z = [];
+                        
+                        for (let i = 0; i < size; i++) {
+                            const row = [];
+                            for (let j = 0; j < size; j++) {
+                                const freq = 2 * Math.PI * pitch / wavelength;
+                                const value = Math.sin(freq * i / 10) * Math.cos(freq * j / 10) * 
+                                             Math.exp(-(Math.pow(i - size/2, 2) + Math.pow(j - size/2, 2)) / (2 * 400));
+                                row.push(Math.abs(value));
+                            }
+                            z.push(row);
+                        }
+                        
+                        const data = [{
+                            z: z,
+                            type: 'heatmap',
+                            colorscale: 'Hot',
+                            showscale: true
+                        }];
+                        
+                        const layout = {
+                            title: 'Simulated Aerial Image',
+                            paper_bgcolor: '#111',
+                            plot_bgcolor: '#111',
+                            font: { color: '#e0e0e0' },
+                            xaxis: { title: 'X Position (pixels)' },
+                            yaxis: { title: 'Y Position (pixels)' },
+                            autosize: false,
+                            width: 600,
+                            height: 400,
+                            margin: { l: 50, r: 50, b: 50, t: 50 }
+                        };
+                        
+                        const config = {
+                            responsive: false,
+                            displayModeBar: false
+                        };
+                        
                         try {
-                            updateSimulation();
+                            Plotly.newPlot('simulation-plot', data, layout, config);
                         } catch(e) {
-                            console.error('Simulation error:', e);
+                            console.error('Plot error:', e);
                         }
                         
                         btn.innerHTML = '<i class="fas fa-check"></i> Complete!';
@@ -1380,21 +1443,72 @@ print(f"Process Cpk: {mc_results['cpk']:.2f}")
                 console.log('Adding event listener to Reset button');
                 resetBtn.addEventListener('click', function() {
                     console.log('Reset Parameters clicked');
-                    alert('Resetting Parameters!');
                     
+                    // Reset all values
                     document.getElementById('wavelength').value = '193';
                     document.getElementById('na').value = '1.35';
                     document.getElementById('sigma').value = '0.85';
                     document.getElementById('pitch').value = '65';
                     
+                    // Update displays
                     document.getElementById('na-value').textContent = '1.35';
                     document.getElementById('sigma-value').textContent = '0.85';
                     document.getElementById('pitch-value').textContent = '65';
                     
+                    // Recalculate metrics with default values
+                    const wavelength = 193;
+                    const na = 1.35;
+                    const sigma = 0.85;
+                    const pitch = 65;
+                    
+                    const k1 = 0.61;
+                    const resolution = k1 * wavelength / na;
+                    const dof = wavelength / (na * na);
+                    const k1Factor = (pitch * na) / wavelength;
+                    const contrast = Math.min(0.95, sigma * 1.1);
+                    
+                    document.getElementById('resolution').textContent = resolution.toFixed(0);
+                    document.getElementById('dof').textContent = dof.toFixed(0);
+                    document.getElementById('k1-factor').textContent = k1Factor.toFixed(2);
+                    document.getElementById('contrast').textContent = contrast.toFixed(2);
+                    
+                    // Regenerate plot with defaults
+                    const size = 100;
+                    const z = [];
+                    
+                    for (let i = 0; i < size; i++) {
+                        const row = [];
+                        for (let j = 0; j < size; j++) {
+                            const freq = 2 * Math.PI * pitch / wavelength;
+                            const value = Math.sin(freq * i / 10) * Math.cos(freq * j / 10) * 
+                                         Math.exp(-(Math.pow(i - size/2, 2) + Math.pow(j - size/2, 2)) / (2 * 400));
+                            row.push(Math.abs(value));
+                        }
+                        z.push(row);
+                    }
+                    
                     try {
-                        updateSimulation();
+                        Plotly.newPlot('simulation-plot', [{
+                            z: z,
+                            type: 'heatmap',
+                            colorscale: 'Hot',
+                            showscale: true
+                        }], {
+                            title: 'Simulated Aerial Image (Reset)',
+                            paper_bgcolor: '#111',
+                            plot_bgcolor: '#111',
+                            font: { color: '#e0e0e0' },
+                            xaxis: { title: 'X Position (pixels)' },
+                            yaxis: { title: 'Y Position (pixels)' },
+                            autosize: false,
+                            width: 600,
+                            height: 400
+                        }, {
+                            responsive: false,
+                            displayModeBar: false
+                        });
                     } catch(e) {
-                        console.error('Reset error:', e);
+                        console.error('Reset plot error:', e);
                     }
                 });
             } else {
