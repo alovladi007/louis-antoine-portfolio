@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Process Simulator - Working Version</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(0, 212, 255, 0.05));
+            border-radius: 20px;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #00d4ff, #0099ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+        
+        .simulator-container {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 2rem;
+        }
+        
+        .control-panel {
+            background: rgba(20, 20, 20, 0.8);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 15px;
+            padding: 1.5rem;
+        }
+        
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .control-group label {
+            display: block;
+            color: #00d4ff;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .control-group select,
+        .control-group input[type="range"] {
+            width: 100%;
+            padding: 0.5rem;
+            background: #222;
+            border: 1px solid #444;
+            color: #e0e0e0;
+            border-radius: 5px;
+        }
+        
+        .control-value {
+            text-align: right;
+            color: #888;
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 0.75rem;
+            margin-top: 0.5rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+            color: white;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.3);
+        }
+        
+        .btn-secondary {
+            background: transparent;
+            color: #00d4ff;
+            border: 1px solid #00d4ff;
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(0, 212, 255, 0.1);
+        }
+        
+        .metrics-dashboard {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .metric-box {
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 1.5rem;
+            color: #00d4ff;
+            font-weight: bold;
+        }
+        
+        .metric-label {
+            color: #888;
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+        }
+        
+        .visualization-container {
+            background: #111;
+            border-radius: 10px;
+            padding: 1rem;
+            min-height: 400px;
+        }
+        
+        .status-message {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .status-message.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Live Process Simulator</h1>
+            <p>Adjust Parameters and See Real-Time Results</p>
+        </div>
+        
+        <div class="simulator-container">
+            <div class="control-panel">
+                <div class="control-group">
+                    <label for="wavelength">Wavelength</label>
+                    <select id="wavelength">
+                        <option value="193">193nm (ArF)</option>
+                        <option value="248">248nm (KrF)</option>
+                        <option value="365">365nm (i-line)</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="na">Numerical Aperture</label>
+                    <input type="range" id="na" min="0.5" max="1.5" step="0.05" value="1.35">
+                    <div class="control-value">NA: <span id="na-value">1.35</span></div>
+                </div>
+                
+                <div class="control-group">
+                    <label for="sigma">Partial Coherence</label>
+                    <input type="range" id="sigma" min="0.1" max="1.0" step="0.05" value="0.85">
+                    <div class="control-value">σ: <span id="sigma-value">0.85</span></div>
+                </div>
+                
+                <div class="control-group">
+                    <label for="pitch">Feature Pitch (nm)</label>
+                    <input type="range" id="pitch" min="30" max="200" step="5" value="65">
+                    <div class="control-value">Pitch: <span id="pitch-value">65</span> nm</div>
+                </div>
+                
+                <button class="btn btn-primary" id="start-simulation">
+                    <i class="fas fa-play"></i> Start Live Simulation
+                </button>
+                
+                <button class="btn btn-secondary" id="reset-params">
+                    <i class="fas fa-redo"></i> Reset Parameters
+                </button>
+                
+                <div class="status-message" id="status-message">
+                    <i class="fas fa-check-circle"></i> <span id="status-text">Ready</span>
+                </div>
+            </div>
+            
+            <div>
+                <div class="metrics-dashboard">
+                    <div class="metric-box">
+                        <div class="metric-value" id="resolution">35</div>
+                        <div class="metric-label">Resolution (nm)</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-value" id="dof">100</div>
+                        <div class="metric-label">DOF (nm)</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-value" id="k1-factor">0.25</div>
+                        <div class="metric-label">k1 Factor</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-value" id="contrast">0.85</div>
+                        <div class="metric-label">Image Contrast</div>
+                    </div>
+                </div>
+                
+                <div class="visualization-container" id="simulation-plot"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        console.log('Live Simulator Script Loading...');
+        
+        // Update value displays
+        document.getElementById('na').addEventListener('input', function() {
+            document.getElementById('na-value').textContent = this.value;
+            updateMetrics();
+        });
+        
+        document.getElementById('sigma').addEventListener('input', function() {
+            document.getElementById('sigma-value').textContent = this.value;
+            updateMetrics();
+        });
+        
+        document.getElementById('pitch').addEventListener('input', function() {
+            document.getElementById('pitch-value').textContent = this.value;
+            updateMetrics();
+        });
+        
+        document.getElementById('wavelength').addEventListener('change', function() {
+            updateMetrics();
+        });
+        
+        // Start Simulation button
+        document.getElementById('start-simulation').addEventListener('click', function() {
+            console.log('Start Simulation clicked');
+            alert('Starting Live Simulation!');
+            
+            const btn = this;
+            const statusMsg = document.getElementById('status-message');
+            const statusText = document.getElementById('status-text');
+            
+            // Change button state
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Simulating...';
+            btn.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
+            btn.disabled = true;
+            
+            // Show status
+            statusMsg.classList.add('show');
+            statusText.textContent = 'Running simulation...';
+            
+            setTimeout(function() {
+                // Run the simulation
+                updateSimulation();
+                
+                // Update button
+                btn.innerHTML = '<i class="fas fa-check"></i> Simulation Complete!';
+                btn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+                statusText.textContent = 'Simulation complete!';
+                
+                setTimeout(function() {
+                    btn.innerHTML = '<i class="fas fa-play"></i> Start Live Simulation';
+                    btn.disabled = false;
+                    statusMsg.classList.remove('show');
+                }, 2000);
+            }, 1500);
+        });
+        
+        // Reset button
+        document.getElementById('reset-params').addEventListener('click', function() {
+            console.log('Reset clicked');
+            alert('Resetting Parameters!');
+            
+            // Reset all values
+            document.getElementById('wavelength').value = '193';
+            document.getElementById('na').value = '1.35';
+            document.getElementById('sigma').value = '0.85';
+            document.getElementById('pitch').value = '65';
+            
+            // Update displays
+            document.getElementById('na-value').textContent = '1.35';
+            document.getElementById('sigma-value').textContent = '0.85';
+            document.getElementById('pitch-value').textContent = '65';
+            
+            // Update simulation
+            updateMetrics();
+            updateSimulation();
+            
+            // Show status
+            const statusMsg = document.getElementById('status-message');
+            const statusText = document.getElementById('status-text');
+            statusMsg.classList.add('show');
+            statusText.textContent = 'Parameters reset to defaults';
+            
+            setTimeout(function() {
+                statusMsg.classList.remove('show');
+            }, 2000);
+        });
+        
+        function updateMetrics() {
+            const wavelength = parseFloat(document.getElementById('wavelength').value);
+            const na = parseFloat(document.getElementById('na').value);
+            const sigma = parseFloat(document.getElementById('sigma').value);
+            const pitch = parseFloat(document.getElementById('pitch').value);
+            
+            // Calculate metrics
+            const k1 = 0.61;
+            const resolution = k1 * wavelength / na;
+            const dof = wavelength / (na * na);
+            const k1Factor = (pitch * na) / wavelength;
+            const contrast = Math.min(0.95, sigma * 1.1);
+            
+            // Update display
+            document.getElementById('resolution').textContent = resolution.toFixed(0);
+            document.getElementById('dof').textContent = dof.toFixed(0);
+            document.getElementById('k1-factor').textContent = k1Factor.toFixed(2);
+            document.getElementById('contrast').textContent = contrast.toFixed(2);
+        }
+        
+        function updateSimulation() {
+            console.log('Updating simulation plot...');
+            
+            const wavelength = parseFloat(document.getElementById('wavelength').value);
+            const na = parseFloat(document.getElementById('na').value);
+            const sigma = parseFloat(document.getElementById('sigma').value);
+            const pitch = parseFloat(document.getElementById('pitch').value);
+            
+            // Generate aerial image data
+            const size = 100;
+            const z = [];
+            
+            for (let i = 0; i < size; i++) {
+                const row = [];
+                for (let j = 0; j < size; j++) {
+                    const freq = 2 * Math.PI * pitch / wavelength;
+                    const value = Math.sin(freq * i / 10) * Math.cos(freq * j / 10) * 
+                                 Math.exp(-(Math.pow(i - size/2, 2) + Math.pow(j - size/2, 2)) / (2 * 400));
+                    row.push(Math.abs(value));
+                }
+                z.push(row);
+            }
+            
+            const data = [{
+                z: z,
+                type: 'heatmap',
+                colorscale: 'Hot',
+                showscale: true
+            }];
+            
+            const layout = {
+                title: 'Simulated Aerial Image',
+                paper_bgcolor: '#111',
+                plot_bgcolor: '#111',
+                font: { color: '#e0e0e0' },
+                xaxis: { title: 'X Position (pixels)' },
+                yaxis: { title: 'Y Position (pixels)' },
+                width: 600,
+                height: 400
+            };
+            
+            Plotly.newPlot('simulation-plot', data, layout);
+        }
+        
+        // Initialize on load
+        window.addEventListener('load', function() {
+            console.log('Page loaded, initializing...');
+            updateMetrics();
+            updateSimulation();
+        });
+        
+        console.log('Script loaded successfully');
+    </script>
+</body>
+</html>
