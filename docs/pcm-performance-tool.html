@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PCM Performance Comparison Tool - Memory Technology Benchmarking</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a0a2a 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid rgba(147, 51, 234, 0.3);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .back-btn {
+            background: linear-gradient(135deg, #9333ea, #7c3aed);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .main-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .page-title {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #9333ea, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .tech-card {
+            background: rgba(20, 20, 20, 0.8);
+            border: 1px solid rgba(147, 51, 234, 0.2);
+            border-radius: 15px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .tech-card.selected {
+            border-color: #9333ea;
+            background: rgba(147, 51, 234, 0.1);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(147, 51, 234, 0.3);
+        }
+
+        .tech-icon {
+            font-size: 2.5rem;
+            color: #9333ea;
+            margin-bottom: 1rem;
+        }
+
+        .tech-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #c084fc;
+            margin-bottom: 0.5rem;
+        }
+
+        .tech-type {
+            color: #a0a0a0;
+            font-size: 0.9rem;
+        }
+
+        .charts-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .chart-box {
+            background: rgba(20, 20, 20, 0.8);
+            border: 1px solid rgba(147, 51, 234, 0.2);
+            border-radius: 15px;
+            padding: 1.5rem;
+            min-height: 400px;
+        }
+
+        .chart-box.full-width {
+            grid-column: span 2;
+        }
+
+        .radar-container {
+            position: relative;
+            height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .metrics-table {
+            width: 100%;
+            background: rgba(20, 20, 20, 0.8);
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        .metrics-table th {
+            background: rgba(147, 51, 234, 0.2);
+            padding: 1rem;
+            text-align: left;
+            color: #c084fc;
+            font-weight: 600;
+        }
+
+        .metrics-table td {
+            padding: 1rem;
+            border-top: 1px solid rgba(147, 51, 234, 0.1);
+        }
+
+        .metric-bar {
+            height: 20px;
+            background: linear-gradient(90deg, #9333ea, #c084fc);
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+
+        .control-panel {
+            background: rgba(30, 30, 30, 0.8);
+            border: 1px solid rgba(147, 51, 234, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .weight-slider {
+            display: grid;
+            grid-template-columns: 150px 1fr 50px;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .slider {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 5px;
+            background: rgba(147, 51, 234, 0.2);
+            outline: none;
+            border-radius: 5px;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #9333ea;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #9333ea, #7c3aed);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(147, 51, 234, 0.4);
+        }
+
+        .winner-display {
+            background: linear-gradient(135deg, rgba(147, 51, 234, 0.2), rgba(147, 51, 234, 0.1));
+            border: 2px solid #9333ea;
+            border-radius: 15px;
+            padding: 2rem;
+            text-align: center;
+            margin: 2rem 0;
+        }
+
+        .winner-title {
+            font-size: 1.5rem;
+            color: #c084fc;
+            margin-bottom: 1rem;
+        }
+
+        .winner-tech {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #9333ea;
+        }
+
+        .score-display {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #c084fc;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h2 style="color: #c084fc;">Memory Technology Performance Comparison</h2>
+            <a href="pcm-complete-project.html" class="back-btn">
+                <i class="fas fa-arrow-left"></i> Back to PCM Suite
+            </a>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <h1 class="page-title">Technology Benchmarking Suite</h1>
+        
+        <div class="comparison-grid" id="tech-grid">
+            <div class="tech-card selected" onclick="selectTech('PCM')" data-tech="PCM">
+                <i class="fas fa-database tech-icon"></i>
+                <div class="tech-name">PCM</div>
+                <div class="tech-type">Phase Change Memory</div>
+            </div>
+            
+            <div class="tech-card" onclick="selectTech('DRAM')" data-tech="DRAM">
+                <i class="fas fa-memory tech-icon"></i>
+                <div class="tech-name">DRAM</div>
+                <div class="tech-type">Dynamic RAM</div>
+            </div>
+            
+            <div class="tech-card" onclick="selectTech('NAND')" data-tech="NAND">
+                <i class="fas fa-hdd tech-icon"></i>
+                <div class="tech-name">NAND Flash</div>
+                <div class="tech-type">3D NAND</div>
+            </div>
+            
+            <div class="tech-card" onclick="selectTech('RRAM')" data-tech="RRAM">
+                <i class="fas fa-bolt tech-icon"></i>
+                <div class="tech-name">RRAM</div>
+                <div class="tech-type">Resistive RAM</div>
+            </div>
+            
+            <div class="tech-card" onclick="selectTech('MRAM')" data-tech="MRAM">
+                <i class="fas fa-magnet tech-icon"></i>
+                <div class="tech-name">MRAM</div>
+                <div class="tech-type">Magnetic RAM</div>
+            </div>
+            
+            <div class="tech-card" onclick="selectTech('SRAM')" data-tech="SRAM">
+                <i class="fas fa-microchip tech-icon"></i>
+                <div class="tech-name">SRAM</div>
+                <div class="tech-type">Static RAM</div>
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <h3 style="color: #c084fc; margin-bottom: 1.5rem;">Performance Weight Configuration</h3>
+            
+            <div class="weight-slider">
+                <label style="color: #a0a0a0;">Speed</label>
+                <input type="range" class="slider" id="speed-weight" min="0" max="100" value="20">
+                <span class="weight-value" id="speed-value">20%</span>
+            </div>
+            
+            <div class="weight-slider">
+                <label style="color: #a0a0a0;">Endurance</label>
+                <input type="range" class="slider" id="endurance-weight" min="0" max="100" value="20">
+                <span class="weight-value" id="endurance-value">20%</span>
+            </div>
+            
+            <div class="weight-slider">
+                <label style="color: #a0a0a0;">Retention</label>
+                <input type="range" class="slider" id="retention-weight" min="0" max="100" value="20">
+                <span class="weight-value" id="retention-value">20%</span>
+            </div>
+            
+            <div class="weight-slider">
+                <label style="color: #a0a0a0;">Density</label>
+                <input type="range" class="slider" id="density-weight" min="0" max="100" value="20">
+                <span class="weight-value" id="density-value">20%</span>
+            </div>
+            
+            <div class="weight-slider">
+                <label style="color: #a0a0a0;">Power</label>
+                <input type="range" class="slider" id="power-weight" min="0" max="100" value="20">
+                <span class="weight-value" id="power-value">20%</span>
+            </div>
+            
+            <div style="text-align: center; margin-top: 2rem;">
+                <button class="btn" onclick="updateComparison()">
+                    <i class="fas fa-sync"></i> Update Analysis
+                </button>
+            </div>
+        </div>
+
+        <div class="winner-display" id="winner-display">
+            <div class="winner-title">Optimal Technology Based on Current Weights</div>
+            <div class="winner-tech" id="winner-tech">PCM</div>
+            <div class="score-display" id="winner-score">85/100</div>
+        </div>
+
+        <div class="charts-container">
+            <div class="chart-box">
+                <h3 style="color: #c084fc; margin-bottom: 1rem;">Performance Radar</h3>
+                <div class="radar-container">
+                    <canvas id="radar-chart"></canvas>
+                </div>
+            </div>
+            
+            <div class="chart-box">
+                <h3 style="color: #c084fc; margin-bottom: 1rem;">Speed vs Power Trade-off</h3>
+                <div id="scatter-plot"></div>
+            </div>
+            
+            <div class="chart-box full-width">
+                <h3 style="color: #c084fc; margin-bottom: 1rem;">Technology Evolution Timeline</h3>
+                <div id="timeline-plot"></div>
+            </div>
+        </div>
+
+        <table class="metrics-table">
+            <thead>
+                <tr>
+                    <th>Technology</th>
+                    <th>Read Speed</th>
+                    <th>Write Speed</th>
+                    <th>Endurance</th>
+                    <th>Retention</th>
+                    <th>Density</th>
+                    <th>Power</th>
+                    <th>Cost/GB</th>
+                </tr>
+            </thead>
+            <tbody id="metrics-tbody">
+                <tr>
+                    <td style="color: #c084fc; font-weight: 600;">PCM</td>
+                    <td>10 ns</td>
+                    <td>100 ns</td>
+                    <td>10⁹ cycles</td>
+                    <td>10 years</td>
+                    <td>4F²</td>
+                    <td>Low</td>
+                    <td>$5</td>
+                </tr>
+                <tr>
+                    <td style="color: #c084fc; font-weight: 600;">DRAM</td>
+                    <td>10 ns</td>
+                    <td>10 ns</td>
+                    <td>10¹⁵ cycles</td>
+                    <td>64 ms</td>
+                    <td>6F²</td>
+                    <td>High</td>
+                    <td>$8</td>
+                </tr>
+                <tr>
+                    <td style="color: #c084fc; font-weight: 600;">NAND</td>
+                    <td>25 μs</td>
+                    <td>200 μs</td>
+                    <td>10⁴ cycles</td>
+                    <td>10 years</td>
+                    <td>4F²</td>
+                    <td>Low</td>
+                    <td>$0.5</td>
+                </tr>
+                <tr>
+                    <td style="color: #c084fc; font-weight: 600;">RRAM</td>
+                    <td>10 ns</td>
+                    <td>10 ns</td>
+                    <td>10¹² cycles</td>
+                    <td>10 years</td>
+                    <td>4F²</td>
+                    <td>Low</td>
+                    <td>$3</td>
+                </tr>
+                <tr>
+                    <td style="color: #c084fc; font-weight: 600;">MRAM</td>
+                    <td>10 ns</td>
+                    <td>10 ns</td>
+                    <td>10¹⁵ cycles</td>
+                    <td>10 years</td>
+                    <td>20F²</td>
+                    <td>Medium</td>
+                    <td>$15</td>
+                </tr>
+                <tr>
+                    <td style="color: #c084fc; font-weight: 600;">SRAM</td>
+                    <td>1 ns</td>
+                    <td>1 ns</td>
+                    <td>10¹⁵ cycles</td>
+                    <td>Volatile</td>
+                    <td>120F²</td>
+                    <td>High</td>
+                    <td>$100</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="chart-box full-width">
+            <h3 style="color: #c084fc; margin-bottom: 1rem;">Comprehensive Performance Matrix</h3>
+            <div id="heatmap-plot"></div>
+        </div>
+    </main>
+
+    <script>
+        // Technology data
+        const techData = {
+            PCM: {
+                speed: 85,
+                endurance: 70,
+                retention: 95,
+                density: 90,
+                power: 85,
+                color: 'rgba(147, 51, 234, 0.8)'
+            },
+            DRAM: {
+                speed: 95,
+                endurance: 100,
+                retention: 10,
+                density: 70,
+                power: 30,
+                color: 'rgba(255, 107, 107, 0.8)'
+            },
+            NAND: {
+                speed: 30,
+                endurance: 40,
+                retention: 95,
+                density: 90,
+                power: 90,
+                color: 'rgba(78, 205, 196, 0.8)'
+            },
+            RRAM: {
+                speed: 90,
+                endurance: 85,
+                retention: 95,
+                density: 90,
+                power: 85,
+                color: 'rgba(255, 195, 0, 0.8)'
+            },
+            MRAM: {
+                speed: 90,
+                endurance: 100,
+                retention: 95,
+                density: 40,
+                power: 60,
+                color: 'rgba(0, 184, 169, 0.8)'
+            },
+            SRAM: {
+                speed: 100,
+                endurance: 100,
+                retention: 5,
+                density: 10,
+                power: 20,
+                color: 'rgba(255, 87, 51, 0.8)'
+            }
+        };
+
+        let selectedTechs = ['PCM', 'DRAM', 'NAND'];
+        let radarChart = null;
+
+        // Initialize on load
+        window.addEventListener('load', () => {
+            initializeRadarChart();
+            updateScatterPlot();
+            updateTimelinePlot();
+            updateHeatmap();
+            updateComparison();
+        });
+
+        function selectTech(tech) {
+            const card = document.querySelector(`[data-tech="${tech}"]`);
+            
+            if (card.classList.contains('selected')) {
+                card.classList.remove('selected');
+                selectedTechs = selectedTechs.filter(t => t !== tech);
+            } else {
+                if (selectedTechs.length < 6) {
+                    card.classList.add('selected');
+                    selectedTechs.push(tech);
+                }
+            }
+            
+            updateRadarChart();
+            updateComparison();
+        }
+
+        function initializeRadarChart() {
+            const ctx = document.getElementById('radar-chart').getContext('2d');
+            
+            radarChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Speed', 'Endurance', 'Retention', 'Density', 'Power Efficiency'],
+                    datasets: []
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                color: '#a0a0a0'
+                            },
+                            grid: {
+                                color: 'rgba(147, 51, 234, 0.2)'
+                            },
+                            pointLabels: {
+                                color: '#c084fc',
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#e0e0e0'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            updateRadarChart();
+        }
+
+        function updateRadarChart() {
+            const datasets = selectedTechs.map(tech => ({
+                label: tech,
+                data: [
+                    techData[tech].speed,
+                    techData[tech].endurance,
+                    techData[tech].retention,
+                    techData[tech].density,
+                    techData[tech].power
+                ],
+                borderColor: techData[tech].color,
+                backgroundColor: techData[tech].color.replace('0.8', '0.2'),
+                borderWidth: 2
+            }));
+            
+            radarChart.data.datasets = datasets;
+            radarChart.update();
+        }
+
+        function updateScatterPlot() {
+            const traces = Object.keys(techData).map(tech => ({
+                x: [techData[tech].speed],
+                y: [techData[tech].power],
+                mode: 'markers+text',
+                type: 'scatter',
+                name: tech,
+                text: [tech],
+                textposition: 'top center',
+                marker: {
+                    size: 15,
+                    color: techData[tech].color
+                }
+            }));
+            
+            const layout = {
+                title: '',
+                xaxis: { 
+                    title: 'Speed Performance',
+                    gridcolor: '#333',
+                    range: [0, 105]
+                },
+                yaxis: { 
+                    title: 'Power Efficiency',
+                    gridcolor: '#333',
+                    range: [0, 105]
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                showlegend: false,
+                margin: { t: 20, b: 60, l: 60, r: 20 }
+            };
+            
+            Plotly.newPlot('scatter-plot', traces, layout, {responsive: true});
+        }
+
+        function updateTimelinePlot() {
+            const years = [1970, 1980, 1990, 2000, 2010, 2020, 2030];
+            
+            const traces = [
+                {
+                    x: years,
+                    y: [1, 10, 100, 1000, 10000, 100000, 1000000],
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: 'DRAM',
+                    line: { width: 2 }
+                },
+                {
+                    x: years,
+                    y: [null, null, 1, 100, 10000, 1000000, 10000000],
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: 'NAND',
+                    line: { width: 2 }
+                },
+                {
+                    x: years,
+                    y: [null, null, null, null, 1, 100, 10000],
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: 'PCM',
+                    line: { width: 2 }
+                }
+            ];
+            
+            const layout = {
+                title: '',
+                xaxis: { 
+                    title: 'Year',
+                    gridcolor: '#333'
+                },
+                yaxis: { 
+                    title: 'Density (Gb/chip)',
+                    type: 'log',
+                    gridcolor: '#333'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                margin: { t: 20, b: 60, l: 80, r: 20 }
+            };
+            
+            Plotly.newPlot('timeline-plot', traces, layout, {responsive: true});
+        }
+
+        function updateHeatmap() {
+            const techs = Object.keys(techData);
+            const metrics = ['Speed', 'Endurance', 'Retention', 'Density', 'Power'];
+            
+            const z = techs.map(tech => [
+                techData[tech].speed,
+                techData[tech].endurance,
+                techData[tech].retention,
+                techData[tech].density,
+                techData[tech].power
+            ]);
+            
+            const data = [{
+                type: 'heatmap',
+                x: metrics,
+                y: techs,
+                z: z,
+                colorscale: [
+                    [0, '#1a0a2a'],
+                    [0.5, '#9333ea'],
+                    [1, '#c084fc']
+                ],
+                showscale: true,
+                colorbar: {
+                    title: 'Score',
+                    titleside: 'right'
+                }
+            }];
+            
+            const layout = {
+                title: '',
+                xaxis: { 
+                    side: 'bottom',
+                    gridcolor: '#333'
+                },
+                yaxis: { 
+                    gridcolor: '#333'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                margin: { t: 20, b: 60, l: 80, r: 80 }
+            };
+            
+            Plotly.newPlot('heatmap-plot', data, layout, {responsive: true});
+        }
+
+        function updateComparison() {
+            const weights = {
+                speed: parseFloat(document.getElementById('speed-weight').value) / 100,
+                endurance: parseFloat(document.getElementById('endurance-weight').value) / 100,
+                retention: parseFloat(document.getElementById('retention-weight').value) / 100,
+                density: parseFloat(document.getElementById('density-weight').value) / 100,
+                power: parseFloat(document.getElementById('power-weight').value) / 100
+            };
+            
+            let bestTech = '';
+            let bestScore = 0;
+            
+            Object.keys(techData).forEach(tech => {
+                const score = 
+                    techData[tech].speed * weights.speed +
+                    techData[tech].endurance * weights.endurance +
+                    techData[tech].retention * weights.retention +
+                    techData[tech].density * weights.density +
+                    techData[tech].power * weights.power;
+                
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestTech = tech;
+                }
+            });
+            
+            document.getElementById('winner-tech').textContent = bestTech;
+            document.getElementById('winner-score').textContent = Math.round(bestScore) + '/100';
+        }
+
+        // Update weight displays
+        ['speed', 'endurance', 'retention', 'density', 'power'].forEach(metric => {
+            document.getElementById(`${metric}-weight`).addEventListener('input', function() {
+                document.getElementById(`${metric}-value`).textContent = this.value + '%';
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Pulse Animation</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a2e;
+            color: #ccc;
+            padding: 20px;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #667eea;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        #plot {
+            width: 100%;
+            height: 500px;
+        }
+        #status {
+            margin: 10px 0;
+            color: #4ecdc4;
+        }
+    </style>
+</head>
+<body>
+    <h1>Pulse Propagation Test</h1>
+    
+    <div class="controls">
+        <button id="play-btn" onclick="playAnimation()">Play</button>
+        <button id="pause-btn" onclick="pauseAnimation()" disabled>Pause</button>
+        <button id="reset-btn" onclick="resetAnimation()">Reset</button>
+        <span id="status">Ready</span>
+    </div>
+    
+    <div id="plot"></div>
+    
+    <script>
+        let animationId = null;
+        let animationFrame = 0;
+        let isPlaying = false;
+        
+        function initPlot() {
+            const time = [];
+            const pulse = [];
+            
+            for (let t = -20; t <= 40; t += 0.5) {
+                time.push(t);
+                pulse.push(Math.exp(-(t * t) / 50));
+            }
+            
+            const trace = {
+                x: time,
+                y: pulse,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Pulse'
+            };
+            
+            const layout = {
+                title: 'Initial Pulse',
+                xaxis: { title: 'Time (μs)' },
+                yaxis: { title: 'Amplitude' },
+                plot_bgcolor: '#0f0f23',
+                paper_bgcolor: '#1a1a2e',
+                font: { color: '#ccc' }
+            };
+            
+            Plotly.newPlot('plot', [trace], layout);
+        }
+        
+        function playAnimation() {
+            console.log('Play clicked');
+            if (isPlaying) return;
+            
+            isPlaying = true;
+            document.getElementById('play-btn').disabled = true;
+            document.getElementById('pause-btn').disabled = false;
+            document.getElementById('status').textContent = 'Playing...';
+            
+            animate();
+        }
+        
+        function pauseAnimation() {
+            console.log('Pause clicked');
+            isPlaying = false;
+            
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+            
+            document.getElementById('play-btn').disabled = false;
+            document.getElementById('pause-btn').disabled = true;
+            document.getElementById('status').textContent = 'Paused';
+        }
+        
+        function resetAnimation() {
+            console.log('Reset clicked');
+            pauseAnimation();
+            animationFrame = 0;
+            initPlot();
+            document.getElementById('status').textContent = 'Ready';
+        }
+        
+        function animate() {
+            if (!isPlaying) return;
+            
+            const time = [];
+            const pulse1 = [];
+            const pulse2 = [];
+            
+            const delay = (animationFrame / 100) * 20;
+            
+            for (let t = -20; t <= 40; t += 0.5) {
+                time.push(t);
+                pulse1.push(Math.exp(-(t * t) / 50));
+                pulse2.push(0.9 * Math.exp(-((t - delay) * (t - delay)) / 50));
+            }
+            
+            const trace1 = {
+                x: time,
+                y: pulse1,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Input Pulse',
+                line: { color: 'blue' }
+            };
+            
+            const trace2 = {
+                x: time,
+                y: pulse2,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Output Pulse',
+                line: { color: 'red' }
+            };
+            
+            const layout = {
+                title: `Pulse Propagation (delay = ${delay.toFixed(1)} μs)`,
+                xaxis: { title: 'Time (μs)' },
+                yaxis: { title: 'Amplitude' },
+                plot_bgcolor: '#0f0f23',
+                paper_bgcolor: '#1a1a2e',
+                font: { color: '#ccc' }
+            };
+            
+            Plotly.newPlot('plot', [trace1, trace2], layout);
+            
+            animationFrame++;
+            if (animationFrame > 100) {
+                animationFrame = 0;
+            }
+            
+            animationId = requestAnimationFrame(animate);
+        }
+        
+        // Initialize on load
+        window.onload = function() {
+            initPlot();
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EIT Interactive Simulations - Fixed</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a2e;
+            color: #ccc;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #667eea;
+            text-align: center;
+        }
+        .tab-buttons {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+            gap: 10px;
+        }
+        .tab-button {
+            padding: 10px 20px;
+            background: #333;
+            color: #ccc;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+        .tab-button.active {
+            background: #667eea;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+            background: #0f0f23;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .control-panel {
+            background: #1a1a2e;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .control-group {
+            margin: 10px 0;
+        }
+        label {
+            display: inline-block;
+            width: 200px;
+        }
+        input[type="range"] {
+            width: 200px;
+        }
+        .animation-controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .animation-controls button {
+            padding: 10px 20px;
+            margin: 0 5px;
+            background: #667eea;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+        .animation-controls button:hover:not(:disabled) {
+            background: #5a6ed8;
+        }
+        .animation-controls button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        #animation-status {
+            margin-left: 20px;
+            color: #4ecdc4;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>EIT Pulse Propagation - Working Demo</h1>
+        
+        <div class="tab-buttons">
+            <button class="tab-button active" onclick="showTab('pulse')">Pulse Propagation</button>
+        </div>
+        
+        <div id="pulse-tab" class="tab-content active">
+            <h2>Pulse Propagation Through EIT Medium</h2>
+            
+            <div class="control-panel">
+                <div class="control-group">
+                    <label>Pulse Duration (μs):</label>
+                    <input type="range" id="pulse-duration" min="1" max="20" step="0.5" value="5">
+                    <span id="pulse-duration-value">5.0</span> μs
+                </div>
+                <div class="control-group">
+                    <label>Propagation Distance (mm):</label>
+                    <input type="range" id="propagation-distance" min="0" max="10" step="0.1" value="3">
+                    <span id="propagation-distance-value">3.0</span> mm
+                </div>
+            </div>
+            
+            <div id="pulse-plot"></div>
+            
+            <div class="animation-controls">
+                <button id="play-btn" onclick="startAnimation()">Play</button>
+                <button id="pause-btn" onclick="stopAnimation()" disabled>Pause</button>
+                <button id="reset-btn" onclick="resetAnimation()">Reset</button>
+                <span id="animation-status">Ready</span>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Global animation state
+        let animationRunning = false;
+        let currentFrame = 0;
+        let animationInterval = null;
+        
+        // Initialize the plot
+        function initializePlot() {
+            const duration = parseFloat(document.getElementById('pulse-duration').value);
+            
+            const time = [];
+            const inputPulse = [];
+            const outputPulse = [];
+            
+            // Generate initial data
+            for (let t = -20; t <= 40; t += 0.1) {
+                time.push(t);
+                inputPulse.push(Math.exp(-(t * t) / (2 * duration * duration)));
+                outputPulse.push(0.9 * Math.exp(-((t - 10.6) * (t - 10.6)) / (2 * duration * duration * 1.1)));
+            }
+            
+            const data = [
+                {
+                    x: time,
+                    y: inputPulse,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Input Pulse',
+                    line: { color: 'rgb(102, 126, 234)', width: 3 }
+                },
+                {
+                    x: time,
+                    y: outputPulse,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Output Pulse',
+                    line: { color: 'rgb(234, 102, 126)', width: 3, dash: 'dash' }
+                }
+            ];
+            
+            const layout = {
+                title: 'Pulse Propagation Through EIT Medium',
+                xaxis: {
+                    title: 'Time (μs)',
+                    gridcolor: '#444',
+                    zerolinecolor: '#666'
+                },
+                yaxis: {
+                    title: 'Amplitude (a.u.)',
+                    gridcolor: '#444',
+                    zerolinecolor: '#666',
+                    range: [-0.1, 1.1]
+                },
+                plot_bgcolor: '#0f0f23',
+                paper_bgcolor: '#1a1a2e',
+                font: { color: '#ccc' },
+                showlegend: true
+            };
+            
+            Plotly.newPlot('pulse-plot', data, layout, {responsive: true});
+        }
+        
+        // Animation frame update
+        function updateAnimation() {
+            const duration = parseFloat(document.getElementById('pulse-duration').value);
+            const distance = parseFloat(document.getElementById('propagation-distance').value);
+            
+            // Calculate current time in animation
+            const totalFrames = 100;
+            const currentTime = (currentFrame / totalFrames) * 40; // 40 μs total
+            const delay = 10.6 * (currentTime / 40);
+            
+            const time = [];
+            const inputPulse = [];
+            const outputPulse = [];
+            
+            // Generate animated data
+            for (let t = -20; t <= 40; t += 0.1) {
+                time.push(t);
+                inputPulse.push(Math.exp(-(t * t) / (2 * duration * duration)));
+                
+                const broadening = 1 + 0.1 * (currentTime / 40);
+                const amplitude = 0.9 * Math.exp(-0.01 * currentTime);
+                outputPulse.push(amplitude * Math.exp(-((t - delay) * (t - delay)) / (2 * duration * duration * broadening * broadening)));
+            }
+            
+            // Update plot data
+            Plotly.update('pulse-plot', {
+                x: [time, time],
+                y: [inputPulse, outputPulse]
+            }, {
+                title: `Pulse Propagation (t = ${currentTime.toFixed(1)} μs, delay = ${delay.toFixed(1)} μs)`
+            });
+            
+            // Increment frame
+            currentFrame++;
+            if (currentFrame >= totalFrames) {
+                currentFrame = 0;
+            }
+        }
+        
+        // Animation controls
+        function startAnimation() {
+            if (animationRunning) return;
+            
+            animationRunning = true;
+            document.getElementById('play-btn').disabled = true;
+            document.getElementById('pause-btn').disabled = false;
+            document.getElementById('animation-status').textContent = 'Playing...';
+            
+            // Start animation loop
+            animationInterval = setInterval(updateAnimation, 50); // 20 FPS
+        }
+        
+        function stopAnimation() {
+            animationRunning = false;
+            
+            if (animationInterval) {
+                clearInterval(animationInterval);
+                animationInterval = null;
+            }
+            
+            document.getElementById('play-btn').disabled = false;
+            document.getElementById('pause-btn').disabled = true;
+            document.getElementById('animation-status').textContent = 'Paused';
+        }
+        
+        function resetAnimation() {
+            stopAnimation();
+            currentFrame = 0;
+            initializePlot();
+            document.getElementById('animation-status').textContent = 'Ready';
+        }
+        
+        // Event listeners
+        document.getElementById('pulse-duration').addEventListener('input', function(e) {
+            document.getElementById('pulse-duration-value').textContent = e.target.value;
+            if (!animationRunning) {
+                initializePlot();
+            }
+        });
+        
+        document.getElementById('propagation-distance').addEventListener('input', function(e) {
+            document.getElementById('propagation-distance-value').textContent = e.target.value;
+        });
+        
+        // Initialize on load
+        window.addEventListener('load', function() {
+            initializePlot();
+        });
+        
+        // Tab switching (simplified for demo)
+        function showTab(tabName) {
+            // Only one tab in this demo
+        }
+    </script>
+</body>
+</html>
