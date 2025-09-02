@@ -692,8 +692,271 @@ int main(void) {
                 </div>
 
                 <div class="section">
+                    <h2><i class="fas fa-wave-square"></i> Advanced Features</h2>
+                    <div class="subsection">
+                        <h3>Branch Prediction</h3>
+                        <div class="code-block">
+                            <pre><code class="language-verilog">
+// Two-bit saturating counter branch predictor
+module branch_predictor #(
+    parameter BTB_SIZE = 256,
+    parameter ADDR_WIDTH = 32
+)(
+    input  wire                    clk,
+    input  wire                    rst_n,
+    
+    // Prediction interface
+    input  wire [ADDR_WIDTH-1:0]   pc_fetch,
+    output wire                    predict_taken,
+    output wire [ADDR_WIDTH-1:0]   predict_target,
+    
+    // Update interface
+    input  wire                    update_en,
+    input  wire [ADDR_WIDTH-1:0]   update_pc,
+    input  wire                    actual_taken,
+    input  wire [ADDR_WIDTH-1:0]   actual_target
+);
+
+    // Branch Target Buffer
+    reg [ADDR_WIDTH-1:0] btb_target [0:BTB_SIZE-1];
+    reg [1:0]            btb_state  [0:BTB_SIZE-1];  // 2-bit counter
+    reg                  btb_valid  [0:BTB_SIZE-1];
+    
+    // Hash function for BTB indexing
+    wire [7:0] fetch_idx = pc_fetch[9:2] ^ pc_fetch[17:10];
+    wire [7:0] update_idx = update_pc[9:2] ^ update_pc[17:10];
+    
+    // Prediction logic
+    assign predict_taken = btb_valid[fetch_idx] && (btb_state[fetch_idx] >= 2'b10);
+    assign predict_target = btb_target[fetch_idx];
+    
+    // State machine for 2-bit counter
+    always @(posedge clk) begin
+        if (!rst_n) begin
+            for (int i = 0; i < BTB_SIZE; i++) begin
+                btb_valid[i] <= 1'b0;
+                btb_state[i] <= 2'b01;  // Weakly not taken
+            end
+        end else if (update_en) begin
+            btb_valid[update_idx] <= 1'b1;
+            btb_target[update_idx] <= actual_target;
+            
+            // Update 2-bit counter
+            case (btb_state[update_idx])
+                2'b00: btb_state[update_idx] <= actual_taken ? 2'b01 : 2'b00;  // Strongly not taken
+                2'b01: btb_state[update_idx] <= actual_taken ? 2'b10 : 2'b00;  // Weakly not taken
+                2'b10: btb_state[update_idx] <= actual_taken ? 2'b11 : 2'b01;  // Weakly taken
+                2'b11: btb_state[update_idx] <= actual_taken ? 2'b11 : 2'b10;  // Strongly taken
+            endcase
+        end
+    end
+    
+endmodule
+                            </code></pre>
+                        </div>
+                        
+                        <h3>Out-of-Order Execution Support</h3>
+                        <p>Tomasulo's algorithm implementation with reservation stations:</p>
+                        <ul>
+                            <li>16-entry reorder buffer (ROB)</li>
+                            <li>4 ALU reservation stations</li>
+                            <li>2 load/store reservation stations</li>
+                            <li>Register renaming with 64 physical registers</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2><i class="fas fa-network-wired"></i> NoC Integration</h2>
+                    <div class="subsection">
+                        <h3>Network-on-Chip Architecture</h3>
+                        <p>2D mesh topology for multi-core scalability:</p>
+                        <ul>
+                            <li>XY routing algorithm</li>
+                            <li>Wormhole flow control</li>
+                            <li>Virtual channels for deadlock avoidance</li>
+                            <li>Credit-based flow control</li>
+                        </ul>
+                        
+                        <div class="code-block">
+                            <pre><code class="language-verilog">
+// NoC Router Module
+module noc_router #(
+    parameter DATA_WIDTH = 64,
+    parameter ADDR_WIDTH = 32,
+    parameter X_COORD = 0,
+    parameter Y_COORD = 0
+)(
+    input  wire clk,
+    input  wire rst_n,
+    
+    // North, South, East, West, Local ports
+    input  wire [DATA_WIDTH-1:0]  data_in  [0:4],
+    input  wire                   valid_in [0:4],
+    output wire                   ready_out[0:4],
+    
+    output wire [DATA_WIDTH-1:0]  data_out [0:4],
+    output wire                   valid_out[0:4],
+    input  wire                   ready_in [0:4]
+);
+    
+    // Routing logic
+    function [2:0] route_xy;
+        input [7:0] dest_x, dest_y;
+        begin
+            if (dest_x > X_COORD)
+                route_xy = 3'b010;  // East
+            else if (dest_x < X_COORD)
+                route_xy = 3'b011;  // West
+            else if (dest_y > Y_COORD)
+                route_xy = 3'b000;  // North
+            else if (dest_y < Y_COORD)
+                route_xy = 3'b001;  // South
+            else
+                route_xy = 3'b100;  // Local
+        end
+    endfunction
+    
+endmodule
+                            </code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2><i class="fas fa-memory"></i> Advanced Memory Features</h2>
+                    <div class="subsection">
+                        <h3>Memory Coherence Protocol</h3>
+                        <p>MESI cache coherence protocol implementation:</p>
+                        <div class="code-block">
+                            <pre><code class="language-verilog">
+// MESI Cache Controller
+typedef enum logic [1:0] {
+    INVALID   = 2'b00,
+    SHARED    = 2'b01,
+    EXCLUSIVE = 2'b10,
+    MODIFIED  = 2'b11
+} mesi_state_t;
+
+module cache_controller_mesi (
+    input  wire         clk,
+    input  wire         rst_n,
+    
+    // CPU interface
+    input  wire         cpu_read,
+    input  wire         cpu_write,
+    input  wire [31:0]  cpu_addr,
+    
+    // Snoop interface
+    input  wire         snoop_read,
+    input  wire         snoop_write,
+    input  wire [31:0]  snoop_addr,
+    
+    // State output
+    output mesi_state_t cache_state
+);
+    
+    mesi_state_t current_state, next_state;
+    
+    always_ff @(posedge clk) begin
+        if (!rst_n)
+            current_state <= INVALID;
+        else
+            current_state <= next_state;
+    end
+    
+    always_comb begin
+        next_state = current_state;
+        
+        case (current_state)
+            INVALID: begin
+                if (cpu_read && !snoop_write)
+                    next_state = SHARED;
+                else if (cpu_write)
+                    next_state = MODIFIED;
+            end
+            
+            SHARED: begin
+                if (cpu_write)
+                    next_state = MODIFIED;
+                else if (snoop_write)
+                    next_state = INVALID;
+            end
+            
+            EXCLUSIVE: begin
+                if (cpu_write)
+                    next_state = MODIFIED;
+                else if (snoop_read)
+                    next_state = SHARED;
+                else if (snoop_write)
+                    next_state = INVALID;
+            end
+            
+            MODIFIED: begin
+                if (snoop_read) begin
+                    // Write back and transition to SHARED
+                    next_state = SHARED;
+                end else if (snoop_write) begin
+                    // Write back and invalidate
+                    next_state = INVALID;
+                end
+            end
+        endcase
+    end
+    
+endmodule
+                            </code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2><i class="fas fa-bug"></i> Debug & Trace</h2>
+                    <div class="subsection">
+                        <h3>RISC-V Debug Module</h3>
+                        <p>Compliant with RISC-V External Debug Support Version 0.13.2:</p>
+                        <ul>
+                            <li>Hardware breakpoints (4 configurable)</li>
+                            <li>Instruction trace with compression</li>
+                            <li>Performance counters (cycles, instructions, cache misses)</li>
+                            <li>JTAG interface for external debugger</li>
+                        </ul>
+                        
+                        <h3>Performance Monitoring Unit</h3>
+                        <div class="code-block">
+                            <pre><code class="language-c">
+// Performance counter access
+uint64_t read_cycle_counter() {
+    uint32_t lo, hi;
+    asm volatile("rdcycle %0" : "=r"(lo));
+    asm volatile("rdcycleh %0" : "=r"(hi));
+    return ((uint64_t)hi << 32) | lo;
+}
+
+uint64_t read_instruction_counter() {
+    uint32_t lo, hi;
+    asm volatile("rdinstret %0" : "=r"(lo));
+    asm volatile("rdinstreth %0" : "=r"(hi));
+    return ((uint64_t)hi << 32) | lo;
+}
+
+// Custom performance counter for cache misses
+uint32_t read_cache_misses() {
+    uint32_t misses;
+    asm volatile("csrr %0, 0x7C5" : "=r"(misses));  // Custom CSR
+    return misses;
+}
+                            </code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
                     <h2><i class="fas fa-download"></i> Project Resources</h2>
                     <div class="resources">
+                        <a href="riscv-soc-paper.html" class="resource-link">
+                            <i class="fas fa-file-alt"></i> Full Research Paper
+                        </a>
                         <a href="#" class="resource-link">
                             <i class="fas fa-file-code"></i> RTL Source Code
                         </a>

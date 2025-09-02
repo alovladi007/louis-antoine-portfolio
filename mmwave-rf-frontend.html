@@ -283,8 +283,131 @@ class BeamformingArray:
                 </div>
 
                 <div class="section">
+                    <h2><i class="fas fa-microscope"></i> Measurement & Validation</h2>
+                    <div class="subsection">
+                        <h3>Vector Network Analyzer Measurements</h3>
+                        <div class="measurement-setup">
+                            <p>Full two-port S-parameter characterization using Keysight PNA-X N5247B (10MHz-67GHz)</p>
+                            <ul>
+                                <li>Calibration: SOLT with electronic calibration module</li>
+                                <li>Power sweep: -30dBm to +10dBm input</li>
+                                <li>Temperature characterization: -40°C to +85°C</li>
+                                <li>Load-pull measurements with automated tuner</li>
+                            </ul>
+                        </div>
+                        
+                        <h3>Over-the-Air Testing</h3>
+                        <div id="otaTestResults"></div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2><i class="fas fa-project-diagram"></i> Complete Design Files</h2>
+                    <div class="subsection">
+                        <h3>Schematic & Layout Files</h3>
+                        <div class="code-block">
+                            <pre><code class="language-python">
+# PCB Stack-up Configuration
+stackup = {
+    'layers': [
+        {'name': 'Top', 'type': 'signal', 'thickness': 35, 'material': 'copper'},
+        {'name': 'Prepreg-1', 'type': 'dielectric', 'thickness': 100, 'Er': 3.5},
+        {'name': 'GND-1', 'type': 'plane', 'thickness': 35, 'material': 'copper'},
+        {'name': 'Core-1', 'type': 'dielectric', 'thickness': 200, 'Er': 3.5},
+        {'name': 'Signal-2', 'type': 'signal', 'thickness': 35, 'material': 'copper'},
+        {'name': 'Prepreg-2', 'type': 'dielectric', 'thickness': 100, 'Er': 3.5},
+        {'name': 'Signal-3', 'type': 'signal', 'thickness': 35, 'material': 'copper'},
+        {'name': 'Core-2', 'type': 'dielectric', 'thickness': 200, 'Er': 3.5},
+        {'name': 'GND-2', 'type': 'plane', 'thickness': 35, 'material': 'copper'},
+        {'name': 'Prepreg-3', 'type': 'dielectric', 'thickness': 100, 'Er': 3.5},
+        {'name': 'Bottom', 'type': 'signal', 'thickness': 35, 'material': 'copper'}
+    ],
+    'via_types': {
+        'through': {'drill': 0.2, 'pad': 0.35, 'antipad': 0.5},
+        'blind': {'drill': 0.1, 'pad': 0.2, 'antipad': 0.3},
+        'buried': {'drill': 0.15, 'pad': 0.25, 'antipad': 0.35}
+    }
+}
+
+# Transmission line calculator
+def calculate_microstrip(w, h, er):
+    """Calculate characteristic impedance of microstrip"""
+    from numpy import log, sqrt, pi
+    
+    # Effective dielectric constant
+    w_h = w / h
+    if w_h <= 1:
+        er_eff = (er + 1)/2 + (er - 1)/2 * (1/sqrt(1 + 12/w_h) + 0.04*(1 - w_h)**2)
+    else:
+        er_eff = (er + 1)/2 + (er - 1)/2 / sqrt(1 + 12/w_h)
+    
+    # Characteristic impedance
+    if w_h <= 1:
+        Z0 = 60/sqrt(er_eff) * log(8/w_h + w_h/4)
+    else:
+        Z0 = 120*pi / (sqrt(er_eff) * (w_h + 1.393 + 0.667*log(w_h + 1.444)))
+    
+    return Z0, er_eff
+                            </code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2><i class="fas fa-chart-line"></i> Performance Optimization</h2>
+                    <div class="subsection">
+                        <h3>Linearity Enhancement Techniques</h3>
+                        <ul>
+                            <li><strong>Digital Predistortion (DPD):</strong> Implemented adaptive DPD with memory polynomial model</li>
+                            <li><strong>Envelope Tracking:</strong> Dynamic supply voltage modulation for efficiency improvement</li>
+                            <li><strong>Crest Factor Reduction:</strong> Peak-to-average power ratio optimization</li>
+                        </ul>
+                        
+                        <div class="code-block">
+                            <pre><code class="language-python">
+# Digital Predistortion Implementation
+import numpy as np
+from scipy.signal import lfilter
+
+class DPD_System:
+    def __init__(self, order=5, memory=3):
+        self.order = order
+        self.memory = memory
+        self.coefficients = np.zeros((order, memory), dtype=complex)
+        
+    def adapt_coefficients(self, input_signal, output_signal):
+        """Indirect learning architecture for DPD adaptation"""
+        # Build basis functions matrix
+        X = self.build_basis_matrix(output_signal)
+        
+        # Least squares solution
+        self.coefficients = np.linalg.lstsq(X, input_signal, rcond=None)[0]
+        
+    def predistort(self, signal):
+        """Apply predistortion to input signal"""
+        predistorted = np.zeros_like(signal)
+        
+        for k in range(self.order):
+            for m in range(self.memory):
+                if m == 0:
+                    basis = signal * np.abs(signal)**(2*k)
+                else:
+                    basis = np.roll(signal, m) * np.abs(np.roll(signal, m))**(2*k)
+                
+                predistorted += self.coefficients[k, m] * basis
+        
+        return predistorted
+                            </code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
                     <h2><i class="fas fa-download"></i> Resources & Documentation</h2>
                     <div class="resources">
+                        <a href="mmwave-rf-paper.html" class="resource-link">
+                            <i class="fas fa-file-alt"></i> Full Research Paper
+                        </a>
                         <a href="#" class="resource-link">
                             <i class="fas fa-file-pdf"></i> Design Report (PDF)
                         </a>
@@ -296,6 +419,9 @@ class BeamformingArray:
                         </a>
                         <a href="#" class="resource-link">
                             <i class="fas fa-video"></i> Demo Video
+                        </a>
+                        <a href="#" class="resource-link">
+                            <i class="fab fa-github"></i> GitHub Repository
                         </a>
                     </div>
                 </div>
