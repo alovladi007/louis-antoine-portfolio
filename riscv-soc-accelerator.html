@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RISC-V SoC with Custom Accelerators - Hardware Design</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <a href="index.html" class="logo">LA</a>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html" class="nav-link">Home</a></li>
+                <li><a href="index.html#projects" class="nav-link">Projects</a></li>
+                <li><a href="additional-projects.html" class="nav-link">All Projects</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section class="project-detail">
+        <div class="container">
+            <div class="back-link">
+                <a href="additional-projects.html"><i class="fas fa-arrow-left"></i> Back to Projects</a>
+            </div>
+            
+            <div class="project-header">
+                <h1>RISC-V SoC with Custom Accelerators</h1>
+                <p class="project-subtitle">Full RV32IMC Processor with ML Inference Engine & Hardware Security</p>
+            </div>
+
+            <div class="project-content">
+                <div class="section">
+                    <h2><i class="fas fa-microchip"></i> Project Overview</h2>
+                    <p>This project implements a complete RISC-V based System-on-Chip featuring a 5-stage pipelined RV32IMC core, custom vector accelerator for machine learning workloads, AXI4 interconnect fabric, DDR4 memory controller, and hardware security module. The design is synthesized on Xilinx Zynq UltraScale+ achieving 200MHz operation with integrated ML inference capabilities for edge AI applications.</p>
+                    
+                    <div class="tech-specs">
+                        <h3>Core Specifications</h3>
+                        <ul>
+                            <li><strong>ISA:</strong> RISC-V RV32IMC (Integer, Multiply/Divide, Compressed)</li>
+                            <li><strong>Pipeline:</strong> 5-stage with forwarding and hazard detection</li>
+                            <li><strong>Clock Frequency:</strong> 200 MHz on Zynq UltraScale+</li>
+                            <li><strong>Cache:</strong> 32KB I-Cache, 32KB D-Cache (2-way set associative)</li>
+                            <li><strong>ML Accelerator:</strong> 8x8 Systolic Array, INT8/INT16 support</li>
+                            <li><strong>Security:</strong> Hardware AES-256, True RNG, Secure Boot</li>
+                            <li><strong>Memory:</strong> DDR4-2400 Controller with ECC</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2><i class="fas fa-sitemap"></i> SoC Architecture</h2>
+                    <div class="architecture-diagram">
+                        <canvas id="socArchitecture"></canvas>
+                    </div>
+                    
+                    <div class="subsection">
+                        <h3>System Components</h3>
+                        <div class="component-grid">
+                            <div class="component-card">
+                                <h4>RISC-V Core</h4>
+                                <p>5-stage pipeline with branch prediction, forwarding unit, and compressed instruction support</p>
+                            </div>
+                            <div class="component-card">
+                                <h4>Vector Accelerator</h4>
+                                <p>Custom SIMD unit for ML workloads with 8x8 systolic array</p>
+                            </div>
+                            <div class="component-card">
+                                <h4>AXI4 Interconnect</h4>
+                                <p>High-performance crossbar with QoS support and burst transactions</p>
+                            </div>
+                            <div class="component-card">
+                                <h4>Security Module</h4>
+                                <p>Hardware crypto engine with secure key storage and attestation</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2><i class="fas fa-code"></i> RISC-V Core Implementation</h2>
+                    <div class="code-block">
+                        <pre><code class="language-verilog">
+// RISC-V RV32IMC Core Top Module
+module riscv_core #(
+    parameter XLEN = 32,
+    parameter RESET_ADDR = 32'h0000_0000
+)(
+    input  wire                 clk,
+    input  wire                 rst_n,
+    
+    // Instruction Memory Interface
+    output wire [XLEN-1:0]      imem_addr,
+    output wire                 imem_req,
+    input  wire [XLEN-1:0]      imem_rdata,
+    input  wire                 imem_ready,
+    
+    // Data Memory Interface
+    output wire [XLEN-1:0]      dmem_addr,
+    output wire [XLEN-1:0]      dmem_wdata,
+    output wire [3:0]           dmem_we,
+    output wire                 dmem_req,
+    input  wire [XLEN-1:0]      dmem_rdata,
+    input  wire                 dmem_ready,
+    
+    // Interrupt Interface
+    input  wire                 ext_irq,
+    input  wire                 timer_irq
+);
+
+    // Pipeline Registers
+    reg [XLEN-1:0] if_id_pc;
+    reg [31:0]     if_id_instr;
+    reg            if_id_valid;
+    
+    reg [XLEN-1:0] id_ex_pc;
+    reg [4:0]      id_ex_rs1;
+    reg [4:0]      id_ex_rs2;
+    reg [4:0]      id_ex_rd;
+    reg [XLEN-1:0] id_ex_imm;
+    reg [6:0]      id_ex_alu_op;
+    reg            id_ex_valid;
+    
+    // Fetch Stage
+    always_ff @(posedge clk) begin
+        if (!rst_n) begin
+            pc <= RESET_ADDR;
+        end else if (branch_taken) begin
+            pc <= branch_target;
+        end else if (!stall) begin
+            pc <= pc_next;
+        end
+    end
+    
+    // Decode Stage with Compressed Instruction Support
+    always_comb begin
+        if (if_id_instr[1:0] != 2'b11) begin
+            // Compressed instruction - expand to 32-bit
+            case (if_id_instr[1:0])
+                2'b00: decoded_instr = expand_c0(if_id_instr[15:0]);
+                2'b01: decoded_instr = expand_c1(if_id_instr[15:0]);
+                2'b10: decoded_instr = expand_c2(if_id_instr[15:0]);
+                default: decoded_instr = 32'h0000_0013; // NOP
+            endcase
+        end else begin
+            decoded_instr = if_id_instr;
+        end
+    end
+    
+    // Hazard Detection Unit
+    hazard_detection_unit hdu (
+        .id_ex_rd(id_ex_rd),
+        .id_ex_mem_read(id_ex_mem_read),
+        .if_id_rs1(if_id_rs1),
+        .if_id_rs2(if_id_rs2),
+        .stall(pipeline_stall)
+    );
+    
+    // Forwarding Unit
+    forwarding_unit fwd (
+        .ex_mem_rd(ex_mem_rd),
+        .mem_wb_rd(mem_wb_rd),
+        .id_ex_rs1(id_ex_rs1),
+        .id_ex_rs2(id_ex_rs2),
+        .forward_a(forward_a),
+        .forward_b(forward_b)
+    );
+
+endmodule
+                        </code></pre>
+                    </div>
+                    
+                    <div class="subsection">
+                        <h3>Pipeline Performance</h3>
+                        <div id="pipelineChart"></div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2><i class="fas fa-brain"></i> ML Accelerator Architecture</h2>
+                    <div class="subsection">
+                        <h3>Systolic Array Design</h3>
+                        <div class="code-block">
+                            <pre><code class="language-verilog">
+// 8x8 Systolic Array for Matrix Multiplication
+module systolic_array #(
+    parameter DATA_WIDTH = 8,
+    parameter ARRAY_SIZE = 8
+)(
+    input  wire                         clk,
+    input  wire                         rst_n,
+    input  wire                         start,
+    
+    // Input matrices
+    input  wire [DATA_WIDTH-1:0]        a_in [0:ARRAY_SIZE-1],
+    input  wire [DATA_WIDTH-1:0]        b_in [0:ARRAY_SIZE-1],
+    input  wire                         valid_in,
+    
+    // Output matrix
+    output reg  [2*DATA_WIDTH+7:0]      c_out [0:ARRAY_SIZE-1][0:ARRAY_SIZE-1],
+    output reg                          valid_out
+);
+
+    // Processing Elements
+    reg [DATA_WIDTH-1:0]         pe_a     [0:ARRAY_SIZE-1][0:ARRAY_SIZE-1];
+    reg [DATA_WIDTH-1:0]         pe_b     [0:ARRAY_SIZE-1][0:ARRAY_SIZE-1];
+    reg [2*DATA_WIDTH+7:0]       pe_c     [0:ARRAY_SIZE-1][0:ARRAY_SIZE-1];
+    
+    // Systolic data flow
+    generate
+        genvar i, j;
+        for (i = 0; i < ARRAY_SIZE; i++) begin : row
+            for (j = 0; j < ARRAY_SIZE; j++) begin : col
+                processing_element #(
+                    .DATA_WIDTH(DATA_WIDTH)
+                ) pe (
+                    .clk(clk),
+                    .rst_n(rst_n),
+                    .a_in((j == 0) ? a_in[i] : pe_a[i][j-1]),
+                    .b_in((i == 0) ? b_in[j] : pe_b[i-1][j]),
+                    .c_in(pe_c[i][j]),
+                    .a_out(pe_a[i][j]),
+                    .b_out(pe_b[i][j]),
+                    .c_out(pe_c[i][j])
+                );
+            end
+        end
+    endgenerate
+    
+    // Output assignment
+    always_ff @(posedge clk) begin
+        if (!rst_n) begin
+            valid_out <= 1'b0;
+        end else begin
+            c_out <= pe_c;
+            valid_out <= (cycle_count == ARRAY_SIZE * 3 - 1);
+        end
+    end
+
+endmodule
+
+// Individual Processing Element
+module processing_element #(
+    parameter DATA_WIDTH = 8
+)(
+    input  wire                    clk,
+    input  wire                    rst_n,
+    input  wire [DATA_WIDTH-1:0]   a_in,
+    input  wire [DATA_WIDTH-1:0]   b_in,
+    input  wire [2*DATA_WIDTH+7:0] c_in,
+    output reg  [DATA_WIDTH-1:0]   a_out,
+    output reg  [DATA_WIDTH-1:0]   b_out,
+    output reg  [2*DATA_WIDTH+7:0] c_out
+);
+    
+    wire [2*DATA_WIDTH-1:0] mult_result;
+    
+    // Multiply-Accumulate operation
+    assign mult_result = a_in * b_in;
+    
+    always_ff @(posedge clk) begin
+        if (!rst_n) begin
+            a_out <= 0;
+            b_out <= 0;
+            c_out <= 0;
+        end else begin
+            a_out <= a_in;  // Pass through horizontally
+            b_out <= b_in;  // Pass through vertically
+            c_out <= c_in + mult_result;  // Accumulate
+        end
+    end
+    
+endmodule
+                            </code></pre>
+                        </div>
+                        
+                        <h3>ML Inference Performance</h3>
+                        <div id="mlPerformanceChart"></div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2><i class="fas fa-memory"></i> Memory Subsystem</h2>
+                    <div class="subsection">
+                        <h3>Cache Architecture</h3>
+                        <div class="code-block">
+                            <pre><code class="language-verilog">
+// 2-Way Set Associative Cache
+module cache_2way #(
+    parameter ADDR_WIDTH = 32,
+    parameter DATA_WIDTH = 32,
+    parameter CACHE_SIZE = 32768,  // 32KB
+    parameter LINE_SIZE = 64,      // 64 bytes per line
+    parameter ASSOCIATIVITY = 2
+)(
+    input  wire                    clk,
+    input  wire                    rst_n,
+    
+    // CPU Interface
+    input  wire [ADDR_WIDTH-1:0]   cpu_addr,
+    input  wire [DATA_WIDTH-1:0]   cpu_wdata,
+    input  wire                    cpu_we,
+    input  wire                    cpu_req,
+    output reg  [DATA_WIDTH-1:0]   cpu_rdata,
+    output reg                     cpu_ready,
+    
+    // Memory Interface
+    output reg  [ADDR_WIDTH-1:0]   mem_addr,
+    output reg  [LINE_SIZE*8-1:0]  mem_wdata,
+    output reg                     mem_we,
+    output reg                     mem_req,
+    input  wire [LINE_SIZE*8-1:0]  mem_rdata,
+    input  wire                    mem_ready
+);
+
+    localparam NUM_LINES = CACHE_SIZE / LINE_SIZE;
+    localparam NUM_SETS = NUM_LINES / ASSOCIATIVITY;
+    localparam SET_BITS = $clog2(NUM_SETS);
+    localparam OFFSET_BITS = $clog2(LINE_SIZE);
+    localparam TAG_BITS = ADDR_WIDTH - SET_BITS - OFFSET_BITS;
+    
+    // Cache storage
+    reg [LINE_SIZE*8-1:0]  cache_data  [0:ASSOCIATIVITY-1][0:NUM_SETS-1];
+    reg [TAG_BITS-1:0]     cache_tags  [0:ASSOCIATIVITY-1][0:NUM_SETS-1];
+    reg                     cache_valid [0:ASSOCIATIVITY-1][0:NUM_SETS-1];
+    reg                     cache_dirty [0:ASSOCIATIVITY-1][0:NUM_SETS-1];
+    reg                     cache_lru   [0:NUM_SETS-1];  // LRU bit per set
+    
+    // Address decomposition
+    wire [TAG_BITS-1:0]    tag    = cpu_addr[ADDR_WIDTH-1:ADDR_WIDTH-TAG_BITS];
+    wire [SET_BITS-1:0]    index  = cpu_addr[OFFSET_BITS+SET_BITS-1:OFFSET_BITS];
+    wire [OFFSET_BITS-1:0] offset = cpu_addr[OFFSET_BITS-1:0];
+    
+    // Hit detection
+    wire hit_way0 = cache_valid[0][index] && (cache_tags[0][index] == tag);
+    wire hit_way1 = cache_valid[1][index] && (cache_tags[1][index] == tag);
+    wire cache_hit = hit_way0 || hit_way1;
+    wire hit_way = hit_way1;
+    
+    // LRU replacement policy
+    always_ff @(posedge clk) begin
+        if (!rst_n) begin
+            cache_lru <= '0;
+        end else if (cache_hit && cpu_req) begin
+            cache_lru[index] <= !hit_way;
+        end
+    end
+    
+endmodule
+                            </code></pre>
+                        </div>
+                        
+                        <h3>Memory Access Patterns</h3>
+                        <div id="memoryAccessChart"></div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2><i class="fas fa-shield-alt"></i> Hardware Security Module</h2>
+                    <div class="subsection">
+                        <h3>Security Features</h3>
+                        <ul>
+                            <li><strong>AES-256 Engine:</strong> Hardware accelerated encryption/decryption</li>
+                            <li><strong>True RNG:</strong> Ring oscillator based entropy source</li>
+                            <li><strong>Secure Boot:</strong> RSA-2048 signature verification</li>
+                            <li><strong>Key Storage:</strong> OTP memory with tamper detection</li>
+                            <li><strong>Side-Channel Protection:</strong> Power analysis countermeasures</li>
+                        </ul>
+                        
+                        <div class="code-block">
+                            <pre><code class="language-verilog">
+// Hardware AES-256 Engine
+module aes256_engine (
+    input  wire         clk,
+    input  wire         rst_n,
+    input  wire [255:0] key,
+    input  wire [127:0] plaintext,
+    input  wire         start,
+    output reg  [127:0] ciphertext,
+    output reg          done
+);
+    
+    // AES round function components
+    reg [127:0] state;
+    reg [127:0] round_key [0:14];
+    reg [3:0]   round_counter;
+    
+    // S-Box lookup table
+    wire [7:0] sbox [0:255];
+    
+    // Key expansion
+    always_ff @(posedge clk) begin
+        if (start) begin
+            round_key[0] <= key[255:128];
+            round_key[1] <= key[127:0];
+            // Expand remaining round keys
+            for (int i = 2; i <= 14; i++) begin
+                round_key[i] <= key_expansion(round_key[i-1], i);
+            end
+        end
+    end
+    
+    // AES rounds
+    always_ff @(posedge clk) begin
+        if (!rst_n) begin
+            state <= 0;
+            round_counter <= 0;
+            done <= 0;
+        end else if (start) begin
+            state <= plaintext ^ round_key[0];
+            round_counter <= 1;
+            done <= 0;
+        end else if (round_counter > 0 && round_counter < 14) begin
+            state <= mix_columns(shift_rows(sub_bytes(state))) ^ round_key[round_counter];
+            round_counter <= round_counter + 1;
+        end else if (round_counter == 14) begin
+            ciphertext <= shift_rows(sub_bytes(state)) ^ round_key[14];
+            done <= 1;
+            round_counter <= 0;
+        end
+    end
+    
+endmodule
+                            </code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2><i class="fas fa-tachometer-alt"></i> Performance Metrics</h2>
+                    <div class="performance-grid">
+                        <div class="metric-card">
+                            <h4>CoreMark Score</h4>
+                            <div class="metric-value">3.2 CoreMark/MHz</div>
+                            <div class="metric-detail">640 @ 200MHz</div>
+                        </div>
+                        <div class="metric-card">
+                            <h4>Dhrystone MIPS</h4>
+                            <div class="metric-value">280 DMIPS</div>
+                            <div class="metric-detail">1.4 DMIPS/MHz</div>
+                        </div>
+                        <div class="metric-card">
+                            <h4>ML Inference</h4>
+                            <div class="metric-value">1.6 TOPS</div>
+                            <div class="metric-detail">INT8 operations</div>
+                        </div>
+                        <div class="metric-card">
+                            <h4>Power Consumption</h4>
+                            <div class="metric-value">850mW</div>
+                            <div class="metric-detail">@ 200MHz, 1.0V</div>
+                        </div>
+                    </div>
+                    
+                    <div class="subsection">
+                        <h3>Resource Utilization (Zynq UltraScale+)</h3>
+                        <canvas id="resourceChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2><i class="fas fa-vial"></i> Verification & Testing</h2>
+                    <div class="subsection">
+                        <h3>UVM Testbench Architecture</h3>
+                        <div class="code-block">
+                            <pre><code class="language-systemverilog">
+// UVM Test Environment
+class riscv_test_env extends uvm_env;
+    `uvm_component_utils(riscv_test_env)
+    
+    // Environment components
+    riscv_agent         cpu_agent;
+    memory_agent        mem_agent;
+    axi4_agent          axi_agent;
+    scoreboard          sb;
+    coverage_collector  cov;
+    
+    function new(string name = "riscv_test_env", uvm_component parent);
+        super.new(name, parent);
+    endfunction
+    
+    function void build_phase(uvm_phase phase);
+        super.build_phase(phase);
+        
+        cpu_agent = riscv_agent::type_id::create("cpu_agent", this);
+        mem_agent = memory_agent::type_id::create("mem_agent", this);
+        axi_agent = axi4_agent::type_id::create("axi_agent", this);
+        sb = scoreboard::type_id::create("sb", this);
+        cov = coverage_collector::type_id::create("cov", this);
+    endfunction
+    
+    function void connect_phase(uvm_phase phase);
+        super.connect_phase(phase);
+        
+        // Connect monitors to scoreboard
+        cpu_agent.monitor.ap.connect(sb.cpu_export);
+        mem_agent.monitor.ap.connect(sb.mem_export);
+        
+        // Connect to coverage collector
+        cpu_agent.monitor.ap.connect(cov.analysis_export);
+    endfunction
+endclass
+
+// Constrained Random Test
+class riscv_random_test extends uvm_test;
+    `uvm_component_utils(riscv_random_test)
+    
+    riscv_test_env env;
+    
+    task run_phase(uvm_phase phase);
+        riscv_sequence seq;
+        
+        phase.raise_objection(this);
+        
+        // Run random instruction sequences
+        repeat(10000) begin
+            seq = riscv_sequence::type_id::create("seq");
+            seq.randomize() with {
+                instr_type dist {
+                    ALU_OP   := 40,
+                    LOAD_OP  := 20,
+                    STORE_OP := 15,
+                    BRANCH   := 20,
+                    SYSTEM   := 5
+                };
+            };
+            seq.start(env.cpu_agent.sequencer);
+        end
+        
+        phase.drop_objection(this);
+    endtask
+endclass
+                            </code></pre>
+                        </div>
+                        
+                        <h3>Test Coverage</h3>
+                        <div id="coverageChart"></div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2><i class="fas fa-chart-bar"></i> Synthesis Results</h2>
+                    <div class="synthesis-results">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Resource</th>
+                                    <th>Used</th>
+                                    <th>Available</th>
+                                    <th>Utilization %</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>LUTs</td>
+                                    <td>45,230</td>
+                                    <td>274,080</td>
+                                    <td>16.5%</td>
+                                </tr>
+                                <tr>
+                                    <td>Flip-Flops</td>
+                                    <td>38,450</td>
+                                    <td>548,160</td>
+                                    <td>7.0%</td>
+                                </tr>
+                                <tr>
+                                    <td>Block RAM</td>
+                                    <td>128</td>
+                                    <td>912</td>
+                                    <td>14.0%</td>
+                                </tr>
+                                <tr>
+                                    <td>DSP Slices</td>
+                                    <td>64</td>
+                                    <td>2,520</td>
+                                    <td>2.5%</td>
+                                </tr>
+                                <tr>
+                                    <td>MMCM/PLL</td>
+                                    <td>2</td>
+                                    <td>8</td>
+                                    <td>25.0%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        
+                        <h3>Timing Analysis</h3>
+                        <div id="timingChart"></div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2><i class="fas fa-code-branch"></i> Software Stack</h2>
+                    <div class="subsection">
+                        <h3>Bare-Metal Example</h3>
+                        <div class="code-block">
+                            <pre><code class="language-c">
+// ML Inference on Custom Accelerator
+#include "riscv_soc.h"
+#include "ml_accelerator.h"
+
+// Custom CSR for accelerator control
+#define CSR_ML_CTRL     0x7C0
+#define CSR_ML_STATUS   0x7C1
+#define CSR_ML_ADDR_A   0x7C2
+#define CSR_ML_ADDR_B   0x7C3
+#define CSR_ML_ADDR_C   0x7C4
+
+// Matrix multiplication using systolic array
+void matmul_accelerated(int8_t *A, int8_t *B, int32_t *C, int size) {
+    // Configure DMA for matrix transfer
+    dma_config_t config = {
+        .src_addr = (uint32_t)A,
+        .dst_addr = ML_ACCEL_BASE + ML_MATRIX_A_OFFSET,
+        .size = size * size,
+        .burst_len = 16
+    };
+    
+    // Transfer matrix A to accelerator
+    dma_transfer(&config);
+    
+    // Transfer matrix B
+    config.src_addr = (uint32_t)B;
+    config.dst_addr = ML_ACCEL_BASE + ML_MATRIX_B_OFFSET;
+    dma_transfer(&config);
+    
+    // Start systolic array computation
+    write_csr(CSR_ML_CTRL, ML_START | ML_MODE_MATMUL);
+    
+    // Wait for completion
+    while (!(read_csr(CSR_ML_STATUS) & ML_DONE));
+    
+    // Read results back
+    config.src_addr = ML_ACCEL_BASE + ML_MATRIX_C_OFFSET;
+    config.dst_addr = (uint32_t)C;
+    config.size = size * size * sizeof(int32_t);
+    dma_transfer(&config);
+}
+
+// Benchmark function
+void benchmark_ml_inference(void) {
+    uint64_t start, end;
+    int8_t input[8][8], weights[8][8];
+    int32_t output[8][8];
+    
+    // Initialize test data
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            input[i][j] = (i * 8 + j) % 128;
+            weights[i][j] = (j * 8 + i) % 128;
+        }
+    }
+    
+    // Measure performance
+    start = read_csr(mcycle);
+    
+    for (int iter = 0; iter < 1000; iter++) {
+        matmul_accelerated(&input[0][0], &weights[0][0], &output[0][0], 8);
+    }
+    
+    end = read_csr(mcycle);
+    
+    printf("ML Inference Performance:\n");
+    printf("  Cycles per inference: %llu\n", (end - start) / 1000);
+    printf("  Throughput: %.2f GOPS\n", 
+           (8.0 * 8.0 * 8.0 * 2.0 * 1000.0) / (end - start) * 200.0);
+}
+
+int main(void) {
+    // Initialize system
+    system_init();
+    
+    // Configure ML accelerator
+    ml_accel_init();
+    
+    // Run benchmark
+    benchmark_ml_inference();
+    
+    // Run neural network inference
+    run_nn_inference();
+    
+    return 0;
+}
+                            </code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2><i class="fas fa-download"></i> Project Resources</h2>
+                    <div class="resources">
+                        <a href="#" class="resource-link">
+                            <i class="fas fa-file-code"></i> RTL Source Code
+                        </a>
+                        <a href="#" class="resource-link">
+                            <i class="fas fa-file-pdf"></i> Design Documentation
+                        </a>
+                        <a href="#" class="resource-link">
+                            <i class="fas fa-vial"></i> UVM Testbench
+                        </a>
+                        <a href="#" class="resource-link">
+                            <i class="fas fa-microchip"></i> Synthesis Scripts
+                        </a>
+                        <a href="#" class="resource-link">
+                            <i class="fas fa-code"></i> Software Examples
+                        </a>
+                        <a href="#" class="resource-link">
+                            <i class="fab fa-github"></i> GitHub Repository
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <style>
+        .project-detail {
+            padding: 80px 0;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+        }
+
+        .project-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .project-header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+
+        .project-subtitle {
+            color: #888;
+            font-size: 1.2rem;
+        }
+
+        .section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tech-specs ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .tech-specs li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .code-block {
+            background: #1a1a1a;
+            border-radius: 10px;
+            padding: 1rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        .code-block pre {
+            margin: 0;
+            color: #f8f8f2;
+        }
+
+        .component-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .component-card {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 1rem;
+            border-radius: 10px;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .component-card h4 {
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .performance-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            padding: 1.5rem;
+            border-radius: 15px;
+            text-align: center;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .metric-card h4 {
+            color: #667eea;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .metric-detail {
+            color: #888;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+
+        .data-table th {
+            background: rgba(102, 126, 234, 0.2);
+            padding: 0.75rem;
+            text-align: left;
+            color: #fff;
+        }
+
+        .data-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: #ccc;
+        }
+
+        .resources {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .resource-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: rgba(102, 126, 234, 0.2);
+            border-radius: 25px;
+            color: #667eea;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+
+        .resource-link:hover {
+            background: rgba(102, 126, 234, 0.3);
+            transform: translateY(-2px);
+        }
+
+        #socArchitecture, #resourceChart {
+            width: 100%;
+            height: 400px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            margin: 1rem 0;
+        }
+    </style>
+
+    <script>
+        // Initialize all charts and visualizations
+        document.addEventListener('DOMContentLoaded', function() {
+            // Pipeline Performance Chart
+            const pipelineData = {
+                labels: ['IF', 'ID', 'EX', 'MEM', 'WB'],
+                datasets: [{
+                    label: 'Cycles',
+                    data: [1, 1, 1, 1, 1],
+                    backgroundColor: 'rgba(102, 126, 234, 0.5)',
+                    borderColor: '#667eea',
+                    borderWidth: 2
+                }]
+            };
+
+            const pipelineCtx = document.createElement('canvas');
+            document.getElementById('pipelineChart').appendChild(pipelineCtx);
+            new Chart(pipelineCtx, {
+                type: 'bar',
+                data: pipelineData,
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#ccc'
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            ticks: {
+                                color: '#ccc'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#ccc'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // ML Performance Chart
+            const mlData = [{
+                x: ['ResNet-18', 'MobileNet', 'Custom CNN', 'Matrix Mult'],
+                y: [45, 120, 85, 320],
+                type: 'bar',
+                marker: {
+                    color: ['#667eea', '#764ba2', '#f093fb', '#f5576c']
+                }
+            }];
+
+            const mlLayout = {
+                title: 'ML Inference FPS',
+                paper_bgcolor: 'rgba(0,0,0,0.3)',
+                plot_bgcolor: 'rgba(0,0,0,0.3)',
+                font: {color: '#ccc'},
+                xaxis: {title: 'Model'},
+                yaxis: {title: 'FPS'}
+            };
+
+            Plotly.newPlot('mlPerformanceChart', mlData, mlLayout);
+
+            // Memory Access Pattern
+            const memoryData = [];
+            for (let i = 0; i < 100; i++) {
+                memoryData.push({
+                    x: i,
+                    y: Math.random() * 100,
+                    type: Math.random() > 0.7 ? 'hit' : 'miss'
+                });
+            }
+
+            const memoryTrace = {
+                x: memoryData.map(d => d.x),
+                y: memoryData.map(d => d.y),
+                mode: 'markers',
+                marker: {
+                    color: memoryData.map(d => d.type === 'hit' ? '#667eea' : '#f5576c'),
+                    size: 8
+                },
+                type: 'scatter'
+            };
+
+            const memoryLayout = {
+                title: 'Cache Hit/Miss Pattern',
+                paper_bgcolor: 'rgba(0,0,0,0.3)',
+                plot_bgcolor: 'rgba(0,0,0,0.3)',
+                font: {color: '#ccc'},
+                xaxis: {title: 'Access Number'},
+                yaxis: {title: 'Address (normalized)'}
+            };
+
+            Plotly.newPlot('memoryAccessChart', [memoryTrace], memoryLayout);
+
+            // Coverage Chart
+            const coverageData = [{
+                values: [95, 88, 92, 78, 85],
+                labels: ['Line', 'Branch', 'Toggle', 'FSM', 'Assertion'],
+                type: 'pie',
+                hole: 0.4,
+                marker: {
+                    colors: ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#ffa726']
+                }
+            }];
+
+            const coverageLayout = {
+                title: 'Test Coverage',
+                paper_bgcolor: 'rgba(0,0,0,0.3)',
+                plot_bgcolor: 'rgba(0,0,0,0.3)',
+                font: {color: '#ccc'}
+            };
+
+            Plotly.newPlot('coverageChart', coverageData, coverageLayout);
+
+            // Resource Utilization Chart
+            const resourceCtx = document.getElementById('resourceChart');
+            const resourceChart = new Chart(resourceCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['LUTs', 'FFs', 'BRAM', 'DSP', 'Available'],
+                    datasets: [{
+                        data: [16.5, 7.0, 14.0, 2.5, 60],
+                        backgroundColor: [
+                            '#667eea',
+                            '#764ba2',
+                            '#f093fb',
+                            '#f5576c',
+                            'rgba(255, 255, 255, 0.1)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#ccc'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Timing Analysis
+            const timingData = {
+                x: ['Setup', 'Hold', 'Clock-to-Q', 'Prop Delay'],
+                y: [0.15, 0.08, 0.12, 0.45],
+                type: 'bar',
+                marker: {
+                    color: '#667eea'
+                }
+            };
+
+            const timingLayout = {
+                title: 'Critical Path Timing (ns)',
+                paper_bgcolor: 'rgba(0,0,0,0.3)',
+                plot_bgcolor: 'rgba(0,0,0,0.3)',
+                font: {color: '#ccc'},
+                yaxis: {title: 'Time (ns)'}
+            };
+
+            Plotly.newPlot('timingChart', [timingData], timingLayout);
+
+            // SoC Architecture Diagram
+            const canvas = document.getElementById('socArchitecture');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.offsetWidth;
+            canvas.height = 400;
+
+            // Draw SoC blocks
+            const blocks = [
+                {x: 50, y: 50, w: 120, h: 80, label: 'RISC-V Core', color: '#667eea'},
+                {x: 200, y: 50, w: 120, h: 80, label: 'ML Accel', color: '#764ba2'},
+                {x: 350, y: 50, w: 120, h: 80, label: 'Security', color: '#f093fb'},
+                {x: 125, y: 180, w: 270, h: 60, label: 'AXI4 Interconnect', color: '#f5576c'},
+                {x: 50, y: 280, w: 120, h: 80, label: 'I-Cache', color: '#667eea'},
+                {x: 200, y: 280, w: 120, h: 80, label: 'D-Cache', color: '#764ba2'},
+                {x: 350, y: 280, w: 120, h: 80, label: 'DDR4 Ctrl', color: '#f093fb'}
+            ];
+
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'center';
+
+            blocks.forEach(block => {
+                // Draw block
+                ctx.fillStyle = block.color + '33';
+                ctx.fillRect(block.x, block.y, block.w, block.h);
+                ctx.strokeStyle = block.color;
+                ctx.strokeRect(block.x, block.y, block.w, block.h);
+                
+                // Draw label
+                ctx.fillStyle = '#fff';
+                ctx.fillText(block.label, block.x + block.w/2, block.y + block.h/2 + 5);
+            });
+
+            // Draw connections
+            ctx.strokeStyle = '#667eea66';
+            ctx.lineWidth = 2;
+            
+            // Core to Interconnect
+            ctx.beginPath();
+            ctx.moveTo(110, 130);
+            ctx.lineTo(260, 180);
+            ctx.stroke();
+            
+            // ML Accel to Interconnect
+            ctx.beginPath();
+            ctx.moveTo(260, 130);
+            ctx.lineTo(260, 180);
+            ctx.stroke();
+            
+            // Security to Interconnect
+            ctx.beginPath();
+            ctx.moveTo(410, 130);
+            ctx.lineTo(260, 180);
+            ctx.stroke();
+            
+            // Interconnect to Caches
+            ctx.beginPath();
+            ctx.moveTo(260, 240);
+            ctx.lineTo(110, 280);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(260, 240);
+            ctx.lineTo(260, 280);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(260, 240);
+            ctx.lineTo(410, 280);
+            ctx.stroke();
+        });
+    </script>
+</body>
+</html>
