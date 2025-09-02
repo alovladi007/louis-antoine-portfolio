@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Optimization Stories - Before/After Analysis</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 100%);
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(30, 30, 45, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 4rem 2rem;
+            text-align: center;
+            border-bottom: 2px solid rgba(102, 126, 234, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(102, 126, 234, 0.1) 0%, transparent 70%);
+            animation: pulse 4s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.3; }
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .subtitle {
+            color: #9ca3af;
+            font-size: 1.3rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Story Navigation */
+        .story-nav {
+            max-width: 1400px;
+            margin: 3rem auto;
+            padding: 0 2rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .story-card {
+            background: rgba(30, 30, 45, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 15px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .story-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .story-card.active {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+            border-color: #667eea;
+        }
+
+        .story-icon {
+            font-size: 2.5rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .story-title {
+            font-size: 1.1rem;
+            color: #fff;
+            margin-bottom: 0.5rem;
+        }
+
+        .improvement-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #4ade80, #22c55e);
+            color: #0f0f1e;
+            padding: 0.25rem 0.75rem;
+            border-radius: 15px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Story Content */
+        .story-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            display: none;
+        }
+
+        .story-content.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Before/After Container */
+        .ba-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .before-section, .after-section {
+            background: rgba(30, 30, 45, 0.6);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            position: relative;
+        }
+
+        .before-section {
+            border-top: 4px solid #ff6b6b;
+        }
+
+        .after-section {
+            border-top: 4px solid #4ade80;
+        }
+
+        .section-label {
+            position: absolute;
+            top: -15px;
+            left: 30px;
+            background: linear-gradient(135deg, #0f0f1e, #1a1a2e);
+            padding: 0.25rem 1rem;
+            border-radius: 15px;
+            font-weight: bold;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .before-section .section-label {
+            color: #ff6b6b;
+        }
+
+        .after-section .section-label {
+            color: #4ade80;
+        }
+
+        /* Metrics Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .metric {
+            text-align: center;
+            padding: 1rem;
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 10px;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            color: #9ca3af;
+            font-size: 0.9rem;
+        }
+
+        .before-section .metric-value {
+            color: #ff6b6b;
+        }
+
+        .after-section .metric-value {
+            color: #4ade80;
+        }
+
+        /* Code Comparison */
+        .code-comparison {
+            background: #1a1a2e;
+            border-radius: 10px;
+            padding: 1rem;
+            margin: 1rem 0;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+        }
+
+        .code-line {
+            padding: 0.25rem 0;
+        }
+
+        .code-removed {
+            background: rgba(255, 107, 107, 0.1);
+            color: #ff6b6b;
+        }
+
+        .code-added {
+            background: rgba(74, 222, 128, 0.1);
+            color: #4ade80;
+        }
+
+        /* Optimization Technique */
+        .technique-box {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border-left: 4px solid #667eea;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border-radius: 0 10px 10px 0;
+        }
+
+        .technique-title {
+            color: #667eea;
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .technique-steps {
+            list-style: none;
+            margin-left: 1rem;
+        }
+
+        .technique-steps li {
+            padding: 0.5rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .technique-steps li::before {
+            content: '→';
+            position: absolute;
+            left: 0;
+            color: #667eea;
+        }
+
+        /* Timeline */
+        .optimization-timeline {
+            position: relative;
+            padding: 2rem 0;
+            margin: 2rem 0;
+        }
+
+        .timeline-line {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(180deg, #667eea, #764ba2);
+            transform: translateX(-50%);
+        }
+
+        .timeline-item {
+            display: flex;
+            align-items: center;
+            margin: 2rem 0;
+            position: relative;
+        }
+
+        .timeline-item:nth-child(even) {
+            flex-direction: row-reverse;
+        }
+
+        .timeline-content {
+            flex: 1;
+            background: rgba(30, 30, 45, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin: 0 2rem;
+        }
+
+        .timeline-dot {
+            width: 20px;
+            height: 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .timeline-date {
+            color: #667eea;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Charts Container */
+        .chart-container {
+            background: rgba(30, 30, 45, 0.6);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .chart-title {
+            color: #fff;
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        /* Impact Summary */
+        .impact-summary {
+            background: linear-gradient(135deg, rgba(74, 222, 128, 0.1) 0%, rgba(34, 197, 94, 0.1) 100%);
+            border: 1px solid #4ade80;
+            border-radius: 20px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+
+        .impact-title {
+            color: #4ade80;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .impact-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .impact-item {
+            text-align: center;
+        }
+
+        .impact-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #4ade80;
+        }
+
+        .impact-label {
+            color: #e0e0e0;
+            margin-top: 0.5rem;
+        }
+
+        /* Back Button */
+        .back-button {
+            background: rgba(102, 126, 234, 0.2);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            color: #fff;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .back-button:hover {
+            background: rgba(102, 126, 234, 0.3);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            .ba-container {
+                grid-template-columns: 1fr;
+            }
+
+            .timeline-item,
+            .timeline-item:nth-child(even) {
+                flex-direction: column;
+            }
+
+            .timeline-line {
+                left: 20px;
+            }
+
+            .timeline-dot {
+                left: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <h1>Performance Optimization Stories</h1>
+        <p class="subtitle">Real-world optimizations with measurable impact</p>
+    </div>
+
+    <!-- Story Navigation -->
+    <div class="story-nav" id="storyNav">
+        <div class="story-card active" onclick="showStory('rf-power')">
+            <div class="story-icon"><i class="fas fa-bolt"></i></div>
+            <div class="story-title">RF Power Amplifier Efficiency</div>
+            <div class="improvement-badge">+65% Efficiency</div>
+        </div>
+
+        <div class="story-card" onclick="showStory('cache-optimization')">
+            <div class="story-icon"><i class="fas fa-memory"></i></div>
+            <div class="story-title">Cache Hit Rate Optimization</div>
+            <div class="improvement-badge">+42% Hit Rate</div>
+        </div>
+
+        <div class="story-card" onclick="showStory('crypto-acceleration')">
+            <div class="story-icon"><i class="fas fa-lock"></i></div>
+            <div class="story-title">Cryptography Hardware Acceleration</div>
+            <div class="improvement-badge">120x Speedup</div>
+        </div>
+
+        <div class="story-card" onclick="showStory('pcm-endurance')">
+            <div class="story-icon"><i class="fas fa-database"></i></div>
+            <div class="story-title">PCM Write Endurance</div>
+            <div class="improvement-badge">100x Lifetime</div>
+        </div>
+
+        <div class="story-card" onclick="showStory('ml-inference')">
+            <div class="story-icon"><i class="fas fa-brain"></i></div>
+            <div class="story-title">ML Inference Optimization</div>
+            <div class="improvement-badge">8x Throughput</div>
+        </div>
+
+        <div class="story-card" onclick="showStory('power-management')">
+            <div class="story-icon"><i class="fas fa-battery-half"></i></div>
+            <div class="story-title">SoC Power Management</div>
+            <div class="improvement-badge">-72% Power</div>
+        </div>
+    </div>
+
+    <!-- Story: RF Power Amplifier -->
+    <div class="story-content active" id="rf-power">
+        <button class="back-button" onclick="backToNav()">
+            <i class="fas fa-arrow-left"></i> Back to Stories
+        </button>
+
+        <h2 style="font-size: 2rem; color: #fff; margin-bottom: 2rem;">RF Power Amplifier Efficiency Optimization</h2>
+
+        <div class="ba-container">
+            <div class="before-section">
+                <span class="section-label">BEFORE</span>
+                <h3 style="color: #fff; margin-bottom: 1rem;">Class A Amplifier</h3>
+                <div class="metrics-grid">
+                    <div class="metric">
+                        <div class="metric-value">27%</div>
+                        <div class="metric-label">PAE</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">8.5W</div>
+                        <div class="metric-label">Power Draw</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">85°C</div>
+                        <div class="metric-label">Junction Temp</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">-35dBc</div>
+                        <div class="metric-label">ACLR</div>
+                    </div>
+                </div>
+                
+                <div class="code-comparison">
+                    <div class="code-line code-removed">// Fixed bias point</div>
+                    <div class="code-line code-removed">Vgs = -2.5V  // Class A operation</div>
+                    <div class="code-line code-removed">Vds = 28V    // Fixed drain voltage</div>
+                    <div class="code-line code-removed">Ids = 300mA  // High quiescent current</div>
+                </div>
+            </div>
+
+            <div class="after-section">
+                <span class="section-label">AFTER</span>
+                <h3 style="color: #fff; margin-bottom: 1rem;">Doherty with DPD</h3>
+                <div class="metrics-grid">
+                    <div class="metric">
+                        <div class="metric-value">45%</div>
+                        <div class="metric-label">PAE</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">5.2W</div>
+                        <div class="metric-label">Power Draw</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">62°C</div>
+                        <div class="metric-label">Junction Temp</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">-48dBc</div>
+                        <div class="metric-label">ACLR</div>
+                    </div>
+                </div>
+
+                <div class="code-comparison">
+                    <div class="code-line code-added">// Adaptive bias with envelope tracking</div>
+                    <div class="code-line code-added">Vgs = f(Pin)  // Dynamic gate bias</div>
+                    <div class="code-line code-added">Vds = ET(env) // Envelope tracking</div>
+                    <div class="code-line code-added">Ids = 50mA    // Low quiescent current</div>
+                    <div class="code-line code-added">DPD_coeff = LUT[temp, freq, power]</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="technique-box">
+            <div class="technique-title">
+                <i class="fas fa-tools"></i>
+                Optimization Techniques Applied
+            </div>
+            <ul class="technique-steps">
+                <li><strong>Doherty Architecture:</strong> Implemented asymmetric Doherty with 90° hybrid coupler for improved back-off efficiency</li>
+                <li><strong>Digital Predistortion:</strong> 5th-order memory polynomial with adaptive LUT for linearization</li>
+                <li><strong>Envelope Tracking:</strong> Dynamic supply modulation synchronized with RF envelope</li>
+                <li><strong>Thermal Optimization:</strong> Improved heat sink design with vapor chamber cooling</li>
+                <li><strong>Load Modulation:</strong> Active load-pull for optimal impedance across power levels</li>
+            </ul>
+        </div>
+
+        <div class="optimization-timeline">
+            <div class="timeline-line"></div>
+            
+            <div class="timeline-item">
+                <div class="timeline-content">
+                    <div class="timeline-date">Week 1-2</div>
+                    <p><strong>Baseline Characterization:</strong> Measured Class A performance, identified efficiency bottlenecks at 6dB back-off</p>
+                </div>
+                <div class="timeline-dot"></div>
+            </div>
+
+            <div class="timeline-item">
+                <div class="timeline-content">
+                    <div class="timeline-date">Week 3-4</div>
+                    <p><strong>Doherty Design:</strong> Simulated and implemented asymmetric Doherty, achieved 35% PAE at back-off</p>
+                </div>
+                <div class="timeline-dot"></div>
+            </div>
+
+            <div class="timeline-item">
+                <div class="timeline-content">
+                    <div class="timeline-date">Week 5-6</div>
+                    <p><strong>DPD Implementation:</strong> Developed adaptive DPD algorithm, improved ACLR by 13dB</p>
+                </div>
+                <div class="timeline-dot"></div>
+            </div>
+
+            <div class="timeline-item">
+                <div class="timeline-content">
+                    <div class="timeline-date">Week 7-8</div>
+                    <p><strong>Envelope Tracking:</strong> Integrated ET modulator, achieved additional 10% efficiency improvement</p>
+                </div>
+                <div class="timeline-dot"></div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-title">Efficiency vs Output Power</div>
+            <div id="efficiency-chart" style="height: 400px;"></div>
+        </div>
+
+        <div class="impact-summary">
+            <div class="impact-title">
+                <i class="fas fa-trophy"></i>
+                Overall Impact
+            </div>
+            <div class="impact-grid">
+                <div class="impact-item">
+                    <div class="impact-value">65%</div>
+                    <div class="impact-label">Efficiency Improvement</div>
+                </div>
+                <div class="impact-item">
+                    <div class="impact-value">39%</div>
+                    <div class="impact-label">Power Reduction</div>
+                </div>
+                <div class="impact-item">
+                    <div class="impact-value">23°C</div>
+                    <div class="impact-label">Temperature Reduction</div>
+                </div>
+                <div class="impact-item">
+                    <div class="impact-value">$45K</div>
+                    <div class="impact-label">Annual Energy Savings</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Story: Cache Optimization -->
+    <div class="story-content" id="cache-optimization">
+        <button class="back-button" onclick="backToNav()">
+            <i class="fas fa-arrow-left"></i> Back to Stories
+        </button>
+
+        <h2 style="font-size: 2rem; color: #fff; margin-bottom: 2rem;">Cache Hit Rate Optimization</h2>
+
+        <div class="ba-container">
+            <div class="before-section">
+                <span class="section-label">BEFORE</span>
+                <h3 style="color: #fff; margin-bottom: 1rem;">Direct-Mapped Cache</h3>
+                <div class="metrics-grid">
+                    <div class="metric">
+                        <div class="metric-value">52%</div>
+                        <div class="metric-label">Hit Rate</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">180</div>
+                        <div class="metric-label">Avg Cycles</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">2.8</div>
+                        <div class="metric-label">CPI</div>
+                    </div>
+                </div>
+                
+                <div class="code-comparison">
+                    <div class="code-line code-removed">// Simple modulo indexing</div>
+                    <div class="code-line code-removed">index = addr % CACHE_SIZE;</div>
+                    <div class="code-line code-removed">tag = addr / CACHE_SIZE;</div>
+                    <div class="code-line code-removed">// No replacement policy</div>
+                </div>
+            </div>
+
+            <div class="after-section">
+                <span class="section-label">AFTER</span>
+                <h3 style="color: #fff; margin-bottom: 1rem;">4-Way Set Associative + Prefetch</h3>
+                <div class="metrics-grid">
+                    <div class="metric">
+                        <div class="metric-value">94%</div>
+                        <div class="metric-label">Hit Rate</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">45</div>
+                        <div class="metric-label">Avg Cycles</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">1.2</div>
+                        <div class="metric-label">CPI</div>
+                    </div>
+                </div>
+
+                <div class="code-comparison">
+                    <div class="code-line code-added">// Set-associative with LRU</div>
+                    <div class="code-line code-added">set = (addr >> OFFSET) & SET_MASK;</div>
+                    <div class="code-line code-added">way = find_lru_way(set);</div>
+                    <div class="code-line code-added">// Stride prefetcher</div>
+                    <div class="code-line code-added">prefetch(addr + detected_stride);</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="technique-box">
+            <div class="technique-title">
+                <i class="fas fa-tools"></i>
+                Optimization Techniques Applied
+            </div>
+            <ul class="technique-steps">
+                <li><strong>Set Associativity:</strong> 4-way set associative to reduce conflict misses</li>
+                <li><strong>LRU Replacement:</strong> Pseudo-LRU implementation with 3 bits per set</li>
+                <li><strong>Stride Prefetcher:</strong> Detects and prefetches regular access patterns</li>
+                <li><strong>Victim Cache:</strong> 8-entry fully associative victim cache</li>
+                <li><strong>Way Prediction:</strong> MRU-based way prediction for fast hits</li>
+            </ul>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-title">Cache Performance Across Benchmarks</div>
+            <div id="cache-benchmark-chart" style="height: 400px;"></div>
+        </div>
+
+        <div class="impact-summary">
+            <div class="impact-title">
+                <i class="fas fa-trophy"></i>
+                Overall Impact
+            </div>
+            <div class="impact-grid">
+                <div class="impact-item">
+                    <div class="impact-value">42%</div>
+                    <div class="impact-label">Hit Rate Improvement</div>
+                </div>
+                <div class="impact-item">
+                    <div class="impact-value">4x</div>
+                    <div class="impact-label">Performance Gain</div>
+                </div>
+                <div class="impact-item">
+                    <div class="impact-value">57%</div>
+                    <div class="impact-label">CPI Reduction</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Story: Crypto Acceleration -->
+    <div class="story-content" id="crypto-acceleration">
+        <button class="back-button" onclick="backToNav()">
+            <i class="fas fa-arrow-left"></i> Back to Stories
+        </button>
+
+        <h2 style="font-size: 2rem; color: #fff; margin-bottom: 2rem;">Cryptography Hardware Acceleration</h2>
+
+        <div class="ba-container">
+            <div class="before-section">
+                <span class="section-label">BEFORE</span>
+                <h3 style="color: #fff; margin-bottom: 1rem;">Software Implementation</h3>
+                <div class="metrics-grid">
+                    <div class="metric">
+                        <div class="metric-value">12ms</div>
+                        <div class="metric-label">AES-256 (1MB)</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">450ms</div>
+                        <div class="metric-label">Kyber KEM</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">85%</div>
+                        <div class="metric-label">CPU Usage</div>
+                    </div>
+                </div>
+                
+                <div class="code-comparison">
+                    <div class="code-line code-removed">// Software AES rounds</div>
+                    <div class="code-line code-removed">for(i = 0; i < 14; i++) {</div>
+                    <div class="code-line code-removed">  SubBytes(state);</div>
+                    <div class="code-line code-removed">  ShiftRows(state);</div>
+                    <div class="code-line code-removed">  MixColumns(state);</div>
+                    <div class="code-line code-removed">  AddRoundKey(state, key[i]);</div>
+                    <div class="code-line code-removed">}</div>
+                </div>
+            </div>
+
+            <div class="after-section">
+                <span class="section-label">AFTER</span>
+                <h3 style="color: #fff; margin-bottom: 1rem;">FPGA Accelerator</h3>
+                <div class="metrics-grid">
+                    <div class="metric">
+                        <div class="metric-value">0.1ms</div>
+                        <div class="metric-label">AES-256 (1MB)</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">3.7ms</div>
+                        <div class="metric-label">Kyber KEM</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">2%</div>
+                        <div class="metric-label">CPU Usage</div>
+                    </div>
+                </div>
+
+                <div class="code-comparison">
+                    <div class="code-line code-added">// Hardware AES pipeline</div>
+                    <div class="code-line code-added">always @(posedge clk) begin</div>
+                    <div class="code-line code-added">  round[0] <= plaintext ^ key[0];</div>
+                    <div class="code-line code-added">  for(i = 1; i <= 14; i++)</div>
+                    <div class="code-line code-added">    round[i] <= aes_round(round[i-1], key[i]);</div>
+                    <div class="code-line code-added">  ciphertext <= round[14];</div>
+                    <div class="code-line code-added">end</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="technique-box">
+            <div class="technique-title">
+                <i class="fas fa-tools"></i>
+                Optimization Techniques Applied
+            </div>
+            <ul class="technique-steps">
+                <li><strong>Pipeline Architecture:</strong> 14-stage pipeline for AES rounds</li>
+                <li><strong>Parallel Processing:</strong> 16 parallel AES engines for throughput</li>
+                <li><strong>NTT Acceleration:</strong> Hardware Number Theoretic Transform for Kyber</li>
+                <li><strong>DMA Engine:</strong> Zero-copy data transfer with scatter-gather</li>
+                <li><strong>Constant-Time:</strong> Hardware ensures timing-attack resistance</li>
+            </ul>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-title">Encryption Throughput Comparison</div>
+            <canvas id="crypto-throughput-chart" style="height: 400px;"></canvas>
+        </div>
+
+        <div class="impact-summary">
+            <div class="impact-title">
+                <i class="fas fa-trophy"></i>
+                Overall Impact
+            </div>
+            <div class="impact-grid">
+                <div class="impact-item">
+                    <div class="impact-value">120x</div>
+                    <div class="impact-label">AES Speedup</div>
+                </div>
+                <div class="impact-item">
+                    <div class="impact-value">121x</div>
+                    <div class="impact-label">Kyber Speedup</div>
+                </div>
+                <div class="impact-item">
+                    <div class="impact-value">10Gbps</div>
+                    <div class="impact-label">Throughput</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Story: PCM Endurance -->
+    <div class="story-content" id="pcm-endurance">
+        <button class="back-button" onclick="backToNav()">
+            <i class="fas fa-arrow-left"></i> Back to Stories
+        </button>
+
+        <h2 style="font-size: 2rem; color: #fff; margin-bottom: 2rem;">PCM Write Endurance Optimization</h2>
+
+        <div class="ba-container">
+            <div class="before-section">
+                <span class="section-label">BEFORE</span>
+                <h3 style="color: #fff; margin-bottom: 1rem;">Direct Write</h3>
+                <div class="metrics-grid">
+                    <div class="metric">
+                        <div class="metric-value">10⁶</div>
+                        <div class="metric-label">Write Cycles</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">100%</div>
+                        <div class="metric-label">Write Energy</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">500ns</div>
+                        <div class="metric-label">Write Time</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="after-section">
+                <span class="section-label">AFTER</span>
+                <h3 style="color: #fff; margin-bottom: 1rem;">Differential Write</h3>
+                <div class="metrics-grid">
+                    <div class="metric">
+                        <div class="metric-value">10⁸</div>
+                        <div class="metric-label">Write Cycles</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">15%</div>
+                        <div class="metric-label">Write Energy</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">50ns</div>
+                        <div class="metric-label">Write Time</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="technique-box">
+            <div class="technique-title">
+                <i class="fas fa-tools"></i>
+                Optimization Techniques Applied
+            </div>
+            <ul class="technique-steps">
+                <li><strong>Write Verification:</strong> Read-before-write to skip unchanged bits</li>
+                <li><strong>Wear Leveling:</strong> Dynamic address remapping for uniform wear</li>
+                <li><strong>Write Combining:</strong> Coalesce multiple writes to same line</li>
+                <li><strong>Adaptive Programming:</strong> Adjust pulse parameters based on cell state</li>
+                <li><strong>Error Correction:</strong> BCH codes to tolerate stuck cells</li>
+            </ul>
+        </div>
+
+        <div class="impact-summary">
+            <div class="impact-title">
+                <i class="fas fa-trophy"></i>
+                Overall Impact
+            </div>
+            <div class="impact-grid">
+                <div class="impact-item">
+                    <div class="impact-value">100x</div>
+                    <div class="impact-label">Lifetime Extension</div>
+                </div>
+                <div class="impact-item">
+                    <div class="impact-value">85%</div>
+                    <div class="impact-label">Energy Reduction</div>
+                </div>
+                <div class="impact-item">
+                    <div class="impact-value">10x</div>
+                    <div class="impact-label">Write Speed</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Story: ML Inference -->
+    <div class="story-content" id="ml-inference">
+        <button class="back-button" onclick="backToNav()">
+            <i class="fas fa-arrow-left"></i> Back to Stories
+        </button>
+
+        <h2 style="font-size: 2rem; color: #fff; margin-bottom: 2rem;">ML Inference Optimization</h2>
+
+        <div class="ba-container">
+            <div class="before-section">
+                <span class="section-label">BEFORE</span>
+                <h3 style="color: #fff; margin-bottom: 1rem;">FP32 CPU</h3>
+                <div class="metrics-grid">
+                    <div class="metric">
+                        <div class="metric-value">45ms</div>
+                        <div class="metric-label">ResNet-50</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">22 FPS</div>
+                        <div class="metric-label">Throughput</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">65W</div>
+                        <div class="metric-label">Power</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="after-section">
+                <span class="section-label">AFTER</span>
+                <h3 style="color: #fff; margin-bottom: 1rem;">INT8 Accelerator</h3>
+                <div class="metrics-grid">
+                    <div class="metric">
+                        <div class="metric-value">5.6ms</div>
+                        <div class="metric-label">ResNet-50</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">178 FPS</div>
+                        <div class="metric-label">Throughput</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">12W</div>
+                        <div class="metric-label">Power</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="technique-box">
+            <div class="technique-title">
+                <i class="fas fa-tools"></i>
+                Optimization Techniques Applied
+            </div>
+            <ul class="technique-steps">
+                <li><strong>Quantization:</strong> INT8 with per-channel scaling</li>
+                <li><strong>Systolic Array:</strong> 256×256 MAC array for convolutions</li>
+                <li><strong>Weight Compression:</strong> Pruning + Huffman encoding</li>
+                <li><strong>Layer Fusion:</strong> Conv-BN-ReLU combined operations</li>
+                <li><strong>Memory Optimization:</strong> Tiling for on-chip SRAM reuse</li>
+            </ul>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-title">Model Performance Comparison</div>
+            <div id="ml-performance-chart" style="height: 400px;"></div>
+        </div>
+
+        <div class="impact-summary">
+            <div class="impact-title">
+                <i class="fas fa-trophy"></i>
+                Overall Impact
+            </div>
+            <div class="impact-grid">
+                <div class="impact-item">
+                    <div class="impact-value">8x</div>
+                    <div class="impact-label">Speed Improvement</div>
+                </div>
+                <div class="impact-item">
+                    <div class="impact-value">5.4x</div>
+                    <div class="impact-label">Power Efficiency</div>
+                </div>
+                <div class="impact-item">
+                    <div class="impact-value">0.2%</div>
+                    <div class="impact-label">Accuracy Loss</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Story: Power Management -->
+    <div class="story-content" id="power-management">
+        <button class="back-button" onclick="backToNav()">
+            <i class="fas fa-arrow-left"></i> Back to Stories
+        </button>
+
+        <h2 style="font-size: 2rem; color: #fff; margin-bottom: 2rem;">SoC Power Management Optimization</h2>
+
+        <div class="ba-container">
+            <div class="before-section">
+                <span class="section-label">BEFORE</span>
+                <h3 style="color: #fff; margin-bottom: 1rem;">Always-On</h3>
+                <div class="metrics-grid">
+                    <div class="metric">
+                        <div class="metric-value">2.5W</div>
+                        <div class="metric-label">Idle Power</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">8.2W</div>
+                        <div class="metric-label">Active Power</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">4hrs</div>
+                        <div class="metric-label">Battery Life</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="after-section">
+                <span class="section-label">AFTER</span>
+                <h3 style="color: #fff; margin-bottom: 1rem;">DVFS + Power Gating</h3>
+                <div class="metrics-grid">
+                    <div class="metric">
+                        <div class="metric-value">0.7W</div>
+                        <div class="metric-label">Idle Power</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">3.8W</div>
+                        <div class="metric-label">Active Power</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">14hrs</div>
+                        <div class="metric-label">Battery Life</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="technique-box">
+            <div class="technique-title">
+                <i class="fas fa-tools"></i>
+                Optimization Techniques Applied
+            </div>
+            <ul class="technique-steps">
+                <li><strong>Clock Gating:</strong> Fine-grained clock gating at module level</li>
+                <li><strong>Power Domains:</strong> 4 independent power domains with isolation</li>
+                <li><strong>DVFS:</strong> 8 operating points from 100MHz/0.8V to 1GHz/1.2V</li>
+                <li><strong>Retention Registers:</strong> State retention during power gating</li>
+                <li><strong>Workload Prediction:</strong> ML-based frequency scaling</li>
+            </ul>
+        </div>
+
+        <div class="impact-summary">
+            <div class="impact-title">
+                <i class="fas fa-trophy"></i>
+                Overall Impact
+            </div>
+            <div class="impact-grid">
+                <div class="impact-item">
+                    <div class="impact-value">72%</div>
+                    <div class="impact-label">Power Reduction</div>
+                </div>
+                <div class="impact-item">
+                    <div class="impact-value">3.5x</div>
+                    <div class="impact-label">Battery Life</div>
+                </div>
+                <div class="impact-item">
+                    <div class="impact-value">15°C</div>
+                    <div class="impact-label">Temperature Drop</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentStory = 'rf-power';
+
+        function showStory(storyId) {
+            // Hide navigation
+            document.getElementById('storyNav').style.display = 'none';
+            
+            // Hide all stories
+            document.querySelectorAll('.story-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Show selected story
+            document.getElementById(storyId).classList.add('active');
+            currentStory = storyId;
+            
+            // Initialize charts for the story
+            setTimeout(() => initializeStoryCharts(storyId), 100);
+        }
+
+        function backToNav() {
+            // Show navigation
+            document.getElementById('storyNav').style.display = 'grid';
+            
+            // Hide all stories
+            document.querySelectorAll('.story-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Update active nav card
+            document.querySelectorAll('.story-card').forEach(card => {
+                card.classList.remove('active');
+            });
+        }
+
+        function initializeStoryCharts(storyId) {
+            if (storyId === 'rf-power') {
+                initEfficiencyChart();
+            } else if (storyId === 'cache-optimization') {
+                initCacheBenchmarkChart();
+            } else if (storyId === 'crypto-acceleration') {
+                initCryptoThroughputChart();
+            } else if (storyId === 'ml-inference') {
+                initMLPerformanceChart();
+            }
+        }
+
+        function initEfficiencyChart() {
+            const power = Array.from({length: 41}, (_, i) => i + 10);
+            const classA = power.map(p => 27 * Math.min(1, p/35));
+            const doherty = power.map(p => {
+                if (p < 29) return 35 + (p - 10) * 0.5;
+                else return 45;
+            });
+            
+            const trace1 = {
+                x: power,
+                y: classA,
+                name: 'Class A (Before)',
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#ff6b6b', width: 3 }
+            };
+            
+            const trace2 = {
+                x: power,
+                y: doherty,
+                name: 'Doherty + DPD (After)',
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#4ade80', width: 3 }
+            };
+            
+            const layout = {
+                xaxis: { 
+                    title: 'Output Power (dBm)',
+                    gridcolor: 'rgba(255,255,255,0.1)'
+                },
+                yaxis: { 
+                    title: 'PAE (%)',
+                    gridcolor: 'rgba(255,255,255,0.1)'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                showlegend: true
+            };
+            
+            Plotly.newPlot('efficiency-chart', [trace1, trace2], layout, {responsive: true});
+        }
+
+        function initCacheBenchmarkChart() {
+            const benchmarks = ['SPEC CPU', 'Matrix Mult', 'Quick Sort', 'FFT', 'Database', 'Compiler'];
+            const before = [52, 48, 55, 61, 45, 58];
+            const after = [94, 92, 96, 95, 88, 93];
+            
+            const trace1 = {
+                x: benchmarks,
+                y: before,
+                name: 'Direct-Mapped',
+                type: 'bar',
+                marker: { color: '#ff6b6b' }
+            };
+            
+            const trace2 = {
+                x: benchmarks,
+                y: after,
+                name: '4-Way + Prefetch',
+                type: 'bar',
+                marker: { color: '#4ade80' }
+            };
+            
+            const layout = {
+                xaxis: { gridcolor: 'rgba(255,255,255,0.1)' },
+                yaxis: { 
+                    title: 'Cache Hit Rate (%)',
+                    gridcolor: 'rgba(255,255,255,0.1)',
+                    range: [0, 100]
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                barmode: 'group'
+            };
+            
+            Plotly.newPlot('cache-benchmark-chart', [trace1, trace2], layout, {responsive: true});
+        }
+
+        function initCryptoThroughputChart() {
+            const ctx = document.getElementById('crypto-throughput-chart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['AES-128', 'AES-256', 'SHA-256', 'SHA-3', 'CRYSTALS-Kyber', 'CRYSTALS-Dilithium'],
+                    datasets: [
+                        {
+                            label: 'Software (MB/s)',
+                            data: [120, 85, 200, 150, 2.2, 1.8],
+                            backgroundColor: 'rgba(255, 107, 107, 0.8)'
+                        },
+                        {
+                            label: 'Hardware (MB/s)',
+                            data: [12800, 10200, 8500, 6200, 268, 215],
+                            backgroundColor: 'rgba(74, 222, 128, 0.8)'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            type: 'logarithmic',
+                            ticks: { color: '#9ca3af' },
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            title: {
+                                display: true,
+                                text: 'Throughput (MB/s) - Log Scale',
+                                color: '#9ca3af'
+                            }
+                        },
+                        x: {
+                            ticks: { color: '#9ca3af' },
+                            grid: { color: 'rgba(255,255,255,0.1)' }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#fff' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function initMLPerformanceChart() {
+            const models = ['ResNet-50', 'MobileNet-V2', 'BERT-Base', 'YOLOv5', 'EfficientNet'];
+            const cpuFps = [22, 45, 3, 12, 28];
+            const acceleratorFps = [178, 412, 28, 95, 234];
+            
+            const trace1 = {
+                x: models,
+                y: cpuFps,
+                name: 'CPU FP32',
+                type: 'bar',
+                marker: { color: '#ff6b6b' }
+            };
+            
+            const trace2 = {
+                x: models,
+                y: acceleratorFps,
+                name: 'Accelerator INT8',
+                type: 'bar',
+                marker: { color: '#4ade80' }
+            };
+            
+            const layout = {
+                xaxis: { gridcolor: 'rgba(255,255,255,0.1)' },
+                yaxis: { 
+                    title: 'Inference FPS',
+                    gridcolor: 'rgba(255,255,255,0.1)',
+                    type: 'log'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                barmode: 'group'
+            };
+            
+            Plotly.newPlot('ml-performance-chart', [trace1, trace2], layout, {responsive: true});
+        }
+
+        // Initialize first story on load
+        window.addEventListener('load', () => {
+            // Show navigation by default
+            backToNav();
+        });
+    </script>
+</body>
+</html>

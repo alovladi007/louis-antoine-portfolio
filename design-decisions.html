@@ -1,0 +1,1382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Design Decisions - Architecture Choices & Trade-offs</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 100%);
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(30, 30, 45, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 4rem 2rem;
+            text-align: center;
+            border-bottom: 2px solid rgba(102, 126, 234, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="none" stroke="rgba(102,126,234,0.1)" stroke-width="0.5"/></svg>');
+            background-size: 200px 200px;
+            animation: rotate 20s linear infinite;
+            opacity: 0.3;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .subtitle {
+            color: #9ca3af;
+            font-size: 1.3rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Project Tabs */
+        .tabs-container {
+            max-width: 1400px;
+            margin: 3rem auto 0;
+            padding: 0 2rem;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 1rem;
+            overflow-x: auto;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .tab {
+            background: rgba(30, 30, 45, 0.6);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 10px 10px 0 0;
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tab:hover {
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.3) 0%, rgba(118, 75, 162, 0.3) 100%);
+            border-bottom: 2px solid #667eea;
+        }
+
+        .tab-icon {
+            color: #667eea;
+        }
+
+        /* Content Container */
+        .content-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .project-content {
+            display: none;
+        }
+
+        .project-content.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Decision Card */
+        .decision-card {
+            background: rgba(30, 30, 45, 0.6);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            backdrop-filter: blur(10px);
+            position: relative;
+        }
+
+        .decision-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .decision-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .decision-title-group {
+            flex: 1;
+        }
+
+        .decision-title {
+            font-size: 1.8rem;
+            color: #fff;
+            margin-bottom: 0.5rem;
+        }
+
+        .decision-category {
+            color: #9ca3af;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Options Comparison */
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .option-card {
+            background: rgba(102, 126, 234, 0.05);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 15px;
+            padding: 1.5rem;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .option-card.selected {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border-color: #667eea;
+        }
+
+        .option-card.selected::before {
+            content: '✓ SELECTED';
+            position: absolute;
+            top: -10px;
+            right: 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 15px;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        .option-name {
+            font-size: 1.3rem;
+            color: #fff;
+            margin-bottom: 1rem;
+        }
+
+        .pros-cons {
+            margin: 1rem 0;
+        }
+
+        .pros, .cons {
+            margin: 0.5rem 0;
+        }
+
+        .pros-title, .cons-title {
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .pros-title {
+            color: #4ade80;
+        }
+
+        .cons-title {
+            color: #ff6b6b;
+        }
+
+        .pros-list, .cons-list {
+            list-style: none;
+            margin-left: 1.5rem;
+        }
+
+        .pros-list li, .cons-list li {
+            padding: 0.25rem 0;
+            position: relative;
+            padding-left: 1rem;
+        }
+
+        .pros-list li::before {
+            content: '+';
+            position: absolute;
+            left: 0;
+            color: #4ade80;
+        }
+
+        .cons-list li::before {
+            content: '-';
+            position: absolute;
+            left: 0;
+            color: #ff6b6b;
+        }
+
+        /* Trade-off Matrix */
+        .tradeoff-matrix {
+            background: rgba(30, 30, 45, 0.8);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .matrix-title {
+            color: #667eea;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
+
+        .matrix-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .matrix-table th {
+            background: rgba(102, 126, 234, 0.2);
+            padding: 0.75rem;
+            text-align: left;
+            color: #fff;
+        }
+
+        .matrix-table td {
+            padding: 0.75rem;
+            border-top: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .matrix-table tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .score {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .score.high {
+            background: rgba(74, 222, 128, 0.2);
+            color: #4ade80;
+        }
+
+        .score.medium {
+            background: rgba(255, 230, 109, 0.2);
+            color: #ffd700;
+        }
+
+        .score.low {
+            background: rgba(255, 107, 107, 0.2);
+            color: #ff6b6b;
+        }
+
+        /* Rationale Section */
+        .rationale-box {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border-left: 4px solid #667eea;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border-radius: 0 10px 10px 0;
+        }
+
+        .rationale-title {
+            color: #667eea;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Lessons Learned */
+        .lessons-section {
+            background: rgba(30, 30, 45, 0.6);
+            border-radius: 20px;
+            padding: 2rem;
+            margin: 2rem 0;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .lessons-title {
+            font-size: 1.5rem;
+            color: #fff;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .lesson-item {
+            background: rgba(102, 126, 234, 0.05);
+            border-left: 3px solid #667eea;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0 10px 10px 0;
+        }
+
+        .lesson-title {
+            color: #667eea;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Visualization */
+        .viz-container {
+            background: rgba(30, 30, 45, 0.6);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            .tabs {
+                flex-wrap: wrap;
+            }
+
+            .options-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <h1>Design Decisions</h1>
+        <p class="subtitle">Architecture choices, trade-off analyses, and lessons learned</p>
+    </div>
+
+    <!-- Project Tabs -->
+    <div class="tabs-container">
+        <div class="tabs">
+            <div class="tab active" onclick="showProject('mmwave')">
+                <i class="fas fa-satellite-dish tab-icon"></i>
+                <span>mmWave RF Frontend</span>
+            </div>
+            <div class="tab" onclick="showProject('riscv')">
+                <i class="fas fa-microchip tab-icon"></i>
+                <span>RISC-V SoC</span>
+            </div>
+            <div class="tab" onclick="showProject('crypto')">
+                <i class="fas fa-lock tab-icon"></i>
+                <span>Cryptography</span>
+            </div>
+            <div class="tab" onclick="showProject('pcm')">
+                <i class="fas fa-memory tab-icon"></i>
+                <span>Phase Change Memory</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Content Container -->
+    <div class="content-container">
+        <!-- mmWave RF Frontend Decisions -->
+        <div class="project-content active" id="mmwave">
+            <!-- Decision 1: PA Technology -->
+            <div class="decision-card">
+                <div class="decision-header">
+                    <div class="decision-icon">
+                        <i class="fas fa-bolt" style="color: #667eea;"></i>
+                    </div>
+                    <div class="decision-title-group">
+                        <h2 class="decision-title">Power Amplifier Technology Selection</h2>
+                        <div class="decision-category">RF Component Design</div>
+                    </div>
+                </div>
+
+                <div class="options-grid">
+                    <div class="option-card selected">
+                        <h3 class="option-name">GaN HEMT</h3>
+                        <div class="pros-cons">
+                            <div class="pros">
+                                <div class="pros-title">
+                                    <i class="fas fa-check"></i> Advantages
+                                </div>
+                                <ul class="pros-list">
+                                    <li>High power density (5-10W/mm)</li>
+                                    <li>Excellent thermal properties</li>
+                                    <li>High breakdown voltage (>100V)</li>
+                                    <li>Wide bandwidth capability</li>
+                                </ul>
+                            </div>
+                            <div class="cons">
+                                <div class="cons-title">
+                                    <i class="fas fa-times"></i> Disadvantages
+                                </div>
+                                <ul class="cons-list">
+                                    <li>Higher cost than GaAs</li>
+                                    <li>Requires careful thermal design</li>
+                                    <li>Gate leakage at high temperatures</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="option-card">
+                        <h3 class="option-name">GaAs pHEMT</h3>
+                        <div class="pros-cons">
+                            <div class="pros">
+                                <div class="pros-title">
+                                    <i class="fas fa-check"></i> Advantages
+                                </div>
+                                <ul class="pros-list">
+                                    <li>Mature technology</li>
+                                    <li>Lower cost</li>
+                                    <li>Good noise figure</li>
+                                    <li>Established supply chain</li>
+                                </ul>
+                            </div>
+                            <div class="cons">
+                                <div class="cons-title">
+                                    <i class="fas fa-times"></i> Disadvantages
+                                </div>
+                                <ul class="cons-list">
+                                    <li>Lower power density</li>
+                                    <li>Limited voltage swing</li>
+                                    <li>Requires larger die area</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="option-card">
+                        <h3 class="option-name">SiGe BiCMOS</h3>
+                        <div class="pros-cons">
+                            <div class="pros">
+                                <div class="pros-title">
+                                    <i class="fas fa-check"></i> Advantages
+                                </div>
+                                <ul class="pros-list">
+                                    <li>CMOS integration possible</li>
+                                    <li>Lower cost at volume</li>
+                                    <li>Good for mixed-signal</li>
+                                </ul>
+                            </div>
+                            <div class="cons">
+                                <div class="cons-title">
+                                    <i class="fas fa-times"></i> Disadvantages
+                                </div>
+                                <ul class="cons-list">
+                                    <li>Lower power capability</li>
+                                    <li>Limited to <20dBm output</li>
+                                    <li>Poor efficiency at 28GHz</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tradeoff-matrix">
+                    <div class="matrix-title">Performance Comparison Matrix</div>
+                    <table class="matrix-table">
+                        <thead>
+                            <tr>
+                                <th>Metric</th>
+                                <th>GaN HEMT</th>
+                                <th>GaAs pHEMT</th>
+                                <th>SiGe BiCMOS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Output Power</td>
+                                <td><span class="score high">35dBm</span></td>
+                                <td><span class="score medium">28dBm</span></td>
+                                <td><span class="score low">20dBm</span></td>
+                            </tr>
+                            <tr>
+                                <td>Efficiency (PAE)</td>
+                                <td><span class="score high">45%</span></td>
+                                <td><span class="score medium">35%</span></td>
+                                <td><span class="score low">25%</span></td>
+                            </tr>
+                            <tr>
+                                <td>Cost</td>
+                                <td><span class="score low">$$$</span></td>
+                                <td><span class="score medium">$$</span></td>
+                                <td><span class="score high">$</span></td>
+                            </tr>
+                            <tr>
+                                <td>Thermal Management</td>
+                                <td><span class="score high">Excellent</span></td>
+                                <td><span class="score medium">Good</span></td>
+                                <td><span class="score medium">Good</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="rationale-box">
+                    <div class="rationale-title">
+                        <i class="fas fa-lightbulb"></i>
+                        Final Decision Rationale
+                    </div>
+                    <p>We selected <strong>GaN HEMT</strong> technology for the following reasons:</p>
+                    <ul style="margin-left: 2rem; margin-top: 1rem;">
+                        <li>The 35dBm output power requirement could only be met with GaN</li>
+                        <li>5G base station applications justify the higher component cost</li>
+                        <li>Superior efficiency reduces cooling requirements and operational costs</li>
+                        <li>Wide bandwidth capability supports carrier aggregation</li>
+                        <li>Thermal stability ensures reliable operation in outdoor deployments</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Decision 2: Beamforming Architecture -->
+            <div class="decision-card">
+                <div class="decision-header">
+                    <div class="decision-icon">
+                        <i class="fas fa-broadcast-tower" style="color: #764ba2;"></i>
+                    </div>
+                    <div class="decision-title-group">
+                        <h2 class="decision-title">Beamforming Architecture</h2>
+                        <div class="decision-category">System Architecture</div>
+                    </div>
+                </div>
+
+                <div class="options-grid">
+                    <div class="option-card">
+                        <h3 class="option-name">Analog Beamforming</h3>
+                        <div class="pros-cons">
+                            <div class="pros">
+                                <div class="pros-title">
+                                    <i class="fas fa-check"></i> Advantages
+                                </div>
+                                <ul class="pros-list">
+                                    <li>Lower power consumption</li>
+                                    <li>Simpler architecture</li>
+                                    <li>Lower cost</li>
+                                </ul>
+                            </div>
+                            <div class="cons">
+                                <div class="cons-title">
+                                    <i class="fas fa-times"></i> Disadvantages
+                                </div>
+                                <ul class="cons-list">
+                                    <li>Single beam only</li>
+                                    <li>Limited flexibility</li>
+                                    <li>No multi-user MIMO</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="option-card">
+                        <h3 class="option-name">Digital Beamforming</h3>
+                        <div class="pros-cons">
+                            <div class="pros">
+                                <div class="pros-title">
+                                    <i class="fas fa-check"></i> Advantages
+                                </div>
+                                <ul class="pros-list">
+                                    <li>Multiple simultaneous beams</li>
+                                    <li>Full flexibility</li>
+                                    <li>Advanced MIMO support</li>
+                                </ul>
+                            </div>
+                            <div class="cons">
+                                <div class="cons-title">
+                                    <i class="fas fa-times"></i> Disadvantages
+                                </div>
+                                <ul class="cons-list">
+                                    <li>High power consumption</li>
+                                    <li>Complex DSP requirements</li>
+                                    <li>Expensive ADCs/DACs</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="option-card selected">
+                        <h3 class="option-name">Hybrid Beamforming</h3>
+                        <div class="pros-cons">
+                            <div class="pros">
+                                <div class="pros-title">
+                                    <i class="fas fa-check"></i> Advantages
+                                </div>
+                                <ul class="pros-list">
+                                    <li>Balance of flexibility and cost</li>
+                                    <li>Multiple beams possible</li>
+                                    <li>Moderate power consumption</li>
+                                    <li>Scalable architecture</li>
+                                </ul>
+                            </div>
+                            <div class="cons">
+                                <div class="cons-title">
+                                    <i class="fas fa-times"></i> Disadvantages
+                                </div>
+                                <ul class="cons-list">
+                                    <li>Design complexity</li>
+                                    <li>Calibration challenges</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="viz-container">
+                    <div id="beamforming-comparison" style="height: 400px;"></div>
+                </div>
+
+                <div class="rationale-box">
+                    <div class="rationale-title">
+                        <i class="fas fa-lightbulb"></i>
+                        Final Decision Rationale
+                    </div>
+                    <p>We selected <strong>Hybrid Beamforming</strong> architecture because:</p>
+                    <ul style="margin-left: 2rem; margin-top: 1rem;">
+                        <li>Optimal trade-off between performance and implementation complexity</li>
+                        <li>Supports 4 RF chains for 4 simultaneous users</li>
+                        <li>Power consumption 60% lower than full digital</li>
+                        <li>Cost-effective for commercial 5G deployment</li>
+                        <li>Future upgrade path to full digital if needed</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Lessons Learned -->
+            <div class="lessons-section">
+                <h3 class="lessons-title">
+                    <i class="fas fa-graduation-cap"></i>
+                    Lessons Learned
+                </h3>
+                
+                <div class="lesson-item">
+                    <div class="lesson-title">Thermal Design is Critical</div>
+                    <p>Initial prototypes suffered from thermal runaway. We learned to implement temperature-compensated bias circuits and improved heat sink design, achieving 15°C lower junction temperature.</p>
+                </div>
+
+                <div class="lesson-item">
+                    <div class="lesson-title">Calibration Complexity</div>
+                    <p>Hybrid beamforming requires extensive calibration. We developed an automated calibration procedure that reduced setup time from 2 hours to 15 minutes.</p>
+                </div>
+
+                <div class="lesson-item">
+                    <div class="lesson-title">Supply Chain Considerations</div>
+                    <p>GaN device lead times can exceed 20 weeks. Maintaining buffer stock and qualifying multiple suppliers proved essential for production continuity.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- RISC-V SoC Decisions -->
+        <div class="project-content" id="riscv">
+            <!-- Decision 1: Pipeline Architecture -->
+            <div class="decision-card">
+                <div class="decision-header">
+                    <div class="decision-icon">
+                        <i class="fas fa-microchip" style="color: #667eea;"></i>
+                    </div>
+                    <div class="decision-title-group">
+                        <h2 class="decision-title">Pipeline Architecture</h2>
+                        <div class="decision-category">Processor Design</div>
+                    </div>
+                </div>
+
+                <div class="options-grid">
+                    <div class="option-card">
+                        <h3 class="option-name">3-Stage Pipeline</h3>
+                        <div class="pros-cons">
+                            <div class="pros">
+                                <div class="pros-title">
+                                    <i class="fas fa-check"></i> Advantages
+                                </div>
+                                <ul class="pros-list">
+                                    <li>Simple design</li>
+                                    <li>Low area overhead</li>
+                                    <li>Easy verification</li>
+                                </ul>
+                            </div>
+                            <div class="cons">
+                                <div class="cons-title">
+                                    <i class="fas fa-times"></i> Disadvantages
+                                </div>
+                                <ul class="cons-list">
+                                    <li>Lower performance</li>
+                                    <li>Limited IPC</li>
+                                    <li>Not suitable for high frequency</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="option-card selected">
+                        <h3 class="option-name">5-Stage Pipeline</h3>
+                        <div class="pros-cons">
+                            <div class="pros">
+                                <div class="pros-title">
+                                    <i class="fas fa-check"></i> Advantages
+                                </div>
+                                <ul class="pros-list">
+                                    <li>Balanced design</li>
+                                    <li>Good frequency scaling</li>
+                                    <li>Standard RISC approach</li>
+                                    <li>Manageable hazards</li>
+                                </ul>
+                            </div>
+                            <div class="cons">
+                                <div class="cons-title">
+                                    <i class="fas fa-times"></i> Disadvantages
+                                </div>
+                                <ul class="cons-list">
+                                    <li>Branch penalty</li>
+                                    <li>Data hazards</li>
+                                    <li>Forwarding complexity</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="option-card">
+                        <h3 class="option-name">Out-of-Order</h3>
+                        <div class="pros-cons">
+                            <div class="pros">
+                                <div class="pros-title">
+                                    <i class="fas fa-check"></i> Advantages
+                                </div>
+                                <ul class="pros-list">
+                                    <li>Maximum performance</li>
+                                    <li>High IPC</li>
+                                    <li>Hides memory latency</li>
+                                </ul>
+                            </div>
+                            <div class="cons">
+                                <div class="cons-title">
+                                    <i class="fas fa-times"></i> Disadvantages
+                                </div>
+                                <ul class="cons-list">
+                                    <li>Complex design</li>
+                                    <li>High power consumption</li>
+                                    <li>Large area overhead</li>
+                                    <li>Difficult verification</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tradeoff-matrix">
+                    <div class="matrix-title">Pipeline Comparison</div>
+                    <table class="matrix-table">
+                        <thead>
+                            <tr>
+                                <th>Metric</th>
+                                <th>3-Stage</th>
+                                <th>5-Stage</th>
+                                <th>Out-of-Order</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Max Frequency</td>
+                                <td><span class="score low">150MHz</span></td>
+                                <td><span class="score high">200MHz</span></td>
+                                <td><span class="score medium">180MHz</span></td>
+                            </tr>
+                            <tr>
+                                <td>IPC</td>
+                                <td><span class="score low">0.7</span></td>
+                                <td><span class="score medium">0.85</span></td>
+                                <td><span class="score high">1.2</span></td>
+                            </tr>
+                            <tr>
+                                <td>Area (LUTs)</td>
+                                <td><span class="score high">15K</span></td>
+                                <td><span class="score medium">45K</span></td>
+                                <td><span class="score low">120K</span></td>
+                            </tr>
+                            <tr>
+                                <td>Power</td>
+                                <td><span class="score high">0.5W</span></td>
+                                <td><span class="score medium">0.8W</span></td>
+                                <td><span class="score low">2.1W</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="rationale-box">
+                    <div class="rationale-title">
+                        <i class="fas fa-lightbulb"></i>
+                        Final Decision Rationale
+                    </div>
+                    <p>We selected the <strong>5-Stage Pipeline</strong> for these reasons:</p>
+                    <ul style="margin-left: 2rem; margin-top: 1rem;">
+                        <li>Achieved target 200MHz on Xilinx Zynq-7000</li>
+                        <li>Classic RISC design well-understood and documented</li>
+                        <li>Reasonable area/performance trade-off for embedded applications</li>
+                        <li>Forwarding paths handle most data hazards efficiently</li>
+                        <li>Branch predictor mitigates control hazard penalties</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Decision 2: Memory Hierarchy -->
+            <div class="decision-card">
+                <div class="decision-header">
+                    <div class="decision-icon">
+                        <i class="fas fa-memory" style="color: #764ba2;"></i>
+                    </div>
+                    <div class="decision-title-group">
+                        <h2 class="decision-title">Cache Architecture</h2>
+                        <div class="decision-category">Memory System</div>
+                    </div>
+                </div>
+
+                <div class="options-grid">
+                    <div class="option-card">
+                        <h3 class="option-name">Direct-Mapped</h3>
+                        <div class="pros-cons">
+                            <div class="pros">
+                                <div class="pros-title">
+                                    <i class="fas fa-check"></i> Advantages
+                                </div>
+                                <ul class="pros-list">
+                                    <li>Simple implementation</li>
+                                    <li>Fast access time</li>
+                                    <li>Low power</li>
+                                </ul>
+                            </div>
+                            <div class="cons">
+                                <div class="cons-title">
+                                    <i class="fas fa-times"></i> Disadvantages
+                                </div>
+                                <ul class="cons-list">
+                                    <li>High conflict misses</li>
+                                    <li>Poor utilization</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="option-card selected">
+                        <h3 class="option-name">4-Way Set Associative</h3>
+                        <div class="pros-cons">
+                            <div class="pros">
+                                <div class="pros-title">
+                                    <i class="fas fa-check"></i> Advantages
+                                </div>
+                                <ul class="pros-list">
+                                    <li>Good hit rate</li>
+                                    <li>Reduced conflicts</li>
+                                    <li>Reasonable complexity</li>
+                                </ul>
+                            </div>
+                            <div class="cons">
+                                <div class="cons-title">
+                                    <i class="fas fa-times"></i> Disadvantages
+                                </div>
+                                <ul class="cons-list">
+                                    <li>Higher latency</li>
+                                    <li>More complex control</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="option-card">
+                        <h3 class="option-name">Fully Associative</h3>
+                        <div class="pros-cons">
+                            <div class="pros">
+                                <div class="pros-title">
+                                    <i class="fas fa-check"></i> Advantages
+                                </div>
+                                <ul class="pros-list">
+                                    <li>Best hit rate</li>
+                                    <li>No conflict misses</li>
+                                </ul>
+                            </div>
+                            <div class="cons">
+                                <div class="cons-title">
+                                    <i class="fas fa-times"></i> Disadvantages
+                                </div>
+                                <ul class="cons-list">
+                                    <li>Very complex</li>
+                                    <li>High power consumption</li>
+                                    <li>Long access time</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="viz-container">
+                    <div id="cache-performance" style="height: 400px;"></div>
+                </div>
+            </div>
+
+            <!-- Lessons Learned -->
+            <div class="lessons-section">
+                <h3 class="lessons-title">
+                    <i class="fas fa-graduation-cap"></i>
+                    Lessons Learned
+                </h3>
+                
+                <div class="lesson-item">
+                    <div class="lesson-title">Verification is 70% of the Effort</div>
+                    <p>We underestimated verification complexity. Implementing UVM testbenches and formal verification early saved months of debugging.</p>
+                </div>
+
+                <div class="lesson-item">
+                    <div class="lesson-title">Clock Domain Crossings</div>
+                    <p>Multiple clock domains for peripherals caused metastability issues. Proper synchronizers and FIFO-based crossings were essential.</p>
+                </div>
+
+                <div class="lesson-item">
+                    <div class="lesson-title">Power Optimization</div>
+                    <p>Clock gating and power domains reduced power by 40%. Dynamic voltage/frequency scaling added with minimal overhead.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cryptography Decisions -->
+        <div class="project-content" id="crypto">
+            <!-- Decision 1: Algorithm Selection -->
+            <div class="decision-card">
+                <div class="decision-header">
+                    <div class="decision-icon">
+                        <i class="fas fa-lock" style="color: #667eea;"></i>
+                    </div>
+                    <div class="decision-title-group">
+                        <h2 class="decision-title">Post-Quantum Algorithm Selection</h2>
+                        <div class="decision-category">Cryptographic Design</div>
+                    </div>
+                </div>
+
+                <div class="options-grid">
+                    <div class="option-card selected">
+                        <h3 class="option-name">CRYSTALS-Kyber</h3>
+                        <div class="pros-cons">
+                            <div class="pros">
+                                <div class="pros-title">
+                                    <i class="fas fa-check"></i> Advantages
+                                </div>
+                                <ul class="pros-list">
+                                    <li>NIST standardized</li>
+                                    <li>Efficient implementation</li>
+                                    <li>Small key sizes</li>
+                                    <li>Fast operations</li>
+                                </ul>
+                            </div>
+                            <div class="cons">
+                                <div class="cons-title">
+                                    <i class="fas fa-times"></i> Disadvantages
+                                </div>
+                                <ul class="cons-list">
+                                    <li>Lattice assumptions</li>
+                                    <li>New cryptanalysis risk</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="option-card">
+                        <h3 class="option-name">Classic McEliece</h3>
+                        <div class="pros-cons">
+                            <div class="pros">
+                                <div class="pros-title">
+                                    <i class="fas fa-check"></i> Advantages
+                                </div>
+                                <ul class="pros-list">
+                                    <li>Most conservative</li>
+                                    <li>Well-studied</li>
+                                    <li>High confidence</li>
+                                </ul>
+                            </div>
+                            <div class="cons">
+                                <div class="cons-title">
+                                    <i class="fas fa-times"></i> Disadvantages
+                                </div>
+                                <ul class="cons-list">
+                                    <li>Huge public keys (1MB)</li>
+                                    <li>Slow key generation</li>
+                                    <li>Impractical for many uses</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="option-card">
+                        <h3 class="option-name">NTRU</h3>
+                        <div class="pros-cons">
+                            <div class="pros">
+                                <div class="pros-title">
+                                    <i class="fas fa-check"></i> Advantages
+                                </div>
+                                <ul class="pros-list">
+                                    <li>Patent-free</li>
+                                    <li>Fast encryption</li>
+                                    <li>Moderate key sizes</li>
+                                </ul>
+                            </div>
+                            <div class="cons">
+                                <div class="cons-title">
+                                    <i class="fas fa-times"></i> Disadvantages
+                                </div>
+                                <ul class="cons-list">
+                                    <li>Not selected by NIST</li>
+                                    <li>Less community support</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rationale-box">
+                    <div class="rationale-title">
+                        <i class="fas fa-lightbulb"></i>
+                        Final Decision Rationale
+                    </div>
+                    <p>We selected <strong>CRYSTALS-Kyber</strong> as our primary PQC algorithm:</p>
+                    <ul style="margin-left: 2rem; margin-top: 1rem;">
+                        <li>NIST standardization ensures long-term support and compatibility</li>
+                        <li>Performance characteristics suitable for real-time applications</li>
+                        <li>Hardware acceleration feasible with reasonable resource usage</li>
+                        <li>Active development community and security analysis</li>
+                        <li>Hybrid mode with classical crypto provides defense in depth</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Lessons Learned -->
+            <div class="lessons-section">
+                <h3 class="lessons-title">
+                    <i class="fas fa-graduation-cap"></i>
+                    Lessons Learned
+                </h3>
+                
+                <div class="lesson-item">
+                    <div class="lesson-title">Side-Channel Protection is Essential</div>
+                    <p>Initial implementations leaked timing information. Constant-time algorithms and power analysis countermeasures were critical.</p>
+                </div>
+
+                <div class="lesson-item">
+                    <div class="lesson-title">Hybrid Approach for Transition</div>
+                    <p>Combining classical and post-quantum crypto provides insurance against both current and future threats during the transition period.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- PCM Decisions -->
+        <div class="project-content" id="pcm">
+            <!-- Decision 1: Material Composition -->
+            <div class="decision-card">
+                <div class="decision-header">
+                    <div class="decision-icon">
+                        <i class="fas fa-atom" style="color: #667eea;"></i>
+                    </div>
+                    <div class="decision-title-group">
+                        <h2 class="decision-title">Phase Change Material Selection</h2>
+                        <div class="decision-category">Materials Engineering</div>
+                    </div>
+                </div>
+
+                <div class="options-grid">
+                    <div class="option-card selected">
+                        <h3 class="option-name">Ge₂Sb₂Te₅ (GST)</h3>
+                        <div class="pros-cons">
+                            <div class="pros">
+                                <div class="pros-title">
+                                    <i class="fas fa-check"></i> Advantages
+                                </div>
+                                <ul class="pros-list">
+                                    <li>Well-characterized</li>
+                                    <li>Good data retention</li>
+                                    <li>Fast crystallization</li>
+                                    <li>Proven reliability</li>
+                                </ul>
+                            </div>
+                            <div class="cons">
+                                <div class="cons-title">
+                                    <i class="fas fa-times"></i> Disadvantages
+                                </div>
+                                <ul class="cons-list">
+                                    <li>High reset current</li>
+                                    <li>Thermal crosstalk</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="option-card">
+                        <h3 class="option-name">GeTe-Sb₂Te₃</h3>
+                        <div class="pros-cons">
+                            <div class="pros">
+                                <div class="pros-title">
+                                    <i class="fas fa-check"></i> Advantages
+                                </div>
+                                <ul class="pros-list">
+                                    <li>Lower reset current</li>
+                                    <li>Better scaling</li>
+                                </ul>
+                            </div>
+                            <div class="cons">
+                                <div class="cons-title">
+                                    <i class="fas fa-times"></i> Disadvantages
+                                </div>
+                                <ul class="cons-list">
+                                    <li>Complex deposition</li>
+                                    <li>Composition control</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="option-card">
+                        <h3 class="option-name">Doped SbTe</h3>
+                        <div class="pros-cons">
+                            <div class="pros">
+                                <div class="pros-title">
+                                    <i class="fas fa-check"></i> Advantages
+                                </div>
+                                <ul class="pros-list">
+                                    <li>Fast switching</li>
+                                    <li>Good endurance</li>
+                                </ul>
+                            </div>
+                            <div class="cons">
+                                <div class="cons-title">
+                                    <i class="fas fa-times"></i> Disadvantages
+                                </div>
+                                <ul class="cons-list">
+                                    <li>Poor retention</li>
+                                    <li>High temperature sensitivity</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rationale-box">
+                    <div class="rationale-title">
+                        <i class="fas fa-lightbulb"></i>
+                        Final Decision Rationale
+                    </div>
+                    <p>We selected <strong>Ge₂Sb₂Te₅ (GST)</strong> for initial implementation:</p>
+                    <ul style="margin-left: 2rem; margin-top: 1rem;">
+                        <li>Extensive literature and characterization data available</li>
+                        <li>Compatible with standard CMOS backend processing</li>
+                        <li>10-year data retention at 85°C meets specifications</li>
+                        <li>Established supply chain for target materials</li>
+                        <li>Path to optimization through nitrogen doping identified</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Lessons Learned -->
+            <div class="lessons-section">
+                <h3 class="lessons-title">
+                    <i class="fas fa-graduation-cap"></i>
+                    Lessons Learned
+                </h3>
+                
+                <div class="lesson-item">
+                    <div class="lesson-title">Thermal Engineering is Key</div>
+                    <p>Thermal boundary resistance dominated device performance. Optimizing electrode materials and interfaces improved efficiency by 30%.</p>
+                </div>
+
+                <div class="lesson-item">
+                    <div class="lesson-title">Variability Management</div>
+                    <p>Device-to-device variability required adaptive programming algorithms. Machine learning-based parameter extraction improved yield from 82% to 96%.</p>
+                </div>
+
+                <div class="lesson-item">
+                    <div class="lesson-title">Integration Challenges</div>
+                    <p>Backend-of-line integration required careful thermal budget management. Process temperature limited to 400°C to prevent degradation.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showProject(projectId) {
+            // Hide all content
+            document.querySelectorAll('.project-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Remove active from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected content
+            document.getElementById(projectId).classList.add('active');
+            
+            // Mark tab as active
+            event.currentTarget.classList.add('active');
+            
+            // Initialize visualizations
+            if (projectId === 'mmwave') {
+                initBeamformingComparison();
+            } else if (projectId === 'riscv') {
+                initCachePerformance();
+            }
+        }
+
+        function initBeamformingComparison() {
+            const categories = ['Cost', 'Power', 'Flexibility', 'Performance', 'Complexity'];
+            
+            const analog = [3, 5, 2, 3, 5];
+            const digital = [1, 1, 5, 5, 2];
+            const hybrid = [3, 3, 4, 4, 3];
+            
+            const data = [
+                {
+                    type: 'scatterpolar',
+                    r: analog,
+                    theta: categories,
+                    fill: 'toself',
+                    name: 'Analog',
+                    line: { color: '#ff6b6b' }
+                },
+                {
+                    type: 'scatterpolar',
+                    r: digital,
+                    theta: categories,
+                    fill: 'toself',
+                    name: 'Digital',
+                    line: { color: '#4ade80' }
+                },
+                {
+                    type: 'scatterpolar',
+                    r: hybrid,
+                    theta: categories,
+                    fill: 'toself',
+                    name: 'Hybrid',
+                    line: { color: '#667eea' }
+                }
+            ];
+            
+            const layout = {
+                title: 'Beamforming Architecture Comparison',
+                polar: {
+                    radialaxis: {
+                        visible: true,
+                        range: [0, 5],
+                        gridcolor: 'rgba(255,255,255,0.1)'
+                    },
+                    bgcolor: 'rgba(0,0,0,0)',
+                    gridcolor: 'rgba(255,255,255,0.1)'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                showlegend: true
+            };
+            
+            Plotly.newPlot('beamforming-comparison', data, layout, {responsive: true});
+        }
+
+        function initCachePerformance() {
+            const benchmarks = ['Matrix Multiply', 'FFT', 'Sort', 'Search', 'Crypto'];
+            
+            const directMapped = [45, 52, 38, 61, 55];
+            const fourWay = [78, 81, 72, 85, 79];
+            const fullyAssoc = [92, 94, 88, 95, 91];
+            
+            const data = [
+                {
+                    x: benchmarks,
+                    y: directMapped,
+                    name: 'Direct-Mapped',
+                    type: 'bar',
+                    marker: { color: '#ff6b6b' }
+                },
+                {
+                    x: benchmarks,
+                    y: fourWay,
+                    name: '4-Way Set Associative',
+                    type: 'bar',
+                    marker: { color: '#667eea' }
+                },
+                {
+                    x: benchmarks,
+                    y: fullyAssoc,
+                    name: 'Fully Associative',
+                    type: 'bar',
+                    marker: { color: '#4ade80' }
+                }
+            ];
+            
+            const layout = {
+                title: 'Cache Hit Rate by Benchmark (%)',
+                xaxis: { gridcolor: 'rgba(255,255,255,0.1)' },
+                yaxis: { 
+                    title: 'Hit Rate (%)',
+                    gridcolor: 'rgba(255,255,255,0.1)',
+                    range: [0, 100]
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                barmode: 'group'
+            };
+            
+            Plotly.newPlot('cache-performance', data, layout, {responsive: true});
+        }
+
+        // Initialize first project on load
+        window.addEventListener('load', () => {
+            setTimeout(initBeamformingComparison, 100);
+        });
+    </script>
+</body>
+</html>
