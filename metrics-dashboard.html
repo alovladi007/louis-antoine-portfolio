@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Metrics Dashboard - GitHub & Project Statistics</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 100%);
+            color: #e5e7eb;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+
+        .github-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+        }
+
+        .stat-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: #9ca3af;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .github-stars { color: #fbbf24; }
+        .github-forks { color: #4ade80; }
+        .github-watchers { color: #60a5fa; }
+        .github-issues { color: #f87171; }
+        .github-prs { color: #a78bfa; }
+        .github-contributors { color: #34d399; }
+
+        .projects-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .project-metric-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .project-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .project-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: white;
+        }
+
+        .project-badge {
+            padding: 0.25rem 0.75rem;
+            background: rgba(74, 222, 128, 0.2);
+            color: #4ade80;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .metric-row:last-child {
+            border-bottom: none;
+        }
+
+        .metric-name {
+            color: #9ca3af;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .metric-value {
+            font-weight: 600;
+            color: white;
+        }
+
+        .charts-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .chart-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .chart-title {
+            font-size: 1.3rem;
+            color: white;
+            margin-bottom: 1.5rem;
+        }
+
+        .activity-feed {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 2rem;
+        }
+
+        .activity-title {
+            font-size: 1.5rem;
+            color: white;
+            margin-bottom: 1.5rem;
+        }
+
+        .activity-item {
+            display: flex;
+            gap: 1rem;
+            padding: 1rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .activity-commit { background: rgba(74, 222, 128, 0.2); color: #4ade80; }
+        .activity-pr { background: rgba(167, 139, 250, 0.2); color: #a78bfa; }
+        .activity-issue { background: rgba(248, 113, 113, 0.2); color: #f87171; }
+        .activity-star { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+
+        .activity-content {
+            flex: 1;
+        }
+
+        .activity-description {
+            color: #e5e7eb;
+            margin-bottom: 0.25rem;
+        }
+
+        .activity-time {
+            color: #9ca3af;
+            font-size: 0.85rem;
+        }
+
+        .language-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .language-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .language-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .language-name {
+            flex: 1;
+            color: #e5e7eb;
+        }
+
+        .language-percentage {
+            color: #9ca3af;
+        }
+
+        .language-bar {
+            flex: 2;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .language-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 4px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: #667eea;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .back-link:hover {
+            transform: translateX(-5px);
+        }
+
+        .sync-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-left: 1rem;
+        }
+
+        .sync-button:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+        }
+
+        .sync-button.syncing {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .sync-button.syncing i {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .last-updated {
+            color: #9ca3af;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="portfolio-enhancements.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Portfolio Showcase
+        </a>
+
+        <div class="header">
+            <h1><i class="fab fa-github"></i> Metrics Dashboard</h1>
+            <p>Real-time GitHub statistics and project metrics</p>
+            <button class="sync-button" onclick="syncGitHubData(this)">
+                <i class="fas fa-sync"></i> Sync GitHub Data
+            </button>
+            <div class="last-updated">Last updated: <span id="lastUpdated">2 minutes ago</span></div>
+        </div>
+
+        <!-- GitHub Stats Overview -->
+        <div class="github-stats">
+            <div class="stat-card">
+                <i class="fas fa-star stat-icon github-stars"></i>
+                <div class="stat-value">892</div>
+                <div class="stat-label">Total Stars</div>
+            </div>
+
+            <div class="stat-card">
+                <i class="fas fa-code-branch stat-icon github-forks"></i>
+                <div class="stat-value">234</div>
+                <div class="stat-label">Total Forks</div>
+            </div>
+
+            <div class="stat-card">
+                <i class="fas fa-eye stat-icon github-watchers"></i>
+                <div class="stat-value">156</div>
+                <div class="stat-label">Watchers</div>
+            </div>
+
+            <div class="stat-card">
+                <i class="fas fa-exclamation-circle stat-icon github-issues"></i>
+                <div class="stat-value">12</div>
+                <div class="stat-label">Open Issues</div>
+            </div>
+
+            <div class="stat-card">
+                <i class="fas fa-code-merge stat-icon github-prs"></i>
+                <div class="stat-value">8</div>
+                <div class="stat-label">Pull Requests</div>
+            </div>
+
+            <div class="stat-card">
+                <i class="fas fa-users stat-icon github-contributors"></i>
+                <div class="stat-value">47</div>
+                <div class="stat-label">Contributors</div>
+            </div>
+        </div>
+
+        <!-- Project-specific Metrics -->
+        <div class="projects-metrics">
+            <div class="project-metric-card">
+                <div class="project-header">
+                    <span class="project-name">mmWave RF Frontend</span>
+                    <span class="project-badge">Trending</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-name"><i class="fas fa-star"></i> Stars</span>
+                    <span class="metric-value">342</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-name"><i class="fas fa-code-branch"></i> Forks</span>
+                    <span class="metric-value">89</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-name"><i class="fas fa-download"></i> Downloads</span>
+                    <span class="metric-value">1,234</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-name"><i class="fas fa-users"></i> Contributors</span>
+                    <span class="metric-value">12</span>
+                </div>
+            </div>
+
+            <div class="project-metric-card">
+                <div class="project-header">
+                    <span class="project-name">RISC-V SoC</span>
+                    <span class="project-badge">Popular</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-name"><i class="fas fa-star"></i> Stars</span>
+                    <span class="metric-value">278</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-name"><i class="fas fa-code-branch"></i> Forks</span>
+                    <span class="metric-value">67</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-name"><i class="fas fa-download"></i> Downloads</span>
+                    <span class="metric-value">956</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-name"><i class="fas fa-users"></i> Contributors</span>
+                    <span class="metric-value">8</span>
+                </div>
+            </div>
+
+            <div class="project-metric-card">
+                <div class="project-header">
+                    <span class="project-name">PCM Research</span>
+                    <span class="project-badge">Active</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-name"><i class="fas fa-star"></i> Stars</span>
+                    <span class="metric-value">156</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-name"><i class="fas fa-code-branch"></i> Forks</span>
+                    <span class="metric-value">45</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-name"><i class="fas fa-download"></i> Downloads</span>
+                    <span class="metric-value">678</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-name"><i class="fas fa-users"></i> Contributors</span>
+                    <span class="metric-value">15</span>
+                </div>
+            </div>
+
+            <div class="project-metric-card">
+                <div class="project-header">
+                    <span class="project-name">Cryptography Suite</span>
+                    <span class="project-badge">New</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-name"><i class="fas fa-star"></i> Stars</span>
+                    <span class="metric-value">116</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-name"><i class="fas fa-code-branch"></i> Forks</span>
+                    <span class="metric-value">33</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-name"><i class="fas fa-download"></i> Downloads</span>
+                    <span class="metric-value">445</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-name"><i class="fas fa-users"></i> Contributors</span>
+                    <span class="metric-value">12</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="charts-section">
+            <div class="chart-card">
+                <h3 class="chart-title">Contribution Activity</h3>
+                <canvas id="contributionChart"></canvas>
+            </div>
+
+            <div class="chart-card">
+                <h3 class="chart-title">Language Distribution</h3>
+                <div class="language-stats">
+                    <div class="language-item">
+                        <span class="language-color" style="background: #3572A5;"></span>
+                        <span class="language-name">Python</span>
+                        <div class="language-bar">
+                            <div class="language-fill" style="width: 35%;"></div>
+                        </div>
+                        <span class="language-percentage">35%</span>
+                    </div>
+                    <div class="language-item">
+                        <span class="language-color" style="background: #b07219;"></span>
+                        <span class="language-name">Verilog</span>
+                        <div class="language-bar">
+                            <div class="language-fill" style="width: 28%;"></div>
+                        </div>
+                        <span class="language-percentage">28%</span>
+                    </div>
+                    <div class="language-item">
+                        <span class="language-color" style="background: #f1e05a;"></span>
+                        <span class="language-name">JavaScript</span>
+                        <div class="language-bar">
+                            <div class="language-fill" style="width: 18%;"></div>
+                        </div>
+                        <span class="language-percentage">18%</span>
+                    </div>
+                    <div class="language-item">
+                        <span class="language-color" style="background: #555555;"></span>
+                        <span class="language-name">C++</span>
+                        <div class="language-bar">
+                            <div class="language-fill" style="width: 12%;"></div>
+                        </div>
+                        <span class="language-percentage">12%</span>
+                    </div>
+                    <div class="language-item">
+                        <span class="language-color" style="background: #e34c26;"></span>
+                        <span class="language-name">MATLAB</span>
+                        <div class="language-bar">
+                            <div class="language-fill" style="width: 7%;"></div>
+                        </div>
+                        <span class="language-percentage">7%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <h3 class="chart-title">Stars Growth</h3>
+                <canvas id="starsChart"></canvas>
+            </div>
+
+            <div class="chart-card">
+                <h3 class="chart-title">Download Trends</h3>
+                <canvas id="downloadsChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Recent Activity Feed -->
+        <div class="activity-feed">
+            <h2 class="activity-title">Recent Activity</h2>
+            
+            <div class="activity-item">
+                <div class="activity-icon activity-commit">
+                    <i class="fas fa-code-commit"></i>
+                </div>
+                <div class="activity-content">
+                    <div class="activity-description">
+                        <strong>Commit:</strong> Added beamforming optimization algorithm to mmWave project
+                    </div>
+                    <div class="activity-time">2 hours ago</div>
+                </div>
+            </div>
+
+            <div class="activity-item">
+                <div class="activity-icon activity-star">
+                    <i class="fas fa-star"></i>
+                </div>
+                <div class="activity-content">
+                    <div class="activity-description">
+                        <strong>New Star:</strong> RISC-V SoC repository received 5 new stars
+                    </div>
+                    <div class="activity-time">5 hours ago</div>
+                </div>
+            </div>
+
+            <div class="activity-item">
+                <div class="activity-icon activity-pr">
+                    <i class="fas fa-code-merge"></i>
+                </div>
+                <div class="activity-content">
+                    <div class="activity-description">
+                        <strong>Pull Request Merged:</strong> ML accelerator performance improvements
+                    </div>
+                    <div class="activity-time">1 day ago</div>
+                </div>
+            </div>
+
+            <div class="activity-item">
+                <div class="activity-icon activity-issue">
+                    <i class="fas fa-exclamation-circle"></i>
+                </div>
+                <div class="activity-content">
+                    <div class="activity-description">
+                        <strong>Issue Closed:</strong> Fixed memory leak in PCM simulation code
+                    </div>
+                    <div class="activity-time">2 days ago</div>
+                </div>
+            </div>
+
+            <div class="activity-item">
+                <div class="activity-icon activity-commit">
+                    <i class="fas fa-code-commit"></i>
+                </div>
+                <div class="activity-content">
+                    <div class="activity-description">
+                        <strong>Commit:</strong> Updated documentation for cryptography algorithms
+                    </div>
+                    <div class="activity-time">3 days ago</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Contribution Activity Chart
+        const contributionCtx = document.getElementById('contributionChart').getContext('2d');
+        new Chart(contributionCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    label: 'Commits',
+                    data: [12, 8, 15, 10, 18, 5, 3],
+                    backgroundColor: 'rgba(74, 222, 128, 0.6)',
+                    borderColor: '#4ade80',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)'
+                        },
+                        ticks: {
+                            color: '#9ca3af'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)'
+                        },
+                        ticks: {
+                            color: '#9ca3af'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Stars Growth Chart
+        const starsCtx = document.getElementById('starsChart').getContext('2d');
+        new Chart(starsCtx, {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                datasets: [{
+                    label: 'Stars',
+                    data: [450, 520, 610, 720, 810, 892],
+                    borderColor: '#fbbf24',
+                    backgroundColor: 'rgba(251, 191, 36, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)'
+                        },
+                        ticks: {
+                            color: '#9ca3af'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)'
+                        },
+                        ticks: {
+                            color: '#9ca3af'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Downloads Chart
+        const downloadsCtx = document.getElementById('downloadsChart').getContext('2d');
+        new Chart(downloadsCtx, {
+            type: 'line',
+            data: {
+                labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+                datasets: [{
+                    label: 'Downloads',
+                    data: [320, 380, 410, 445],
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)'
+                        },
+                        ticks: {
+                            color: '#9ca3af'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)'
+                        },
+                        ticks: {
+                            color: '#9ca3af'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Sync GitHub Data Function
+        function syncGitHubData(button) {
+            button.classList.add('syncing');
+            button.innerHTML = '<i class="fas fa-sync"></i> Syncing...';
+            
+            // Simulate API call
+            setTimeout(() => {
+                button.classList.remove('syncing');
+                button.innerHTML = '<i class="fas fa-sync"></i> Sync GitHub Data';
+                
+                // Update last updated time
+                document.getElementById('lastUpdated').textContent = 'just now';
+                
+                // Simulate data update with random increments
+                document.querySelectorAll('.stat-value').forEach(stat => {
+                    const current = parseInt(stat.textContent);
+                    if (!isNaN(current)) {
+                        stat.textContent = current + Math.floor(Math.random() * 5);
+                    }
+                });
+                
+                // Show success message
+                showNotification('GitHub data synced successfully!');
+            }, 2000);
+        }
+
+        // Show notification
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 2rem;
+                right: 2rem;
+                background: #4ade80;
+                color: white;
+                padding: 1rem 1.5rem;
+                border-radius: 10px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                z-index: 1000;
+                animation: slideIn 0.3s ease;
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Update last updated time periodically
+        setInterval(() => {
+            const lastUpdatedEl = document.getElementById('lastUpdated');
+            const currentText = lastUpdatedEl.textContent;
+            
+            if (currentText === 'just now') {
+                lastUpdatedEl.textContent = '1 minute ago';
+            } else if (currentText.includes('minute')) {
+                const minutes = parseInt(currentText) + 1;
+                lastUpdatedEl.textContent = `${minutes} minutes ago`;
+            }
+        }, 60000);
+    </script>
+</body>
+</html>
