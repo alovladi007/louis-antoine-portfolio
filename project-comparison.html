@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Comparison Tool - Portfolio Analysis</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1e 100%);
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(30, 30, 45, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 2rem;
+            text-align: center;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        h1 {
+            font-size: 3rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: #9ca3af;
+            font-size: 1.2rem;
+        }
+
+        /* Project Selection */
+        .selection-container {
+            max-width: 1400px;
+            margin: 3rem auto;
+            padding: 0 2rem;
+        }
+
+        .selection-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .project-selector {
+            background: rgba(30, 30, 45, 0.6);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 15px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .selector-title {
+            font-size: 1.2rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .project-dropdown {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(30, 30, 45, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .project-dropdown:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .project-dropdown:focus {
+            outline: none;
+            border-color: #764ba2;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin: 2rem 0;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: rgba(102, 126, 234, 0.2);
+            border: 1px solid rgba(102, 126, 234, 0.5);
+        }
+
+        /* Comparison Container */
+        .comparison-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 0 2rem 4rem;
+            display: none;
+        }
+
+        .comparison-container.active {
+            display: block;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Comparison Grid */
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .project-card {
+            background: rgba(30, 30, 45, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 20px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .project-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2, #f093fb);
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .project-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .project-icon {
+            font-size: 2.5rem;
+            color: #667eea;
+        }
+
+        .project-title {
+            font-size: 1.5rem;
+            color: #fff;
+        }
+
+        .project-category {
+            color: #9ca3af;
+            font-size: 0.9rem;
+            margin-top: 0.25rem;
+        }
+
+        /* Metrics Section */
+        .metrics-section {
+            margin: 1.5rem 0;
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .metric-label {
+            color: #9ca3af;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .metric-value {
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .metric-bar {
+            width: 150px;
+            height: 8px;
+            background: rgba(102, 126, 234, 0.2);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-left: 1rem;
+        }
+
+        .metric-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.5s ease;
+        }
+
+        /* Technology Tags */
+        .tech-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin: 1rem 0;
+        }
+
+        .tech-tag {
+            background: rgba(102, 126, 234, 0.2);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            padding: 0.25rem 0.75rem;
+            border-radius: 15px;
+            font-size: 0.85rem;
+            color: #fff;
+        }
+
+        /* Visualization Section */
+        .viz-section {
+            background: rgba(30, 30, 45, 0.6);
+            border-radius: 20px;
+            padding: 2rem;
+            margin: 3rem 0;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .viz-title {
+            font-size: 1.8rem;
+            color: #fff;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 2rem 0;
+        }
+
+        /* Comparison Table */
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+            background: rgba(30, 30, 45, 0.6);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .comparison-table th {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+            padding: 1rem;
+            text-align: left;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .comparison-table td {
+            padding: 1rem;
+            border-top: 1px solid rgba(102, 126, 234, 0.1);
+            color: #e0e0e0;
+        }
+
+        .comparison-table tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        /* Winner Badge */
+        .winner-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            color: #1a1a2e;
+            padding: 0.25rem 0.75rem;
+            border-radius: 15px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            margin-left: 0.5rem;
+        }
+
+        /* Export Options */
+        .export-section {
+            background: rgba(30, 30, 45, 0.6);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .export-title {
+            color: #fff;
+            margin-bottom: 1rem;
+        }
+
+        .export-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            .selection-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .metric-bar {
+                width: 100px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <h1>Project Comparison Tool</h1>
+        <p class="subtitle">Compare projects side-by-side to understand technical depth and complexity</p>
+    </div>
+
+    <!-- Project Selection -->
+    <div class="selection-container">
+        <div class="selection-grid">
+            <div class="project-selector">
+                <div class="selector-title">
+                    <i class="fas fa-project-diagram"></i>
+                    <span>Project 1</span>
+                </div>
+                <select class="project-dropdown" id="project1">
+                    <option value="">Select a project...</option>
+                    <option value="pcm">Phase Change Memory Research</option>
+                    <option value="mmwave">mmWave RF Frontend Design</option>
+                    <option value="riscv">RISC-V SoC with Custom Accelerators</option>
+                    <option value="crypto">Cryptography Research</option>
+                    <option value="radar">Automotive Radar System</option>
+                    <option value="power">GaN Power Electronics</option>
+                    <option value="quantum">Quantum Computing Simulator</option>
+                    <option value="ml">ML Hardware Accelerator</option>
+                </select>
+            </div>
+
+            <div class="project-selector">
+                <div class="selector-title">
+                    <i class="fas fa-project-diagram"></i>
+                    <span>Project 2</span>
+                </div>
+                <select class="project-dropdown" id="project2">
+                    <option value="">Select a project...</option>
+                    <option value="pcm">Phase Change Memory Research</option>
+                    <option value="mmwave">mmWave RF Frontend Design</option>
+                    <option value="riscv">RISC-V SoC with Custom Accelerators</option>
+                    <option value="crypto">Cryptography Research</option>
+                    <option value="radar">Automotive Radar System</option>
+                    <option value="power">GaN Power Electronics</option>
+                    <option value="quantum">Quantum Computing Simulator</option>
+                    <option value="ml">ML Hardware Accelerator</option>
+                </select>
+            </div>
+
+            <div class="project-selector">
+                <div class="selector-title">
+                    <i class="fas fa-project-diagram"></i>
+                    <span>Project 3 (Optional)</span>
+                </div>
+                <select class="project-dropdown" id="project3">
+                    <option value="">Select a project...</option>
+                    <option value="pcm">Phase Change Memory Research</option>
+                    <option value="mmwave">mmWave RF Frontend Design</option>
+                    <option value="riscv">RISC-V SoC with Custom Accelerators</option>
+                    <option value="crypto">Cryptography Research</option>
+                    <option value="radar">Automotive Radar System</option>
+                    <option value="power">GaN Power Electronics</option>
+                    <option value="quantum">Quantum Computing Simulator</option>
+                    <option value="ml">ML Hardware Accelerator</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <button class="btn" onclick="compareProjects()">
+                <i class="fas fa-chart-bar"></i> Compare Projects
+            </button>
+            <button class="btn btn-secondary" onclick="resetComparison()">
+                <i class="fas fa-redo"></i> Reset
+            </button>
+        </div>
+    </div>
+
+    <!-- Comparison Results -->
+    <div class="comparison-container" id="comparisonContainer">
+        <div class="comparison-grid" id="projectCards"></div>
+
+        <!-- Visualization Section -->
+        <div class="viz-section">
+            <h2 class="viz-title">Technical Complexity Analysis</h2>
+            <div class="chart-container">
+                <canvas id="complexityRadar"></canvas>
+            </div>
+        </div>
+
+        <div class="viz-section">
+            <h2 class="viz-title">Skills Coverage Comparison</h2>
+            <div class="chart-container">
+                <canvas id="skillsChart"></canvas>
+            </div>
+        </div>
+
+        <div class="viz-section">
+            <h2 class="viz-title">Project Metrics Comparison</h2>
+            <div id="metricsPlot" style="height: 400px;"></div>
+        </div>
+
+        <!-- Detailed Comparison Table -->
+        <div class="viz-section">
+            <h2 class="viz-title">Detailed Feature Comparison</h2>
+            <table class="comparison-table" id="featureTable">
+                <thead>
+                    <tr id="tableHeader">
+                        <th>Feature/Metric</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Export Options -->
+        <div class="export-section">
+            <h3 class="export-title">Export Comparison</h3>
+            <div class="export-buttons">
+                <button class="btn" onclick="exportPDF()">
+                    <i class="fas fa-file-pdf"></i> Export as PDF
+                </button>
+                <button class="btn" onclick="exportJSON()">
+                    <i class="fas fa-file-code"></i> Export as JSON
+                </button>
+                <button class="btn" onclick="shareComparison()">
+                    <i class="fas fa-share"></i> Share Link
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Project Database
+        const projectDatabase = {
+            pcm: {
+                name: "Phase Change Memory Research",
+                category: "Materials & Semiconductors",
+                icon: "fas fa-memory",
+                description: "Next-generation non-volatile memory technology research",
+                metrics: {
+                    complexity: 95,
+                    innovation: 98,
+                    implementation: 85,
+                    documentation: 92,
+                    impact: 90
+                },
+                technologies: ["Materials Science", "SPICE", "Python", "COMSOL", "Semiconductor Physics"],
+                skills: {
+                    hardware: 90,
+                    software: 60,
+                    research: 95,
+                    documentation: 90,
+                    testing: 85
+                },
+                features: {
+                    "Research Depth": "PhD-level",
+                    "Implementation": "Simulation + Prototype",
+                    "Publications": "3 papers",
+                    "Industry Relevance": "Very High",
+                    "Time Investment": "18 months",
+                    "Team Size": "4 researchers",
+                    "Budget": "$250K",
+                    "Patent Potential": "High"
+                }
+            },
+            mmwave: {
+                name: "mmWave RF Frontend Design",
+                category: "RF & Semiconductor Design",
+                icon: "fas fa-satellite-dish",
+                description: "28GHz 5G RF frontend with beamforming array",
+                metrics: {
+                    complexity: 88,
+                    innovation: 85,
+                    implementation: 92,
+                    documentation: 88,
+                    impact: 87
+                },
+                technologies: ["ADS", "HFSS", "GaN/GaAs", "Python", "5G NR"],
+                skills: {
+                    hardware: 95,
+                    software: 70,
+                    research: 80,
+                    documentation: 85,
+                    testing: 90
+                },
+                features: {
+                    "Research Depth": "Advanced",
+                    "Implementation": "Full Design + PCB",
+                    "Publications": "1 paper",
+                    "Industry Relevance": "Very High",
+                    "Time Investment": "12 months",
+                    "Team Size": "3 engineers",
+                    "Budget": "$150K",
+                    "Patent Potential": "Medium"
+                }
+            },
+            riscv: {
+                name: "RISC-V SoC with Custom Accelerators",
+                category: "Hardware & Embedded Systems",
+                icon: "fas fa-microchip",
+                description: "Complete RISC-V processor with ML accelerators",
+                metrics: {
+                    complexity: 92,
+                    innovation: 88,
+                    implementation: 95,
+                    documentation: 85,
+                    impact: 89
+                },
+                technologies: ["Verilog", "SystemVerilog", "RISC-V", "UVM", "Vivado"],
+                skills: {
+                    hardware: 98,
+                    software: 75,
+                    research: 70,
+                    documentation: 80,
+                    testing: 95
+                },
+                features: {
+                    "Research Depth": "Advanced",
+                    "Implementation": "RTL + FPGA",
+                    "Publications": "2 papers",
+                    "Industry Relevance": "High",
+                    "Time Investment": "14 months",
+                    "Team Size": "5 engineers",
+                    "Budget": "$100K",
+                    "Patent Potential": "Medium"
+                }
+            },
+            crypto: {
+                name: "Cryptography Research",
+                category: "Security & Software",
+                icon: "fas fa-lock",
+                description: "Post-quantum cryptography and hardware security",
+                metrics: {
+                    complexity: 90,
+                    innovation: 93,
+                    implementation: 80,
+                    documentation: 95,
+                    impact: 92
+                },
+                technologies: ["Post-Quantum", "HSM", "Python", "C++", "FPGA"],
+                skills: {
+                    hardware: 60,
+                    software: 90,
+                    research: 98,
+                    documentation: 95,
+                    testing: 85
+                },
+                features: {
+                    "Research Depth": "PhD-level",
+                    "Implementation": "Software + HSM",
+                    "Publications": "4 papers",
+                    "Industry Relevance": "Critical",
+                    "Time Investment": "24 months",
+                    "Team Size": "3 researchers",
+                    "Budget": "$180K",
+                    "Patent Potential": "Very High"
+                }
+            },
+            radar: {
+                name: "Automotive Radar System",
+                category: "RF & Signal Processing",
+                icon: "fas fa-car",
+                description: "77GHz FMCW radar for autonomous vehicles",
+                metrics: {
+                    complexity: 85,
+                    innovation: 82,
+                    implementation: 88,
+                    documentation: 83,
+                    impact: 86
+                },
+                technologies: ["MATLAB", "DSP", "FMCW", "C++", "ROS"],
+                skills: {
+                    hardware: 85,
+                    software: 80,
+                    research: 75,
+                    documentation: 80,
+                    testing: 88
+                },
+                features: {
+                    "Research Depth": "Applied",
+                    "Implementation": "Prototype",
+                    "Publications": "1 paper",
+                    "Industry Relevance": "High",
+                    "Time Investment": "10 months",
+                    "Team Size": "4 engineers",
+                    "Budget": "$120K",
+                    "Patent Potential": "Low"
+                }
+            },
+            power: {
+                name: "GaN Power Electronics",
+                category: "Power Systems",
+                icon: "fas fa-bolt",
+                description: "High-efficiency GaN power converters",
+                metrics: {
+                    complexity: 82,
+                    innovation: 80,
+                    implementation: 90,
+                    documentation: 78,
+                    impact: 83
+                },
+                technologies: ["GaN", "PLECS", "Altium", "Thermal Analysis", "EMI"],
+                skills: {
+                    hardware: 92,
+                    software: 65,
+                    research: 70,
+                    documentation: 75,
+                    testing: 85
+                },
+                features: {
+                    "Research Depth": "Applied",
+                    "Implementation": "Full Product",
+                    "Publications": "0 papers",
+                    "Industry Relevance": "High",
+                    "Time Investment": "8 months",
+                    "Team Size": "3 engineers",
+                    "Budget": "$80K",
+                    "Patent Potential": "Low"
+                }
+            },
+            quantum: {
+                name: "Quantum Computing Simulator",
+                category: "Quantum & Software",
+                icon: "fas fa-atom",
+                description: "Multi-qubit quantum circuit simulator",
+                metrics: {
+                    complexity: 93,
+                    innovation: 95,
+                    implementation: 75,
+                    documentation: 88,
+                    impact: 85
+                },
+                technologies: ["Qiskit", "Python", "C++", "CUDA", "Linear Algebra"],
+                skills: {
+                    hardware: 30,
+                    software: 95,
+                    research: 90,
+                    documentation: 85,
+                    testing: 80
+                },
+                features: {
+                    "Research Depth": "PhD-level",
+                    "Implementation": "Software",
+                    "Publications": "2 papers",
+                    "Industry Relevance": "Emerging",
+                    "Time Investment": "16 months",
+                    "Team Size": "2 researchers",
+                    "Budget": "$50K",
+                    "Patent Potential": "Medium"
+                }
+            },
+            ml: {
+                name: "ML Hardware Accelerator",
+                category: "AI & Hardware",
+                icon: "fas fa-brain",
+                description: "Custom ASIC for neural network inference",
+                metrics: {
+                    complexity: 89,
+                    innovation: 86,
+                    implementation: 91,
+                    documentation: 82,
+                    impact: 88
+                },
+                technologies: ["Verilog", "TensorFlow", "ASIC", "SystemC", "Python"],
+                skills: {
+                    hardware: 88,
+                    software: 82,
+                    research: 78,
+                    documentation: 80,
+                    testing: 86
+                },
+                features: {
+                    "Research Depth": "Advanced",
+                    "Implementation": "RTL + Tape-out",
+                    "Publications": "1 paper",
+                    "Industry Relevance": "Very High",
+                    "Time Investment": "15 months",
+                    "Team Size": "6 engineers",
+                    "Budget": "$300K",
+                    "Patent Potential": "High"
+                }
+            }
+        };
+
+        let complexityChart = null;
+        let skillsChart = null;
+
+        function compareProjects() {
+            const project1 = document.getElementById('project1').value;
+            const project2 = document.getElementById('project2').value;
+            const project3 = document.getElementById('project3').value;
+
+            if (!project1 || !project2) {
+                alert('Please select at least two projects to compare');
+                return;
+            }
+
+            const projects = [project1, project2];
+            if (project3) projects.push(project3);
+
+            displayComparison(projects);
+        }
+
+        function displayComparison(projectIds) {
+            const container = document.getElementById('comparisonContainer');
+            container.classList.add('active');
+
+            // Display project cards
+            displayProjectCards(projectIds);
+
+            // Display charts
+            displayComplexityRadar(projectIds);
+            displaySkillsChart(projectIds);
+            displayMetricsPlot(projectIds);
+            displayFeatureTable(projectIds);
+
+            // Scroll to results
+            container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function displayProjectCards(projectIds) {
+            const cardsContainer = document.getElementById('projectCards');
+            cardsContainer.innerHTML = '';
+
+            projectIds.forEach(id => {
+                const project = projectDatabase[id];
+                const card = document.createElement('div');
+                card.className = 'project-card';
+                
+                card.innerHTML = `
+                    <div class="project-header">
+                        <div class="project-icon">
+                            <i class="${project.icon}"></i>
+                        </div>
+                        <div>
+                            <div class="project-title">${project.name}</div>
+                            <div class="project-category">${project.category}</div>
+                        </div>
+                    </div>
+                    
+                    <p style="color: #9ca3af; margin-bottom: 1rem;">${project.description}</p>
+                    
+                    <div class="metrics-section">
+                        ${Object.entries(project.metrics).map(([key, value]) => `
+                            <div class="metric-row">
+                                <span class="metric-label">
+                                    <i class="fas fa-chart-line"></i>
+                                    ${key.charAt(0).toUpperCase() + key.slice(1)}
+                                </span>
+                                <div style="display: flex; align-items: center;">
+                                    <span class="metric-value">${value}%</span>
+                                    <div class="metric-bar">
+                                        <div class="metric-fill" style="width: ${value}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <div class="tech-tags">
+                        ${project.technologies.map(tech => `
+                            <span class="tech-tag">${tech}</span>
+                        `).join('')}
+                    </div>
+                `;
+                
+                cardsContainer.appendChild(card);
+            });
+        }
+
+        function displayComplexityRadar(projectIds) {
+            const ctx = document.getElementById('complexityRadar').getContext('2d');
+            
+            if (complexityChart) {
+                complexityChart.destroy();
+            }
+
+            const datasets = projectIds.map((id, index) => {
+                const project = projectDatabase[id];
+                const colors = ['rgba(102, 126, 234, 0.3)', 'rgba(118, 75, 162, 0.3)', 'rgba(240, 147, 251, 0.3)'];
+                const borderColors = ['#667eea', '#764ba2', '#f093fb'];
+                
+                return {
+                    label: project.name,
+                    data: Object.values(project.metrics),
+                    backgroundColor: colors[index],
+                    borderColor: borderColors[index],
+                    borderWidth: 2,
+                    pointBackgroundColor: borderColors[index],
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: borderColors[index]
+                };
+            });
+
+            complexityChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Complexity', 'Innovation', 'Implementation', 'Documentation', 'Impact'],
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                color: '#9ca3af'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            pointLabels: {
+                                color: '#fff',
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#fff'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function displaySkillsChart(projectIds) {
+            const ctx = document.getElementById('skillsChart').getContext('2d');
+            
+            if (skillsChart) {
+                skillsChart.destroy();
+            }
+
+            const skillCategories = ['hardware', 'software', 'research', 'documentation', 'testing'];
+            const datasets = projectIds.map((id, index) => {
+                const project = projectDatabase[id];
+                const colors = ['#667eea', '#764ba2', '#f093fb'];
+                
+                return {
+                    label: project.name,
+                    data: skillCategories.map(skill => project.skills[skill]),
+                    backgroundColor: colors[index] + '80',
+                    borderColor: colors[index],
+                    borderWidth: 2
+                };
+            });
+
+            skillsChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: skillCategories.map(s => s.charAt(0).toUpperCase() + s.slice(1)),
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                color: '#9ca3af'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#9ca3af'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#fff'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function displayMetricsPlot(projectIds) {
+            const traces = projectIds.map((id, index) => {
+                const project = projectDatabase[id];
+                const metrics = project.metrics;
+                
+                return {
+                    x: Object.keys(metrics),
+                    y: Object.values(metrics),
+                    name: project.name,
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    line: {
+                        width: 3
+                    },
+                    marker: {
+                        size: 10
+                    }
+                };
+            });
+
+            const layout = {
+                title: {
+                    text: 'Project Metrics Overview',
+                    font: { color: '#fff' }
+                },
+                xaxis: {
+                    gridcolor: 'rgba(255, 255, 255, 0.1)',
+                    color: '#9ca3af'
+                },
+                yaxis: {
+                    title: 'Score (%)',
+                    gridcolor: 'rgba(255, 255, 255, 0.1)',
+                    color: '#9ca3af',
+                    range: [0, 100]
+                },
+                paper_bgcolor: 'rgba(0, 0, 0, 0)',
+                plot_bgcolor: 'rgba(0, 0, 0, 0)',
+                font: { color: '#fff' },
+                showlegend: true,
+                legend: {
+                    font: { color: '#fff' }
+                }
+            };
+
+            Plotly.newPlot('metricsPlot', traces, layout, {responsive: true});
+        }
+
+        function displayFeatureTable(projectIds) {
+            const header = document.getElementById('tableHeader');
+            const body = document.getElementById('tableBody');
+            
+            // Clear existing content
+            header.innerHTML = '<th>Feature/Metric</th>';
+            body.innerHTML = '';
+            
+            // Add project headers
+            projectIds.forEach(id => {
+                const th = document.createElement('th');
+                th.textContent = projectDatabase[id].name;
+                header.appendChild(th);
+            });
+            
+            // Get all features
+            const allFeatures = new Set();
+            projectIds.forEach(id => {
+                Object.keys(projectDatabase[id].features).forEach(feature => {
+                    allFeatures.add(feature);
+                });
+            });
+            
+            // Add feature rows
+            allFeatures.forEach(feature => {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td><strong>${feature}</strong></td>`;
+                
+                let bestValue = '';
+                let bestIndex = -1;
+                
+                projectIds.forEach((id, index) => {
+                    const value = projectDatabase[id].features[feature] || 'N/A';
+                    const td = document.createElement('td');
+                    td.textContent = value;
+                    
+                    // Determine best value for certain metrics
+                    if (feature === 'Research Depth' && value === 'PhD-level') {
+                        bestIndex = index;
+                    } else if (feature === 'Industry Relevance' && (value === 'Critical' || value === 'Very High')) {
+                        if (bestValue !== 'Critical') bestIndex = index;
+                    }
+                    
+                    row.appendChild(td);
+                });
+                
+                // Add winner badge if applicable
+                if (bestIndex >= 0) {
+                    row.children[bestIndex + 1].innerHTML += '<span class="winner-badge">Best</span>';
+                }
+                
+                body.appendChild(row);
+            });
+        }
+
+        function resetComparison() {
+            document.getElementById('project1').value = '';
+            document.getElementById('project2').value = '';
+            document.getElementById('project3').value = '';
+            document.getElementById('comparisonContainer').classList.remove('active');
+        }
+
+        function exportPDF() {
+            alert('PDF export would generate a comprehensive comparison report');
+        }
+
+        function exportJSON() {
+            const project1 = document.getElementById('project1').value;
+            const project2 = document.getElementById('project2').value;
+            const project3 = document.getElementById('project3').value;
+            
+            const projects = [project1, project2].filter(p => p);
+            if (project3) projects.push(project3);
+            
+            const data = projects.map(id => projectDatabase[id]);
+            const json = JSON.stringify(data, null, 2);
+            
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'project-comparison.json';
+            a.click();
+        }
+
+        function shareComparison() {
+            const project1 = document.getElementById('project1').value;
+            const project2 = document.getElementById('project2').value;
+            const project3 = document.getElementById('project3').value;
+            
+            const params = new URLSearchParams();
+            if (project1) params.append('p1', project1);
+            if (project2) params.append('p2', project2);
+            if (project3) params.append('p3', project3);
+            
+            const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+            
+            navigator.clipboard.writeText(url).then(() => {
+                alert('Comparison link copied to clipboard!');
+            });
+        }
+
+        // Load comparison from URL parameters
+        window.addEventListener('load', () => {
+            const params = new URLSearchParams(window.location.search);
+            const p1 = params.get('p1');
+            const p2 = params.get('p2');
+            const p3 = params.get('p3');
+            
+            if (p1 && p2) {
+                document.getElementById('project1').value = p1;
+                document.getElementById('project2').value = p2;
+                if (p3) document.getElementById('project3').value = p3;
+                
+                setTimeout(() => compareProjects(), 500);
+            }
+        });
+    </script>
+</body>
+</html>
