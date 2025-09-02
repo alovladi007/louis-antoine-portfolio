@@ -382,6 +382,14 @@
             box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
         }
 
+        /* Plot containers */
+        #beamforming-plot, #sparameter-plot, #loadpull-plot, #dpd-plot {
+            width: 100%;
+            min-height: 400px;
+            background: rgba(20, 20, 20, 0.5);
+            border-radius: 10px;
+        }
+
         /* Responsive Design */
         @media (max-width: 768px) {
             .hero-title {
@@ -390,6 +398,10 @@
 
             .section-title {
                 font-size: 2rem;
+            }
+            
+            .demo-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -797,15 +809,22 @@
 
         // Initialize Plotly plots
         function initPlots() {
-            // Beamforming plot
-            const theta = [];
-            const pattern = [];
-            for (let i = -90; i <= 90; i++) {
-                theta.push(i);
-                const angle_rad = i * Math.PI / 180;
-                const af = Math.abs(Math.sin(8 * Math.PI * Math.sin(angle_rad)) / (8 * Math.sin(Math.PI * Math.sin(angle_rad))));
-                pattern.push(20 * Math.log10(af + 0.001));
-            }
+            try {
+                // Beamforming plot
+                const theta = [];
+                const pattern = [];
+                for (let i = -90; i <= 90; i++) {
+                    theta.push(i);
+                    const angle_rad = i * Math.PI / 180;
+                    const denominator = 8 * Math.sin(Math.PI * Math.sin(angle_rad));
+                    let af;
+                    if (Math.abs(denominator) < 0.001) {
+                        af = 1;
+                    } else {
+                        af = Math.abs(Math.sin(8 * Math.PI * Math.sin(angle_rad)) / denominator);
+                    }
+                    pattern.push(20 * Math.log10(af + 0.001));
+                }
 
             const beamData = [{
                 x: theta,
@@ -959,15 +978,26 @@
             };
 
             Plotly.newPlot('dpd-plot', dpdData, dpdLayout, {responsive: true});
+            } catch (error) {
+                console.error('Error initializing plots:', error);
+            }
         }
 
         // Update beam pattern based on slider values
         function updateBeamPattern() {
-            const theta_steer = parseFloat(document.getElementById('theta-slider').value);
-            const phi_steer = parseFloat(document.getElementById('phi-slider').value);
+            const thetaSlider = document.getElementById('theta-slider');
+            const phiSlider = document.getElementById('phi-slider');
             
-            document.getElementById('theta-value').textContent = theta_steer + '°';
-            document.getElementById('phi-value').textContent = phi_steer + '°';
+            if (!thetaSlider || !phiSlider) return;
+            
+            const theta_steer = parseFloat(thetaSlider.value);
+            const phi_steer = parseFloat(phiSlider.value);
+            
+            const thetaValue = document.getElementById('theta-value');
+            const phiValue = document.getElementById('phi-value');
+            
+            if (thetaValue) thetaValue.textContent = theta_steer + '°';
+            if (phiValue) phiValue.textContent = phi_steer + '°';
             
             const theta = [];
             const pattern = [];
@@ -975,7 +1005,13 @@
             for (let i = -90; i <= 90; i++) {
                 theta.push(i);
                 const angle_rad = (i - theta_steer) * Math.PI / 180;
-                const af = Math.abs(Math.sin(8 * Math.PI * Math.sin(angle_rad)) / (8 * Math.sin(Math.PI * Math.sin(angle_rad))));
+                const denominator = 8 * Math.sin(Math.PI * Math.sin(angle_rad));
+                let af;
+                if (Math.abs(denominator) < 0.001) {
+                    af = 1;
+                } else {
+                    af = Math.abs(Math.sin(8 * Math.PI * Math.sin(angle_rad)) / denominator);
+                }
                 pattern.push(20 * Math.log10(af + 0.001));
             }
             
@@ -985,9 +1021,18 @@
             });
         }
 
-        // Event listeners
-        document.getElementById('theta-slider').addEventListener('input', updateBeamPattern);
-        document.getElementById('phi-slider').addEventListener('input', updateBeamPattern);
+        // Event listeners with null checks
+        function setupEventListeners() {
+            const thetaSlider = document.getElementById('theta-slider');
+            const phiSlider = document.getElementById('phi-slider');
+            
+            if (thetaSlider) {
+                thetaSlider.addEventListener('input', updateBeamPattern);
+            }
+            if (phiSlider) {
+                phiSlider.addEventListener('input', updateBeamPattern);
+            }
+        }
 
         // Utility functions
         function scrollToSection(sectionId) {
@@ -1010,6 +1055,12 @@
         window.addEventListener('load', () => {
             initHeroAnimation();
             initPlots();
+            setupEventListeners();
+            
+            // Ensure plots are visible
+            setTimeout(() => {
+                window.dispatchEvent(new Event('resize'));
+            }, 100);
         });
     </script>
 </body>
