@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio Analytics Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 100%);
+            color: #e5e7eb;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #4ade80, #22c55e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: #9ca3af;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-change {
+            display: inline-block;
+            margin-top: 0.5rem;
+            padding: 0.25rem 0.5rem;
+            background: rgba(74, 222, 128, 0.2);
+            color: #4ade80;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+
+        .stat-change.negative {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .chart-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .chart-title {
+            font-size: 1.3rem;
+            color: white;
+        }
+
+        .chart-options {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .chart-option-btn {
+            padding: 0.5rem 1rem;
+            background: rgba(102, 126, 234, 0.2);
+            border: 1px solid #667eea;
+            border-radius: 8px;
+            color: #667eea;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+        }
+
+        .chart-option-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .chart-option-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .projects-table {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            padding: 1rem;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            color: #9ca3af;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: #e5e7eb;
+        }
+
+        tr:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .project-name {
+            font-weight: 600;
+            color: white;
+        }
+
+        .view-count {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: rgba(74, 222, 128, 0.2);
+            color: #4ade80;
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+
+        .engagement-bar {
+            width: 100px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .engagement-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .insights-section {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 2rem;
+        }
+
+        .insights-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .insight-card {
+            padding: 1.5rem;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+
+        .insight-icon {
+            font-size: 2rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .insight-title {
+            font-size: 1.1rem;
+            color: white;
+            margin-bottom: 0.5rem;
+        }
+
+        .insight-description {
+            color: #9ca3af;
+            line-height: 1.6;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: #667eea;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .back-link:hover {
+            transform: translateX(-5px);
+        }
+
+        .realtime-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(74, 222, 128, 0.2);
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: #4ade80;
+        }
+
+        .realtime-dot {
+            width: 8px;
+            height: 8px;
+            background: #4ade80;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .ab-test-section {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: 2rem;
+        }
+
+        .ab-test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .ab-test-card {
+            padding: 1.5rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .ab-test-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .ab-test-status {
+            padding: 0.25rem 0.75rem;
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+
+        .ab-test-status.complete {
+            background: rgba(74, 222, 128, 0.2);
+            color: #4ade80;
+        }
+
+        .variant-comparison {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .variant {
+            flex: 1;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .variant-label {
+            color: #9ca3af;
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .variant-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: white;
+        }
+
+        .winner-badge {
+            display: inline-block;
+            margin-top: 0.5rem;
+            padding: 0.25rem 0.5rem;
+            background: rgba(74, 222, 128, 0.2);
+            color: #4ade80;
+            border-radius: 20px;
+            font-size: 0.75rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="portfolio-enhancements.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Portfolio Showcase
+        </a>
+
+        <div class="header">
+            <h1><i class="fas fa-chart-line"></i> Analytics Dashboard</h1>
+            <p>Real-time insights into portfolio performance and visitor engagement</p>
+            <div class="realtime-indicator">
+                <span class="realtime-dot"></span>
+                Live Data
+            </div>
+        </div>
+
+        <!-- Key Metrics -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">24,567</div>
+                <div class="stat-label">Total Views</div>
+                <span class="stat-change">
+                    <i class="fas fa-arrow-up"></i> 12.5% this week
+                </span>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-value">3,421</div>
+                <div class="stat-label">Unique Visitors</div>
+                <span class="stat-change">
+                    <i class="fas fa-arrow-up"></i> 8.3% this week
+                </span>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-value">4:32</div>
+                <div class="stat-label">Avg. Session Duration</div>
+                <span class="stat-change">
+                    <i class="fas fa-arrow-up"></i> 15.2% this week
+                </span>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-value">892</div>
+                <div class="stat-label">GitHub Stars</div>
+                <span class="stat-change">
+                    <i class="fas fa-arrow-up"></i> 23 this week
+                </span>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-value">156</div>
+                <div class="stat-label">Downloads</div>
+                <span class="stat-change">
+                    <i class="fas fa-arrow-up"></i> 18 this week
+                </span>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-value">67%</div>
+                <div class="stat-label">Engagement Rate</div>
+                <span class="stat-change negative">
+                    <i class="fas fa-arrow-down"></i> 2.1% this week
+                </span>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3 class="chart-title">Traffic Overview</h3>
+                    <div class="chart-options">
+                        <button class="chart-option-btn active" onclick="updateTrafficChart('week')">Week</button>
+                        <button class="chart-option-btn" onclick="updateTrafficChart('month')">Month</button>
+                        <button class="chart-option-btn" onclick="updateTrafficChart('year')">Year</button>
+                    </div>
+                </div>
+                <canvas id="trafficChart"></canvas>
+            </div>
+
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3 class="chart-title">Project Popularity</h3>
+                </div>
+                <canvas id="popularityChart"></canvas>
+            </div>
+
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3 class="chart-title">Technology Interest</h3>
+                </div>
+                <canvas id="techChart"></canvas>
+            </div>
+
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3 class="chart-title">Visitor Sources</h3>
+                </div>
+                <canvas id="sourcesChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Insights -->
+        <div class="insights-section">
+            <h2 style="font-size: 1.8rem; margin-bottom: 1rem;">Key Insights</h2>
+            <div class="insights-grid">
+                <div class="insight-card">
+                    <div class="insight-icon">
+                        <i class="fas fa-fire"></i>
+                    </div>
+                    <div class="insight-title">Trending Project</div>
+                    <div class="insight-description">
+                        mmWave RF Frontend Design is gaining significant traction with a 45% increase in views this week.
+                    </div>
+                </div>
+
+                <div class="insight-card">
+                    <div class="insight-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="insight-title">Audience Interest</div>
+                    <div class="insight-description">
+                        68% of visitors are interested in hardware/embedded systems projects, followed by AI/ML at 22%.
+                    </div>
+                </div>
+
+                <div class="insight-card">
+                    <div class="insight-icon">
+                        <i class="fas fa-globe"></i>
+                    </div>
+                    <div class="insight-title">Global Reach</div>
+                    <div class="insight-description">
+                        Visitors from 47 countries, with top traffic from USA (32%), India (18%), and Germany (12%).
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Project Performance Table -->
+        <div class="projects-table">
+            <h2 style="font-size: 1.8rem; margin-bottom: 1.5rem;">Project Performance</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Project</th>
+                        <th>Views</th>
+                        <th>Engagement</th>
+                        <th>Avg. Time</th>
+                        <th>Downloads</th>
+                        <th>Trend</th>
+                    </tr>
+                </thead>
+                <tbody id="projectsTableBody">
+                    <!-- Table rows will be populated by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- A/B Testing -->
+        <div class="ab-test-section">
+            <h2 style="font-size: 1.8rem; margin-bottom: 1rem;">A/B Testing Results</h2>
+            <div class="ab-test-grid">
+                <div class="ab-test-card">
+                    <div class="ab-test-header">
+                        <h3>Hero Section Layout</h3>
+                        <span class="ab-test-status complete">Complete</span>
+                    </div>
+                    <p style="color: #9ca3af; margin-bottom: 1rem;">Testing 3D animation vs static image</p>
+                    <div class="variant-comparison">
+                        <div class="variant">
+                            <div class="variant-label">Variant A (3D)</div>
+                            <div class="variant-value">72%</div>
+                            <span class="winner-badge">Winner</span>
+                        </div>
+                        <div class="variant">
+                            <div class="variant-label">Variant B (Static)</div>
+                            <div class="variant-value">28%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ab-test-card">
+                    <div class="ab-test-header">
+                        <h3>Project Card Style</h3>
+                        <span class="ab-test-status">Running</span>
+                    </div>
+                    <p style="color: #9ca3af; margin-bottom: 1rem;">Comparing hover effects and animations</p>
+                    <div class="variant-comparison">
+                        <div class="variant">
+                            <div class="variant-label">Variant A</div>
+                            <div class="variant-value">48%</div>
+                        </div>
+                        <div class="variant">
+                            <div class="variant-label">Variant B</div>
+                            <div class="variant-value">52%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ab-test-card">
+                    <div class="ab-test-header">
+                        <h3>CTA Button Color</h3>
+                        <span class="ab-test-status complete">Complete</span>
+                    </div>
+                    <p style="color: #9ca3af; margin-bottom: 1rem;">Purple gradient vs green gradient</p>
+                    <div class="variant-comparison">
+                        <div class="variant">
+                            <div class="variant-label">Purple</div>
+                            <div class="variant-value">41%</div>
+                        </div>
+                        <div class="variant">
+                            <div class="variant-label">Green</div>
+                            <div class="variant-value">59%</div>
+                            <span class="winner-badge">Winner</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Charts
+        const chartColors = {
+            primary: '#667eea',
+            secondary: '#764ba2',
+            success: '#4ade80',
+            warning: '#fbbf24',
+            danger: '#ef4444',
+            text: '#e5e7eb'
+        };
+
+        // Traffic Chart
+        const trafficCtx = document.getElementById('trafficChart').getContext('2d');
+        const trafficChart = new Chart(trafficCtx, {
+            type: 'line',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    label: 'Page Views',
+                    data: [3200, 3500, 3100, 3800, 4200, 3900, 3600],
+                    borderColor: chartColors.primary,
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }, {
+                    label: 'Unique Visitors',
+                    data: [450, 480, 420, 520, 580, 490, 460],
+                    borderColor: chartColors.success,
+                    backgroundColor: 'rgba(74, 222, 128, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: chartColors.text
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)'
+                        },
+                        ticks: {
+                            color: chartColors.text
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)'
+                        },
+                        ticks: {
+                            color: chartColors.text
+                        }
+                    }
+                }
+            }
+        });
+
+        // Popularity Chart
+        const popularityCtx = document.getElementById('popularityChart').getContext('2d');
+        const popularityChart = new Chart(popularityCtx, {
+            type: 'bar',
+            data: {
+                labels: ['mmWave RF', 'RISC-V SoC', 'PCM Research', 'Cryptography', 'GALILEO'],
+                datasets: [{
+                    label: 'Views',
+                    data: [4500, 3800, 3200, 2900, 2600],
+                    backgroundColor: [
+                        'rgba(102, 126, 234, 0.8)',
+                        'rgba(118, 75, 162, 0.8)',
+                        'rgba(74, 222, 128, 0.8)',
+                        'rgba(251, 191, 36, 0.8)',
+                        'rgba(239, 68, 68, 0.8)'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)'
+                        },
+                        ticks: {
+                            color: chartColors.text
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)'
+                        },
+                        ticks: {
+                            color: chartColors.text
+                        }
+                    }
+                }
+            }
+        });
+
+        // Technology Interest Chart
+        const techCtx = document.getElementById('techChart').getContext('2d');
+        const techChart = new Chart(techCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Hardware/Embedded', 'AI/ML', 'RF/Wireless', 'Security', 'Web Dev'],
+                datasets: [{
+                    data: [35, 25, 20, 12, 8],
+                    backgroundColor: [
+                        'rgba(102, 126, 234, 0.8)',
+                        'rgba(118, 75, 162, 0.8)',
+                        'rgba(74, 222, 128, 0.8)',
+                        'rgba(251, 191, 36, 0.8)',
+                        'rgba(239, 68, 68, 0.8)'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            color: chartColors.text
+                        }
+                    }
+                }
+            }
+        });
+
+        // Sources Chart
+        const sourcesCtx = document.getElementById('sourcesChart').getContext('2d');
+        const sourcesChart = new Chart(sourcesCtx, {
+            type: 'radar',
+            data: {
+                labels: ['Direct', 'GitHub', 'LinkedIn', 'Google', 'Social Media', 'Other'],
+                datasets: [{
+                    label: 'Traffic Sources',
+                    data: [30, 25, 20, 15, 7, 3],
+                    borderColor: chartColors.primary,
+                    backgroundColor: 'rgba(102, 126, 234, 0.2)'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: chartColors.text
+                        }
+                    }
+                },
+                scales: {
+                    r: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: chartColors.text,
+                            backdropColor: 'transparent'
+                        },
+                        pointLabels: {
+                            color: chartColors.text
+                        }
+                    }
+                }
+            }
+        });
+
+        // Populate Projects Table
+        const projectsData = [
+            { name: 'mmWave RF Frontend Design', views: 4567, engagement: 78, time: '5:23', downloads: 45, trend: 'up' },
+            { name: 'RISC-V SoC with Custom Accelerators', views: 3821, engagement: 72, time: '4:45', downloads: 38, trend: 'up' },
+            { name: 'Phase Change Memory Research', views: 3234, engagement: 65, time: '4:12', downloads: 29, trend: 'stable' },
+            { name: 'Cryptography Research', views: 2945, engagement: 69, time: '3:56', downloads: 31, trend: 'up' },
+            { name: 'GALILEO - Geospatial Intelligence', views: 2678, engagement: 58, time: '3:34', downloads: 22, trend: 'down' }
+        ];
+
+        const tableBody = document.getElementById('projectsTableBody');
+        projectsData.forEach(project => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="project-name">${project.name}</td>
+                <td><span class="view-count">${project.views.toLocaleString()}</span></td>
+                <td>
+                    <div class="engagement-bar">
+                        <div class="engagement-fill" style="width: ${project.engagement}%"></div>
+                    </div>
+                </td>
+                <td>${project.time}</td>
+                <td>${project.downloads}</td>
+                <td>
+                    ${project.trend === 'up' ? '<i class="fas fa-arrow-up" style="color: #4ade80;"></i>' : 
+                      project.trend === 'down' ? '<i class="fas fa-arrow-down" style="color: #ef4444;"></i>' : 
+                      '<i class="fas fa-minus" style="color: #9ca3af;"></i>'}
+                </td>
+            `;
+            tableBody.appendChild(row);
+        });
+
+        // Update Traffic Chart Function
+        function updateTrafficChart(period) {
+            // Update button states
+            document.querySelectorAll('.chart-option-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Update chart data based on period
+            let labels, data1, data2;
+            
+            if (period === 'week') {
+                labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                data1 = [3200, 3500, 3100, 3800, 4200, 3900, 3600];
+                data2 = [450, 480, 420, 520, 580, 490, 460];
+            } else if (period === 'month') {
+                labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+                data1 = [22000, 24500, 23800, 25200];
+                data2 = [3200, 3450, 3380, 3620];
+            } else {
+                labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                data1 = [85000, 92000, 98000, 95000, 102000, 108000, 112000, 118000, 125000, 132000, 138000, 145000];
+                data2 = [12000, 13200, 14100, 13800, 14500, 15200, 15800, 16500, 17200, 18100, 18900, 19500];
+            }
+
+            trafficChart.data.labels = labels;
+            trafficChart.data.datasets[0].data = data1;
+            trafficChart.data.datasets[1].data = data2;
+            trafficChart.update();
+        }
+
+        // Simulate real-time updates
+        setInterval(() => {
+            // Update a random stat
+            const statCards = document.querySelectorAll('.stat-value');
+            const randomCard = statCards[Math.floor(Math.random() * statCards.length)];
+            const currentValue = parseInt(randomCard.textContent.replace(/,/g, ''));
+            
+            if (!isNaN(currentValue)) {
+                const change = Math.floor(Math.random() * 10) - 5;
+                randomCard.textContent = (currentValue + change).toLocaleString();
+            }
+        }, 5000);
+    </script>
+</body>
+</html>
