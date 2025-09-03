@@ -155,9 +155,9 @@
     </section>
 
     <script>
-        // Complete About Me section fix
+        // Complete About Me section fix with enhanced carousel functionality
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('Initializing About Me section...');
+            console.log('Initializing About Me section with auto-sliding carousel...');
             
             // Clean up any play button symbols
             setTimeout(() => {
@@ -276,16 +276,65 @@
                 });
             };
             
-            // Auto-advance carousels
-            setInterval(() => {
-                const activeSection = document.querySelector('.about-section.active');
-                if (activeSection) {
-                    const sectionId = activeSection.id.replace('-section', '');
-                    if (sectionId && slideCounts[sectionId] > 1) {
-                        window.navigateSlide(sectionId, 1);
-                    }
+            // Auto-advance carousels with better error handling
+            let autoPlayInterval = null;
+            
+            function startAutoPlay() {
+                // Clear any existing interval
+                if (autoPlayInterval) {
+                    clearInterval(autoPlayInterval);
                 }
-            }, 5000);
+                
+                autoPlayInterval = setInterval(() => {
+                    const activeSection = document.querySelector('.about-section.active');
+                    if (activeSection) {
+                        const sectionId = activeSection.id.replace('-section', '');
+                        const slides = document.querySelectorAll(`#${sectionId}-section .carousel-slide`);
+                        
+                        // Only auto-advance if there are multiple slides
+                        if (slides && slides.length > 1) {
+                            console.log(`Auto-advancing ${sectionId} carousel`);
+                            window.navigateSlide(sectionId, 1);
+                        }
+                    }
+                }, 4000); // Changed to 4 seconds for better UX
+            }
+            
+            // Start auto-play with a small delay to ensure DOM is ready
+            setTimeout(() => {
+                startAutoPlay();
+                console.log('Carousel auto-play started');
+            }, 500);
+            
+            // Restart auto-play when switching tabs
+            const originalSwitchTab = window.switchAboutTab;
+            window.switchAboutTab = function(sectionName) {
+                originalSwitchTab(sectionName);
+                startAutoPlay(); // Restart the timer when switching tabs
+            };
+            
+            // Fallback: Ensure carousel works even if initial setup fails
+            setTimeout(() => {
+                const activeSection = document.querySelector('.about-section.active');
+                if (activeSection && !autoPlayInterval) {
+                    console.log('Fallback: Starting auto-play');
+                    startAutoPlay();
+                }
+            }, 2000);
+            
+            // Pause on hover (optional but good UX)
+            document.querySelectorAll('.carousel-container').forEach(container => {
+                container.addEventListener('mouseenter', () => {
+                    if (autoPlayInterval) {
+                        clearInterval(autoPlayInterval);
+                        autoPlayInterval = null;
+                    }
+                });
+                
+                container.addEventListener('mouseleave', () => {
+                    startAutoPlay();
+                });
+            });
         });
     </script>
 
