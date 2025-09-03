@@ -1023,6 +1023,9 @@
 
         // Load initial data
         document.addEventListener('DOMContentLoaded', () => {
+            // Check authentication
+            checkAuthentication();
+            
             loadDiscussions();
             loadMembers();
             loadChatMessages();
@@ -1030,14 +1033,54 @@
             loadNewsletterArchive();
             loadResources();
             loadEvents();
-            
-            // Check for saved user session
-            const savedUser = localStorage.getItem('communityUser');
-            if (savedUser) {
-                currentUser = JSON.parse(savedUser);
-                updateUserUI();
-            }
         });
+
+        // Check authentication
+        function checkAuthentication() {
+            const session = JSON.parse(localStorage.getItem('communitySession') || 'null');
+            
+            if (!session || new Date(session.expiresAt) < new Date()) {
+                // Not authenticated or session expired
+                showToast('Please sign in to access the community', 'warning');
+                setTimeout(() => {
+                    window.location.href = 'community-auth.html';
+                }, 2000);
+                return false;
+            }
+            
+            currentUser = session.user;
+            updateUserUI();
+            
+            // Show admin controls if admin
+            if (currentUser.role === 'admin') {
+                enableAdminFeatures();
+            }
+            
+            return true;
+        }
+
+        // Enable admin features
+        function enableAdminFeatures() {
+            // Add admin badge to user info
+            const userDetails = document.getElementById('userStatus');
+            if (userDetails) {
+                userDetails.innerHTML = 'Admin <span style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 0.2rem 0.5rem; border-radius: 10px; font-size: 0.75rem; margin-left: 0.5rem;">OWNER</span>';
+            }
+            
+            // Add admin controls to discussions
+            document.querySelectorAll('.discussion-thread').forEach(thread => {
+                const adminControls = document.createElement('div');
+                adminControls.className = 'admin-controls';
+                adminControls.innerHTML = `
+                    <button onclick="pinDiscussion(this)" title="Pin discussion">📌</button>
+                    <button onclick="lockDiscussion(this)" title="Lock discussion">🔒</button>
+                    <button onclick="deleteDiscussion(this)" title="Delete discussion">🗑️</button>
+                `;
+                adminControls.style.cssText = 'position: absolute; top: 1rem; right: 1rem; display: flex; gap: 0.5rem;';
+                thread.style.position = 'relative';
+                thread.appendChild(adminControls);
+            });
+        }
 
         // Tab switching
         function switchTab(tabName) {
@@ -1448,56 +1491,90 @@
             document.getElementById(modalId).classList.remove('active');
         }
 
-        // User authentication (simplified demo)
+        // User authentication - redirect to auth page
         function showLoginModal() {
-            const name = prompt('Enter your name to sign in:');
-            if (name) {
-                currentUser = { name: name, id: Date.now() };
-                localStorage.setItem('communityUser', JSON.stringify(currentUser));
-                updateUserUI();
-                showToast(`Welcome back, ${name}!`, 'success');
-            }
+            window.location.href = 'community-auth.html';
         }
 
         function showSignupModal() {
-            const name = prompt('Enter your name to join the community:');
-            if (name) {
-                currentUser = { name: name, id: Date.now() };
-                localStorage.setItem('communityUser', JSON.stringify(currentUser));
-                updateUserUI();
-                showToast(`Welcome to the community, ${name}!`, 'success');
-                
-                // Add to members list
-                members.push({
-                    name: name,
-                    role: "New Member",
-                    posts: 0,
-                    joined: new Date().getFullYear().toString(),
-                    avatar: name.substring(0, 2).toUpperCase()
-                });
-                renderMembers();
-            }
+            window.location.href = 'community-auth.html';
         }
 
         // Update user UI
         function updateUserUI() {
             if (currentUser) {
                 document.getElementById('userName').textContent = currentUser.name;
-                document.getElementById('userStatus').textContent = 'Active member';
-                document.getElementById('userAvatar').innerHTML = currentUser.name.substring(0, 2).toUpperCase();
+                
+                // Show role and badges
+                let statusHTML = currentUser.role === 'admin' 
+                    ? 'Administrator <span style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 0.2rem 0.5rem; border-radius: 10px; font-size: 0.75rem; margin-left: 0.5rem;">OWNER</span>'
+                    : 'Active Member';
+                    
+                document.getElementById('userStatus').innerHTML = statusHTML;
+                document.getElementById('userAvatar').innerHTML = currentUser.avatar || currentUser.name.substring(0, 2).toUpperCase();
+                
+                // Update auth buttons
                 document.getElementById('authButtons').innerHTML = `
+                    <button class="btn btn-secondary" onclick="viewProfile()">
+                        <i class="fas fa-user"></i> Profile
+                    </button>
                     <button class="btn btn-secondary" onclick="logout()">
                         <i class="fas fa-sign-out-alt"></i> Sign Out
                     </button>
                 `;
+                
+                // Show admin panel if admin
+                if (currentUser.role === 'admin') {
+                    document.getElementById('authButtons').innerHTML += `
+                        <button class="btn btn-primary" onclick="showAdminPanel()">
+                            <i class="fas fa-cog"></i> Admin
+                        </button>
+                    `;
+                }
             }
+        }
+
+        // View profile
+        function viewProfile() {
+            showToast(`Profile: ${currentUser.name} (${currentUser.email})`, 'success');
+        }
+
+        // Show admin panel
+        function showAdminPanel() {
+            showToast('Admin panel coming soon! You have full control over all discussions and members.', 'success');
         }
 
         // Logout
         function logout() {
-            currentUser = null;
-            localStorage.removeItem('communityUser');
-            location.reload();
+            localStorage.removeItem('communitySession');
+            showToast('Signing out...', 'success');
+            setTimeout(() => {
+                window.location.href = 'community-auth.html';
+            }, 1000);
+        }
+
+        // Admin functions
+        function pinDiscussion(button) {
+            if (currentUser.role !== 'admin') return;
+            const thread = button.closest('.discussion-thread');
+            thread.style.borderLeft = '4px solid #f59e0b';
+            showToast('Discussion pinned!', 'success');
+        }
+
+        function lockDiscussion(button) {
+            if (currentUser.role !== 'admin') return;
+            const thread = button.closest('.discussion-thread');
+            thread.style.opacity = '0.7';
+            showToast('Discussion locked!', 'success');
+        }
+
+        function deleteDiscussion(button) {
+            if (currentUser.role !== 'admin') return;
+            if (confirm('Are you sure you want to delete this discussion?')) {
+                const thread = button.closest('.discussion-thread');
+                thread.remove();
+                showToast('Discussion deleted!', 'success');
+            }
         }
 
         // Toast notifications
