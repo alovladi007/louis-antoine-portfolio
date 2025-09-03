@@ -834,12 +834,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
 
     <!-- Include AI Backend -->
-    <script src="ai-assistant-backend.js"></script>
+    <script src="ai-assistant-backend-v2.js"></script>
 
     <script>
-        // Initialize AI Assistant
-        const ai = new AIAssistantBackend();
-        let currentChatId = null;
+        // Initialize AI Assistant V2
+        const ai = new AIAssistantBackendV2();
+        let currentConversationId = null;
         let isTyping = false;
         let currentUser = null;
 
@@ -872,7 +872,7 @@
 
         // Load conversations
         function loadConversations() {
-            const conversations = ai.conversationHistory[currentUser.id] || [];
+            const conversations = ai.getUserConversations(currentUser.id);
             const listEl = document.getElementById('conversationsList');
             
             if (conversations.length === 0) {
@@ -889,7 +889,7 @@
             // Group conversations by date
             const grouped = {};
             conversations.forEach(conv => {
-                const date = new Date(conv.timestamp).toDateString();
+                const date = new Date(conv.lastModified).toDateString();
                 if (!grouped[date]) grouped[date] = [];
                 grouped[date].push(conv);
             });
@@ -899,15 +899,26 @@
                     <div style="color: #6b7280; font-size: 0.75rem; margin-bottom: 0.5rem; font-weight: 600;">
                         ${date === new Date().toDateString() ? 'Today' : date}
                     </div>
-                    ${convs.map((conv, idx) => `
-                        <div class="conversation-item ${currentChatId === `${date}_${idx}` ? 'active' : ''}" 
-                             onclick="loadConversation('${date}_${idx}')">
+                    ${convs.map(conv => `
+                        <div class="conversation-item ${currentConversationId === conv.id ? 'active' : ''}" 
+                             onclick="loadConversation('${conv.id}')">
                             <div class="conversation-title">
                                 <i class="fas fa-comment"></i>
-                                ${conv.intent ? conv.intent.charAt(0).toUpperCase() + conv.intent.slice(1) : 'General'} Chat
+                                ${conv.title}
                             </div>
-                            <div class="conversation-preview">${conv.user.substring(0, 50)}...</div>
-                            <div class="conversation-time">${new Date(conv.timestamp).toLocaleTimeString()}</div>
+                            <div class="conversation-preview">
+                                ${conv.messages.length > 0 ? 
+                                    conv.messages[conv.messages.length - 1].content.substring(0, 50) + '...' : 
+                                    'New conversation'}
+                            </div>
+                            <div class="conversation-time">${new Date(conv.lastModified).toLocaleTimeString()}</div>
+                            <div style="display: flex; justify-content: space-between; margin-top: 0.25rem;">
+                                <span style="font-size: 0.7rem; color: #6b7280;">${conv.messageCount} messages</span>
+                                <button onclick="event.stopPropagation(); deleteConversation('${conv.id}')" 
+                                        style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 0.8rem;">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
                         </div>
                     `).join('')}
                 </div>
@@ -916,7 +927,7 @@
 
         // Start new chat
         function startNewChat() {
-            currentChatId = 'chat_' + Date.now();
+            currentConversationId = ai.createConversation(currentUser.id);
             document.getElementById('welcomeScreen').style.display = 'none';
             document.getElementById('chatInterface').style.display = 'flex';
             document.getElementById('messagesContainer').innerHTML = '';
@@ -930,6 +941,8 @@
                     "View code examples"
                 ]
             });
+            
+            loadConversations();
         }
 
         // Send message
@@ -938,6 +951,11 @@
             const message = input.value.trim();
             
             if (!message || isTyping) return;
+            
+            // Ensure we have a conversation
+            if (!currentConversationId) {
+                currentConversationId = ai.getOrCreateConversation(currentUser.id);
+            }
             
             // Add user message
             addMessage('user', message);
@@ -952,27 +970,33 @@
             
             // Process with AI
             try {
-                const response = await ai.processMessage(currentUser.id, message, {
-                    chatId: currentChatId,
-                    timestamp: new Date().toISOString()
-                });
+                // Simulate processing delay for realism
+                await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000));
+                
+                const result = await ai.processMessage(currentUser.id, message, currentConversationId);
                 
                 // Remove typing indicator
                 hideTyping();
                 isTyping = false;
                 
                 // Add AI response
-                addMessage('assistant', response.text, {
-                    suggestions: response.suggestions,
-                    code: response.code,
-                    links: response.links,
-                    emotion: response.emotion
+                addMessage('assistant', result.response.content, {
+                    suggestions: result.response.metadata.suggestions,
+                    code: result.response.metadata.code,
+                    links: result.response.metadata.links,
+                    emotion: result.response.metadata.emotion
                 });
                 
                 // Update conversation list
                 loadConversations();
                 
+                // Update conversation title if changed
+                if (result.conversation.title !== 'New Conversation') {
+                    updateConversationTitle(result.conversation.title);
+                }
+                
             } catch (error) {
+                console.error('Error processing message:', error);
                 hideTyping();
                 isTyping = false;
                 addMessage('assistant', "I apologize, but I encountered an error processing your request. Please try again.", {
@@ -1166,8 +1190,18 @@
 
         // Export chat
         function exportChat() {
+            if (!currentConversationId) {
+                alert('No active conversation to export');
+                return;
+            }
+            
             const format = confirm('Export as JSON? (Cancel for text format)') ? 'json' : 'text';
-            const data = ai.exportConversation(currentUser.id, format);
+            const data = ai.exportConversation(currentConversationId, format);
+            
+            if (!data) {
+                alert('Failed to export conversation');
+                return;
+            }
             
             const blob = new Blob([data], { type: format === 'json' ? 'application/json' : 'text/plain' });
             const url = URL.createObjectURL(blob);
@@ -1179,7 +1213,10 @@
 
         // Clear chat
         function clearChat() {
-            if (confirm('Are you sure you want to clear this conversation?')) {
+            if (confirm('Are you sure you want to clear this conversation? This cannot be undone.')) {
+                if (currentConversationId) {
+                    ai.deleteConversation(currentConversationId);
+                }
                 document.getElementById('messagesContainer').innerHTML = '';
                 startNewChat();
             }
@@ -1196,22 +1233,62 @@
         }
 
         // Load specific conversation
-        function loadConversation(convId) {
-            currentChatId = convId;
+        function loadConversation(conversationId) {
+            const conversation = ai.loadConversation(conversationId);
+            
+            if (!conversation) {
+                alert('Conversation not found');
+                return;
+            }
+            
+            currentConversationId = conversationId;
             document.getElementById('welcomeScreen').style.display = 'none';
             document.getElementById('chatInterface').style.display = 'flex';
             
-            // Load messages
-            const conversations = ai.conversationHistory[currentUser.id] || [];
-            const [date, idx] = convId.split('_');
-            
-            // Clear and load messages
+            // Clear and load all messages
             document.getElementById('messagesContainer').innerHTML = '';
             
-            // This is simplified - in production you'd load the full conversation
-            addMessage('assistant', "Previous conversation loaded. Continue where you left off or start a new topic!");
+            // Load all messages from the conversation
+            conversation.messages.forEach(msg => {
+                if (msg.role === 'user') {
+                    addMessage('user', msg.content);
+                } else {
+                    addMessage('assistant', msg.content, msg.metadata || {});
+                }
+            });
             
+            // Update title
+            updateConversationTitle(conversation.title);
+            
+            // Update conversation list
             loadConversations();
+            
+            // Scroll to bottom
+            const container = document.getElementById('messagesContainer');
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        // Delete conversation
+        function deleteConversation(conversationId) {
+            if (confirm('Delete this conversation? This cannot be undone.')) {
+                ai.deleteConversation(conversationId);
+                
+                // If deleting current conversation, start new
+                if (conversationId === currentConversationId) {
+                    currentConversationId = null;
+                    document.getElementById('messagesContainer').innerHTML = '';
+                    document.getElementById('welcomeScreen').style.display = 'flex';
+                    document.getElementById('chatInterface').style.display = 'none';
+                }
+                
+                loadConversations();
+            }
+        }
+        
+        // Update conversation title in UI
+        function updateConversationTitle(title) {
+            // You can add a title display in the chat header if desired
+            console.log('Conversation title:', title);
         }
 
         // Voice input (placeholder)
