@@ -1,0 +1,60 @@
+# S-parameter Extraction Script
+# Extracts S-parameters from FDTD simulations for INTERCONNECT
+# Save this as: export_sparams.lsf
+
+clear;
+closeall;
+
+# Load FDTD simulation results
+load("ring_modulator.fsp");
+load("ge_photodetector.fsp");
+
+# Extract S-parameters for ring modulator
+select("ring_modulator");
+T_through = transmission("through");
+T_drop = transmission("drop");
+lambda = getdata("through", "lambda");
+freq = c/lambda;
+
+# Calculate S-parameters
+S11 = 1 - T_through;  # Reflection
+S21 = sqrt(T_through); # Through transmission
+S12 = S21;             # Reciprocal
+S22 = 1 - T_drop;      # Drop reflection
+
+# Save S-parameters for INTERCONNECT
+write("ring_modulator_sparams.txt", "freq\tS11_real\tS11_imag\tS21_real\tS21_imag\tS12_real\tS12_imag\tS22_real\tS22_imag");
+for(i=1:length(freq)) {
+    write("ring_modulator_sparams.txt", num2str(freq(i)) + "\t" + 
+          num2str(real(S11(i))) + "\t" + num2str(imag(S11(i))) + "\t" +
+          num2str(real(S21(i))) + "\t" + num2str(imag(S21(i))) + "\t" +
+          num2str(real(S12(i))) + "\t" + num2str(imag(S12(i))) + "\t" +
+          num2str(real(S22(i))) + "\t" + num2str(imag(S22(i))), "a");
+}
+
+?"S-parameters exported for ring modulator";
+
+# Extract S-parameters for photodetector
+select("ge_photodetector");
+Pabs = getdata("absorption", "Pabs");
+f = getdata("absorption", "f");
+lambda_pd = c/f;
+
+# Calculate photodetector S-parameters (simplified)
+S11_pd = 0.1 * exp(1i * 2 * pi * f * 1e-12);  # Small reflection
+S21_pd = sqrt(1 - abs(S11_pd)^2);              # Transmission
+S12_pd = S21_pd;                               # Reciprocal
+S22_pd = 0.05 * exp(1i * 2 * pi * f * 1e-12); # Small reflection
+
+# Save S-parameters for INTERCONNECT
+write("ge_photodetector_sparams.txt", "freq\tS11_real\tS11_imag\tS21_real\tS21_imag\tS12_real\tS12_imag\tS22_real\tS22_imag");
+for(i=1:length(f)) {
+    write("ge_photodetector_sparams.txt", num2str(f(i)) + "\t" + 
+          num2str(real(S11_pd(i))) + "\t" + num2str(imag(S11_pd(i))) + "\t" +
+          num2str(real(S21_pd(i))) + "\t" + num2str(imag(S21_pd(i))) + "\t" +
+          num2str(real(S12_pd(i))) + "\t" + num2str(imag(S12_pd(i))) + "\t" +
+          num2str(real(S22_pd(i))) + "\t" + num2str(imag(S22_pd(i))), "a");
+}
+
+?"S-parameters exported for photodetector";
+?"S-parameter extraction complete!";

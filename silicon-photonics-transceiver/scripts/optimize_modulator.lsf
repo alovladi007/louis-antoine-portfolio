@@ -1,0 +1,133 @@
+# Silicon Ring Modulator Design and Optimization Script
+# Target: 25-50 Gbps operation with p-i-n junction
+# Save this as: optimize_modulator.lsf
+
+clear;
+closeall;
+
+# Design Parameters
+wg_width = 450e-9;        # Waveguide width (m)
+wg_height = 220e-9;       # Silicon thickness (m)
+slab_height = 90e-9;      # Slab height for rib waveguide (m)
+radius = 10e-6;           # Ring radius (m)
+gap = 150e-9;             # Coupling gap (m)
+coupling_length = 5e-6;   # Coupling region length (m)
+
+# Doping parameters
+p_doping = 1e18;          # P-type doping concentration (cm^-3)
+n_doping = 1e18;          # N-type doping concentration (cm^-3)
+intrinsic_width = 300e-9; # Intrinsic region width (m)
+
+# Material properties
+n_si = 3.476;             # Silicon refractive index @ 1550nm
+n_sio2 = 1.444;           # SiO2 refractive index @ 1550nm
+lambda_center = 1550e-9;  # Center wavelength (m)
+lambda_span = 10e-9;      # Wavelength span (m)
+mesh_accuracy = 3;        # Mesh accuracy (1-8)
+
+# Create FDTD simulation region
+addfdtd;
+set("dimension", "3D");
+set("x", 0);
+set("x span", 2*radius + 10e-6);
+set("y", 0);
+set("y span", 2*radius + 10e-6);
+set("z", 0);
+set("z span", 2e-6);
+set("mesh accuracy", mesh_accuracy);
+set("simulation time", 5000e-15);
+set("auto shutoff min", 1e-6);
+
+# Silicon substrate
+addrect;
+set("name", "substrate");
+set("x", 0);
+set("x span", 2*radius + 15e-6);
+set("y", 0);
+set("y span", 2*radius + 15e-6);
+set("z min", -2e-6);
+set("z max", 0);
+set("material", "SiO2 (Glass) - Palik");
+
+# BOX layer
+addrect;
+set("name", "BOX");
+set("x", 0);
+set("x span", 2*radius + 15e-6);
+set("y", 0);
+set("y span", 2*radius + 15e-6);
+set("z min", 0);
+set("z max", 2e-6);
+set("material", "SiO2 (Glass) - Palik");
+
+# Ring waveguide
+addring;
+set("name", "ring");
+set("x", 0);
+set("y", 0);
+set("z", wg_height/2);
+set("inner radius", radius - wg_width/2);
+set("outer radius", radius + wg_width/2);
+set("z span", wg_height);
+set("material", "Si (Silicon) - Palik");
+
+# Bus waveguide
+addrect;
+set("name", "bus_waveguide");
+set("x", 0);
+set("x span", 2*radius + 10e-6);
+set("y", -radius - gap - wg_width/2);
+set("y span", wg_width);
+set("z", wg_height/2);
+set("z span", wg_height);
+set("material", "Si (Silicon) - Palik");
+
+# Add optical source
+addmode;
+set("name", "input");
+set("injection axis", "x");
+set("x", -radius - 4e-6);
+set("y", -radius - gap - wg_width/2);
+set("y span", 3*wg_width);
+set("z", wg_height/2);
+set("z span", 3*wg_height);
+set("wavelength start", lambda_center - lambda_span/2);
+set("wavelength stop", lambda_center + lambda_span/2);
+set("mode selection", "fundamental TE mode");
+
+# Through port monitor
+addpower;
+set("name", "through");
+set("monitor type", "2D X-normal");
+set("x", radius + 4e-6);
+set("y", -radius - gap - wg_width/2);
+set("y span", 3*wg_width);
+set("z", wg_height/2);
+set("z span", 3*wg_height);
+
+# Drop port monitor
+addpower;
+set("name", "drop");
+set("monitor type", "2D Y-normal");
+set("x", 0);
+set("y", radius + 2e-6);
+set("x span", 3*wg_width);
+set("z", wg_height/2);
+set("z span", 3*wg_height);
+
+# Run simulation
+run;
+
+# Extract transmission spectra
+T_through = transmission("through");
+T_drop = transmission("drop");
+lambda = getdata("through", "lambda");
+
+# Calculate Q-factor and save results
+T_through_dB = 10*log10(abs(T_through));
+resonance_indices = findpeaks(-T_through_dB, "minpeakheight", 10);
+resonance_wavelengths = lambda(resonance_indices);
+
+?"Ring Modulator Results:";
+?"First resonance: " + num2str(resonance_wavelengths(1)*1e9) + " nm";
+save("ring_modulator.fsp");

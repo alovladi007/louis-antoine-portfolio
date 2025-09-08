@@ -1,0 +1,193 @@
+# INTERCONNECT Transceiver Link Assembly and BER Analysis
+# Complete 25-50 Gbps Silicon Photonics Link
+# Save this as: build_interconnect.icp
+
+clear;
+closeall;
+
+# System Parameters
+data_rates = [25e9, 50e9];  # 25 and 50 Gbps
+prbs_length = 2^11 - 1;     # PRBS11 pattern
+samples_per_bit = 64;
+simulation_bits = 10000;
+
+# Optical parameters
+lambda = 1550e-9;
+laser_power = 10e-3;         # 10 mW
+fiber_length = 1000;         # 1 km
+
+# Modulator parameters
+V_pi = 2.0;
+modulator_loss = 3;          # dB
+extinction_ratio = 10;       # dB
+
+# Photodetector parameters
+responsivity = 0.85;         # A/W
+pd_capacitance = 15e-15;     # 15 fF
+pd_resistance = 50;          # Ohm
+dark_current = 100e-9;       # 100 nA
+
+# TIA parameters
+tia_gain = 5000;             # Ohm
+tia_bandwidth = 30e9;        # Hz
+tia_noise = 20e-12;          # A/sqrt(Hz)
+
+# Build Circuit Components
+
+# CW laser source
+addlaser;
+set("name", "laser");
+set("frequency", c/lambda);
+set("power", laser_power);
+set("linewidth", 100e3);
+set("RIN", -150);
+set("x position", 0);
+set("y position", 0);
+
+# PRBS generator
+addprbsgenerator;
+set("name", "prbs");
+set("bit rate", data_rates(1));
+set("order", log2(prbs_length + 1));
+set("samples per bit", samples_per_bit);
+set("x position", 0);
+set("y position", -100);
+
+# NRZ pulse generator
+addnrzpulsegenerator;
+set("name", "nrz");
+set("bit rate", data_rates(1));
+set("samples per bit", samples_per_bit);
+set("rise time", 10e-12);
+set("fall time", 10e-12);
+set("x position", 100);
+set("y position", -100);
+
+connect("prbs", "output", "nrz", "modulation");
+
+# Electrical driver
+addelectricalamplifier;
+set("name", "driver");
+set("gain", V_pi);
+set("bandwidth", 40e9);
+set("noise figure", 6);
+set("x position", 200);
+set("y position", -100);
+
+connect("nrz", "output", "driver", "input");
+
+# Ring modulator
+addringmodulator;
+set("name", "ring_mod");
+set("frequency", c/lambda);
+set("free spectral range", 10e12);
+set("through port loss", modulator_loss);
+set("effective index", 2.4);
+set("group index", 4.2);
+set("coupling coefficient 1", 0.1);
+set("V pi", V_pi);
+set("V bias", -V_pi/2);
+set("x position", 100);
+set("y position", 0);
+
+connect("laser", "output", "ring_mod", "port 1");
+connect("driver", "output", "ring_mod", "electrical");
+
+# Fiber channel
+addstraightwaveguide;
+set("name", "fiber");
+set("length", fiber_length);
+set("loss", 0.2);
+set("dispersion", 17);
+set("effective index", 1.468);
+set("x position", 200);
+set("y position", 0);
+
+connect("ring_mod", "port 2", "fiber", "port 1");
+
+# Variable optical attenuator
+addopticalattenuator;
+set("name", "voa");
+set("insertion loss", 0);
+set("x position", 300);
+set("y position", 0);
+
+connect("fiber", "port 2", "voa", "output");
+
+# Photodetector
+addphotodetector;
+set("name", "photodetector");
+set("responsivity", responsivity);
+set("dark current", dark_current);
+set("thermal noise", 1);
+set("shot noise", 1);
+set("bandwidth", 30e9);
+set("x position", 400);
+set("y position", 0);
+
+connect("voa", "output", "photodetector", "input");
+
+# TIA
+addtransimpedanceamplifier;
+set("name", "tia");
+set("gain", tia_gain);
+set("bandwidth", tia_bandwidth);
+set("noise spectral density", tia_noise);
+set("x position", 500);
+set("y position", 0);
+
+connect("photodetector", "output", "tia", "input");
+
+# Low-pass filter
+addelectricalfilter;
+set("name", "lpf");
+set("filter type", "Bessel");
+set("filter order", 4);
+set("cutoff frequency", data_rates(1) * 0.75);
+set("x position", 600);
+set("y position", 0);
+
+connect("tia", "output", "lpf", "input");
+
+# BER analyzer
+addeyediagram;
+set("name", "ber_analyzer");
+set("signal reference", "prbs");
+set("calculate measurements", 1);
+set("calculate BER", 1);
+set("x position", 700);
+set("y position", -50);
+
+connect("lpf", "output", "ber_analyzer", "input");
+
+# Run 25 Gbps simulation
+?"Running 25 Gbps simulation...";
+run(simulation_bits/25e9);
+
+ber_25g = getdata("ber_analyzer", "BER");
+q_factor_25g = getdata("ber_analyzer", "Q factor");
+?"25 Gbps BER: " + num2str(ber_25g);
+?"25 Gbps Q-factor: " + num2str(q_factor_25g);
+
+# BER vs Power Sweep
+rx_powers_dBm = [-20:0.5:-5];
+ber_sweep = matrix(length(rx_powers_dBm));
+
+for(i=1:length(rx_powers_dBm)) {
+    fiber_output = laser_power * 10^(-modulator_loss/10) * 10^(-0.2*fiber_length/1000/10);
+    voa_loss = -10*log10(10^(rx_powers_dBm(i)/10)*1e-3/fiber_output);
+    set("voa", "insertion loss", voa_loss);
+    run(simulation_bits/25e9);
+    ber_sweep(i) = getdata("ber_analyzer", "BER");
+    ?"Power: " + num2str(rx_powers_dBm(i)) + " dBm, BER: " + num2str(ber_sweep(i));
+}
+
+# Find sensitivity
+target_ber = 1e-12;
+sens_idx = find(ber_sweep <= target_ber);
+if(length(sens_idx) > 0) {
+    sensitivity = rx_powers_dBm(sens_idx(1));
+    ?"Sensitivity @ BER=1e-12: " + num2str(sensitivity) + " dBm";
+}
+
+save("transceiver_link.icp");

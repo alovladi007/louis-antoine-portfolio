@@ -1,0 +1,95 @@
+# BER Analysis and Eye Diagram Generation Script
+# Comprehensive BER vs Power analysis for 25-50 Gbps
+# Save this as: ber_analysis.lsf
+
+clear;
+closeall;
+
+# Load INTERCONNECT circuit
+load("transceiver_link.icp");
+
+# Analysis parameters
+data_rates = [25e9, 50e9];
+rx_powers_dBm = [-20:0.5:-5];
+simulation_bits = 10000;
+
+# Initialize results storage
+ber_results = matrix(length(data_rates), length(rx_powers_dBm));
+q_factor_results = matrix(length(data_rates), length(rx_powers_dBm));
+sensitivity_results = matrix(length(data_rates));
+
+?"Starting comprehensive BER analysis...";
+
+# Loop through data rates
+for(rate_idx=1:length(data_rates)) {
+    current_rate = data_rates(rate_idx);
+    ?"Analyzing " + num2str(current_rate/1e9) + " Gbps...";
+    
+    # Update circuit for current data rate
+    set("prbs", "bit rate", current_rate);
+    set("nrz", "bit rate", current_rate);
+    set("lpf", "cutoff frequency", current_rate * 0.75);
+    
+    # BER vs Power sweep
+    for(power_idx=1:length(rx_powers_dBm)) {
+        current_power = rx_powers_dBm(power_idx);
+        
+        # Set VOA to achieve target power
+        laser_power = 10e-3;
+        modulator_loss = 3;
+        fiber_loss = 0.2;
+        total_loss = modulator_loss + fiber_loss;
+        voa_loss = total_loss - (current_power + 30);  # Convert dBm to dB
+        set("voa", "insertion loss", voa_loss);
+        
+        # Run simulation
+        run(simulation_bits/current_rate);
+        
+        # Extract results
+        ber_results(rate_idx, power_idx) = getdata("ber_analyzer", "BER");
+        q_factor_results(rate_idx, power_idx) = getdata("ber_analyzer", "Q factor");
+        
+        ?"  Power: " + num2str(current_power) + " dBm, BER: " + num2str(ber_results(rate_idx, power_idx));
+    }
+    
+    # Find sensitivity at BER = 1e-12
+    target_ber = 1e-12;
+    valid_indices = find(ber_results(rate_idx,:) <= target_ber);
+    if(length(valid_indices) > 0) {
+        sensitivity_results(rate_idx) = rx_powers_dBm(valid_indices(1));
+        ?"  Sensitivity @ BER=1e-12: " + num2str(sensitivity_results(rate_idx)) + " dBm";
+    } else {
+        sensitivity_results(rate_idx) = NaN;
+        ?"  Sensitivity @ BER=1e-12: Not achieved";
+    }
+end
+
+# Generate BER curves plot
+?"Generating BER curves...";
+plot(rx_powers_dBm, ber_results(1,:), "25 Gbps", "log y", "BER vs Received Power", "Received Power (dBm)", "BER");
+plot(rx_powers_dBm, ber_results(2,:), "50 Gbps", "log y", "BER vs Received Power", "Received Power (dBm)", "BER");
+
+# Generate Q-factor curves
+?"Generating Q-factor curves...";
+plot(rx_powers_dBm, q_factor_results(1,:), "25 Gbps Q-factor", "Q-factor vs Received Power", "Received Power (dBm)", "Q-factor");
+plot(rx_powers_dBm, q_factor_results(2,:), "50 Gbps Q-factor", "Q-factor vs Received Power", "Received Power (dBm)", "Q-factor");
+
+# Save results to files
+write("ber_curves_25g.txt", "Power_dBm\tBER\tQ_factor");
+for(i=1:length(rx_powers_dBm)) {
+    write("ber_curves_25g.txt", num2str(rx_powers_dBm(i)) + "\t" + 
+          num2str(ber_results(1,i)) + "\t" + num2str(q_factor_results(1,i)), "a");
+}
+
+write("ber_curves_50g.txt", "Power_dBm\tBER\tQ_factor");
+for(i=1:length(rx_powers_dBm)) {
+    write("ber_curves_50g.txt", num2str(rx_powers_dBm(i)) + "\t" + 
+          num2str(ber_results(2,i)) + "\t" + num2str(q_factor_results(2,i)), "a");
+}
+
+# Summary results
+?"BER Analysis Complete!";
+?"25 Gbps Sensitivity: " + num2str(sensitivity_results(1)) + " dBm";
+?"50 Gbps Sensitivity: " + num2str(sensitivity_results(2)) + " dBm";
+
+save("ber_analysis_results.icp");

@@ -1,0 +1,144 @@
+# Germanium Photodetector Design and Optimization Script
+# Target: >25 GHz bandwidth, >0.8 A/W responsivity
+# Save this as: optimize_pd.lsf
+
+clear;
+closeall;
+
+# Design Parameters
+pd_length = 20e-6;        # Photodetector length (m)
+pd_width = 10e-6;         # Photodetector width (m)
+ge_thickness = 500e-9;    # Germanium thickness (m)
+si_thickness = 220e-9;    # Silicon waveguide thickness (m)
+taper_length = 5e-6;      # Taper length (m)
+wg_width_in = 450e-9;     # Input waveguide width (m)
+
+# Doping parameters
+p_doping = 1e19;          # P+ contact doping (cm^-3)
+n_doping = 1e19;          # N+ contact doping (cm^-3)
+i_doping = 1e15;          # Intrinsic Ge doping (cm^-3)
+contact_thickness = 100e-9; # Contact layer thickness (m)
+bias_voltage = -2;        # Reverse bias voltage (V)
+
+# Material parameters
+n_ge = 4.2;               # Germanium refractive index @ 1550nm
+k_ge = 0.01;              # Germanium extinction coefficient
+lambda_center = 1550e-9;  # Operating wavelength (m)
+lambda_span = 100e-9;     # Wavelength span (m)
+
+# FDTD Simulation Setup
+addfdtd;
+set("dimension", "3D");
+set("x", pd_length/2);
+set("x span", pd_length + 10e-6);
+set("y", 0);
+set("y span", pd_width + 5e-6);
+set("z", 0);
+set("z span", 3e-6);
+set("mesh accuracy", 4);
+set("simulation time", 2000e-15);
+
+# Build structure (substrate, BOX, waveguides)
+addrect;
+set("name", "substrate");
+set("x", pd_length/2);
+set("x span", pd_length + 15e-6);
+set("y", 0);
+set("y span", pd_width + 10e-6);
+set("z min", -3e-6);
+set("z max", -2e-6);
+set("material", "Si (Silicon) - Palik");
+
+addrect;
+set("name", "BOX");
+set("x", pd_length/2);
+set("x span", pd_length + 15e-6);
+set("y", 0);
+set("y span", pd_width + 10e-6);
+set("z min", -2e-6);
+set("z max", 0);
+set("material", "SiO2 (Glass) - Palik");
+
+# Input silicon waveguide
+addrect;
+set("name", "si_waveguide");
+set("x min", -5e-6);
+set("x max", 0);
+set("y", 0);
+set("y span", wg_width_in);
+set("z", si_thickness/2);
+set("z span", si_thickness);
+set("material", "Si (Silicon) - Palik");
+
+# Germanium absorption layer
+addrect;
+set("name", "ge_layer");
+set("x min", taper_length);
+set("x max", pd_length);
+set("y", 0);
+set("y span", pd_width);
+set("z min", si_thickness);
+set("z max", si_thickness + ge_thickness);
+
+# Create Ge material with absorption
+mat = addmaterial("(n,k) Material");
+set("name", "Germanium_1550");
+setmaterial(mat, "Refractive Index", [1500e-9; 1600e-9], [n_ge; n_ge], [k_ge; k_ge]);
+setnamed("ge_layer", "material", "Germanium_1550");
+
+# Add optical source
+addmode;
+set("name", "optical_input");
+set("injection axis", "x");
+set("x", -3e-6);
+set("y", 0);
+set("y span", 3*wg_width_in);
+set("z", si_thickness/2);
+set("z span", 3*si_thickness);
+set("wavelength start", lambda_center - lambda_span/2);
+set("wavelength stop", lambda_center + lambda_span/2);
+set("mode selection", "fundamental TE mode");
+
+# Absorption monitor
+addpower;
+set("name", "absorption");
+set("monitor type", "3D");
+set("x min", taper_length);
+set("x max", pd_length);
+set("y", 0);
+set("y span", pd_width);
+set("z min", si_thickness);
+set("z max", si_thickness + ge_thickness);
+
+# Run simulation
+run;
+
+# Calculate responsivity
+Pabs = getdata("absorption", "Pabs");
+f = getdata("absorption", "f");
+lambda = c/f;
+q = 1.602e-19;
+h = 6.626e-34;
+c = 3e8;
+
+absorption_spectrum = matrix(length(lambda));
+for(i=1:length(lambda)) {
+    absorption_spectrum(i) = sum(Pabs(:,:,:,i));
+}
+
+quantum_efficiency = absorption_spectrum / sourcepower(f);
+responsivity = quantum_efficiency * q * lambda / (h * c);
+
+?"Photodetector Results:";
+?"Peak responsivity: " + num2str(max(responsivity)) + " A/W";
+
+# Calculate bandwidth
+eps_ge = 16.2 * 8.854e-12;
+depletion_width = sqrt(2 * eps_ge * abs(bias_voltage) / (q * i_doping * 1e6));
+junction_area = (pd_length - taper_length) * pd_width;
+junction_capacitance = eps_ge * junction_area / depletion_width;
+R_series = 50;
+bandwidth_RC = 1 / (2 * pi * R_series * junction_capacitance);
+?"3dB bandwidth: " + num2str(bandwidth_RC/1e9) + " GHz";
+
+save("ge_photodetector.fsp");

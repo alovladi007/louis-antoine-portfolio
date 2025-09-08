@@ -1,0 +1,67 @@
+# Eye Diagram Generation Script
+# Generate eye diagrams for 25-50 Gbps transceiver
+# Save this as: eye_diagram.lsf
+
+clear;
+closeall;
+
+# Load INTERCONNECT circuit
+load("transceiver_link.icp");
+
+# Eye diagram parameters
+data_rates = [25e9, 50e9];
+rx_power = -10;  # dBm
+simulation_bits = 20000;  # More bits for better eye diagram
+
+?"Generating eye diagrams...";
+
+# Loop through data rates
+for(rate_idx=1:length(data_rates)) {
+    current_rate = data_rates(rate_idx);
+    ?"Generating eye diagram for " + num2str(current_rate/1e9) + " Gbps...";
+    
+    # Update circuit for current data rate
+    set("prbs", "bit rate", current_rate);
+    set("nrz", "bit rate", current_rate);
+    set("lpf", "cutoff frequency", current_rate * 0.75);
+    
+    # Set VOA for target power
+    laser_power = 10e-3;
+    modulator_loss = 3;
+    fiber_loss = 0.2;
+    total_loss = modulator_loss + fiber_loss;
+    voa_loss = total_loss - (rx_power + 30);
+    set("voa", "insertion loss", voa_loss);
+    
+    # Run simulation
+    run(simulation_bits/current_rate);
+    
+    # Generate eye diagram
+    eye_data = getdata("ber_analyzer", "eye diagram");
+    time_data = getdata("ber_analyzer", "time");
+    
+    # Plot eye diagram
+    plot(time_data, eye_data, "Eye Diagram " + num2str(current_rate/1e9) + " Gbps", 
+         "Eye Diagram", "Time (ps)", "Amplitude (V)");
+    
+    # Calculate eye metrics
+    eye_height = getdata("ber_analyzer", "eye height");
+    eye_width = getdata("ber_analyzer", "eye width");
+    jitter_rms = getdata("ber_analyzer", "jitter rms");
+    jitter_peak = getdata("ber_analyzer", "jitter peak");
+    
+    ?"  Eye Height: " + num2str(eye_height) + " V";
+    ?"  Eye Width: " + num2str(eye_width) + " ps";
+    ?"  RMS Jitter: " + num2str(jitter_rms) + " ps";
+    ?"  Peak Jitter: " + num2str(jitter_peak) + " ps";
+    
+    # Save eye diagram data
+    write("eye_diagram_" + num2str(current_rate/1e9) + "g.txt", "Time_ps\tAmplitude_V");
+    for(i=1:length(time_data)) {
+        write("eye_diagram_" + num2str(current_rate/1e9) + "g.txt", 
+              num2str(time_data(i)*1e12) + "\t" + num2str(eye_data(i)), "a");
+    }
+}
+
+?"Eye diagram generation complete!";
+save("eye_diagram_results.icp");
