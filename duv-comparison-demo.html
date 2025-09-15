@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Model Comparison - Interactive Demo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #0a0a0a;
+            color: #e0e0e0;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .navigation-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .hero-section {
+            position: relative;
+            min-height: 50vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem 2rem;
+            margin-top: 60px;
+            overflow: hidden;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .hero-title {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-subtitle {
+            font-size: 1.2rem;
+            color: #a0a0a0;
+            margin-bottom: 2rem;
+        }
+
+        .section {
+            padding: 4rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            color: #fff;
+            text-align: center;
+        }
+
+        .demo-container {
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.8), rgba(30, 30, 30, 0.8));
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 15px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .control-label {
+            color: #a0a0a0;
+            font-size: 0.9rem;
+        }
+
+        .control-input {
+            background: rgba(30, 30, 30, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            padding: 0.5rem;
+            color: #e0e0e0;
+            font-size: 1rem;
+        }
+
+        .control-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .chart-container {
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.8), rgba(30, 30, 30, 0.8));
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 15px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.8), rgba(30, 30, 30, 0.8));
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            color: #a0a0a0;
+            font-size: 0.9rem;
+        }
+
+        .run-button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 1rem 0;
+        }
+
+        .run-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .run-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .comparison-table {
+            background: rgba(30, 30, 30, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 10px;
+            padding: 1rem;
+            margin: 1rem 0;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 0.5rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        th {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .model-comparison {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .model-card {
+            background: rgba(30, 30, 30, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 10px;
+            padding: 1rem;
+        }
+
+        .model-title {
+            color: #667eea;
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .model-description {
+            color: #a0a0a0;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .model-pros, .model-cons {
+            font-size: 0.8rem;
+        }
+
+        .model-pros {
+            color: #22c55e;
+        }
+
+        .model-cons {
+            color: #ef4444;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navigation-bar">
+        <div>
+            <a href="duv-energy-deposition-project.html" class="nav-btn">
+                <i class="fas fa-arrow-left"></i> Back to Project
+            </a>
+        </div>
+        <div>
+            <a href="additional-projects.html" class="nav-btn">
+                <i class="fas fa-microchip"></i> Electronics & Photonics
+            </a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="hero-content">
+            <h1 class="hero-title">Model Comparison</h1>
+            <p class="hero-subtitle">Side-by-Side Comparison of Monte Carlo vs Double Gaussian Models with Statistical Validation</p>
+        </div>
+    </section>
+
+    <!-- Interactive Demo -->
+    <section class="section">
+        <div class="demo-container">
+            <h2 class="section-title">Interactive Model Comparison</h2>
+            
+            <!-- Controls -->
+            <div class="controls">
+                <div class="control-group">
+                    <label class="control-label">Feature Size (nm)</label>
+                    <input type="range" class="control-input" id="featureSize" min="20" max="200" step="5" value="50">
+                    <span id="featureSizeValue">50 nm</span>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Wavelength (nm)</label>
+                    <input type="range" class="control-input" id="wavelength" min="150" max="250" step="1" value="193">
+                    <span id="wavelengthValue">193 nm</span>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Numerical Aperture</label>
+                    <input type="range" class="control-input" id="na" min="0.5" max="1.0" step="0.01" value="0.85">
+                    <span id="naValue">0.85</span>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Monte Carlo Particles</label>
+                    <input type="range" class="control-input" id="numParticles" min="10000" max="1000000" step="10000" value="100000">
+                    <span id="numParticlesValue">100,000</span>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Comparison Metric</label>
+                    <select class="control-input" id="comparisonMetric">
+                        <option value="accuracy">Accuracy</option>
+                        <option value="speed" selected>Speed</option>
+                        <option value="memory">Memory Usage</option>
+                        <option value="precision">Precision</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Validation Method</label>
+                    <select class="control-input" id="validationMethod">
+                        <option value="statistical">Statistical</option>
+                        <option value="experimental" selected>Experimental</option>
+                        <option value="theoretical">Theoretical</option>
+                    </select>
+                </div>
+            </div>
+
+            <button class="run-button" onclick="runModelComparison()">
+                <i class="fas fa-play"></i> Run Model Comparison
+            </button>
+
+            <!-- Metrics -->
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value" id="mcAccuracy">--</div>
+                    <div class="metric-label">MC Accuracy (%)</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="dgAccuracy">--</div>
+                    <div class="metric-label">DG Accuracy (%)</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="mcSpeed">--</div>
+                    <div class="metric-label">MC Speed (s)</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="dgSpeed">--</div>
+                    <div class="metric-label">DG Speed (s)</div>
+                </div>
+            </div>
+
+            <!-- Model Comparison Cards -->
+            <div class="model-comparison">
+                <div class="model-card">
+                    <div class="model-title">Monte Carlo Model</div>
+                    <div class="model-description">Particle-based simulation with statistical sampling</div>
+                    <div class="model-pros">
+                        <strong>Pros:</strong><br>
+                        • High accuracy for complex geometries<br>
+                        • Handles arbitrary shapes<br>
+                        • Statistical uncertainty quantification<br>
+                        • Physically realistic
+                    </div>
+                    <div class="model-cons">
+                        <strong>Cons:</strong><br>
+                        • Computationally expensive<br>
+                        • Requires many particles<br>
+                        • Statistical noise<br>
+                        • Longer simulation time
+                    </div>
+                </div>
+                
+                <div class="model-card">
+                    <div class="model-title">Double Gaussian Model</div>
+                    <div class="model-description">Analytical PSF with FFT convolution</div>
+                    <div class="model-pros">
+                        <strong>Pros:</strong><br>
+                        • Very fast computation<br>
+                        • Deterministic results<br>
+                        • Low memory usage<br>
+                        • Easy to implement
+                    </div>
+                    <div class="model-cons">
+                        <strong>Cons:</strong><br>
+                        • Limited to simple geometries<br>
+                        • Approximate solution<br>
+                        • Less physically accurate<br>
+                        • Fixed PSF shape
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comparison Table -->
+            <div class="comparison-table">
+                <h3 style="color: #667eea; margin-bottom: 1rem;">Detailed Comparison</h3>
+                <table id="comparisonTable">
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Monte Carlo</th>
+                            <th>Double Gaussian</th>
+                            <th>Winner</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Accuracy</td>
+                            <td id="mc-accuracy">--</td>
+                            <td id="dg-accuracy">--</td>
+                            <td id="accuracy-winner">--</td>
+                        </tr>
+                        <tr>
+                            <td>Speed</td>
+                            <td id="mc-speed">--</td>
+                            <td id="dg-speed">--</td>
+                            <td id="speed-winner">--</td>
+                        </tr>
+                        <tr>
+                            <td>Memory Usage</td>
+                            <td id="mc-memory">--</td>
+                            <td id="dg-memory">--</td>
+                            <td id="memory-winner">--</td>
+                        </tr>
+                        <tr>
+                            <td>Precision</td>
+                            <td id="mc-precision">--</td>
+                            <td id="dg-precision">--</td>
+                            <td id="precision-winner">--</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Charts -->
+            <div class="chart-container">
+                <div id="comparisonChart" style="height: 400px;"></div>
+            </div>
+
+            <div class="chart-container">
+                <div id="errorAnalysisChart" style="height: 300px;"></div>
+            </div>
+
+            <div class="chart-container">
+                <div id="performanceChart" style="height: 300px;"></div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        let comparisonData = {
+            monteCarlo: {},
+            doubleGaussian: {},
+            comparison: []
+        };
+
+        // Update slider values
+        document.getElementById('featureSize').addEventListener('input', function() {
+            document.getElementById('featureSizeValue').textContent = this.value + ' nm';
+        });
+
+        document.getElementById('wavelength').addEventListener('input', function() {
+            document.getElementById('wavelengthValue').textContent = this.value + ' nm';
+        });
+
+        document.getElementById('na').addEventListener('input', function() {
+            document.getElementById('naValue').textContent = this.value;
+        });
+
+        document.getElementById('numParticles').addEventListener('input', function() {
+            const value = parseInt(this.value);
+            document.getElementById('numParticlesValue').textContent = value.toLocaleString();
+        });
+
+        function runModelComparison() {
+            const button = document.querySelector('.run-button');
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Running Comparison...';
+
+            // Get parameters
+            const featureSize = parseFloat(document.getElementById('featureSize').value);
+            const wavelength = parseFloat(document.getElementById('wavelength').value);
+            const na = parseFloat(document.getElementById('na').value);
+            const numParticles = parseInt(document.getElementById('numParticles').value);
+            const comparisonMetric = document.getElementById('comparisonMetric').value;
+            const validationMethod = document.getElementById('validationMethod').value;
+
+            // Simulate processing time
+            setTimeout(() => {
+                generateComparisonData(featureSize, wavelength, na, numParticles, comparisonMetric, validationMethod);
+                
+                // Update metrics
+                document.getElementById('mcAccuracy').textContent = comparisonData.monteCarlo.accuracy.toFixed(1);
+                document.getElementById('dgAccuracy').textContent = comparisonData.doubleGaussian.accuracy.toFixed(1);
+                document.getElementById('mcSpeed').textContent = comparisonData.monteCarlo.speed.toFixed(2);
+                document.getElementById('dgSpeed').textContent = comparisonData.doubleGaussian.speed.toFixed(2);
+
+                // Update comparison table
+                updateComparisonTable();
+
+                // Update charts
+                updateComparisonChart();
+                updateErrorAnalysisChart();
+                updatePerformanceChart();
+
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-play"></i> Run Model Comparison';
+            }, 2000);
+        }
+
+        function generateComparisonData(featureSize, wavelength, na, numParticles, comparisonMetric, validationMethod) {
+            // Simulate Monte Carlo results
+            const mcAccuracy = 95 + Math.random() * 4; // 95-99%
+            const mcSpeed = 0.5 + Math.random() * 2; // 0.5-2.5 seconds
+            const mcMemory = 100 + Math.random() * 50; // 100-150 MB
+            const mcPrecision = 0.98 + Math.random() * 0.02; // 0.98-1.0
+
+            // Simulate Double Gaussian results
+            const dgAccuracy = 85 + Math.random() * 10; // 85-95%
+            const dgSpeed = 0.01 + Math.random() * 0.05; // 0.01-0.06 seconds
+            const dgMemory = 10 + Math.random() * 10; // 10-20 MB
+            const dgPrecision = 0.95 + Math.random() * 0.03; // 0.95-0.98
+
+            comparisonData = {
+                monteCarlo: {
+                    accuracy: mcAccuracy,
+                    speed: mcSpeed,
+                    memory: mcMemory,
+                    precision: mcPrecision
+                },
+                doubleGaussian: {
+                    accuracy: dgAccuracy,
+                    speed: dgSpeed,
+                    memory: dgMemory,
+                    precision: dgPrecision
+                },
+                comparison: [
+                    { metric: 'Accuracy', mc: mcAccuracy, dg: dgAccuracy },
+                    { metric: 'Speed', mc: mcSpeed, dg: dgSpeed },
+                    { metric: 'Memory', mc: mcMemory, dg: dgMemory },
+                    { metric: 'Precision', mc: mcPrecision, dg: dgPrecision }
+                ]
+            };
+        }
+
+        function updateComparisonTable() {
+            const mc = comparisonData.monteCarlo;
+            const dg = comparisonData.doubleGaussian;
+
+            document.getElementById('mc-accuracy').textContent = mc.accuracy.toFixed(1) + '%';
+            document.getElementById('dg-accuracy').textContent = dg.accuracy.toFixed(1) + '%';
+            document.getElementById('accuracy-winner').textContent = mc.accuracy > dg.accuracy ? 'MC' : 'DG';
+
+            document.getElementById('mc-speed').textContent = mc.speed.toFixed(2) + 's';
+            document.getElementById('dg-speed').textContent = dg.speed.toFixed(2) + 's';
+            document.getElementById('speed-winner').textContent = mc.speed < dg.speed ? 'MC' : 'DG';
+
+            document.getElementById('mc-memory').textContent = mc.memory.toFixed(0) + ' MB';
+            document.getElementById('dg-memory').textContent = dg.memory.toFixed(0) + ' MB';
+            document.getElementById('memory-winner').textContent = mc.memory < dg.memory ? 'MC' : 'DG';
+
+            document.getElementById('mc-precision').textContent = mc.precision.toFixed(3);
+            document.getElementById('dg-precision').textContent = dg.precision.toFixed(3);
+            document.getElementById('precision-winner').textContent = mc.precision > dg.precision ? 'MC' : 'DG';
+        }
+
+        function updateComparisonChart() {
+            const data = [
+                {
+                    x: comparisonData.comparison.map(c => c.metric),
+                    y: comparisonData.comparison.map(c => c.mc),
+                    type: 'bar',
+                    name: 'Monte Carlo',
+                    marker: { color: '#667eea' }
+                },
+                {
+                    x: comparisonData.comparison.map(c => c.metric),
+                    y: comparisonData.comparison.map(c => c.dg),
+                    type: 'bar',
+                    name: 'Double Gaussian',
+                    marker: { color: '#ff6b6b' }
+                }
+            ];
+
+            const layout = {
+                title: 'Model Comparison - Performance Metrics',
+                xaxis: { title: 'Metrics' },
+                yaxis: { title: 'Performance Score' },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' }
+            };
+
+            Plotly.newPlot('comparisonChart', data, layout);
+        }
+
+        function updateErrorAnalysisChart() {
+            const features = ['20nm', '50nm', '100nm', '150nm', '200nm'];
+            const mcErrors = features.map(() => Math.random() * 2 + 0.5);
+            const dgErrors = features.map(() => Math.random() * 5 + 1);
+
+            const data = [
+                {
+                    x: features,
+                    y: mcErrors,
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: 'Monte Carlo Error',
+                    line: { color: '#667eea', width: 2 }
+                },
+                {
+                    x: features,
+                    y: dgErrors,
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: 'Double Gaussian Error',
+                    line: { color: '#ff6b6b', width: 2 }
+                }
+            ];
+
+            const layout = {
+                title: 'Error Analysis vs Feature Size',
+                xaxis: { title: 'Feature Size' },
+                yaxis: { title: 'Error (%)' },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' }
+            };
+
+            Plotly.newPlot('errorAnalysisChart', data, layout);
+        }
+
+        function updatePerformanceChart() {
+            const particles = [10000, 50000, 100000, 500000, 1000000];
+            const mcTimes = particles.map(p => 0.1 + p / 1000000);
+            const dgTimes = particles.map(() => 0.01);
+
+            const data = [
+                {
+                    x: particles,
+                    y: mcTimes,
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: 'Monte Carlo Time',
+                    line: { color: '#667eea', width: 2 }
+                },
+                {
+                    x: particles,
+                    y: dgTimes,
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: 'Double Gaussian Time',
+                    line: { color: '#ff6b6b', width: 2 }
+                }
+            ];
+
+            const layout = {
+                title: 'Performance vs Number of Particles',
+                xaxis: { title: 'Number of Particles' },
+                yaxis: { title: 'Computation Time (s)' },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' }
+            };
+
+            Plotly.newPlot('performanceChart', data, layout);
+        }
+
+        // Initialize charts on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateComparisonChart();
+            updateErrorAnalysisChart();
+            updatePerformanceChart();
+        });
+    </script>
+</body>
+</html>

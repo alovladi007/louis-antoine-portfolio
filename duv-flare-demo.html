@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flare Modeling - Interactive Demo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #0a0a0a;
+            color: #e0e0e0;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .navigation-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .hero-section {
+            position: relative;
+            min-height: 50vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem 2rem;
+            margin-top: 60px;
+            overflow: hidden;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .hero-title {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-subtitle {
+            font-size: 1.2rem;
+            color: #a0a0a0;
+            margin-bottom: 2rem;
+        }
+
+        .section {
+            padding: 4rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            color: #fff;
+            text-align: center;
+        }
+
+        .demo-container {
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.8), rgba(30, 30, 30, 0.8));
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 15px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .control-label {
+            color: #a0a0a0;
+            font-size: 0.9rem;
+        }
+
+        .control-input {
+            background: rgba(30, 30, 30, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            padding: 0.5rem;
+            color: #e0e0e0;
+            font-size: 1rem;
+        }
+
+        .control-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .chart-container {
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.8), rgba(30, 30, 30, 0.8));
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 15px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.8), rgba(30, 30, 30, 0.8));
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            color: #a0a0a0;
+            font-size: 0.9rem;
+        }
+
+        .run-button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 1rem 0;
+        }
+
+        .run-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .run-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .formula-box {
+            background: rgba(30, 30, 30, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 10px;
+            padding: 1rem;
+            margin: 1rem 0;
+            text-align: center;
+        }
+
+        .formula {
+            font-size: 1.2rem;
+            color: #667eea;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navigation-bar">
+        <div>
+            <a href="duv-energy-deposition-project.html" class="nav-btn">
+                <i class="fas fa-arrow-left"></i> Back to Project
+            </a>
+        </div>
+        <div>
+            <a href="additional-projects.html" class="nav-btn">
+                <i class="fas fa-microchip"></i> Electronics & Photonics
+            </a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="hero-content">
+            <h1 class="hero-title">Flare Modeling</h1>
+            <p class="hero-subtitle">Third Gaussian Long-Tail Effects and Scattered Light Analysis</p>
+        </div>
+    </section>
+
+    <!-- Interactive Demo -->
+    <section class="section">
+        <div class="demo-container">
+            <h2 class="section-title">Interactive Flare Modeling</h2>
+            
+            <!-- Formula Box -->
+            <div class="formula-box">
+                <h3 style="color: #667eea; margin-bottom: 1rem;">Flare PSF Formula</h3>
+                <div class="formula">
+                    PSF_flare(x,y) = A₁ × exp(-(x²+y²)/(2σ₁²)) + A₂ × exp(-(x²+y²)/(2σ₂²)) + A₃ × exp(-(x²+y²)/(2σ₃²))
+                </div>
+                <p style="color: #a0a0a0; margin-top: 0.5rem; font-size: 0.9rem;">
+                    Where A₃ and σ₃ represent the flare component with long-tail characteristics
+                </p>
+            </div>
+            
+            <!-- Controls -->
+            <div class="controls">
+                <div class="control-group">
+                    <label class="control-label">Flare Level (%)</label>
+                    <input type="range" class="control-input" id="flareLevel" min="0" max="10" step="0.1" value="2">
+                    <span id="flareLevelValue">2%</span>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Flare Sigma (μm)</label>
+                    <input type="range" class="control-input" id="flareSigma" min="1" max="50" step="1" value="10">
+                    <span id="flareSigmaValue">10 μm</span>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Main PSF Sigma (nm)</label>
+                    <input type="range" class="control-input" id="mainSigma" min="20" max="200" step="5" value="50">
+                    <span id="mainSigmaValue">50 nm</span>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Flare Decay Rate</label>
+                    <input type="range" class="control-input" id="decayRate" min="0.1" max="2.0" step="0.1" value="0.5">
+                    <span id="decayRateValue">0.5</span>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Scattering Angle (°)</label>
+                    <input type="range" class="control-input" id="scatteringAngle" min="0" max="90" step="1" value="30">
+                    <span id="scatteringAngleValue">30°</span>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Feature Size (μm)</label>
+                    <input type="range" class="control-input" id="featureSize" min="0.1" max="5.0" step="0.1" value="1.0">
+                    <span id="featureSizeValue">1.0 μm</span>
+                </div>
+            </div>
+
+            <button class="run-button" onclick="runFlareSimulation()">
+                <i class="fas fa-play"></i> Run Flare Simulation
+            </button>
+
+            <!-- Metrics -->
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value" id="flareIntensity">--</div>
+                    <div class="metric-label">Flare Intensity (%)</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="flareRadius">--</div>
+                    <div class="metric-label">Flare Radius (μm)</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="contrastReduction">--</div>
+                    <div class="metric-label">Contrast Reduction (%)</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="flareEnergy">--</div>
+                    <div class="metric-label">Flare Energy (%)</div>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="chart-container">
+                <div id="psfWithFlareChart" style="height: 400px;"></div>
+            </div>
+
+            <div class="chart-container">
+                <div id="flareProfileChart" style="height: 300px;"></div>
+            </div>
+
+            <div class="chart-container">
+                <div id="contrastImpactChart" style="height: 300px;"></div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        let simulationData = {
+            psfWithFlare: [],
+            flareProfile: [],
+            contrastImpact: [],
+            metrics: {}
+        };
+
+        // Update slider values
+        document.getElementById('flareLevel').addEventListener('input', function() {
+            document.getElementById('flareLevelValue').textContent = this.value + '%';
+        });
+
+        document.getElementById('flareSigma').addEventListener('input', function() {
+            document.getElementById('flareSigmaValue').textContent = this.value + ' μm';
+        });
+
+        document.getElementById('mainSigma').addEventListener('input', function() {
+            document.getElementById('mainSigmaValue').textContent = this.value + ' nm';
+        });
+
+        document.getElementById('decayRate').addEventListener('input', function() {
+            document.getElementById('decayRateValue').textContent = this.value;
+        });
+
+        document.getElementById('scatteringAngle').addEventListener('input', function() {
+            document.getElementById('scatteringAngleValue').textContent = this.value + '°';
+        });
+
+        document.getElementById('featureSize').addEventListener('input', function() {
+            document.getElementById('featureSizeValue').textContent = this.value + ' μm';
+        });
+
+        function runFlareSimulation() {
+            const button = document.querySelector('.run-button');
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Running Simulation...';
+
+            // Get parameters
+            const flareLevel = parseFloat(document.getElementById('flareLevel').value) / 100;
+            const flareSigma = parseFloat(document.getElementById('flareSigma').value);
+            const mainSigma = parseFloat(document.getElementById('mainSigma').value) / 1000; // Convert to μm
+            const decayRate = parseFloat(document.getElementById('decayRate').value);
+            const scatteringAngle = parseFloat(document.getElementById('scatteringAngle').value);
+            const featureSize = parseFloat(document.getElementById('featureSize').value);
+
+            // Simulate processing time
+            setTimeout(() => {
+                generateFlareData(flareLevel, flareSigma, mainSigma, decayRate, scatteringAngle, featureSize);
+                
+                // Update metrics
+                document.getElementById('flareIntensity').textContent = (flareLevel * 100).toFixed(1);
+                document.getElementById('flareRadius').textContent = simulationData.metrics.flareRadius.toFixed(1);
+                document.getElementById('contrastReduction').textContent = simulationData.metrics.contrastReduction.toFixed(1);
+                document.getElementById('flareEnergy').textContent = simulationData.metrics.flareEnergy.toFixed(1);
+
+                // Update charts
+                updatePSFWithFlareChart();
+                updateFlareProfileChart();
+                updateContrastImpactChart();
+
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-play"></i> Run Flare Simulation';
+            }, 1000);
+        }
+
+        function generateFlareData(flareLevel, flareSigma, mainSigma, decayRate, scatteringAngle, featureSize) {
+            const psfWithFlare = [];
+            const flareProfile = [];
+            const contrastImpact = [];
+            
+            const gridSize = 200;
+            const center = gridSize / 2;
+            const pixelSize = featureSize / gridSize;
+            
+            // Generate PSF with flare
+            for (let y = 0; y < gridSize; y++) {
+                for (let x = 0; x < gridSize; x++) {
+                    const dx = (x - center) * pixelSize;
+                    const dy = (y - center) * pixelSize;
+                    const r = Math.sqrt(dx * dx + dy * dy);
+                    
+                    // Main PSF (narrow Gaussian)
+                    const mainPSF = Math.exp(-r * r / (2 * mainSigma * mainSigma));
+                    
+                    // Flare PSF (wide Gaussian with long tail)
+                    const flarePSF = flareLevel * Math.exp(-r * r / (2 * flareSigma * flareSigma)) * 
+                                   Math.exp(-r * decayRate / flareSigma);
+                    
+                    const totalPSF = mainPSF + flarePSF;
+                    
+                    psfWithFlare.push({
+                        x: dx,
+                        y: dy,
+                        z: totalPSF
+                    });
+                }
+            }
+            
+            // Generate 1D flare profile
+            for (let x = 0; x < gridSize; x++) {
+                const dx = (x - center) * pixelSize;
+                const r = Math.abs(dx);
+                
+                const mainPSF = Math.exp(-r * r / (2 * mainSigma * mainSigma));
+                const flarePSF = flareLevel * Math.exp(-r * r / (2 * flareSigma * flareSigma)) * 
+                               Math.exp(-r * decayRate / flareSigma);
+                
+                flareProfile.push({
+                    x: dx,
+                    main: mainPSF,
+                    flare: flarePSF,
+                    total: mainPSF + flarePSF
+                });
+            }
+            
+            // Generate contrast impact data
+            const pitches = Array.from({length: 50}, (_, i) => 0.1 + i * 0.1);
+            pitches.forEach(pitch => {
+                const contrastWithoutFlare = Math.sin(Math.PI * pitch / (2 * mainSigma)) / (Math.PI * pitch / (2 * mainSigma));
+                const contrastWithFlare = contrastWithoutFlare * (1 - flareLevel * Math.exp(-pitch / flareSigma));
+                const contrastReduction = (1 - contrastWithFlare / contrastWithoutFlare) * 100;
+                
+                contrastImpact.push({
+                    pitch: pitch,
+                    contrastWithoutFlare: contrastWithoutFlare,
+                    contrastWithFlare: contrastWithFlare,
+                    contrastReduction: contrastReduction
+                });
+            });
+            
+            // Calculate metrics
+            const flareRadius = flareSigma * Math.sqrt(2 * Math.log(2)); // FWHM
+            const contrastReduction = Math.max(...contrastImpact.map(c => c.contrastReduction));
+            const flareEnergy = flareLevel * 100;
+            
+            simulationData = {
+                psfWithFlare: psfWithFlare,
+                flareProfile: flareProfile,
+                contrastImpact: contrastImpact,
+                metrics: {
+                    flareRadius: flareRadius,
+                    contrastReduction: contrastReduction,
+                    flareEnergy: flareEnergy
+                }
+            };
+        }
+
+        function updatePSFWithFlareChart() {
+            const data = [{
+                x: simulationData.psfWithFlare.map(p => p.x),
+                y: simulationData.psfWithFlare.map(p => p.y),
+                z: simulationData.psfWithFlare.map(p => p.z),
+                type: 'heatmap',
+                colorscale: 'Viridis',
+                colorbar: { title: 'PSF Value' }
+            }];
+
+            const layout = {
+                title: 'PSF with Flare Effects',
+                xaxis: { title: 'X Position (μm)' },
+                yaxis: { title: 'Y Position (μm)' },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' }
+            };
+
+            Plotly.newPlot('psfWithFlareChart', data, layout);
+        }
+
+        function updateFlareProfileChart() {
+            const data = [
+                {
+                    x: simulationData.flareProfile.map(p => p.x),
+                    y: simulationData.flareProfile.map(p => p.main),
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Main PSF',
+                    line: { color: '#667eea', width: 2 }
+                },
+                {
+                    x: simulationData.flareProfile.map(p => p.x),
+                    y: simulationData.flareProfile.map(p => p.flare),
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Flare PSF',
+                    line: { color: '#ff6b6b', width: 2 }
+                },
+                {
+                    x: simulationData.flareProfile.map(p => p.x),
+                    y: simulationData.flareProfile.map(p => p.total),
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Total PSF',
+                    line: { color: '#22c55e', width: 2, dash: 'dash' }
+                }
+            ];
+
+            const layout = {
+                title: 'PSF Components (1D Cross-Section)',
+                xaxis: { title: 'Position (μm)' },
+                yaxis: { title: 'PSF Value' },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' }
+            };
+
+            Plotly.newPlot('flareProfileChart', data, layout);
+        }
+
+        function updateContrastImpactChart() {
+            const data = [
+                {
+                    x: simulationData.contrastImpact.map(c => c.pitch),
+                    y: simulationData.contrastImpact.map(c => c.contrastWithoutFlare),
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Without Flare',
+                    line: { color: '#667eea', width: 2 }
+                },
+                {
+                    x: simulationData.contrastImpact.map(c => c.pitch),
+                    y: simulationData.contrastImpact.map(c => c.contrastWithFlare),
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'With Flare',
+                    line: { color: '#ff6b6b', width: 2 }
+                }
+            ];
+
+            const layout = {
+                title: 'Contrast Impact of Flare',
+                xaxis: { title: 'Pitch (μm)' },
+                yaxis: { title: 'Contrast' },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' }
+            };
+
+            Plotly.newPlot('contrastImpactChart', data, layout);
+        }
+
+        // Initialize charts on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updatePSFWithFlareChart();
+            updateFlareProfileChart();
+            updateContrastImpactChart();
+        });
+    </script>
+</body>
+</html>
