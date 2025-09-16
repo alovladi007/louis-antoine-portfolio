@@ -504,18 +504,21 @@
             if (processNoise && processNoiseValue) {
                 processNoise.oninput = function() {
                     processNoiseValue.textContent = this.value;
+                    updateCharts();
                 };
             }
 
             if (measurementNoise && measurementNoiseValue) {
                 measurementNoise.oninput = function() {
                     measurementNoiseValue.textContent = this.value;
+                    updateCharts();
                 };
             }
 
             if (initialCovariance && initialCovarianceValue) {
                 initialCovariance.oninput = function() {
                     initialCovarianceValue.textContent = this.value;
+                    updateCharts();
                 };
             }
 
@@ -528,8 +531,136 @@
                         button.innerHTML = '<i class="fas fa-check"></i> Filter Active';
                         button.classList.add('btn-success');
                         button.disabled = false;
+                        updateCharts();
                     }, 2000);
                 };
+            }
+        }
+
+        function updateCharts() {
+            console.log('Updating charts...');
+            
+            // Get current parameter values
+            var processNoise = parseFloat(document.getElementById('process-noise').value);
+            var measurementNoise = parseFloat(document.getElementById('measurement-noise').value);
+            var initialCovariance = parseFloat(document.getElementById('initial-covariance').value);
+            
+            // Update state estimation chart
+            var timeData = [];
+            var trueState = [];
+            var estimatedState = [];
+            var measurements = [];
+            
+            for (var i = 0; i < 20; i++) {
+                timeData.push('T' + i);
+                trueState.push(100 + Math.sin(i * 0.4) * 10);
+                estimatedState.push(100 + Math.sin(i * 0.4) * 10 + Math.random() * processNoise);
+                measurements.push(100 + Math.sin(i * 0.4) * 10 + Math.random() * measurementNoise * 2);
+            }
+
+            var trace1 = {
+                x: timeData,
+                y: trueState,
+                mode: 'lines',
+                name: 'True State',
+                line: {color: '#22c55e', width: 3}
+            };
+            
+            var trace2 = {
+                x: timeData,
+                y: estimatedState,
+                mode: 'lines+markers',
+                name: 'Kalman Estimate',
+                line: {color: '#00d4ff', width: 2},
+                marker: {size: 4}
+            };
+
+            var trace3 = {
+                x: timeData,
+                y: measurements,
+                mode: 'markers',
+                name: 'Measurements',
+                marker: {color: '#ff6b6b', size: 6}
+            };
+
+            var layout1 = {
+                title: 'Kalman Filter State Estimation',
+                xaxis: {title: 'Time'},
+                yaxis: {title: 'State Value'},
+                plot_bgcolor: 'transparent',
+                paper_bgcolor: 'transparent',
+                font: {color: '#e0e0e0'}
+            };
+
+            try {
+                Plotly.newPlot('estimation-chart', [trace1, trace2, trace3], layout1);
+                console.log('Estimation chart updated');
+            } catch (e) {
+                console.error('Error updating estimation chart:', e);
+            }
+
+            // Update covariance chart
+            var covarianceData = [];
+            
+            for (var i = 0; i < 20; i++) {
+                covarianceData.push(initialCovariance * Math.exp(-i * 0.1) + 0.1);
+            }
+
+            var trace4 = {
+                x: timeData,
+                y: covarianceData,
+                mode: 'lines+markers',
+                name: 'Covariance',
+                line: {color: '#ffaa00', width: 2},
+                marker: {size: 4}
+            };
+
+            var layout2 = {
+                title: 'Covariance Evolution',
+                xaxis: {title: 'Time'},
+                yaxis: {title: 'Covariance Value'},
+                plot_bgcolor: 'transparent',
+                paper_bgcolor: 'transparent',
+                font: {color: '#e0e0e0'}
+            };
+
+            try {
+                Plotly.newPlot('covariance-chart', [trace4], layout2);
+                console.log('Covariance chart updated');
+            } catch (e) {
+                console.error('Error updating covariance chart:', e);
+            }
+
+            // Update innovation chart
+            var innovationData = [];
+            
+            for (var i = 0; i < 20; i++) {
+                innovationData.push((Math.random() * 4 - 2) * measurementNoise);
+            }
+
+            var trace5 = {
+                x: timeData,
+                y: innovationData,
+                mode: 'lines+markers',
+                name: 'Innovation',
+                line: {color: '#4ecdc4', width: 2},
+                marker: {size: 4}
+            };
+
+            var layout3 = {
+                title: 'Innovation Sequence',
+                xaxis: {title: 'Time'},
+                yaxis: {title: 'Innovation Value'},
+                plot_bgcolor: 'transparent',
+                paper_bgcolor: 'transparent',
+                font: {color: '#e0e0e0'}
+            };
+
+            try {
+                Plotly.newPlot('innovation-chart', [trace5], layout3);
+                console.log('Innovation chart updated');
+            } catch (e) {
+                console.error('Error updating innovation chart:', e);
             }
         }
     </script>
