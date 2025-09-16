@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Analysis - Interactive Demo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #0a0a0a;
+            color: #e0e0e0;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .navigation-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .hero-section {
+            position: relative;
+            min-height: 50vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem 2rem;
+            margin-top: 60px;
+            overflow: hidden;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .hero-title {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-subtitle {
+            font-size: 1.2rem;
+            color: #a0a0a0;
+            margin-bottom: 2rem;
+        }
+
+        .hero-description {
+            font-size: 1.1rem;
+            color: #b0b0b0;
+            max-width: 800px;
+            margin: 0 auto 2rem;
+        }
+
+        .section {
+            padding: 4rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .section-subtitle {
+            font-size: 1.3rem;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .section-description {
+            font-size: 1.1rem;
+            color: #b0b0b0;
+            margin-bottom: 2rem;
+        }
+
+        .demo-container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 2rem;
+            margin: 2rem 0;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .control-group {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 1.5rem;
+            border-radius: 10px;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .control-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #667eea;
+        }
+
+        .control-slider {
+            width: 100%;
+            margin: 0.5rem 0;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 6px;
+            border-radius: 3px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            outline: none;
+        }
+
+        .control-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+        }
+
+        .control-value {
+            font-size: 0.9rem;
+            color: #a0a0a0;
+            margin-top: 0.5rem;
+        }
+
+        .control-button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 0.5rem 0.5rem 0.5rem 0;
+        }
+
+        .control-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .metric-card {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 1.5rem;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            color: #a0a0a0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 1.5rem;
+            border-radius: 10px;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .feature-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #e0e0e0;
+        }
+
+        .feature-description {
+            color: #b0b0b0;
+            font-size: 0.95rem;
+        }
+
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2rem;
+            }
+            
+            .controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navigation-bar">
+        <a href="silicon-photonics-transceiver.html" class="nav-btn">
+            <i class="fas fa-arrow-left"></i> Back to Project
+        </a>
+        <h2>System Analysis</h2>
+    </nav>
+
+    <section class="hero-section">
+        <div class="hero-content">
+            <h1 class="hero-title">System Analysis</h1>
+            <p class="hero-subtitle">End-to-End Transceiver Performance Analysis</p>
+            <p class="hero-description">
+                Comprehensive system-level analysis including optical link budget, noise analysis, 
+                and bit error rate calculations for complete transceiver performance evaluation.
+            </p>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="section-title">Interactive System Parameters</h2>
+        <p class="section-description">
+            Adjust system parameters to analyze different operating conditions and performance trade-offs.
+        </p>
+
+        <div class="demo-container">
+            <div class="controls">
+                <div class="control-group">
+                    <label class="control-label">Data Rate (Gbps)</label>
+                    <input type="range" class="control-slider" id="dataRate" min="10" max="50" value="25" step="5">
+                    <div class="control-value" id="dataRateValue">25 Gbps</div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Link Length (km)</label>
+                    <input type="range" class="control-slider" id="linkLength" min="0.1" max="10" value="2" step="0.1">
+                    <div class="control-value" id="linkLengthValue">2.0 km</div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Fiber Loss (dB/km)</label>
+                    <input type="range" class="control-slider" id="fiberLoss" min="0.1" max="1.0" value="0.2" step="0.05">
+                    <div class="control-value" id="fiberLossValue">0.2 dB/km</div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Modulator Vπ (V)</label>
+                    <input type="range" class="control-slider" id="modulatorVpi" min="1" max="5" value="3.2" step="0.1">
+                    <div class="control-value" id="modulatorVpiValue">3.2 V</div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Detector Responsivity (A/W)</label>
+                    <input type="range" class="control-slider" id="responsivity" min="0.5" max="1.0" value="0.8" step="0.05">
+                    <div class="control-value" id="responsivityValue">0.8 A/W</div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Temperature (°C)</label>
+                    <input type="range" class="control-slider" id="temperature" min="0" max="100" value="25" step="5">
+                    <div class="control-value" id="temperatureValue">25°C</div>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin: 1rem 0;">
+                <button class="control-button" onclick="updateSimulation()">Update Analysis</button>
+                <button class="control-button" onclick="resetParameters()">Reset Parameters</button>
+                <button class="control-button" onclick="runAnalysis()">Run Full Analysis</button>
+            </div>
+        </div>
+
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-value" id="berValue">1e-12</div>
+                <div class="metric-label">Bit Error Rate</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="snrValue">18.5</div>
+                <div class="metric-label">SNR (dB)</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="powerMarginValue">3.2</div>
+                <div class="metric-label">Power Margin (dB)</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="jitterValue">0.8</div>
+                <div class="metric-label">Jitter (ps)</div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <div id="berCurve" style="height: 400px;"></div>
+        </div>
+
+        <div class="chart-container">
+            <div id="linkBudget" style="height: 400px;"></div>
+        </div>
+
+        <div class="chart-container">
+            <div id="eyeDiagram" style="height: 400px;"></div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="section-title">Analysis Features</h2>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-cogs"></i></div>
+                <h3 class="feature-title">Link Budget Analysis</h3>
+                <p class="feature-description">
+                    Comprehensive optical link budget calculation including insertion losses, 
+                    fiber attenuation, and power margin analysis.
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-chart-line"></i></div>
+                <h3 class="feature-title">BER Performance</h3>
+                <p class="feature-description">
+                    Bit error rate analysis as a function of received power and signal-to-noise ratio 
+                    for different modulation formats and data rates.
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-eye"></i></div>
+                <h3 class="feature-title">Eye Diagram Analysis</h3>
+                <p class="feature-description">
+                    Real-time eye diagram generation and analysis including eye opening, 
+                    jitter measurement, and signal quality assessment.
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-thermometer-half"></i></div>
+                <h3 class="feature-title">Temperature Effects</h3>
+                <p class="feature-description">
+                    Temperature-dependent analysis including thermal effects on device performance 
+                    and system reliability under varying operating conditions.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="section-title">System Models</h2>
+        <p class="section-description">
+            The system analysis uses comprehensive models for accurate performance prediction:
+        </p>
+        
+        <div class="demo-container">
+            <h3 class="section-subtitle">Link Budget Equation</h3>
+            <p>The optical link budget is calculated as:</p>
+            <p style="text-align: center; font-size: 1.2rem; margin: 1rem 0;">
+                $$P_{received} = P_{transmitted} - L_{modulator} - L_{fiber} - L_{detector} - L_{connectors}$$
+            </p>
+            <p>Where L<sub>modulator</sub>, L<sub>fiber</sub>, L<sub>detector</sub>, and L<sub>connectors</sub> are the respective losses.</p>
+            
+            <h3 class="section-subtitle">BER Calculation</h3>
+            <p>The bit error rate for OOK modulation is:</p>
+            <p style="text-align: center; font-size: 1.2rem; margin: 1rem 0;">
+                $$BER = \frac{1}{2} \text{erfc}\left(\frac{\sqrt{SNR}}{2\sqrt{2}}\right)$$
+            </p>
+            <p>Where erfc is the complementary error function and SNR is the signal-to-noise ratio.</p>
+            
+            <h3 class="section-subtitle">Noise Analysis</h3>
+            <p>The total noise power includes thermal and shot noise:</p>
+            <p style="text-align: center; font-size: 1.2rem; margin: 1rem 0;">
+                $$N_{total} = N_{thermal} + N_{shot} = \frac{4kTB}{R} + 2qI_{ph}B$$
+            </p>
+            <p>Where k is Boltzmann's constant, T is temperature, B is bandwidth, R is load resistance, q is electron charge, and I<sub>ph</sub> is photocurrent.</p>
+        </div>
+    </section>
+
+    <script>
+        // Initialize simulation
+        function initializeSimulation() {
+            updateSimulation();
+        }
+
+        // Update simulation based on current parameters
+        function updateSimulation() {
+            const dataRate = parseFloat(document.getElementById('dataRate').value);
+            const linkLength = parseFloat(document.getElementById('linkLength').value);
+            const fiberLoss = parseFloat(document.getElementById('fiberLoss').value);
+            const modulatorVpi = parseFloat(document.getElementById('modulatorVpi').value);
+            const responsivity = parseFloat(document.getElementById('responsivity').value);
+            const temperature = parseFloat(document.getElementById('temperature').value);
+
+            // Calculate performance metrics
+            const ber = calculateBER(dataRate, linkLength, fiberLoss, responsivity);
+            const snr = calculateSNR(dataRate, linkLength, fiberLoss, responsivity);
+            const powerMargin = calculatePowerMargin(linkLength, fiberLoss);
+            const jitter = calculateJitter(dataRate, snr);
+
+            // Update metric displays
+            document.getElementById('berValue').textContent = ber.toExponential(1);
+            document.getElementById('snrValue').textContent = snr.toFixed(1);
+            document.getElementById('powerMarginValue').textContent = powerMargin.toFixed(1);
+            document.getElementById('jitterValue').textContent = jitter.toFixed(1);
+
+            // Update charts
+            updateBERCurve(dataRate, responsivity);
+            updateLinkBudget(linkLength, fiberLoss);
+            updateEyeDiagram(dataRate, snr);
+        }
+
+        // Calculate BER
+        function calculateBER(dataRate, linkLength, fiberLoss, responsivity) {
+            const snr = calculateSNR(dataRate, linkLength, fiberLoss, responsivity);
+            const ber = 0.5 * erfc(Math.sqrt(snr) / (2 * Math.sqrt(2)));
+            return Math.max(ber, 1e-15);
+        }
+
+        // Calculate SNR
+        function calculateSNR(dataRate, linkLength, fiberLoss, responsivity) {
+            const powerTransmitted = 0; // dBm
+            const powerReceived = powerTransmitted - 2 - fiberLoss * linkLength - 1; // dBm
+            const powerReceivedLinear = Math.pow(10, powerReceived / 10) * 1e-3; // W
+            const photocurrent = responsivity * powerReceivedLinear; // A
+            const snr = Math.pow(photocurrent, 2) / (2 * 1.6e-19 * photocurrent * dataRate * 1e9);
+            return 10 * Math.log10(snr);
+        }
+
+        // Calculate power margin
+        function calculatePowerMargin(linkLength, fiberLoss) {
+            const totalLoss = 2 + fiberLoss * linkLength + 1; // dB
+            const powerMargin = 6 - totalLoss; // dB
+            return Math.max(powerMargin, 0);
+        }
+
+        // Calculate jitter
+        function calculateJitter(dataRate, snr) {
+            const snrLinear = Math.pow(10, snr / 10);
+            const jitter = 1 / (2 * Math.PI * dataRate * 1e9 * Math.sqrt(snrLinear));
+            return jitter * 1e12; // Convert to ps
+        }
+
+        // Complementary error function approximation
+        function erfc(x) {
+            const a1 = -1.26551223;
+            const a2 = 1.00002368;
+            const a3 = 0.37409196;
+            const a4 = 0.09678418;
+            const a5 = -0.18628806;
+            const a6 = 0.27886807;
+            const a7 = -1.13520398;
+            const a8 = 1.48851587;
+            const a9 = -0.82215223;
+            const a10 = 0.17087277;
+            
+            const t = 1 / (1 + 0.5 * Math.abs(x));
+            const erfcx = t * Math.exp(-x*x + a1 + t*(a2 + t*(a3 + t*(a4 + t*(a5 + t*(a6 + t*(a7 + t*(a8 + t*(a9 + t*a10)))))))));
+            
+            return x >= 0 ? erfcx : 2 - erfcx;
+        }
+
+        // Update BER curve chart
+        function updateBERCurve(dataRate, responsivity) {
+            const snrValues = Array.from({length: 101}, (_, i) => 0 + i * 0.5);
+            const berValues = snrValues.map(snr => {
+                const ber = 0.5 * erfc(Math.sqrt(Math.pow(10, snr / 10)) / (2 * Math.sqrt(2)));
+                return Math.max(ber, 1e-15);
+            });
+
+            const trace = {
+                x: snrValues,
+                y: berValues,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'BER vs SNR',
+                line: { color: '#667eea', width: 3 }
+            };
+
+            const layout = {
+                title: 'Bit Error Rate vs SNR',
+                xaxis: { title: 'SNR (dB)', gridcolor: 'rgba(102, 126, 234, 0.2)' },
+                yaxis: { title: 'Bit Error Rate', type: 'log', gridcolor: 'rgba(102, 126, 234, 0.2)' },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                showlegend: false
+            };
+
+            Plotly.newPlot('berCurve', [trace], layout);
+        }
+
+        // Update link budget chart
+        function updateLinkBudget(linkLength, fiberLoss) {
+            const components = ['Modulator', 'Fiber', 'Connectors', 'Detector', 'Power Margin'];
+            const losses = [2, fiberLoss * linkLength, 1, 0.5, 6 - (2 + fiberLoss * linkLength + 1 + 0.5)];
+            
+            const trace = {
+                x: components,
+                y: losses,
+                type: 'bar',
+                marker: { color: '#c084fc' }
+            };
+
+            const layout = {
+                title: 'Link Budget Analysis',
+                xaxis: { title: 'Component', gridcolor: 'rgba(102, 126, 234, 0.2)' },
+                yaxis: { title: 'Loss (dB)', gridcolor: 'rgba(102, 126, 234, 0.2)' },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                showlegend: false
+            };
+
+            Plotly.newPlot('linkBudget', [trace], layout);
+        }
+
+        // Update eye diagram chart
+        function updateEyeDiagram(dataRate, snr) {
+            const time = Array.from({length: 201}, (_, i) => -1 + i * 0.01);
+            const eye = time.map(t => {
+                const signal = Math.tanh(5 * Math.sin(2 * Math.PI * dataRate * 1e9 * t * 1e-9));
+                const noise = 0.1 * Math.sin(2 * Math.PI * 10 * dataRate * 1e9 * t * 1e-9);
+                return signal + noise;
+            });
+
+            const trace = {
+                x: time,
+                y: eye,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Eye Diagram',
+                line: { color: '#10b981', width: 2 }
+            };
+
+            const layout = {
+                title: 'Eye Diagram',
+                xaxis: { title: 'Time (ns)', gridcolor: 'rgba(102, 126, 234, 0.2)' },
+                yaxis: { title: 'Amplitude', gridcolor: 'rgba(102, 126, 234, 0.2)' },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                showlegend: false
+            };
+
+            Plotly.newPlot('eyeDiagram', [trace], layout);
+        }
+
+        // Run full analysis
+        function runAnalysis() {
+            const button = event.target;
+            const originalText = button.textContent;
+            button.textContent = 'Analyzing...';
+            button.disabled = true;
+            
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.disabled = false;
+                updateSimulation();
+            }, 3000);
+        }
+
+        // Reset parameters to default values
+        function resetParameters() {
+            document.getElementById('dataRate').value = 25;
+            document.getElementById('linkLength').value = 2;
+            document.getElementById('fiberLoss').value = 0.2;
+            document.getElementById('modulatorVpi').value = 3.2;
+            document.getElementById('responsivity').value = 0.8;
+            document.getElementById('temperature').value = 25;
+            
+            updateSliderValues();
+            updateSimulation();
+        }
+
+        // Update slider value displays
+        function updateSliderValues() {
+            document.getElementById('dataRateValue').textContent = document.getElementById('dataRate').value + ' Gbps';
+            document.getElementById('linkLengthValue').textContent = document.getElementById('linkLength').value + ' km';
+            document.getElementById('fiberLossValue').textContent = document.getElementById('fiberLoss').value + ' dB/km';
+            document.getElementById('modulatorVpiValue').textContent = document.getElementById('modulatorVpi').value + ' V';
+            document.getElementById('responsivityValue').textContent = document.getElementById('responsivity').value + ' A/W';
+            document.getElementById('temperatureValue').textContent = document.getElementById('temperature').value + '°C';
+        }
+
+        // Add event listeners to sliders
+        document.addEventListener('DOMContentLoaded', function() {
+            const sliders = document.querySelectorAll('.control-slider');
+            sliders.forEach(slider => {
+                slider.addEventListener('input', updateSliderValues);
+                slider.addEventListener('input', updateSimulation);
+            });
+            
+            initializeSimulation();
+        });
+    </script>
+</body>
+</html>

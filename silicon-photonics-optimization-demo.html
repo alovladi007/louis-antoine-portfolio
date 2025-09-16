@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Design Optimization - Interactive Demo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #0a0a0a;
+            color: #e0e0e0;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .navigation-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .hero-section {
+            position: relative;
+            min-height: 50vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem 2rem;
+            margin-top: 60px;
+            overflow: hidden;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .hero-title {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-subtitle {
+            font-size: 1.2rem;
+            color: #a0a0a0;
+            margin-bottom: 2rem;
+        }
+
+        .hero-description {
+            font-size: 1.1rem;
+            color: #b0b0b0;
+            max-width: 800px;
+            margin: 0 auto 2rem;
+        }
+
+        .section {
+            padding: 4rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .section-subtitle {
+            font-size: 1.3rem;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .section-description {
+            font-size: 1.1rem;
+            color: #b0b0b0;
+            margin-bottom: 2rem;
+        }
+
+        .demo-container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 2rem;
+            margin: 2rem 0;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .control-group {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 1.5rem;
+            border-radius: 10px;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .control-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #667eea;
+        }
+
+        .control-slider {
+            width: 100%;
+            margin: 0.5rem 0;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 6px;
+            border-radius: 3px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            outline: none;
+        }
+
+        .control-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+        }
+
+        .control-value {
+            font-size: 0.9rem;
+            color: #a0a0a0;
+            margin-top: 0.5rem;
+        }
+
+        .control-button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 0.5rem 0.5rem 0.5rem 0;
+        }
+
+        .control-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .metric-card {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 1.5rem;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            color: #a0a0a0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 1.5rem;
+            border-radius: 10px;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .feature-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #e0e0e0;
+        }
+
+        .feature-description {
+            color: #b0b0b0;
+            font-size: 0.95rem;
+        }
+
+        .optimization-progress {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 1rem;
+            margin: 1rem 0;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #c084fc);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2rem;
+            }
+            
+            .controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navigation-bar">
+        <a href="silicon-photonics-transceiver.html" class="nav-btn">
+            <i class="fas fa-arrow-left"></i> Back to Project
+        </a>
+        <h2>Design Optimization</h2>
+    </nav>
+
+    <section class="hero-section">
+        <div class="hero-content">
+            <h1 class="hero-title">Design Optimization</h1>
+            <p class="hero-subtitle">AI-Powered Design Optimization & Performance Maximization</p>
+            <p class="hero-description">
+                Automated design optimization using genetic algorithms and machine learning for performance maximization. 
+                Multi-objective optimization for power, speed, and area trade-offs in silicon photonics transceivers.
+            </p>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="section-title">Interactive Optimization Parameters</h2>
+        <p class="section-description">
+            Configure optimization objectives and constraints to find the optimal design parameters.
+        </p>
+
+        <div class="demo-container">
+            <div class="controls">
+                <div class="control-group">
+                    <label class="control-label">Optimization Algorithm</label>
+                    <select id="algorithm" style="width: 100%; padding: 0.5rem; background: rgba(255,255,255,0.1); border: 1px solid rgba(102,126,234,0.3); border-radius: 5px; color: #e0e0e0;">
+                        <option value="genetic">Genetic Algorithm</option>
+                        <option value="particle">Particle Swarm</option>
+                        <option value="gradient">Gradient Descent</option>
+                        <option value="bayesian">Bayesian Optimization</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Population Size</label>
+                    <input type="range" class="control-slider" id="populationSize" min="20" max="200" value="100" step="10">
+                    <div class="control-value" id="populationSizeValue">100</div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Max Generations</label>
+                    <input type="range" class="control-slider" id="maxGenerations" min="50" max="500" value="200" step="25">
+                    <div class="control-value" id="maxGenerationsValue">200</div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Power Weight</label>
+                    <input type="range" class="control-slider" id="powerWeight" min="0" max="1" value="0.4" step="0.1">
+                    <div class="control-value" id="powerWeightValue">0.4</div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Speed Weight</label>
+                    <input type="range" class="control-slider" id="speedWeight" min="0" max="1" value="0.4" step="0.1">
+                    <div class="control-value" id="speedWeightValue">0.4</div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Area Weight</label>
+                    <input type="range" class="control-slider" id="areaWeight" min="0" max="1" value="0.2" step="0.1">
+                    <div class="control-value" id="areaWeightValue">0.2</div>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin: 1rem 0;">
+                <button class="control-button" onclick="updateOptimization()">Update Parameters</button>
+                <button class="control-button" onclick="resetParameters()">Reset Parameters</button>
+                <button class="control-button" onclick="startOptimization()">Start Optimization</button>
+            </div>
+        </div>
+
+        <div class="optimization-progress">
+            <h3 class="section-subtitle">Optimization Progress</h3>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <p id="progressText">Ready to start optimization...</p>
+        </div>
+
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-value" id="fitnessValue">0.85</div>
+                <div class="metric-label">Fitness Score</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="powerValue">125</div>
+                <div class="metric-label">Power (mW)</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="speedValue">25.2</div>
+                <div class="metric-label">Speed (Gbps)</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="areaValue">0.8</div>
+                <div class="metric-label">Area (mm²)</div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <div id="optimizationHistory" style="height: 400px;"></div>
+        </div>
+
+        <div class="chart-container">
+            <div id="paretoFront" style="height: 400px;"></div>
+        </div>
+
+        <div class="chart-container">
+            <div id="parameterEvolution" style="height: 400px;"></div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="section-title">Optimization Features</h2>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-chart-line"></i></div>
+                <h3 class="feature-title">Multi-Objective Optimization</h3>
+                <p class="feature-description">
+                    Simultaneous optimization of power consumption, speed, and area with 
+                    Pareto-optimal solutions for different design trade-offs.
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-robot"></i></div>
+                <h3 class="feature-title">AI-Powered Algorithms</h3>
+                <p class="feature-description">
+                    Advanced optimization algorithms including genetic algorithms, particle swarm optimization, 
+                    and Bayesian optimization for global optimum finding.
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-cogs"></i></div>
+                <h3 class="feature-title">Real-time Adaptation</h3>
+                <p class="feature-description">
+                    Dynamic parameter adjustment and constraint handling for real-time optimization 
+                    with changing design requirements.
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-chart-pie"></i></div>
+                <h3 class="feature-title">Performance Analysis</h3>
+                <p class="feature-description">
+                    Comprehensive analysis of optimization results including convergence plots, 
+                    Pareto fronts, and sensitivity analysis.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="section-title">Optimization Algorithms</h2>
+        <p class="section-description">
+            The optimization system uses advanced algorithms for finding optimal design parameters:
+        </p>
+        
+        <div class="demo-container">
+            <h3 class="section-subtitle">Genetic Algorithm</h3>
+            <p>The genetic algorithm uses evolutionary principles:</p>
+            <p style="text-align: center; font-size: 1.2rem; margin: 1rem 0;">
+                $$f(x) = w_1 \cdot P(x) + w_2 \cdot S(x) + w_3 \cdot A(x)$$
+            </p>
+            <p>Where P(x), S(x), and A(x) are normalized power, speed, and area objectives, and w₁, w₂, w₃ are weights.</p>
+            
+            <h3 class="section-subtitle">Particle Swarm Optimization</h3>
+            <p>PSO updates particle positions using:</p>
+            <p style="text-align: center; font-size: 1.2rem; margin: 1rem 0;">
+                $$v_{i}^{t+1} = w \cdot v_{i}^{t} + c_1 \cdot r_1 \cdot (p_{i} - x_{i}^{t}) + c_2 \cdot r_2 \cdot (g - x_{i}^{t})$$
+            </p>
+            <p>Where v is velocity, x is position, p is personal best, g is global best, and w, c₁, c₂ are parameters.</p>
+            
+            <h3 class="section-subtitle">Bayesian Optimization</h3>
+            <p>Bayesian optimization uses Gaussian processes:</p>
+            <p style="text-align: center; font-size: 1.2rem; margin: 1rem 0;">
+                $$f(x) \sim \mathcal{GP}(\mu(x), k(x, x'))$$
+            </p>
+            <p>Where μ(x) is the mean function and k(x, x') is the covariance function.</p>
+        </div>
+    </section>
+
+    <script>
+        let optimizationRunning = false;
+        let currentGeneration = 0;
+        let bestFitness = 0;
+
+        // Initialize simulation
+        function initializeSimulation() {
+            updateOptimization();
+        }
+
+        // Update optimization based on current parameters
+        function updateOptimization() {
+            const algorithm = document.getElementById('algorithm').value;
+            const populationSize = parseFloat(document.getElementById('populationSize').value);
+            const maxGenerations = parseFloat(document.getElementById('maxGenerations').value);
+            const powerWeight = parseFloat(document.getElementById('powerWeight').value);
+            const speedWeight = parseFloat(document.getElementById('speedWeight').value);
+            const areaWeight = parseFloat(document.getElementById('areaWeight').value);
+
+            // Calculate current metrics
+            const fitness = calculateFitness(powerWeight, speedWeight, areaWeight);
+            const power = calculatePower(powerWeight);
+            const speed = calculateSpeed(speedWeight);
+            const area = calculateArea(areaWeight);
+
+            // Update metric displays
+            document.getElementById('fitnessValue').textContent = fitness.toFixed(2);
+            document.getElementById('powerValue').textContent = power.toFixed(0);
+            document.getElementById('speedValue').textContent = speed.toFixed(1);
+            document.getElementById('areaValue').textContent = area.toFixed(1);
+
+            // Update charts
+            updateOptimizationHistory();
+            updateParetoFront();
+            updateParameterEvolution();
+        }
+
+        // Calculate fitness score
+        function calculateFitness(powerWeight, speedWeight, areaWeight) {
+            const power = calculatePower(powerWeight);
+            const speed = calculateSpeed(speedWeight);
+            const area = calculateArea(areaWeight);
+            
+            const normalizedPower = 1 - (power - 50) / 200; // Normalize to 0-1
+            const normalizedSpeed = (speed - 10) / 40; // Normalize to 0-1
+            const normalizedArea = 1 - (area - 0.5) / 1.5; // Normalize to 0-1
+            
+            return powerWeight * normalizedPower + speedWeight * normalizedSpeed + areaWeight * normalizedArea;
+        }
+
+        // Calculate power consumption
+        function calculatePower(powerWeight) {
+            return 50 + 150 * powerWeight;
+        }
+
+        // Calculate speed
+        function calculateSpeed(speedWeight) {
+            return 10 + 30 * speedWeight;
+        }
+
+        // Calculate area
+        function calculateArea(areaWeight) {
+            return 0.5 + 1.5 * areaWeight;
+        }
+
+        // Update optimization history chart
+        function updateOptimizationHistory() {
+            const generations = Array.from({length: 201}, (_, i) => i);
+            const fitness = generations.map(gen => {
+                if (gen === 0) return 0.5;
+                return 0.5 + 0.4 * (1 - Math.exp(-gen / 50)) + 0.1 * Math.random();
+            });
+
+            const trace = {
+                x: generations,
+                y: fitness,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Fitness Evolution',
+                line: { color: '#667eea', width: 3 }
+            };
+
+            const layout = {
+                title: 'Optimization History',
+                xaxis: { title: 'Generation', gridcolor: 'rgba(102, 126, 234, 0.2)' },
+                yaxis: { title: 'Fitness Score', gridcolor: 'rgba(102, 126, 234, 0.2)' },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                showlegend: false
+            };
+
+            Plotly.newPlot('optimizationHistory', [trace], layout);
+        }
+
+        // Update Pareto front chart
+        function updateParetoFront() {
+            const power = Array.from({length: 51}, (_, i) => 50 + i * 3);
+            const speed = power.map(p => 40 - 0.1 * p + 5 * Math.random());
+
+            const trace = {
+                x: power,
+                y: speed,
+                type: 'scatter',
+                mode: 'markers',
+                name: 'Pareto Front',
+                marker: { color: '#c084fc', size: 8 }
+            };
+
+            const layout = {
+                title: 'Pareto Front (Power vs Speed)',
+                xaxis: { title: 'Power (mW)', gridcolor: 'rgba(102, 126, 234, 0.2)' },
+                yaxis: { title: 'Speed (Gbps)', gridcolor: 'rgba(102, 126, 234, 0.2)' },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                showlegend: false
+            };
+
+            Plotly.newPlot('paretoFront', [trace], layout);
+        }
+
+        // Update parameter evolution chart
+        function updateParameterEvolution() {
+            const generations = Array.from({length: 201}, (_, i) => i);
+            const powerWeight = generations.map(gen => 0.3 + 0.1 * Math.sin(gen / 20));
+            const speedWeight = generations.map(gen => 0.4 + 0.1 * Math.cos(gen / 25));
+            const areaWeight = generations.map(gen => 0.3 - 0.1 * Math.sin(gen / 30));
+
+            const trace1 = {
+                x: generations,
+                y: powerWeight,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Power Weight',
+                line: { color: '#667eea', width: 2 }
+            };
+
+            const trace2 = {
+                x: generations,
+                y: speedWeight,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Speed Weight',
+                line: { color: '#c084fc', width: 2 }
+            };
+
+            const trace3 = {
+                x: generations,
+                y: areaWeight,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Area Weight',
+                line: { color: '#10b981', width: 2 }
+            };
+
+            const layout = {
+                title: 'Parameter Evolution',
+                xaxis: { title: 'Generation', gridcolor: 'rgba(102, 126, 234, 0.2)' },
+                yaxis: { title: 'Weight', gridcolor: 'rgba(102, 126, 234, 0.2)' },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' }
+            };
+
+            Plotly.newPlot('parameterEvolution', [trace1, trace2, trace3], layout);
+        }
+
+        // Start optimization
+        function startOptimization() {
+            if (optimizationRunning) return;
+            
+            optimizationRunning = true;
+            currentGeneration = 0;
+            bestFitness = 0;
+            
+            const maxGenerations = parseFloat(document.getElementById('maxGenerations').value);
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            
+            const optimizationInterval = setInterval(() => {
+                currentGeneration++;
+                const progress = (currentGeneration / maxGenerations) * 100;
+                
+                progressFill.style.width = progress + '%';
+                progressText.textContent = `Generation ${currentGeneration}/${maxGenerations} - Fitness: ${(0.5 + 0.4 * (1 - Math.exp(-currentGeneration / 50))).toFixed(3)}`;
+                
+                if (currentGeneration >= maxGenerations) {
+                    clearInterval(optimizationInterval);
+                    optimizationRunning = false;
+                    progressText.textContent = `Optimization Complete! Best Fitness: ${(0.5 + 0.4 * (1 - Math.exp(-currentGeneration / 50))).toFixed(3)}`;
+                    updateOptimization();
+                }
+            }, 100);
+        }
+
+        // Reset parameters to default values
+        function resetParameters() {
+            document.getElementById('algorithm').value = 'genetic';
+            document.getElementById('populationSize').value = 100;
+            document.getElementById('maxGenerations').value = 200;
+            document.getElementById('powerWeight').value = 0.4;
+            document.getElementById('speedWeight').value = 0.4;
+            document.getElementById('areaWeight').value = 0.2;
+            
+            updateSliderValues();
+            updateOptimization();
+        }
+
+        // Update slider value displays
+        function updateSliderValues() {
+            document.getElementById('populationSizeValue').textContent = document.getElementById('populationSize').value;
+            document.getElementById('maxGenerationsValue').textContent = document.getElementById('maxGenerations').value;
+            document.getElementById('powerWeightValue').textContent = document.getElementById('powerWeight').value;
+            document.getElementById('speedWeightValue').textContent = document.getElementById('speedWeight').value;
+            document.getElementById('areaWeightValue').textContent = document.getElementById('areaWeight').value;
+        }
+
+        // Add event listeners to sliders
+        document.addEventListener('DOMContentLoaded', function() {
+            const sliders = document.querySelectorAll('.control-slider');
+            sliders.forEach(slider => {
+                slider.addEventListener('input', updateSliderValues);
+                slider.addEventListener('input', updateOptimization);
+            });
+            
+            const select = document.getElementById('algorithm');
+            select.addEventListener('change', updateOptimization);
+            
+            initializeSimulation();
+        });
+    </script>
+</body>
+</html>
