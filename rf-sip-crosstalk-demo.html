@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RF SiP Interposer/TSV Crosstalk Demo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background:#0f0f1e; color:#e5e7eb; margin:0; }
+        .container { max-width:1100px; margin:0 auto; padding:1.5rem; }
+        .back { display:inline-flex; align-items:center; gap:8px; color:#cbd5e1; text-decoration:none; margin-bottom:1rem; }
+        .hero { text-align:center; padding:1.2rem 0; border-bottom:1px solid rgba(255,255,255,.12); margin-bottom:1.2rem; }
+        .title { font-size:2rem; background:linear-gradient(135deg,#22d3ee,#a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+        .subtitle { color:#94a3b8; margin-top:6px; }
+        .grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); gap:1rem; margin:1rem 0 1.25rem 0; }
+        .card { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:1rem; }
+        .label { display:flex; justify-content:space-between; color:#94a3b8; margin-bottom:6px; font-size:.95rem; }
+        .value { color:#e5e7eb; }
+        .btns { display:flex; gap:.6rem; flex-wrap:wrap; margin:.5rem 0 0 0; }
+        .btn { padding:.55rem .95rem; border-radius:8px; border:1px solid rgba(99,102,241,.35); background:linear-gradient(135deg,rgba(99,102,241,.18),rgba(168,85,247,.18)); color:#e5e7eb; cursor:pointer; }
+        .chart { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:.5rem; margin-bottom:1rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a class="back" href="rf-sip-codesign.html"><i class="fas fa-arrow-left"></i> Back to RF SiP Project</a>
+        <div class="hero">
+            <div class="title">Interposer/TSV Crosstalk & Routing Loss</div>
+            <div class="subtitle">Near/Far-end crosstalk vs spacing/length • Attenuation vs frequency</div>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <div class="label">Trace Spacing (μm) <span class="value" id="spVal">30</span></div>
+                <input id="sp" type="range" min="10" max="80" step="1" value="30" oninput="spVal.textContent=this.value; update()">
+            </div>
+            <div class="card">
+                <div class="label">Coupled Length (mm) <span class="value" id="lenVal">10</span></div>
+                <input id="len" type="range" min="2" max="30" step="1" value="10" oninput="lenVal.textContent=this.value; update()">
+            </div>
+            <div class="card">
+                <div class="label">Dielectric Loss tanδ <span class="value" id="tanVal">0.005</span></div>
+                <input id="tan" type="range" min="0.002" max="0.02" step="0.001" value="0.005" oninput="tanVal.textContent=this.value; update()">
+            </div>
+        </div>
+
+        <div class="btns">
+            <button class="btn" onclick="run(event)">Run</button>
+            <button class="btn" onclick="resetAll()">Reset</button>
+        </div>
+
+        <div class="chart"><div id="xtalkChart" style="height:360px"></div></div>
+        <div class="chart"><div id="lossChart" style="height:360px"></div></div>
+    </div>
+
+    <script>
+        function model(spacing, len, tand){
+            const f=Array.from({length:181},(_,i)=> 1e8 + i*2e8); // 0.1..36.2 GHz
+            const ne=[], fe=[], att=[];
+            const k= 0.5/spacing; // coupling ~ 1/spacing
+            for(let i=0;i<f.length;i++){
+                const freq=f[i];
+                const cpl = k*Math.exp(-len/15) * (freq/1e9)*0.02; // simple trend
+                ne.push(20*Math.log10(Math.max(1e-5,cpl)));
+                fe.push(20*Math.log10(Math.max(1e-5,cpl*0.6)));
+                const alpha = 0.02*Math.sqrt(freq/1e9) + tand*3; // dB/cm
+                att.push(-alpha * (len/10));
+            }
+            return {f,ne,fe,att};
+        }
+        function update(){ const s=parseFloat(sp.value), l=parseFloat(len.value), t=parseFloat(tan.value); const {f,ne,fe,att}=model(s,l,t); Plotly.react('xtalkChart',[{x:f,y:ne,type:'scatter',mode:'lines',name:'Near-end XT (dB)',line:{color:'#f472b6'}},{x:f,y:fe,type:'scatter',mode:'lines',name:'Far-end XT (dB)',line:{color:'#60a5fa'}}],{title:'Crosstalk vs Frequency',xaxis:{title:'Freq (Hz)', type:'log'}, yaxis:{title:'dB'}}); Plotly.react('lossChart',[{x:f,y:att,type:'scatter',mode:'lines',name:'Attenuation (dB)',line:{color:'#34d399'}}],{title:'Routing Loss vs Frequency',xaxis:{title:'Freq (Hz)', type:'log'}, yaxis:{title:'dB'}}); }
+        function run(e){ const b=e.target,t=b.textContent; b.disabled=true; let p=0; const id=setInterval(()=>{ p+=14; b.textContent=`Running... ${Math.min(100,p)}%`; sp.value=Math.max(10,Math.min(80, parseFloat(sp.value)+(Math.random()-0.5)*2)); spVal.textContent=sp.value; update(); if(p>=100){ clearInterval(id); b.disabled=false; b.textContent=t; } },150); }
+        function resetAll(){ sp.value=30; spVal.textContent='30'; len.value=10; lenVal.textContent='10'; tan.value=0.005; tanVal.textContent='0.005'; update(); }
+        window.addEventListener('load',update);
+    </script>
+</body>
+</html>
+
