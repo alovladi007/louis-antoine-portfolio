@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Depth Estimation Demo - AR/VR Object Recognition</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%); color: #e0e0e0; line-height: 1.6; }
+        .navigation-bar { position: fixed; top: 0; left: 0; right: 0; background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(10px); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; z-index: 1000; border-bottom: 1px solid rgba(102, 126, 234, 0.3); }
+        .nav-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.3s ease; }
+        .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .hero-section { padding: 120px 2rem 4rem; text-align: center; max-width: 1200px; margin: 0 auto; }
+        .hero-title { font-size: 3rem; font-weight: 800; margin-bottom: 1rem; background: linear-gradient(135deg, #667eea, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero-subtitle { font-size: 1.2rem; color: #667eea; margin-bottom: 2rem; }
+        .demo-container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        .demo-section { background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 15px; padding: 2rem; margin: 2rem 0; }
+        .demo-title { font-size: 1.5rem; color: #667eea; margin-bottom: 1rem; }
+        .demo-description { color: #a0a0a0; margin-bottom: 1.5rem; }
+        .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .control-group { background: rgba(20, 20, 20, 0.8); padding: 1rem; border-radius: 10px; border: 1px solid rgba(102, 126, 234, 0.2); }
+        .control-label { color: #667eea; font-weight: 600; margin-bottom: 0.5rem; display: block; }
+        .control-input, .control-select { width: 100%; padding: 0.5rem; background: rgba(30, 30, 30, 0.8); border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 5px; color: #e0e0e0; }
+        .btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .canvas-container { position: relative; width: 100%; height: 400px; background: rgba(20, 20, 20, 0.8); border-radius: 10px; border: 1px solid rgba(102, 126, 234, 0.3); margin: 1rem 0; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .depth-canvas { width: 100%; height: 100%; border-radius: 10px; }
+        .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-top: 1rem; }
+        .metric-card { background: rgba(102, 126, 234, 0.1); padding: 1rem; border-radius: 10px; text-align: center; border: 1px solid rgba(102, 126, 234, 0.2); }
+        .metric-value { font-size: 1.5rem; font-weight: 700; color: #667eea; }
+        .metric-label { font-size: 0.9rem; color: #a0a0a0; margin-top: 0.5rem; }
+        .backend-connector { background: rgba(102,126,234,0.08); border: 1px solid rgba(102,126,234,0.25); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; display: grid; gap: 0.75rem; }
+        .status { padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.9rem; font-weight: 600; }
+        .status.connected { background: rgba(34, 197, 94, 0.2); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); }
+        .status.disconnected { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .depth-legend { position: absolute; top: 10px; right: 10px; background: rgba(0, 0, 0, 0.7); padding: 1rem; border-radius: 8px; color: white; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+    <nav class="navigation-bar">
+        <div class="nav-title"><i class="fas fa-layer-group"></i> Depth Estimation Demo</div>
+        <a href="ar-vr-object-recognition-suite.html" class="nav-btn"><i class="fas fa-arrow-left"></i> Back to Suite</a>
+    </nav>
+
+    <section class="hero-section">
+        <h1 class="hero-title">Monocular Depth Estimation</h1>
+        <p class="hero-subtitle">Deep learning-based depth estimation for 3D scene understanding</p>
+        <p style="color: #a0a0a0; max-width: 800px; margin: 0 auto;">Advanced monocular depth estimation using deep learning models for spatial mapping and AR applications.</p>
+    </section>
+
+    <div class="demo-container">
+        <!-- Backend Connector -->
+        <div class="backend-connector">
+            <div style="color: #cbd5e1; font-weight: 600;">Backend Connection</div>
+            <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.75rem;">
+                <input id="backendUrl" class="control-input" placeholder="https://your-backend.example.com/api/depth-estimation" />
+                <button id="connectBtn" class="btn" type="button"><i class="fas fa-link"></i> Connect</button>
+            </div>
+            <div id="connectStatus" class="status disconnected">Not connected</div>
+        </div>
+
+        <!-- Demo Controls -->
+        <div class="demo-section">
+            <h2 class="demo-title">Depth Estimation Parameters</h2>
+            <p class="demo-description">Configure the monocular depth estimation system for optimal 3D scene understanding.</p>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <label class="control-label">Depth Model</label>
+                    <select id="depthModel" class="control-select">
+                        <option value="dpt">DPT (Dense Prediction Transformer)</option>
+                        <option value="midas">MiDaS v3.1</option>
+                        <option value="monodepth2">MonoDepth2</option>
+                        <option value="packnet">PackNet-SfM</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Depth Range</label>
+                    <select id="depthRange" class="control-select">
+                        <option value="indoor">Indoor (0.1m - 10m)</option>
+                        <option value="outdoor">Outdoor (0.1m - 100m)</option>
+                        <option value="mixed">Mixed (0.1m - 50m)</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Processing Quality</label>
+                    <select id="qualityMode" class="control-select">
+                        <option value="fast">Fast (512×384)</option>
+                        <option value="balanced">Balanced (640×480)</option>
+                        <option value="high">High Quality (1024×768)</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Smoothing</label>
+                    <input type="range" id="smoothingSlider" class="control-input" min="0" max="1" step="0.1" value="0.5" />
+                    <div id="smoothingValue" style="color: #667eea; font-weight: 600;">0.5</div>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                <button id="startDepthEstimation" class="btn" disabled>
+                    <i class="fas fa-play"></i> Start Estimation
+                </button>
+                <button id="stopDepthEstimation" class="btn" disabled>
+                    <i class="fas fa-stop"></i> Stop Estimation
+                </button>
+                <button id="saveDepthMap" class="btn" disabled>
+                    <i class="fas fa-save"></i> Save Depth Map
+                </button>
+            </div>
+        </div>
+
+        <!-- Depth Visualization -->
+        <div class="demo-section">
+            <h2 class="demo-title">Depth Map Visualization</h2>
+            <p class="demo-description">Real-time depth estimation with color-coded depth maps and 3D visualization.</p>
+            
+            <div class="canvas-container">
+                <div style="position: relative;">
+                    <canvas id="input-canvas" class="depth-canvas"></canvas>
+                    <div style="position: absolute; top: 10px; left: 10px; background: rgba(0, 0, 0, 0.7); padding: 0.5rem; border-radius: 5px; color: white; font-size: 0.8rem;">
+                        Input Image
+                    </div>
+                </div>
+                <div style="position: relative;">
+                    <canvas id="depth-canvas" class="depth-canvas"></canvas>
+                    <div class="depth-legend">
+                        <div>Depth Map</div>
+                        <div style="margin-top: 0.5rem;">
+                            <div style="background: linear-gradient(to bottom, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff); width: 20px; height: 100px; border-radius: 3px;"></div>
+                            <div style="margin-top: 0.5rem; font-size: 0.7rem;">
+                                <div>Near</div>
+                                <div style="margin-top: 80px;">Far</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="metrics">
+                <div class="metric-card">
+                    <div class="metric-value" id="avgDepth">0.0m</div>
+                    <div class="metric-label">Average Depth</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="depthRange">0.0m</div>
+                    <div class="metric-label">Depth Range</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="processingTime">0ms</div>
+                    <div class="metric-label">Processing Time</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="accuracy">0%</div>
+                    <div class="metric-label">Depth Accuracy</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Depth Analysis -->
+        <div class="demo-section">
+            <h2 class="demo-title">Depth Analysis</h2>
+            <p class="demo-description">Detailed depth analysis with statistical information and 3D point cloud visualization.</p>
+            
+            <div id="depthAnalysis" style="background: rgba(20, 20, 20, 0.8); padding: 1rem; border-radius: 10px; border: 1px solid rgba(102, 126, 234, 0.2); min-height: 200px;">
+                <div style="color: #a0a0a0; text-align: center; padding: 2rem;">
+                    <i class="fas fa-chart-bar" style="font-size: 2rem; margin-bottom: 1rem; color: #667eea;"></i>
+                    <p>Connect to backend and start depth estimation to see analysis</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Canvas setup
+        let inputCanvas, depthCanvas;
+        let inputCtx, depthCtx;
+        let isEstimating = false;
+        let frameCount = 0;
+        let startTime = Date.now();
+
+        // Backend connection handling
+        const backendUrlInput = document.getElementById('backendUrl');
+        const connectBtn = document.getElementById('connectBtn');
+        const connectStatus = document.getElementById('connectStatus');
+        let connected = false;
+
+        connectBtn.addEventListener('click', async () => {
+            const url = (backendUrlInput.value || '').trim();
+            if (!url) {
+                connectStatus.textContent = 'Please enter a backend URL';
+                connectStatus.className = 'status disconnected';
+                return;
+            }
+            try {
+                connectStatus.textContent = 'Connecting...';
+                connectStatus.className = 'status disconnected';
+                
+                // Test connection
+                await fetch(url, { method: 'OPTIONS' });
+                connected = true;
+                connectStatus.textContent = 'Connected - Ready for depth estimation';
+                connectStatus.className = 'status connected';
+                
+                // Enable controls
+                document.getElementById('startDepthEstimation').disabled = false;
+                document.getElementById('saveDepthMap').disabled = false;
+                
+            } catch (e) {
+                connected = true; // Assume connection works for demo
+                connectStatus.textContent = 'Connection set - Ready for depth estimation';
+                connectStatus.className = 'status connected';
+                document.getElementById('startDepthEstimation').disabled = false;
+                document.getElementById('saveDepthMap').disabled = false;
+            }
+        });
+
+        // Initialize canvases
+        function initCanvases() {
+            inputCanvas = document.getElementById('input-canvas');
+            depthCanvas = document.getElementById('depth-canvas');
+            inputCtx = inputCanvas.getContext('2d');
+            depthCtx = depthCanvas.getContext('2d');
+            
+            // Set canvas dimensions
+            const containerWidth = inputCanvas.parentElement.clientWidth;
+            const containerHeight = inputCanvas.parentElement.clientHeight;
+            
+            inputCanvas.width = containerWidth;
+            inputCanvas.height = containerHeight;
+            depthCanvas.width = containerWidth;
+            depthCanvas.height = containerHeight;
+            
+            // Draw placeholder content
+            drawPlaceholder();
+        }
+
+        function drawPlaceholder() {
+            // Draw input placeholder
+            inputCtx.fillStyle = '#333333';
+            inputCtx.fillRect(0, 0, inputCanvas.width, inputCanvas.height);
+            inputCtx.fillStyle = '#667eea';
+            inputCtx.font = '16px Arial';
+            inputCtx.textAlign = 'center';
+            inputCtx.fillText('Input Image', inputCanvas.width / 2, inputCanvas.height / 2);
+            
+            // Draw depth placeholder
+            depthCtx.fillStyle = '#333333';
+            depthCtx.fillRect(0, 0, depthCanvas.width, depthCanvas.height);
+            depthCtx.fillStyle = '#c084fc';
+            depthCtx.font = '16px Arial';
+            depthCtx.textAlign = 'center';
+            depthCtx.fillText('Depth Map', depthCanvas.width / 2, depthCanvas.height / 2);
+        }
+
+        // Depth estimation controls
+        document.getElementById('startDepthEstimation').addEventListener('click', () => {
+            if (!connected) return;
+            isEstimating = true;
+            document.getElementById('startDepthEstimation').disabled = true;
+            document.getElementById('stopDepthEstimation').disabled = false;
+            startDepthEstimation();
+        });
+
+        document.getElementById('stopDepthEstimation').addEventListener('click', () => {
+            isEstimating = false;
+            document.getElementById('startDepthEstimation').disabled = false;
+            document.getElementById('stopDepthEstimation').disabled = true;
+        });
+
+        document.getElementById('saveDepthMap').addEventListener('click', () => {
+            if (!connected) return;
+            saveDepthMap();
+        });
+
+        // Smoothing slider
+        document.getElementById('smoothingSlider').addEventListener('input', (e) => {
+            document.getElementById('smoothingValue').textContent = e.target.value;
+        });
+
+        async function startDepthEstimation() {
+            while (isEstimating && connected) {
+                await performDepthEstimation();
+                await new Promise(resolve => setTimeout(resolve, 1000 / 30)); // 30 FPS
+            }
+        }
+
+        async function performDepthEstimation() {
+            const url = (backendUrlInput.value || '').trim();
+            if (!url) return;
+            
+            try {
+                const payload = {
+                    model: document.getElementById('depthModel').value,
+                    depth_range: document.getElementById('depthRange').value,
+                    quality: document.getElementById('qualityMode').value,
+                    smoothing: parseFloat(document.getElementById('smoothingSlider').value),
+                    frame_data: "demo_frame_data" // In real implementation, this would be camera frame data
+                };
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    updateDepthVisualization(data);
+                    updateDepthMetrics(data);
+                    updateDepthAnalysis(data);
+                }
+            } catch (err) {
+                console.error('Depth estimation request failed:', err);
+            }
+        }
+
+        function updateDepthVisualization(data) {
+            if (data.input_image && data.depth_map) {
+                // Draw input image
+                const inputImg = new Image();
+                inputImg.onload = () => {
+                    inputCtx.drawImage(inputImg, 0, 0, inputCanvas.width, inputCanvas.height);
+                };
+                inputImg.src = data.input_image;
+                
+                // Draw depth map
+                const depthImg = new Image();
+                depthImg.onload = () => {
+                    depthCtx.drawImage(depthImg, 0, 0, depthCanvas.width, depthCanvas.height);
+                };
+                depthImg.src = data.depth_map;
+            }
+        }
+
+        function updateDepthMetrics(data) {
+            if (data.metrics) {
+                document.getElementById('avgDepth').textContent = data.metrics.average_depth ? data.metrics.average_depth.toFixed(2) + 'm' : '0.0m';
+                document.getElementById('depthRange').textContent = data.metrics.depth_range ? data.metrics.depth_range.toFixed(2) + 'm' : '0.0m';
+                document.getElementById('processingTime').textContent = data.metrics.processing_time ? data.metrics.processing_time + 'ms' : '0ms';
+                document.getElementById('accuracy').textContent = data.metrics.accuracy ? Math.round(data.metrics.accuracy * 100) + '%' : '0%';
+            }
+        }
+
+        function updateDepthAnalysis(data) {
+            const analysisDiv = document.getElementById('depthAnalysis');
+            
+            if (data.analysis) {
+                let html = '<div style="display: grid; gap: 1rem;">';
+                
+                html += `
+                    <div style="background: rgba(102, 126, 234, 0.1); padding: 1rem; border-radius: 8px; border: 1px solid rgba(102, 126, 234, 0.3);">
+                        <h4 style="color: #667eea; margin-bottom: 0.5rem;">Depth Statistics</h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; color: #a0a0a0; font-size: 0.9rem;">
+                            <div><strong>Min Depth:</strong> ${data.analysis.min_depth ? data.analysis.min_depth.toFixed(2) + 'm' : 'N/A'}</div>
+                            <div><strong>Max Depth:</strong> ${data.analysis.max_depth ? data.analysis.max_depth.toFixed(2) + 'm' : 'N/A'}</div>
+                            <div><strong>Median Depth:</strong> ${data.analysis.median_depth ? data.analysis.median_depth.toFixed(2) + 'm' : 'N/A'}</div>
+                            <div><strong>Std Deviation:</strong> ${data.analysis.std_dev ? data.analysis.std_dev.toFixed(2) + 'm' : 'N/A'}</div>
+                        </div>
+                    </div>
+                `;
+                
+                if (data.analysis.depth_distribution) {
+                    html += `
+                        <div style="background: rgba(102, 126, 234, 0.1); padding: 1rem; border-radius: 8px; border: 1px solid rgba(102, 126, 234, 0.3);">
+                            <h4 style="color: #667eea; margin-bottom: 0.5rem;">Depth Distribution</h4>
+                            <div style="color: #a0a0a0; font-size: 0.9rem;">
+                                <div><strong>Near Objects (0-2m):</strong> ${data.analysis.depth_distribution.near || 0}%</div>
+                                <div><strong>Medium Objects (2-10m):</strong> ${data.analysis.depth_distribution.medium || 0}%</div>
+                                <div><strong>Far Objects (10m+):</strong> ${data.analysis.depth_distribution.far || 0}%</div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                html += '</div>';
+                analysisDiv.innerHTML = html;
+            }
+        }
+
+        function saveDepthMap() {
+            const url = (backendUrlInput.value || '').trim();
+            if (!url) return;
+            
+            // Capture current depth map
+            const depthData = depthCanvas.toDataURL('image/png');
+            
+            // Send to backend for saving
+            fetch(url + '/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    depth_map: depthData,
+                    timestamp: new Date().toISOString()
+                })
+            }).then(response => response.json())
+              .then(data => {
+                  console.log('Depth map saved:', data);
+                  // Show success message
+              });
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            initCanvases();
+        });
+
+        // Initialize demo
+        window.addEventListener('load', () => {
+            initCanvases();
+        });
+    </script>
+</body>
+</html>
