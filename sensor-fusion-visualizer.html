@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sensor Fusion Visualizer - Self-Driving Vision Module</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            color: #e0e0e0;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .navigation-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .demo-container {
+            padding: 120px 2rem 4rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .demo-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .demo-title {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .demo-subtitle {
+            font-size: 1.2rem;
+            color: #a0a0a0;
+            margin-bottom: 2rem;
+        }
+
+        .demo-grid {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .demo-main {
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .demo-sidebar {
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            height: fit-content;
+        }
+
+        .sensor-tabs {
+            display: flex;
+            margin-bottom: 2rem;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 10px;
+            padding: 0.5rem;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 0.75rem;
+            background: transparent;
+            border: none;
+            color: #a0a0a0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        #visualizer3d {
+            width: 100%;
+            height: 500px;
+            border-radius: 15px;
+            background: #000;
+            margin-bottom: 2rem;
+        }
+
+        .controls {
+            margin-bottom: 2rem;
+        }
+
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .control-label {
+            display: block;
+            color: #e0e0e0;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .control-input {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-size: 1rem;
+        }
+
+        .control-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .slider {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(102, 126, 234, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.4);
+        }
+
+        .slider-value {
+            color: #667eea;
+            font-weight: 600;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider-toggle {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(102, 126, 234, 0.3);
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider-toggle:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider-toggle {
+            background-color: #667eea;
+        }
+
+        input:checked + .slider-toggle:before {
+            transform: translateX(26px);
+        }
+
+        .results-section {
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 15px;
+            padding: 1.5rem;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .results-title {
+            color: #667eea;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-label {
+            color: #e0e0e0;
+            font-weight: 500;
+        }
+
+        .result-value {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .sensor-status {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status-active {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+        }
+
+        .status-inactive {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        @media (max-width: 768px) {
+            .demo-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .demo-title {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navigation-bar">
+        <div class="nav-title">
+            <i class="fas fa-sync-alt"></i> Sensor Fusion Visualizer
+        </div>
+        <a href="self-driving-vision-complete-suite.html" class="nav-btn">
+            <i class="fas fa-arrow-left"></i> Back to Complete Suite
+        </a>
+    </nav>
+
+    <div class="demo-container">
+        <div class="demo-header">
+            <h1 class="demo-title">Sensor Fusion Visualizer</h1>
+            <p class="demo-subtitle">3D sensor fusion visualization combining camera, LiDAR, and radar data with Kalman filtering and multi-modal object tracking</p>
+        </div>
+
+        <div class="demo-grid">
+            <div class="demo-main">
+                <!-- Sensor Selection -->
+                <div class="sensor-tabs">
+                    <button class="tab-btn active" data-sensor="all">All Sensors</button>
+                    <button class="tab-btn" data-sensor="camera">Camera</button>
+                    <button class="tab-btn" data-sensor="lidar">LiDAR</button>
+                    <button class="tab-btn" data-sensor="radar">Radar</button>
+                </div>
+
+                <!-- 3D Visualizer -->
+                <div id="visualizer3d"></div>
+            </div>
+
+            <div class="demo-sidebar">
+                <!-- Controls -->
+                <div class="controls">
+                    <h3 style="color: #667eea; margin-bottom: 1.5rem;">Sensor Controls</h3>
+                    
+                    <div class="control-group">
+                        <label class="control-label">Camera Field of View</label>
+                        <div class="slider-container">
+                            <input type="range" class="slider" id="fovSlider" min="30" max="120" value="60">
+                            <span class="slider-value" id="fovValue">60°</span>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">LiDAR Range (m)</label>
+                        <div class="slider-container">
+                            <input type="range" class="slider" id="lidarRangeSlider" min="50" max="200" value="120">
+                            <span class="slider-value" id="lidarRangeValue">120</span>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">Radar Range (m)</label>
+                        <div class="slider-container">
+                            <input type="range" class="slider" id="radarRangeSlider" min="20" max="150" value="80">
+                            <span class="slider-value" id="radarRangeValue">80</span>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">Fusion Algorithm</label>
+                        <select class="control-input" id="fusionAlgorithm">
+                            <option value="kalman">Extended Kalman Filter</option>
+                            <option value="particle">Particle Filter</option>
+                            <option value="bayesian">Bayesian Fusion</option>
+                            <option value="neural">Neural Network Fusion</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">Update Frequency (Hz)</label>
+                        <div class="slider-container">
+                            <input type="range" class="slider" id="frequencySlider" min="10" max="100" value="30">
+                            <span class="slider-value" id="frequencyValue">30</span>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">Sensor Toggles</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div>
+                                <label style="display: flex; align-items: center; gap: 0.5rem; color: #e0e0e0;">
+                                    <input type="checkbox" checked id="cameraToggle">
+                                    <span>Camera</span>
+                                </label>
+                            </div>
+                            <div>
+                                <label style="display: flex; align-items: center; gap: 0.5rem; color: #e0e0e0;">
+                                    <input type="checkbox" checked id="lidarToggle">
+                                    <span>LiDAR</span>
+                                </label>
+                            </div>
+                            <div>
+                                <label style="display: flex; align-items: center; gap: 0.5rem; color: #e0e0e0;">
+                                    <input type="checkbox" checked id="radarToggle">
+                                    <span>Radar</span>
+                                </label>
+                            </div>
+                            <div>
+                                <label style="display: flex; align-items: center; gap: 0.5rem; color: #e0e0e0;">
+                                    <input type="checkbox" checked id="fusionToggle">
+                                    <span>Fusion</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results -->
+                <div class="results-section">
+                    <h3 class="results-title">Fusion Results</h3>
+                    <div id="resultsContainer">
+                        <div class="result-item">
+                            <span class="result-label">Objects Tracked:</span>
+                            <span class="result-value" id="objectsTracked">0</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Fusion Accuracy:</span>
+                            <span class="result-value" id="fusionAccuracy">0%</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Processing Time:</span>
+                            <span class="result-value" id="processingTime">0ms</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Sensor Status:</span>
+                            <span class="result-value" id="sensorStatus">All Active</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Data Rate:</span>
+                            <span class="result-value" id="dataRate">0 MB/s</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Confidence Score:</span>
+                            <span class="result-value" id="confidenceScore">0%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let scene, camera, renderer, controls;
+        let sensorData = {};
+        let animationId;
+
+        // Initialize 3D scene
+        function init3DScene() {
+            const container = document.getElementById('visualizer3d');
+            
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a0a);
+            
+            // Camera
+            camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(0, 10, 20);
+            camera.lookAt(0, 0, 0);
+            
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 10, 5);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+            
+            // Ground
+            const groundGeometry = new THREE.PlaneGeometry(100, 100);
+            const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+            
+            // Road lines
+            for (let i = -50; i <= 50; i += 10) {
+                const lineGeometry = new THREE.PlaneGeometry(2, 100);
+                const lineMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
+                const line = new THREE.Mesh(lineGeometry, lineMaterial);
+                line.rotation.x = -Math.PI / 2;
+                line.position.set(i, 0.01, 0);
+                scene.add(line);
+            }
+            
+            // Ego vehicle
+            const egoGeometry = new THREE.BoxGeometry(4, 2, 2);
+            const egoMaterial = new THREE.MeshLambertMaterial({ color: 0x667eea });
+            const egoVehicle = new THREE.Mesh(egoGeometry, egoMaterial);
+            egoVehicle.position.set(0, 1, 0);
+            egoVehicle.castShadow = true;
+            scene.add(egoVehicle);
+            
+            // Add some other vehicles
+            addRandomVehicles();
+            
+            // Start animation
+            animate();
+        }
+
+        function addRandomVehicles() {
+            for (let i = 0; i < 5; i++) {
+                const vehicleGeometry = new THREE.BoxGeometry(4, 2, 2);
+                const vehicleMaterial = new THREE.MeshLambertMaterial({ 
+                    color: new THREE.Color().setHSL(Math.random(), 0.7, 0.6) 
+                });
+                const vehicle = new THREE.Mesh(vehicleGeometry, vehicleMaterial);
+                
+                vehicle.position.set(
+                    (Math.random() - 0.5) * 80,
+                    1,
+                    (Math.random() - 0.5) * 80
+                );
+                vehicle.castShadow = true;
+                scene.add(vehicle);
+            }
+        }
+
+        function animate() {
+            animationId = requestAnimationFrame(animate);
+            
+            // Rotate camera slightly for dynamic view
+            camera.position.x = Math.sin(Date.now() * 0.0005) * 20;
+            camera.position.z = Math.cos(Date.now() * 0.0005) * 20;
+            camera.lookAt(0, 0, 0);
+            
+            renderer.render(scene, camera);
+        }
+
+        // Sensor tab switching
+        document.querySelectorAll('.tab-btn').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                // Update visualization based on selected sensor
+                updateSensorVisualization(tab.dataset.sensor);
+            });
+        });
+
+        // Update sensor visualization
+        function updateSensorVisualization(sensor) {
+            // This would update the 3D visualization based on selected sensor
+            console.log('Updating visualization for:', sensor);
+        }
+
+        // Slider updates
+        document.getElementById('fovSlider').addEventListener('input', (e) => {
+            document.getElementById('fovValue').textContent = e.target.value + '°';
+            if (camera) {
+                camera.fov = parseInt(e.target.value);
+                camera.updateProjectionMatrix();
+            }
+        });
+
+        document.getElementById('lidarRangeSlider').addEventListener('input', (e) => {
+            document.getElementById('lidarRangeValue').textContent = e.target.value;
+        });
+
+        document.getElementById('radarRangeSlider').addEventListener('input', (e) => {
+            document.getElementById('radarRangeValue').textContent = e.target.value;
+        });
+
+        document.getElementById('frequencySlider').addEventListener('input', (e) => {
+            document.getElementById('frequencyValue').textContent = e.target.value;
+        });
+
+        // Simulate sensor fusion
+        function simulateSensorFusion() {
+            const objectsTracked = 3 + Math.floor(Math.random() * 5);
+            const fusionAccuracy = 85 + Math.random() * 10;
+            const processingTime = 15 + Math.random() * 20;
+            const dataRate = (5 + Math.random() * 10).toFixed(1);
+            const confidenceScore = 80 + Math.random() * 15;
+            
+            document.getElementById('objectsTracked').textContent = objectsTracked;
+            document.getElementById('fusionAccuracy').textContent = Math.round(fusionAccuracy) + '%';
+            document.getElementById('processingTime').textContent = Math.round(processingTime) + 'ms';
+            document.getElementById('dataRate').textContent = dataRate + ' MB/s';
+            document.getElementById('confidenceScore').textContent = Math.round(confidenceScore) + '%';
+            
+            // Update sensor status
+            const cameraActive = document.getElementById('cameraToggle').checked;
+            const lidarActive = document.getElementById('lidarToggle').checked;
+            const radarActive = document.getElementById('radarToggle').checked;
+            
+            let statusText = '';
+            if (cameraActive && lidarActive && radarActive) {
+                statusText = '<span class="sensor-status status-active">All Active</span>';
+            } else {
+                const activeSensors = [];
+                if (cameraActive) activeSensors.push('Camera');
+                if (lidarActive) activeSensors.push('LiDAR');
+                if (radarActive) activeSensors.push('Radar');
+                statusText = `<span class="sensor-status status-inactive">${activeSensors.join(', ')}</span>`;
+            }
+            
+            document.getElementById('sensorStatus').innerHTML = statusText;
+        }
+
+        // Initialize demo
+        window.addEventListener('load', () => {
+            init3DScene();
+            simulateSensorFusion();
+            
+            // Update simulation periodically
+            setInterval(simulateSensorFusion, 2000);
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            if (renderer && camera) {
+                const container = document.getElementById('visualizer3d');
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            }
+        });
+    </script>
+</body>
+</html>

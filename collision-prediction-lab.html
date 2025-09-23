@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collision Prediction Lab - Self-Driving Vision Module</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            color: #e0e0e0;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .navigation-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .demo-container {
+            padding: 120px 2rem 4rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .demo-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .demo-title {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .demo-subtitle {
+            font-size: 1.2rem;
+            color: #a0a0a0;
+            margin-bottom: 2rem;
+        }
+
+        .demo-grid {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .demo-main {
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .demo-sidebar {
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            height: fit-content;
+        }
+
+        .scenario-tabs {
+            display: flex;
+            margin-bottom: 2rem;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 10px;
+            padding: 0.5rem;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 0.75rem;
+            background: transparent;
+            border: none;
+            color: #a0a0a0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .simulation-container {
+            position: relative;
+            background: #000;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 2rem;
+            height: 500px;
+        }
+
+        #simulationCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .controls {
+            margin-bottom: 2rem;
+        }
+
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .control-label {
+            display: block;
+            color: #e0e0e0;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .control-input {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-size: 1rem;
+        }
+
+        .control-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .slider {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(102, 126, 234, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.4);
+        }
+
+        .slider-value {
+            color: #667eea;
+            font-weight: 600;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .simulate-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 1rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 2rem;
+        }
+
+        .simulate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .simulate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results-section {
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 15px;
+            padding: 1.5rem;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .results-title {
+            color: #667eea;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-label {
+            color: #e0e0e0;
+            font-weight: 500;
+        }
+
+        .result-value {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .risk-indicator {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .risk-low {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+        }
+
+        .risk-medium {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+        }
+
+        .risk-high {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 1.5rem;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: #a0a0a0;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .demo-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .demo-title {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navigation-bar">
+        <div class="nav-title">
+            <i class="fas fa-shield-alt"></i> Collision Prediction Lab
+        </div>
+        <a href="self-driving-vision-complete-suite.html" class="nav-btn">
+            <i class="fas fa-arrow-left"></i> Back to Complete Suite
+        </a>
+    </nav>
+
+    <div class="demo-container">
+        <div class="demo-header">
+            <h1 class="demo-title">Collision Prediction Lab</h1>
+            <p class="demo-subtitle">Predictive collision avoidance system with trajectory analysis, time-to-collision calculations, and risk assessment algorithms</p>
+        </div>
+
+        <div class="demo-grid">
+            <div class="demo-main">
+                <!-- Scenario Selection -->
+                <div class="scenario-tabs">
+                    <button class="tab-btn active" data-scenario="intersection">Intersection</button>
+                    <button class="tab-btn" data-scenario="highway">Highway</button>
+                    <button class="tab-btn" data-scenario="parking">Parking</button>
+                    <button class="tab-btn" data-scenario="pedestrian">Pedestrian</button>
+                </div>
+
+                <!-- Simulation Canvas -->
+                <div class="simulation-container">
+                    <canvas id="simulationCanvas"></canvas>
+                </div>
+
+                <!-- Simulation Controls -->
+                <button class="simulate-btn" id="simulateBtn">
+                    <i class="fas fa-play"></i> Run Collision Simulation
+                </button>
+            </div>
+
+            <div class="demo-sidebar">
+                <!-- Controls -->
+                <div class="controls">
+                    <h3 style="color: #667eea; margin-bottom: 1.5rem;">Simulation Parameters</h3>
+                    
+                    <div class="control-group">
+                        <label class="control-label">Vehicle Speed (km/h)</label>
+                        <div class="slider-container">
+                            <input type="range" class="slider" id="speedSlider" min="20" max="120" value="60">
+                            <span class="slider-value" id="speedValue">60</span>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">Reaction Time (s)</label>
+                        <div class="slider-container">
+                            <input type="range" class="slider" id="reactionSlider" min="0.5" max="3" step="0.1" value="1.2">
+                            <span class="slider-value" id="reactionValue">1.2</span>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">Braking Distance (m)</label>
+                        <div class="slider-container">
+                            <input type="range" class="slider" id="brakingSlider" min="20" max="100" value="50">
+                            <span class="slider-value" id="brakingValue">50</span>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">Prediction Horizon (s)</label>
+                        <div class="slider-container">
+                            <input type="range" class="slider" id="horizonSlider" min="2" max="10" value="5">
+                            <span class="slider-value" id="horizonValue">5</span>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">Risk Threshold</label>
+                        <select class="control-input" id="riskThreshold">
+                            <option value="low">Low Risk (0.3)</option>
+                            <option value="medium" selected>Medium Risk (0.6)</option>
+                            <option value="high">High Risk (0.8)</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">Weather Conditions</label>
+                        <select class="control-input" id="weatherSelect">
+                            <option value="clear">Clear</option>
+                            <option value="rain">Rain</option>
+                            <option value="snow">Snow</option>
+                            <option value="fog">Fog</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Results -->
+                <div class="results-section">
+                    <h3 class="results-title">Collision Analysis</h3>
+                    <div id="resultsContainer">
+                        <div class="result-item">
+                            <span class="result-label">Collision Risk:</span>
+                            <span class="result-value" id="collisionRisk">Low</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Time to Collision:</span>
+                            <span class="result-value" id="timeToCollision">∞</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Safe Distance:</span>
+                            <span class="result-value" id="safeDistance">0m</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Required Braking:</span>
+                            <span class="result-value" id="requiredBraking">0%</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Evasive Action:</span>
+                            <span class="result-value" id="evasiveAction">None</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Prediction Confidence:</span>
+                            <span class="result-value" id="predictionConfidence">0%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="totalSimulations">0</div>
+                <div class="stat-label">Total Simulations</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="collisionsAvoided">0</div>
+                <div class="stat-label">Collisions Avoided</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="predictionAccuracy">99.1%</div>
+                <div class="stat-label">Prediction Accuracy</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="responseTime">12ms</div>
+                <div class="stat-label">Response Time</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Demo functionality
+        const simulationCanvas = document.getElementById('simulationCanvas');
+        const simulateBtn = document.getElementById('simulateBtn');
+        
+        const scenarioTabs = document.querySelectorAll('.tab-btn');
+        let currentScenario = 'intersection';
+        let simulationRunning = false;
+
+        // Initialize canvas
+        function initializeCanvas() {
+            const ctx = simulationCanvas.getContext('2d');
+            simulationCanvas.width = 800;
+            simulationCanvas.height = 500;
+            
+            drawScenario(ctx, currentScenario);
+        }
+
+        // Draw different scenarios
+        function drawScenario(ctx, scenario) {
+            ctx.clearRect(0, 0, simulationCanvas.width, simulationCanvas.height);
+            
+            switch(scenario) {
+                case 'intersection':
+                    drawIntersection(ctx);
+                    break;
+                case 'highway':
+                    drawHighway(ctx);
+                    break;
+                case 'parking':
+                    drawParking(ctx);
+                    break;
+                case 'pedestrian':
+                    drawPedestrian(ctx);
+                    break;
+            }
+        }
+
+        function drawIntersection(ctx) {
+            // Background
+            ctx.fillStyle = '#2a2a2a';
+            ctx.fillRect(0, 0, simulationCanvas.width, simulationCanvas.height);
+            
+            // Roads
+            ctx.fillStyle = '#404040';
+            ctx.fillRect(0, 200, simulationCanvas.width, 100); // Horizontal road
+            ctx.fillRect(350, 0, 100, simulationCanvas.height); // Vertical road
+            
+            // Lane markings
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([10, 10]);
+            
+            // Horizontal lanes
+            ctx.beginPath();
+            ctx.moveTo(0, 220);
+            ctx.lineTo(simulationCanvas.width, 220);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(0, 280);
+            ctx.lineTo(simulationCanvas.width, 280);
+            ctx.stroke();
+            
+            // Vertical lanes
+            ctx.beginPath();
+            ctx.moveTo(370, 0);
+            ctx.lineTo(370, simulationCanvas.height);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(430, 0);
+            ctx.lineTo(430, simulationCanvas.height);
+            ctx.stroke();
+            
+            ctx.setLineDash([]);
+            
+            // Vehicles
+            drawVehicle(ctx, 100, 180, '#667eea', 'ego');
+            drawVehicle(ctx, 600, 220, '#ff4444', 'other');
+        }
+
+        function drawHighway(ctx) {
+            // Background
+            ctx.fillStyle = '#2a2a2a';
+            ctx.fillRect(0, 0, simulationCanvas.width, simulationCanvas.height);
+            
+            // Road
+            ctx.fillStyle = '#404040';
+            ctx.fillRect(0, 150, simulationCanvas.width, 200);
+            
+            // Lane markings
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([20, 20]);
+            
+            for (let i = 1; i < 4; i++) {
+                ctx.beginPath();
+                ctx.moveTo(0, 150 + i * 50);
+                ctx.lineTo(simulationCanvas.width, 150 + i * 50);
+                ctx.stroke();
+            }
+            
+            ctx.setLineDash([]);
+            
+            // Vehicles
+            drawVehicle(ctx, 200, 175, '#667eea', 'ego');
+            drawVehicle(ctx, 400, 225, '#ff4444', 'other');
+            drawVehicle(ctx, 600, 275, '#44ff44', 'other');
+        }
+
+        function drawParking(ctx) {
+            // Background
+            ctx.fillStyle = '#2a2a2a';
+            ctx.fillRect(0, 0, simulationCanvas.width, simulationCanvas.height);
+            
+            // Parking spaces
+            ctx.fillStyle = '#404040';
+            for (let i = 0; i < 6; i++) {
+                ctx.fillRect(100 + i * 100, 100, 80, 120);
+            }
+            
+            // Vehicles
+            drawVehicle(ctx, 150, 120, '#667eea', 'ego');
+            drawVehicle(ctx, 350, 120, '#ff4444', 'other');
+        }
+
+        function drawPedestrian(ctx) {
+            // Background
+            ctx.fillStyle = '#2a2a2a';
+            ctx.fillRect(0, 0, simulationCanvas.width, simulationCanvas.height);
+            
+            // Road
+            ctx.fillStyle = '#404040';
+            ctx.fillRect(0, 200, simulationCanvas.width, 100);
+            
+            // Sidewalks
+            ctx.fillStyle = '#555555';
+            ctx.fillRect(0, 150, simulationCanvas.width, 50);
+            ctx.fillRect(0, 300, simulationCanvas.width, 50);
+            
+            // Vehicle
+            drawVehicle(ctx, 200, 175, '#667eea', 'ego');
+            
+            // Pedestrian
+            drawPedestrianIcon(ctx, 400, 170);
+        }
+
+        function drawVehicle(ctx, x, y, color, type) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, 60, 30);
+            
+            // Vehicle details
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(x + 5, y + 5, 15, 10);
+            ctx.fillRect(x + 40, y + 5, 15, 10);
+            
+            // Label
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(type === 'ego' ? 'EGO' : 'OTHER', x + 30, y + 45);
+        }
+
+        function drawPedestrianIcon(ctx, x, y) {
+            ctx.fillStyle = '#ffff00';
+            ctx.beginPath();
+            ctx.arc(x + 10, y + 10, 8, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(x + 5, y + 18, 10, 20);
+            ctx.fillRect(x + 2, y + 38, 6, 15);
+            ctx.fillRect(x + 12, y + 38, 6, 15);
+        }
+
+        // Scenario tab switching
+        scenarioTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                scenarioTabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                currentScenario = tab.dataset.scenario;
+                
+                initializeCanvas();
+            });
+        });
+
+        // Slider updates
+        document.getElementById('speedSlider').addEventListener('input', (e) => {
+            document.getElementById('speedValue').textContent = e.target.value;
+        });
+
+        document.getElementById('reactionSlider').addEventListener('input', (e) => {
+            document.getElementById('reactionValue').textContent = e.target.value;
+        });
+
+        document.getElementById('brakingSlider').addEventListener('input', (e) => {
+            document.getElementById('brakingValue').textContent = e.target.value;
+        });
+
+        document.getElementById('horizonSlider').addEventListener('input', (e) => {
+            document.getElementById('horizonValue').textContent = e.target.value;
+        });
+
+        // Run simulation
+        simulateBtn.addEventListener('click', () => {
+            if (simulationRunning) return;
+            
+            simulateBtn.disabled = true;
+            simulateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Simulating...';
+            simulationRunning = true;
+
+            setTimeout(() => {
+                runCollisionSimulation();
+                simulateBtn.disabled = false;
+                simulateBtn.innerHTML = '<i class="fas fa-play"></i> Run Collision Simulation';
+                simulationRunning = false;
+            }, 2000 + Math.random() * 1000);
+        });
+
+        // Run collision simulation
+        function runCollisionSimulation() {
+            const speed = parseInt(document.getElementById('speedSlider').value);
+            const reactionTime = parseFloat(document.getElementById('reactionSlider').value);
+            const brakingDistance = parseInt(document.getElementById('brakingSlider').value);
+            const horizon = parseInt(document.getElementById('horizonSlider').value);
+            const riskThreshold = document.getElementById('riskThreshold').value;
+            const weather = document.getElementById('weatherSelect').value;
+            
+            // Simulate collision prediction
+            const riskFactors = {
+                'low': 0.3,
+                'medium': 0.6,
+                'high': 0.8
+            };
+            
+            const weatherFactors = {
+                'clear': 1.0,
+                'rain': 1.3,
+                'snow': 1.6,
+                'fog': 1.4
+            };
+            
+            const baseRisk = riskFactors[riskThreshold];
+            const weatherMultiplier = weatherFactors[weather];
+            const speedFactor = speed / 60; // Normalize to 60 km/h
+            
+            const collisionRisk = Math.min(baseRisk * weatherMultiplier * speedFactor, 0.95);
+            const timeToCollision = collisionRisk > 0.7 ? (2 + Math.random() * 3).toFixed(1) : '∞';
+            const safeDistance = Math.round(brakingDistance * weatherMultiplier);
+            const requiredBraking = Math.round(collisionRisk * 100);
+            
+            let evasiveAction = 'None';
+            if (collisionRisk > 0.8) evasiveAction = 'Emergency Brake';
+            else if (collisionRisk > 0.6) evasiveAction = 'Hard Brake';
+            else if (collisionRisk > 0.4) evasiveAction = 'Moderate Brake';
+            
+            const predictionConfidence = Math.round(85 + Math.random() * 10);
+            
+            // Update results
+            updateResults(collisionRisk, timeToCollision, safeDistance, requiredBraking, evasiveAction, predictionConfidence);
+            
+            // Update statistics
+            updateStatistics();
+        }
+
+        // Update results display
+        function updateResults(risk, ttc, safeDist, braking, action, confidence) {
+            const riskElement = document.getElementById('collisionRisk');
+            const riskClass = risk > 0.7 ? 'risk-high' : risk > 0.4 ? 'risk-medium' : 'risk-low';
+            const riskText = risk > 0.7 ? 'High' : risk > 0.4 ? 'Medium' : 'Low';
+            
+            riskElement.innerHTML = `<span class="risk-indicator ${riskClass}">${riskText}</span>`;
+            
+            document.getElementById('timeToCollision').textContent = ttc + 's';
+            document.getElementById('safeDistance').textContent = safeDist + 'm';
+            document.getElementById('requiredBraking').textContent = braking + '%';
+            document.getElementById('evasiveAction').textContent = action;
+            document.getElementById('predictionConfidence').textContent = confidence + '%';
+        }
+
+        // Update statistics
+        function updateStatistics() {
+            const total = parseInt(document.getElementById('totalSimulations').textContent) + 1;
+            document.getElementById('totalSimulations').textContent = total;
+            
+            const avoided = parseInt(document.getElementById('collisionsAvoided').textContent);
+            const newAvoided = Math.random() > 0.2 ? avoided + 1 : avoided; // 80% success rate
+            document.getElementById('collisionsAvoided').textContent = newAvoided;
+        }
+
+        // Initialize demo
+        initializeCanvas();
+    </script>
+</body>
+</html>

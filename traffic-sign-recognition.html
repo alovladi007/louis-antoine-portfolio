@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traffic Sign Recognition - Self-Driving Vision Module</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            color: #e0e0e0;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .navigation-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .demo-container {
+            padding: 120px 2rem 4rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .demo-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .demo-title {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .demo-subtitle {
+            font-size: 1.2rem;
+            color: #a0a0a0;
+            margin-bottom: 2rem;
+        }
+
+        .demo-grid {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .demo-main {
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .demo-sidebar {
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            height: fit-content;
+        }
+
+        .upload-area {
+            border: 2px dashed rgba(102, 126, 234, 0.5);
+            border-radius: 15px;
+            padding: 3rem 2rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: rgba(102, 126, 234, 0.8);
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
+            color: #e0e0e0;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-hint {
+            color: #a0a0a0;
+            font-size: 0.9rem;
+        }
+
+        #imageInput {
+            display: none;
+        }
+
+        .canvas-container {
+            position: relative;
+            background: #000;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        #signCanvas {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .sign-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+        }
+
+        .sign-box {
+            position: absolute;
+            border: 3px solid #ff4444;
+            background: rgba(255, 68, 68, 0.1);
+            border-radius: 8px;
+        }
+
+        .sign-label {
+            position: absolute;
+            top: -30px;
+            left: 0;
+            background: #ff4444;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .controls {
+            margin-bottom: 2rem;
+        }
+
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .control-label {
+            display: block;
+            color: #e0e0e0;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .control-input {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-size: 1rem;
+        }
+
+        .control-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .slider {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(102, 126, 234, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.4);
+        }
+
+        .slider-value {
+            color: #667eea;
+            font-weight: 600;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .recognize-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 1rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 2rem;
+        }
+
+        .recognize-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .recognize-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results-section {
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 15px;
+            padding: 1.5rem;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .results-title {
+            color: #667eea;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-label {
+            color: #e0e0e0;
+            font-weight: 500;
+        }
+
+        .result-value {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .sign-database {
+            margin-top: 2rem;
+        }
+
+        .sign-categories {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .sign-category {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 1rem;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .sign-category:hover {
+            background: rgba(102, 126, 234, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .sign-category.active {
+            background: rgba(102, 126, 234, 0.3);
+            border-color: #667eea;
+        }
+
+        .sign-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .sign-name {
+            font-size: 0.9rem;
+            color: #e0e0e0;
+        }
+
+        @media (max-width: 768px) {
+            .demo-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .demo-title {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navigation-bar">
+        <div class="nav-title">
+            <i class="fas fa-traffic-light"></i> Traffic Sign Recognition
+        </div>
+        <a href="self-driving-vision-complete-suite.html" class="nav-btn">
+            <i class="fas fa-arrow-left"></i> Back to Complete Suite
+        </a>
+    </nav>
+
+    <div class="demo-container">
+        <div class="demo-header">
+            <h1 class="demo-title">Traffic Sign Recognition</h1>
+            <p class="demo-subtitle">CNN-based traffic sign classification with real-time recognition, confidence scoring, and regulatory compliance verification</p>
+        </div>
+
+        <div class="demo-grid">
+            <div class="demo-main">
+                <!-- Upload Area -->
+                <div class="upload-area" id="uploadArea">
+                    <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                    <div class="upload-text">Upload Traffic Sign Image</div>
+                    <div class="upload-hint">Click to browse or drag and drop an image file</div>
+                    <input type="file" id="imageInput" accept="image/*">
+                </div>
+
+                <!-- Recognition Canvas -->
+                <div class="canvas-container">
+                    <canvas id="signCanvas"></canvas>
+                    <div class="sign-overlay" id="signOverlay"></div>
+                </div>
+
+                <!-- Recognition Button -->
+                <button class="recognize-btn" id="recognizeBtn" disabled>
+                    <i class="fas fa-search"></i> Recognize Traffic Signs
+                </button>
+            </div>
+
+            <div class="demo-sidebar">
+                <!-- Controls -->
+                <div class="controls">
+                    <h3 style="color: #667eea; margin-bottom: 1.5rem;">Recognition Parameters</h3>
+                    
+                    <div class="control-group">
+                        <label class="control-label">Confidence Threshold</label>
+                        <div class="slider-container">
+                            <input type="range" class="slider" id="confidenceSlider" min="0" max="100" value="70">
+                            <span class="slider-value" id="confidenceValue">70%</span>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">CNN Model</label>
+                        <select class="control-input" id="modelSelect">
+                            <option value="resnet50">ResNet-50 (Fast)</option>
+                            <option value="efficientnet">EfficientNet-B3</option>
+                            <option value="mobilenet">MobileNet V2</option>
+                            <option value="custom">Custom CNN</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">Preprocessing</label>
+                        <select class="control-input" id="preprocessingSelect">
+                            <option value="standard">Standard</option>
+                            <option value="enhanced">Enhanced</option>
+                            <option value="adaptive">Adaptive</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">Sign Categories</label>
+                        <select class="control-input" id="categorySelect">
+                            <option value="all">All Categories</option>
+                            <option value="regulatory">Regulatory Signs</option>
+                            <option value="warning">Warning Signs</option>
+                            <option value="guide">Guide Signs</option>
+                            <option value="construction">Construction Signs</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">Detection Mode</label>
+                        <select class="control-input" id="detectionMode">
+                            <option value="single">Single Sign</option>
+                            <option value="multiple">Multiple Signs</option>
+                            <option value="sequence">Sign Sequence</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Results -->
+                <div class="results-section">
+                    <h3 class="results-title">Recognition Results</h3>
+                    <div id="resultsContainer">
+                        <div class="result-item">
+                            <span class="result-label">Signs Detected:</span>
+                            <span class="result-value" id="signCount">0</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Processing Time:</span>
+                            <span class="result-value" id="processingTime">0ms</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Recognition Accuracy:</span>
+                            <span class="result-value" id="recognitionAccuracy">0%</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Model Confidence:</span>
+                            <span class="result-value" id="modelConfidence">0%</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Compliance Status:</span>
+                            <span class="result-value" id="complianceStatus">Unknown</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sign Database -->
+                <div class="sign-database">
+                    <h3 style="color: #667eea; margin-bottom: 1rem;">Sign Database</h3>
+                    <div class="sign-categories">
+                        <div class="sign-category" data-category="stop">
+                            <div class="sign-icon">🛑</div>
+                            <div class="sign-name">Stop</div>
+                        </div>
+                        <div class="sign-category" data-category="yield">
+                            <div class="sign-icon">⚠️</div>
+                            <div class="sign-name">Yield</div>
+                        </div>
+                        <div class="sign-category" data-category="speed">
+                            <div class="sign-icon">🚦</div>
+                            <div class="sign-name">Speed Limit</div>
+                        </div>
+                        <div class="sign-category" data-category="turn">
+                            <div class="sign-icon">↩️</div>
+                            <div class="sign-name">Turn Signs</div>
+                        </div>
+                        <div class="sign-category" data-category="lane">
+                            <div class="sign-icon">↔️</div>
+                            <div class="sign-name">Lane Signs</div>
+                        </div>
+                        <div class="sign-category" data-category="construction">
+                            <div class="sign-icon">🚧</div>
+                            <div class="sign-name">Construction</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Demo functionality
+        const uploadArea = document.getElementById('uploadArea');
+        const imageInput = document.getElementById('imageInput');
+        const signCanvas = document.getElementById('signCanvas');
+        const signOverlay = document.getElementById('signOverlay');
+        const recognizeBtn = document.getElementById('recognizeBtn');
+        
+        const confidenceSlider = document.getElementById('confidenceSlider');
+        const confidenceValue = document.getElementById('confidenceValue');
+        
+        let currentImage = null;
+        let recognitionResults = [];
+
+        // Upload area functionality
+        uploadArea.addEventListener('click', () => imageInput.click());
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleImageUpload(files[0]);
+            }
+        });
+
+        imageInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleImageUpload(e.target.files[0]);
+            }
+        });
+
+        // Slider updates
+        confidenceSlider.addEventListener('input', (e) => {
+            confidenceValue.textContent = e.target.value + '%';
+        });
+
+        // Handle image upload
+        function handleImageUpload(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    currentImage = img;
+                    displayImage(img);
+                    recognizeBtn.disabled = false;
+                    uploadArea.innerHTML = `
+                        <i class="fas fa-check-circle upload-icon" style="color: #4ade80;"></i>
+                        <div class="upload-text">Image Loaded Successfully</div>
+                        <div class="upload-hint">Click "Recognize Traffic Signs" to analyze</div>
+                    `;
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Display image on canvas
+        function displayImage(img) {
+            const canvas = signCanvas;
+            const ctx = canvas.getContext('2d');
+            
+            // Set canvas size to match image
+            canvas.width = img.width;
+            canvas.height = img.height;
+            
+            // Draw image
+            ctx.drawImage(img, 0, 0);
+            
+            // Clear previous recognitions
+            clearRecognitions();
+        }
+
+        // Clear recognition overlays
+        function clearRecognitions() {
+            signOverlay.innerHTML = '';
+            updateResults(0, 0, 0, 0, 'Unknown');
+        }
+
+        // Simulate traffic sign recognition
+        recognizeBtn.addEventListener('click', () => {
+            if (!currentImage) return;
+
+            recognizeBtn.disabled = true;
+            recognizeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Recognizing...';
+
+            // Simulate processing time
+            setTimeout(() => {
+                simulateRecognition();
+                recognizeBtn.disabled = false;
+                recognizeBtn.innerHTML = '<i class="fas fa-search"></i> Recognize Traffic Signs';
+            }, 1000 + Math.random() * 500);
+        });
+
+        // Simulate recognition results
+        function simulateRecognition() {
+            const confidence = parseInt(confidenceSlider.value) / 100;
+            const model = document.getElementById('modelSelect').value;
+            const category = document.getElementById('categorySelect').value;
+            const detectionMode = document.getElementById('detectionMode').value;
+            
+            // Generate random recognition results
+            const signTypes = [
+                { name: 'Stop Sign', confidence: 0.95, compliance: 'Compliant' },
+                { name: 'Speed Limit 50', confidence: 0.88, compliance: 'Compliant' },
+                { name: 'Yield Sign', confidence: 0.92, compliance: 'Compliant' },
+                { name: 'No Turn', confidence: 0.85, compliance: 'Compliant' },
+                { name: 'Construction Zone', confidence: 0.90, compliance: 'Compliant' }
+            ];
+            
+            recognitionResults = [];
+            const numSigns = detectionMode === 'single' ? 1 : Math.floor(Math.random() * 3) + 1;
+            
+            for (let i = 0; i < numSigns; i++) {
+                const sign = signTypes[Math.floor(Math.random() * signTypes.length)];
+                if (sign.confidence >= confidence) {
+                    recognitionResults.push({
+                        ...sign,
+                        bbox: [
+                            Math.random() * 0.6, // x
+                            Math.random() * 0.6, // y
+                            0.2 + Math.random() * 0.3, // width
+                            0.2 + Math.random() * 0.3  // height
+                        ]
+                    });
+                }
+            }
+            
+            // Draw recognitions
+            drawRecognitions();
+            
+            // Update results
+            const processingTime = 50 + Math.random() * 100;
+            const recognitionAccuracy = 85 + Math.random() * 10;
+            const modelConfidence = recognitionResults.length > 0 ? 
+                recognitionResults.reduce((sum, r) => sum + r.confidence, 0) / recognitionResults.length : 0;
+            const complianceStatus = recognitionResults.length > 0 ? 
+                recognitionResults[0].compliance : 'Unknown';
+                
+            updateResults(recognitionResults.length, processingTime, recognitionAccuracy, modelConfidence, complianceStatus);
+        }
+
+        // Draw recognition boxes
+        function drawRecognitions() {
+            signOverlay.innerHTML = '';
+            
+            recognitionResults.forEach((recognition, index) => {
+                const box = document.createElement('div');
+                box.className = 'sign-box';
+                
+                const [x, y, width, height] = recognition.bbox;
+                box.style.left = (x * signCanvas.width) + 'px';
+                box.style.top = (y * signCanvas.height) + 'px';
+                box.style.width = (width * signCanvas.width) + 'px';
+                box.style.height = (height * signCanvas.height) + 'px';
+                
+                const label = document.createElement('div');
+                label.className = 'sign-label';
+                label.textContent = `${recognition.name} ${Math.round(recognition.confidence * 100)}%`;
+                
+                box.appendChild(label);
+                signOverlay.appendChild(box);
+            });
+        }
+
+        // Update results display
+        function updateResults(count, time, accuracy, confidence, compliance) {
+            document.getElementById('signCount').textContent = count;
+            document.getElementById('processingTime').textContent = Math.round(time) + 'ms';
+            document.getElementById('recognitionAccuracy').textContent = Math.round(accuracy) + '%';
+            document.getElementById('modelConfidence').textContent = Math.round(confidence * 100) + '%';
+            document.getElementById('complianceStatus').textContent = compliance;
+        }
+
+        // Sign category selection
+        document.querySelectorAll('.sign-category').forEach(category => {
+            category.addEventListener('click', () => {
+                document.querySelectorAll('.sign-category').forEach(c => c.classList.remove('active'));
+                category.classList.add('active');
+                
+                // This would filter recognition by category
+                console.log('Selected category:', category.dataset.category);
+            });
+        });
+
+        // Initialize demo
+        clearRecognitions();
+    </script>
+</body>
+</html>
