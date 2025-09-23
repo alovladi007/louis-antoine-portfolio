@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Self-Driving Vision Module - Complete Suite</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans'; margin: 2rem; color: #111; }
+      h1 { margin-bottom: 0.5rem; }
+      .controls { display: grid; gap: 0.5rem; max-width: 760px; }
+      label { font-weight: 600; }
+      input[type="text"] { width: 100%; padding: 0.5rem; }
+      input[type="file"] { padding: 0.25rem; }
+      button { padding: 0.6rem 1rem; font-weight: 600; cursor: pointer; }
+      .row { display: grid; grid-template-columns: 1fr; gap: 1rem; margin-top: 1rem; }
+      canvas { max-width: 100%; border: 1px solid #ddd; }
+      pre { background: #f7f7f7; padding: 1rem; overflow: auto; max-width: 100%; }
+      .hint { color: #555; font-size: 0.9rem; }
+      a { color: #2563eb; text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <a href="../../more-projects.html">← Back to More Projects</a>
+    <h1>Self-Driving Vision Module</h1>
+    <p class="hint">Upload an image to detect lanes and objects. Boxes in red are high risk (≥30% of frame area). Defaults to <code>http://localhost:5000/process-image</code>.</p>
+
+    <div class="controls">
+      <label for="backendUrl">Backend URL</label>
+      <input id="backendUrl" type="text" value="http://localhost:5000/process-image" />
+
+      <label for="imageInput">Select Image</label>
+      <input id="imageInput" type="file" accept="image/*" />
+
+      <button id="runBtn">Process Image</button>
+    </div>
+
+    <div class="row">
+      <canvas id="canvas" width="640" height="480"></canvas>
+      <pre id="jsonOut">Response will appear here...</pre>
+    </div>
+
+    <script>
+      (function () {
+        const backendUrlInput = document.getElementById('backendUrl');
+        const imageInput = document.getElementById('imageInput');
+        const runBtn = document.getElementById('runBtn');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const jsonOut = document.getElementById('jsonOut');
+
+        let imageBitmap = null;
+
+        imageInput.addEventListener('change', async (e) => {
+          const file = e.target.files && e.target.files[0];
+          if (!file) return;
+          imageBitmap = await createImageBitmap(file);
+          drawBaseImage();
+        });
+
+        runBtn.addEventListener('click', async () => {
+          const file = imageInput.files && imageInput.files[0];
+          if (!file) {
+            alert('Please select an image first.');
+            return;
+          }
+          const endpoint = backendUrlInput.value || 'http://localhost:5000/process-image';
+          const formData = new FormData();
+          formData.append('image', file, file.name);
+          try {
+            const resp = await fetch(endpoint, { method: 'POST', body: formData });
+            const data = await resp.json();
+            jsonOut.textContent = JSON.stringify(data, null, 2);
+            drawDetections(data);
+          } catch (err) {
+            jsonOut.textContent = 'Request failed: ' + (err && err.message ? err.message : String(err));
+          }
+        });
+
+        function drawBaseImage() {
+          if (!imageBitmap) return;
+          const scale = Math.min(canvas.width / imageBitmap.width, canvas.height / imageBitmap.height);
+          const drawWidth = Math.floor(imageBitmap.width * scale);
+          const drawHeight = Math.floor(imageBitmap.height * scale);
+          const offsetX = Math.floor((canvas.width - drawWidth) / 2);
+          const offsetY = Math.floor((canvas.height - drawHeight) / 2);
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(imageBitmap, offsetX, offsetY, drawWidth, drawHeight);
+          return { scale, offsetX, offsetY };
+        }
+
+        function drawDetections(data) {
+          const base = drawBaseImage();
+          if (!base) return;
+
+          // Draw lanes in blue
+          ctx.strokeStyle = 'rgba(0, 102, 204, 1)';
+          ctx.lineWidth = 2;
+          if (data && Array.isArray(data.lanes)) {
+            for (const seg of data.lanes) {
+              const x1 = base.offsetX + Math.floor(seg.x1 * base.scale);
+              const y1 = base.offsetY + Math.floor(seg.y1 * base.scale);
+              const x2 = base.offsetX + Math.floor(seg.x2 * base.scale);
+              const y2 = base.offsetY + Math.floor(seg.y2 * base.scale);
+              ctx.beginPath();
+              ctx.moveTo(x1, y1);
+              ctx.lineTo(x2, y2);
+              ctx.stroke();
+            }
+          }
+
+          // Draw objects; red if high risk, otherwise green
+          if (data && Array.isArray(data.objects)) {
+            for (const obj of data.objects) {
+              const [x, y, w, h] = obj.bbox;
+              const rx = base.offsetX + Math.floor(x * base.scale);
+              const ry = base.offsetY + Math.floor(y * base.scale);
+              const rw = Math.floor(w * base.scale);
+              const rh = Math.floor(h * base.scale);
+              ctx.strokeStyle = obj.high_risk ? 'rgba(220, 53, 69, 1)' : 'rgba(40, 167, 69, 1)';
+              ctx.lineWidth = 2;
+              ctx.strokeRect(rx, ry, rw, rh);
+              const label = `${obj.label || 'obj'} ${((obj.confidence || 0) * 100).toFixed(1)}%`;
+              ctx.fillStyle = 'rgba(0,0,0,0.6)';
+              const pad = 4;
+              ctx.font = '12px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto';
+              const textWidth = ctx.measureText(label).width;
+              const textHeight = 14;
+              ctx.fillRect(rx, Math.max(ry - textHeight - pad * 2, 0), textWidth + pad * 2, textHeight + pad * 2);
+              ctx.fillStyle = '#fff';
+              ctx.fillText(label, rx + pad, Math.max(ry - pad, textHeight));
+            }
+          }
+        }
+      })();
+    </script>
+  </body>
+  </html>
+
