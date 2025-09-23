@@ -325,6 +325,16 @@
             <p class="demo-subtitle">3D sensor fusion visualization combining camera, LiDAR, and radar data with Kalman filtering and multi-modal object tracking</p>
         </div>
 
+        <!-- Backend Connector -->
+        <div style="background: rgba(102,126,234,0.08); border: 1px solid rgba(102,126,234,0.25); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; display: grid; gap: 0.75rem;">
+            <div style="color: #cbd5e1; font-weight: 600;">Backend Connection</div>
+            <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.75rem;">
+                <input id="backendUrl" class="control-input" placeholder="https://your-backend.example.com/api/sensor-fusion" />
+                <button id="connectBtn" class="nav-btn" type="button"><i class="fas fa-link"></i> Connect</button>
+            </div>
+            <div id="connectStatus" style="color:#a0a0a0; font-size: 0.95rem;">Not connected</div>
+        </div>
+
         <div class="demo-grid">
             <div class="demo-main">
                 <!-- Sensor Selection -->
@@ -586,18 +596,82 @@
         });
 
         // Simulate sensor fusion
-        function simulateSensorFusion() {
-            const objectsTracked = 3 + Math.floor(Math.random() * 5);
-            const fusionAccuracy = 85 + Math.random() * 10;
-            const processingTime = 15 + Math.random() * 20;
-            const dataRate = (5 + Math.random() * 10).toFixed(1);
-            const confidenceScore = 80 + Math.random() * 15;
+
+        // Backend connection handling
+        const backendUrlInput = document.getElementById('backendUrl');
+        const connectBtn = document.getElementById('connectBtn');
+        const connectStatus = document.getElementById('connectStatus');
+        let connected = false;
+
+        connectBtn.addEventListener('click', async () => {
+            const url = (backendUrlInput.value || '').trim();
+            if (!url) {
+                connectStatus.textContent = 'Please enter a backend URL';
+                connectStatus.style.color = '#fbbf24';
+                return;
+            }
+            try {
+                connectStatus.textContent = 'Connecting...';
+                connectStatus.style.color = '#a0a0a0';
+                await fetch(url, { method: 'OPTIONS' }).catch(() => {});
+                connected = true;
+                connectStatus.textContent = 'Connected. Visualizations will use backend data.';
+                connectStatus.style.color = '#22c55e';
+                // Enable visualization
+                enableVisualization();
+            } catch (e) {
+                connected = true;
+                connectStatus.textContent = 'Connection set. Note: Preflight failed, POST may still work.';
+                connectStatus.style.color = '#fbbf24';
+                enableVisualization();
+            }
+        });
+
+        function enableVisualization() {
+            // Enable sensor toggles and start visualization
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    if (!connected) {
+                        alert('Please connect a backend URL first.');
+                        return;
+                    }
+                    await fetchSensorData(btn.dataset.sensor);
+                });
+            });
+        }
+
+        async function fetchSensorData(sensorType) {
+            const url = (backendUrlInput.value || '').trim();
+            if (!url) return;
             
-            document.getElementById('objectsTracked').textContent = objectsTracked;
-            document.getElementById('fusionAccuracy').textContent = Math.round(fusionAccuracy) + '%';
-            document.getElementById('processingTime').textContent = Math.round(processingTime) + 'ms';
-            document.getElementById('dataRate').textContent = dataRate + ' MB/s';
-            document.getElementById('confidenceScore').textContent = Math.round(confidenceScore) + '%';
+            try {
+                const payload = {
+                    sensor_type: sensorType,
+                    camera_active: document.getElementById('cameraToggle').checked,
+                    lidar_active: document.getElementById('lidarToggle').checked,
+                    radar_active: document.getElementById('radarToggle').checked
+                };
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                updateVisualization(data);
+            } catch (err) {
+                connectStatus.textContent = `Request failed: ${err?.message || err}`;
+                connectStatus.style.color = '#ef4444';
+            }
+        }
+
+        function updateVisualization(data) {
+            // Update metrics from backend response
+            if (data.objects_tracked != null) document.getElementById('objectsTracked').textContent = data.objects_tracked;
+            if (data.fusion_accuracy != null) document.getElementById('fusionAccuracy').textContent = Math.round(data.fusion_accuracy) + '%';
+            if (data.processing_time_ms != null) document.getElementById('processingTime').textContent = Math.round(data.processing_time_ms) + 'ms';
+            if (data.data_rate_mbps != null) document.getElementById('dataRate').textContent = data.data_rate_mbps.toFixed(1) + ' MB/s';
+            if (data.confidence_score != null) document.getElementById('confidenceScore').textContent = Math.round(data.confidence_score) + '%';
             
             // Update sensor status
             const cameraActive = document.getElementById('cameraToggle').checked;
@@ -614,17 +688,12 @@
                 if (radarActive) activeSensors.push('Radar');
                 statusText = `<span class="sensor-status status-inactive">${activeSensors.join(', ')}</span>`;
             }
-            
             document.getElementById('sensorStatus').innerHTML = statusText;
         }
 
         // Initialize demo
         window.addEventListener('load', () => {
             init3DScene();
-            simulateSensorFusion();
-            
-            // Update simulation periodically
-            setInterval(simulateSensorFusion, 2000);
         });
 
         // Handle window resize

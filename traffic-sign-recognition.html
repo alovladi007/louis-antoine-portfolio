@@ -372,6 +372,16 @@
             <p class="demo-subtitle">CNN-based traffic sign classification with real-time recognition, confidence scoring, and regulatory compliance verification</p>
         </div>
 
+        <!-- Backend Connector -->
+        <div style="background: rgba(102,126,234,0.08); border: 1px solid rgba(102,126,234,0.25); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; display: grid; gap: 0.75rem;">
+            <div style="color: #cbd5e1; font-weight: 600;">Backend Connection</div>
+            <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.75rem;">
+                <input id="backendUrl" class="control-input" placeholder="https://your-backend.example.com/api/traffic-signs" />
+                <button id="connectBtn" class="nav-btn" type="button"><i class="fas fa-link"></i> Connect</button>
+            </div>
+            <div id="connectStatus" style="color:#a0a0a0; font-size: 0.95rem;">Not connected</div>
+        </div>
+
         <div class="demo-grid">
             <div class="demo-main">
                 <!-- Upload Area -->
@@ -616,51 +626,78 @@
             }, 1000 + Math.random() * 500);
         });
 
-        // Simulate recognition results
-        function simulateRecognition() {
-            const confidence = parseInt(confidenceSlider.value) / 100;
-            const model = document.getElementById('modelSelect').value;
-            const category = document.getElementById('categorySelect').value;
-            const detectionMode = document.getElementById('detectionMode').value;
-            
-            // Generate random recognition results
-            const signTypes = [
-                { name: 'Stop Sign', confidence: 0.95, compliance: 'Compliant' },
-                { name: 'Speed Limit 50', confidence: 0.88, compliance: 'Compliant' },
-                { name: 'Yield Sign', confidence: 0.92, compliance: 'Compliant' },
-                { name: 'No Turn', confidence: 0.85, compliance: 'Compliant' },
-                { name: 'Construction Zone', confidence: 0.90, compliance: 'Compliant' }
-            ];
-            
-            recognitionResults = [];
-            const numSigns = detectionMode === 'single' ? 1 : Math.floor(Math.random() * 3) + 1;
-            
-            for (let i = 0; i < numSigns; i++) {
-                const sign = signTypes[Math.floor(Math.random() * signTypes.length)];
-                if (sign.confidence >= confidence) {
-                    recognitionResults.push({
-                        ...sign,
-                        bbox: [
-                            Math.random() * 0.6, // x
-                            Math.random() * 0.6, // y
-                            0.2 + Math.random() * 0.3, // width
-                            0.2 + Math.random() * 0.3  // height
-                        ]
-                    });
-                }
+        // Backend connection handling
+        const backendUrlInput = document.getElementById('backendUrl');
+        const connectBtn = document.getElementById('connectBtn');
+        const connectStatus = document.getElementById('connectStatus');
+        let connected = false;
+
+        connectBtn.addEventListener('click', async () => {
+            const url = (backendUrlInput.value || '').trim();
+            if (!url) {
+                connectStatus.textContent = 'Please enter a backend URL';
+                connectStatus.style.color = '#fbbf24';
+                return;
+            }
+            try {
+                connectStatus.textContent = 'Connecting...';
+                connectStatus.style.color = '#a0a0a0';
+                await fetch(url, { method: 'OPTIONS' }).catch(() => {});
+                connected = true;
+                document.getElementById('recognizeBtn').disabled = false;
+                connectStatus.textContent = 'Connected. Recognition will use backend models.';
+                connectStatus.style.color = '#22c55e';
+            } catch (e) {
+                connected = true;
+                document.getElementById('recognizeBtn').disabled = false;
+                connectStatus.textContent = 'Connection set. Note: Preflight failed, POST may still work.';
+                connectStatus.style.color = '#fbbf24';
+            }
+        });
+
+        async function performRecognition() {
+            if (!connected) {
+                alert('Please connect a backend URL first.');
+                return;
             }
             
-            // Draw recognitions
+            const fileInput = document.getElementById('fileInput');
+            if (!fileInput.files[0]) {
+                alert('Please select an image file first.');
+                return;
+            }
+
+            const url = (backendUrlInput.value || '').trim();
+            const formData = new FormData();
+            formData.append('image', fileInput.files[0]);
+            formData.append('confidence', document.getElementById('confidenceSlider').value / 100);
+            formData.append('model', document.getElementById('modelSelect').value);
+            formData.append('category', document.getElementById('categorySelect').value);
+            formData.append('detection_mode', document.getElementById('detectionMode').value);
+
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                updateResultsFromBackend(data);
+            } catch (err) {
+                connectStatus.textContent = `Request failed: ${err?.message || err}`;
+                connectStatus.style.color = '#ef4444';
+            }
+        }
+
+        function updateResultsFromBackend(data) {
+            recognitionResults = data.detections || [];
             drawRecognitions();
             
-            // Update results
-            const processingTime = 50 + Math.random() * 100;
-            const recognitionAccuracy = 85 + Math.random() * 10;
-            const modelConfidence = recognitionResults.length > 0 ? 
-                recognitionResults.reduce((sum, r) => sum + r.confidence, 0) / recognitionResults.length : 0;
-            const complianceStatus = recognitionResults.length > 0 ? 
-                recognitionResults[0].compliance : 'Unknown';
-                
+            const processingTime = data.processing_time_ms || 0;
+            const recognitionAccuracy = data.recognition_accuracy || 0;
+            const modelConfidence = data.model_confidence || 0;
+            const complianceStatus = data.compliance_status || 'Unknown';
+            
             updateResults(recognitionResults.length, processingTime, recognitionAccuracy, modelConfidence, complianceStatus);
         }
 

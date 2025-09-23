@@ -404,6 +404,16 @@
             <p class="demo-subtitle">Advanced pedestrian detection using YOLO and R-CNN with pose estimation, movement prediction, and safety zone analysis</p>
         </div>
 
+        <!-- Backend Connector -->
+        <div style="background: rgba(102,126,234,0.08); border: 1px solid rgba(102,126,234,0.25); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; display: grid; gap: 0.75rem;">
+            <div style="color: #cbd5e1; font-weight: 600;">Backend Connection</div>
+            <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.75rem;">
+                <input id="backendUrl" class="control-input" placeholder="https://your-backend.example.com/api/pedestrian-detection" />
+                <button id="connectBtn" class="nav-btn" type="button"><i class="fas fa-link"></i> Connect</button>
+            </div>
+            <div id="connectStatus" style="color:#a0a0a0; font-size: 0.95rem;">Not connected</div>
+        </div>
+
         <div class="demo-grid">
             <div class="demo-main">
                 <!-- Algorithm Selection -->
@@ -658,94 +668,92 @@
         }
 
         // Simulate pedestrian detection
-        detectBtn.addEventListener('click', () => {
+        detectBtn.addEventListener('click', async () => {
             if (!currentImage) return;
-
+            
             detectBtn.disabled = true;
             detectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Detecting...';
-
-            // Simulate processing time
-            setTimeout(() => {
-                simulateDetection();
-                detectBtn.disabled = false;
-                detectBtn.innerHTML = '<i class="fas fa-search"></i> Detect Pedestrians';
-            }, 1500 + Math.random() * 500);
+            
+            await performDetection();
+            
+            detectBtn.disabled = false;
+            detectBtn.innerHTML = '<i class="fas fa-search"></i> Detect Pedestrians';
         });
 
-        // Simulate detection results
-        function simulateDetection() {
-            const confidence = parseInt(confidenceSlider.value) / 100;
-            const model = document.getElementById('modelSelect').value;
-            const poseEstimation = document.getElementById('poseSelect').value;
-            const movementPrediction = document.getElementById('movementSelect').value;
-            
-            // Generate random pedestrian detections
-            detectionResults = [];
-            const numPedestrians = Math.floor(Math.random() * 4) + 1;
-            
-            for (let i = 0; i < numPedestrians; i++) {
-                const detection = {
-                    id: i + 1,
-                    confidence: confidence + Math.random() * (1 - confidence),
-                    bbox: [
-                        Math.random() * 0.7, // x
-                        Math.random() * 0.7, // y
-                        0.08 + Math.random() * 0.15, // width
-                        0.15 + Math.random() * 0.25  // height
-                    ],
-                    pose: poseEstimation !== 'none' ? generatePoseKeypoints() : null,
-                    movement: movementPrediction !== 'none' ? generateMovementData() : null
-                };
-                
-                if (detection.confidence >= confidence) {
-                    detectionResults.push(detection);
-                }
+        // Backend connection handling
+        const backendUrlInput = document.getElementById('backendUrl');
+        const connectBtn = document.getElementById('connectBtn');
+        const connectStatus = document.getElementById('connectStatus');
+        let connected = false;
+
+        connectBtn.addEventListener('click', async () => {
+            const url = (backendUrlInput.value || '').trim();
+            if (!url) {
+                connectStatus.textContent = 'Please enter a backend URL';
+                connectStatus.style.color = '#fbbf24';
+                return;
+            }
+            try {
+                connectStatus.textContent = 'Connecting...';
+                connectStatus.style.color = '#a0a0a0';
+                await fetch(url, { method: 'OPTIONS' }).catch(() => {});
+                connected = true;
+                document.getElementById('detectBtn').disabled = false;
+                connectStatus.textContent = 'Connected. Detection will use backend models.';
+                connectStatus.style.color = '#22c55e';
+            } catch (e) {
+                connected = true;
+                document.getElementById('detectBtn').disabled = false;
+                connectStatus.textContent = 'Connection set. Note: Preflight failed, POST may still work.';
+                connectStatus.style.color = '#fbbf24';
+            }
+        });
+
+        async function performDetection() {
+            if (!connected) {
+                alert('Please connect a backend URL first.');
+                return;
             }
             
-            // Draw detections
+            const fileInput = document.getElementById('fileInput');
+            if (!fileInput.files[0]) {
+                alert('Please select an image file first.');
+                return;
+            }
+
+            const url = (backendUrlInput.value || '').trim();
+            const formData = new FormData();
+            formData.append('image', fileInput.files[0]);
+            formData.append('confidence', document.getElementById('confidenceSlider').value / 100);
+            formData.append('model', document.getElementById('modelSelect').value);
+            formData.append('pose_estimation', document.getElementById('poseSelect').value);
+            formData.append('movement_prediction', document.getElementById('movementSelect').value);
+
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                updateResultsFromBackend(data);
+            } catch (err) {
+                connectStatus.textContent = `Request failed: ${err?.message || err}`;
+                connectStatus.style.color = '#ef4444';
+            }
+        }
+
+        function updateResultsFromBackend(data) {
+            detectionResults = data.detections || [];
             drawDetections();
             
-            // Update results
-            const processingTime = 80 + Math.random() * 120;
-            const detectionAccuracy = 90 + Math.random() * 8;
-            const safetyStatus = detectionResults.length > 2 ? 'Caution' : 'Safe';
-            const movementSpeed = detectionResults.length > 0 ? 
-                (0.5 + Math.random() * 2).toFixed(1) : 0;
-            const poseConfidence = poseEstimation !== 'none' ? 
-                (85 + Math.random() * 10) : 0;
-                
+            const processingTime = data.processing_time_ms || 0;
+            const detectionAccuracy = data.detection_accuracy || 0;
+            const safetyStatus = data.safety_status || 'Unknown';
+            const movementSpeed = data.avg_movement_speed || 0;
+            const poseConfidence = data.pose_confidence || 0;
+            
             updateResults(detectionResults.length, processingTime, detectionAccuracy, safetyStatus, movementSpeed, poseConfidence);
-        }
-
-        // Generate pose keypoints
-        function generatePoseKeypoints() {
-            return {
-                head: [Math.random() * 0.1 + 0.45, Math.random() * 0.1 + 0.15],
-                leftShoulder: [Math.random() * 0.1 + 0.4, Math.random() * 0.1 + 0.25],
-                rightShoulder: [Math.random() * 0.1 + 0.5, Math.random() * 0.1 + 0.25],
-                leftElbow: [Math.random() * 0.1 + 0.35, Math.random() * 0.1 + 0.35],
-                rightElbow: [Math.random() * 0.1 + 0.55, Math.random() * 0.1 + 0.35],
-                leftWrist: [Math.random() * 0.1 + 0.3, Math.random() * 0.1 + 0.45],
-                rightWrist: [Math.random() * 0.1 + 0.6, Math.random() * 0.1 + 0.45],
-                leftHip: [Math.random() * 0.1 + 0.42, Math.random() * 0.1 + 0.5],
-                rightHip: [Math.random() * 0.1 + 0.48, Math.random() * 0.1 + 0.5],
-                leftKnee: [Math.random() * 0.1 + 0.41, Math.random() * 0.1 + 0.65],
-                rightKnee: [Math.random() * 0.1 + 0.49, Math.random() * 0.1 + 0.65],
-                leftAnkle: [Math.random() * 0.1 + 0.4, Math.random() * 0.1 + 0.85],
-                rightAnkle: [Math.random() * 0.1 + 0.5, Math.random() * 0.1 + 0.85]
-            };
-        }
-
-        // Generate movement data
-        function generateMovementData() {
-            return {
-                velocity: 0.5 + Math.random() * 2,
-                direction: Math.random() * 2 * Math.PI,
-                predictedPosition: [
-                    Math.random() * 0.1 + 0.45,
-                    Math.random() * 0.1 + 0.45
-                ]
-            };
         }
 
         // Draw detection boxes and pose
