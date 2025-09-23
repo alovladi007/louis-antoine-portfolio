@@ -343,6 +343,16 @@
             <p class="demo-subtitle">Predictive collision avoidance system with trajectory analysis, time-to-collision calculations, and risk assessment algorithms</p>
         </div>
 
+        <!-- Backend Connector -->
+        <div style="background: rgba(102,126,234,0.08); border: 1px solid rgba(102,126,234,0.25); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; display: grid; gap: 0.75rem;">
+            <div style="color: #cbd5e1; font-weight: 600;">Backend Connection</div>
+            <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.75rem;">
+                <input id="backendUrl" class="control-input" placeholder="https://your-backend.example.com/api/collision-sim" />
+                <button id="connectBtn" class="nav-btn" type="button"><i class="fas fa-link"></i> Connect</button>
+            </div>
+            <div id="connectStatus" style="color:#a0a0a0; font-size: 0.95rem;">Not connected</div>
+        </div>
+
         <div class="demo-grid">
             <div class="demo-main">
                 <!-- Scenario Selection -->
@@ -359,7 +369,7 @@
                 </div>
 
                 <!-- Simulation Controls -->
-                <button class="simulate-btn" id="simulateBtn">
+                <button class="simulate-btn" id="simulateBtn" disabled>
                     <i class="fas fa-play"></i> Run Collision Simulation
                 </button>
             </div>
@@ -479,6 +489,36 @@
         // Demo functionality
         const simulationCanvas = document.getElementById('simulationCanvas');
         const simulateBtn = document.getElementById('simulateBtn');
+        const backendUrlInput = document.getElementById('backendUrl');
+        const connectBtn = document.getElementById('connectBtn');
+        const connectStatus = document.getElementById('connectStatus');
+        
+        let connected = false;
+
+        connectBtn.addEventListener('click', async () => {
+            const url = (backendUrlInput.value || '').trim();
+            if (!url) {
+                connectStatus.textContent = 'Please enter a backend URL';
+                connectStatus.style.color = '#fbbf24';
+                return;
+            }
+            // Optional: try a HEAD/OPTIONS ping
+            try {
+                connectStatus.textContent = 'Connecting...';
+                connectStatus.style.color = '#a0a0a0';
+                // Attempt an OPTIONS request for CORS preflight-like check
+                await fetch(url, { method: 'OPTIONS' }).catch(() => {});
+                connected = true;
+                simulateBtn.disabled = false;
+                connectStatus.textContent = 'Connected. Simulations will call backend for results.';
+                connectStatus.style.color = '#22c55e';
+            } catch (e) {
+                connected = true; // Even if OPTIONS fails, allow user to try POST (some servers don't support OPTIONS)
+                simulateBtn.disabled = false;
+                connectStatus.textContent = 'Connection set. Note: Preflight failed, POST may still work depending on CORS.';
+                connectStatus.style.color = '#fbbf24';
+            }
+        });
         
         const scenarioTabs = document.querySelectorAll('.tab-btn');
         let currentScenario = 'intersection';
@@ -679,66 +719,62 @@
             document.getElementById('horizonValue').textContent = e.target.value;
         });
 
-        // Run simulation
-        simulateBtn.addEventListener('click', () => {
-            if (simulationRunning) return;
-            
+        // Remove random simulation. Use backend when connected.
+        simulateBtn.addEventListener('click', async () => {
+            if (!connected) {
+                alert('Please connect a backend URL first.');
+                return;
+            }
+            const url = (backendUrlInput.value || '').trim();
+            if (!url) {
+                alert('Backend URL is empty.');
+                return;
+            }
             simulateBtn.disabled = true;
             simulateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Simulating...';
-            simulationRunning = true;
-
-            setTimeout(() => {
-                runCollisionSimulation();
+            try {
+                const payload = {
+                    scenario: document.querySelector('.tab-btn.active')?.dataset?.scenario || 'intersection',
+                    speed_kmh: parseInt(document.getElementById('speedSlider').value),
+                    reaction_time_s: parseFloat(document.getElementById('reactionSlider').value),
+                    braking_distance_m: parseInt(document.getElementById('brakingSlider').value),
+                    horizon_s: parseInt(document.getElementById('horizonSlider').value),
+                    risk_threshold: document.getElementById('riskThreshold').value,
+                    weather: document.getElementById('weatherSelect').value
+                };
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                // Expecting fields from backend; guard each
+                const risk = data.collision_risk_level || 'unknown';
+                const ttc = data.time_to_collision_s != null ? data.time_to_collision_s : '∞';
+                const safeDist = data.safe_distance_m != null ? data.safe_distance_m : 0;
+                const braking = data.required_braking_pct != null ? data.required_braking_pct : 0;
+                const action = data.evasive_action || 'None';
+                const confidence = data.prediction_confidence_pct != null ? data.prediction_confidence_pct : 0;
+                updateResults(riskFromLabel(risk), ttc, safeDist, braking, action, confidence);
+                updateStatistics();
+            } catch (err) {
+                connectStatus.textContent = `Request failed: ${err?.message || err}`;
+                connectStatus.style.color = '#ef4444';
+            } finally {
                 simulateBtn.disabled = false;
                 simulateBtn.innerHTML = '<i class="fas fa-play"></i> Run Collision Simulation';
-                simulationRunning = false;
-            }, 2000 + Math.random() * 1000);
+            }
         });
 
-        // Run collision simulation
-        function runCollisionSimulation() {
-            const speed = parseInt(document.getElementById('speedSlider').value);
-            const reactionTime = parseFloat(document.getElementById('reactionSlider').value);
-            const brakingDistance = parseInt(document.getElementById('brakingSlider').value);
-            const horizon = parseInt(document.getElementById('horizonSlider').value);
-            const riskThreshold = document.getElementById('riskThreshold').value;
-            const weather = document.getElementById('weatherSelect').value;
-            
-            // Simulate collision prediction
-            const riskFactors = {
-                'low': 0.3,
-                'medium': 0.6,
-                'high': 0.8
-            };
-            
-            const weatherFactors = {
-                'clear': 1.0,
-                'rain': 1.3,
-                'snow': 1.6,
-                'fog': 1.4
-            };
-            
-            const baseRisk = riskFactors[riskThreshold];
-            const weatherMultiplier = weatherFactors[weather];
-            const speedFactor = speed / 60; // Normalize to 60 km/h
-            
-            const collisionRisk = Math.min(baseRisk * weatherMultiplier * speedFactor, 0.95);
-            const timeToCollision = collisionRisk > 0.7 ? (2 + Math.random() * 3).toFixed(1) : '∞';
-            const safeDistance = Math.round(brakingDistance * weatherMultiplier);
-            const requiredBraking = Math.round(collisionRisk * 100);
-            
-            let evasiveAction = 'None';
-            if (collisionRisk > 0.8) evasiveAction = 'Emergency Brake';
-            else if (collisionRisk > 0.6) evasiveAction = 'Hard Brake';
-            else if (collisionRisk > 0.4) evasiveAction = 'Moderate Brake';
-            
-            const predictionConfidence = Math.round(85 + Math.random() * 10);
-            
-            // Update results
-            updateResults(collisionRisk, timeToCollision, safeDistance, requiredBraking, evasiveAction, predictionConfidence);
-            
-            // Update statistics
-            updateStatistics();
+        function riskFromLabel(label){
+            // Map string labels to numeric risk tier for styling
+            if (typeof label === 'number') return label;
+            const v = String(label).toLowerCase();
+            if (v.includes('high')) return 0.9;
+            if (v.includes('medium')) return 0.6;
+            if (v.includes('low')) return 0.3;
+            return 0.0;
         }
 
         // Update results display
