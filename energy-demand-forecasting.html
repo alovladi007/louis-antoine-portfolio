@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Energy Demand Forecasting - Generative Time Series</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%); color: #e0e0e0; line-height: 1.6; }
+        .navigation-bar { position: fixed; top: 0; left: 0; right: 0; background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(10px); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; z-index: 1000; border-bottom: 1px solid rgba(102, 126, 234, 0.3); }
+        .nav-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.3s ease; }
+        .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .hero-section { padding: 120px 2rem 4rem; text-align: center; max-width: 1200px; margin: 0 auto; }
+        .hero-title { font-size: 3rem; font-weight: 800; margin-bottom: 1rem; background: linear-gradient(135deg, #667eea, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero-subtitle { font-size: 1.2rem; color: #667eea; margin-bottom: 2rem; }
+        .demo-container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .demo-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; margin-top: 2rem; }
+        .demo-main { background: rgba(102, 126, 234, 0.05); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; }
+        .demo-controls { background: rgba(102, 126, 234, 0.05); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; }
+        .control-group { margin-bottom: 1.5rem; }
+        .control-label { display: block; color: #667eea; font-weight: 600; margin-bottom: 0.5rem; }
+        .control-input { width: 100%; padding: 0.75rem; background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 8px; color: #e0e0e0; font-size: 0.9rem; }
+        .control-slider { width: 100%; margin: 0.5rem 0; }
+        .control-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 8px; cursor: pointer; transition: all 0.3s ease; width: 100%; font-weight: 600; }
+        .control-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .energy-status { background: rgba(20, 20, 20, 0.8); padding: 1rem; border-radius: 8px; margin: 1rem 0; border-left: 4px solid #667eea; }
+        .metric-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin: 1rem 0; }
+        .metric-card { background: rgba(102, 126, 234, 0.1); padding: 1rem; border-radius: 8px; text-align: center; }
+        .metric-value { font-size: 1.2rem; font-weight: 600; color: #667eea; }
+        .metric-label { font-size: 0.9rem; color: #a0a0a0; margin-top: 0.25rem; }
+        .weather-integration { background: rgba(102, 126, 234, 0.1); padding: 1rem; border-radius: 8px; margin: 1rem 0; border: 1px solid rgba(102, 126, 234, 0.2); }
+        @media (max-width: 768px) { .demo-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <nav class="navigation-bar">
+        <div class="nav-title"><i class="fas fa-bolt"></i> Energy Demand Forecasting</div>
+        <a href="generative-timeseries-foundation-suite.html" class="nav-btn"><i class="fas fa-arrow-left"></i> Back to Suite</a>
+    </nav>
+
+    <section class="hero-section">
+        <h1 class="hero-title">Energy Demand Forecasting</h1>
+        <p class="hero-subtitle">Real-time energy demand prediction with seasonal patterns</p>
+        <p style="color: #a0a0a0; max-width: 800px; margin: 0 auto;">Advanced energy demand forecasting with weather integration, seasonal patterns, grid optimization, and smart energy management for efficient power distribution.</p>
+    </section>
+
+    <div class="demo-container">
+        <div class="demo-grid">
+            <div class="demo-main">
+                <!-- Energy Demand Visualization -->
+                <div id="energyChart" style="height: 400px; margin-bottom: 2rem;"></div>
+
+                <!-- Energy Status Display -->
+                <div class="energy-status">
+                    <h3 style="color: #667eea; margin-bottom: 1rem;">Energy Forecast Performance</h3>
+                    <div class="metric-grid">
+                        <div class="metric-card">
+                            <div class="metric-value" id="demandAccuracy">--</div>
+                            <div class="metric-label">Demand Accuracy</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="peakPrediction">--</div>
+                            <div class="metric-label">Peak Prediction</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="weatherImpact">--</div>
+                            <div class="metric-label">Weather Impact</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="gridEfficiency">--</div>
+                            <div class="metric-label">Grid Efficiency</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Weather Integration -->
+                <div class="weather-integration">
+                    <h3 style="color: #667eea; margin-bottom: 1rem;">Weather Integration & Impact</h3>
+                    <div id="weatherChart" style="height: 200px;"></div>
+                </div>
+            </div>
+
+            <div class="demo-controls">
+                <h3 style="color: #667eea; margin-bottom: 1.5rem;">Energy Forecast Controls</h3>
+                
+                <div class="control-group">
+                    <label class="control-label">Energy Sector</label>
+                    <select class="control-input" id="energySector">
+                        <option value="residential">Residential</option>
+                        <option value="commercial">Commercial</option>
+                        <option value="industrial">Industrial</option>
+                        <option value="total">Total Grid</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Forecast Period</label>
+                    <select class="control-input" id="forecastPeriod">
+                        <option value="hourly">Hourly (24 hours)</option>
+                        <option value="daily">Daily (7 days)</option>
+                        <option value="weekly">Weekly (4 weeks)</option>
+                        <option value="monthly">Monthly (3 months)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Weather Integration</label>
+                    <input type="range" class="control-slider" id="weatherWeight" min="0" max="1" step="0.1" value="0.7">
+                    <span style="color: #a0a0a0; font-size: 0.9rem;" id="weatherValue">70%</span>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Seasonal Adjustment</label>
+                    <select class="control-input" id="seasonalAdjustment">
+                        <option value="auto">Auto Detect</option>
+                        <option value="summer">Summer Mode</option>
+                        <option value="winter">Winter Mode</option>
+                        <option value="spring">Spring Mode</option>
+                        <option value="fall">Fall Mode</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Peak Demand Sensitivity</label>
+                    <input type="range" class="control-slider" id="peakSensitivity" min="0.5" max="2.0" step="0.1" value="1.2">
+                    <span style="color: #a0a0a0; font-size: 0.9rem;" id="peakValue">1.2x</span>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Grid Optimization</label>
+                    <select class="control-input" id="gridOptimization">
+                        <option value="none">None</option>
+                        <option value="basic">Basic Load Balancing</option>
+                        <option value="advanced">Advanced Optimization</option>
+                        <option value="smart">Smart Grid Integration</option>
+                    </select>
+                </div>
+
+                <button class="control-btn" id="forecastBtn">
+                    <i class="fas fa-bolt"></i> Forecast Demand
+                </button>
+
+                <button class="control-btn" id="resetBtn" style="background: linear-gradient(135deg, #e74c3c, #c0392b); margin-top: 0.5rem;">
+                    <i class="fas fa-redo"></i> Reset
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class EnergyDemandForecasting {
+            constructor() {
+                this.setupEventListeners();
+                this.isGenerating = false;
+                this.init();
+            }
+
+            setupEventListeners() {
+                // Weather weight
+                document.getElementById('weatherWeight').addEventListener('input', (e) => {
+                    document.getElementById('weatherValue').textContent = (e.target.value * 100).toFixed(0) + '%';
+                });
+
+                // Peak sensitivity
+                document.getElementById('peakSensitivity').addEventListener('input', (e) => {
+                    document.getElementById('peakValue').textContent = e.target.value + 'x';
+                });
+
+                // Buttons
+                document.getElementById('forecastBtn').addEventListener('click', () => {
+                    this.generateForecast();
+                });
+
+                document.getElementById('resetBtn').addEventListener('click', () => {
+                    this.resetForecast();
+                });
+            }
+
+            generateEnergyData(sector, length) {
+                const data = [];
+                const baseTime = new Date();
+                
+                for (let i = 0; i < length; i++) {
+                    const hour = (i % 24);
+                    const dayOfWeek = Math.floor(i / 24) % 7;
+                    const dayOfYear = Math.floor(i / 24) % 365;
+                    
+                    let baseDemand;
+                    let seasonalFactor;
+                    let dailyPattern;
+                    let weeklyPattern;
+                    
+                    // Base demand by sector
+                    switch (sector) {
+                        case 'residential':
+                            baseDemand = 800;
+                            dailyPattern = 200 * Math.sin((hour - 6) * Math.PI / 12);
+                            weeklyPattern = 100 * Math.sin(dayOfWeek * Math.PI / 3.5);
+                            seasonalFactor = 1 + 0.3 * Math.sin((dayOfYear - 80) * Math.PI / 182.5);
+                            break;
+                            
+                        case 'commercial':
+                            baseDemand = 1200;
+                            dailyPattern = 300 * Math.sin((hour - 8) * Math.PI / 10);
+                            weeklyPattern = 200 * (dayOfWeek < 5 ? 1 : 0.3);
+                            seasonalFactor = 1 + 0.2 * Math.sin((dayOfYear - 80) * Math.PI / 182.5);
+                            break;
+                            
+                        case 'industrial':
+                            baseDemand = 2000;
+                            dailyPattern = 100 * Math.sin(hour * Math.PI / 12);
+                            weeklyPattern = 150 * (dayOfWeek < 5 ? 1 : 0.5);
+                            seasonalFactor = 1 + 0.15 * Math.sin((dayOfYear - 80) * Math.PI / 182.5);
+                            break;
+                            
+                        default: // total
+                            baseDemand = 4000;
+                            dailyPattern = 600 * Math.sin((hour - 7) * Math.PI / 11);
+                            weeklyPattern = 400 * Math.sin(dayOfWeek * Math.PI / 3.5);
+                            seasonalFactor = 1 + 0.25 * Math.sin((dayOfYear - 80) * Math.PI / 182.5);
+                    }
+                    
+                    const weatherImpact = 50 * Math.random(); // Simulated weather impact
+                    const randomVariation = 30 * (Math.random() - 0.5);
+                    
+                    const totalDemand = (baseDemand + dailyPattern + weeklyPattern) * seasonalFactor + weatherImpact + randomVariation;
+                    
+                    data.push({
+                        x: new Date(baseTime.getTime() + i * 60000),
+                        y: Math.max(0, totalDemand)
+                    });
+                }
+                
+                return data;
+            }
+
+            generateWeatherData(length) {
+                const weatherData = [];
+                const baseTime = new Date();
+                
+                for (let i = 0; i < length; i++) {
+                    const dayOfYear = Math.floor(i / 24) % 365;
+                    
+                    // Temperature pattern
+                    const temperature = 20 + 15 * Math.sin((dayOfYear - 80) * Math.PI / 182.5) + 
+                                      5 * Math.sin(i * Math.PI / 12) + 3 * Math.random();
+                    
+                    // Humidity pattern
+                    const humidity = 50 + 20 * Math.sin((dayOfYear - 100) * Math.PI / 182.5) + 
+                                    10 * Math.sin(i * Math.PI / 24) + 5 * Math.random();
+                    
+                    weatherData.push({
+                        x: new Date(baseTime.getTime() + i * 60000),
+                        temperature: temperature,
+                        humidity: humidity
+                    });
+                }
+                
+                return weatherData;
+            }
+
+            generateEnergyForecast(historicalData, period, weatherWeight, peakSensitivity) {
+                const forecastData = [];
+                const lastValue = historicalData[historicalData.length - 1].y;
+                const forecastLength = period === 'hourly' ? 24 : 
+                                     period === 'daily' ? 168 : 
+                                     period === 'weekly' ? 672 : 2160;
+                
+                for (let i = 1; i <= forecastLength; i++) {
+                    const baseTime = new Date(historicalData[historicalData.length - 1].x.getTime() + i * 60000);
+                    
+                    // Base forecast with trend
+                    let forecastValue = lastValue + 10 * Math.sin(i * 0.1);
+                    
+                    // Weather impact
+                    const weatherImpact = weatherWeight * 30 * Math.sin(i * 0.05) * Math.random();
+                    
+                    // Peak demand adjustment
+                    const hour = (i % 24);
+                    if (hour >= 17 && hour <= 20) { // Peak hours
+                        forecastValue *= peakSensitivity;
+                    }
+                    
+                    forecastData.push({
+                        x: baseTime,
+                        y: Math.max(0, forecastValue)
+                    });
+                }
+                
+                return forecastData;
+            }
+
+            updateMetrics(sector, period) {
+                const metrics = {
+                    residential: { accuracy: 94.2, peak: 91.8, weather: 0.72, efficiency: 0.89 },
+                    commercial: { accuracy: 92.5, peak: 89.3, weather: 0.68, efficiency: 0.86 },
+                    industrial: { accuracy: 95.1, peak: 93.2, weather: 0.65, efficiency: 0.92 },
+                    total: { accuracy: 93.8, peak: 90.5, weather: 0.70, efficiency: 0.88 }
+                };
+                
+                const periodMultipliers = {
+                    hourly: 1.0,
+                    daily: 0.95,
+                    weekly: 0.90,
+                    monthly: 0.85
+                };
+                
+                const current = metrics[sector];
+                const multiplier = periodMultipliers[period] || 1.0;
+                
+                document.getElementById('demandAccuracy').textContent = (current.accuracy * multiplier).toFixed(1) + '%';
+                document.getElementById('peakPrediction').textContent = (current.peak * multiplier).toFixed(1) + '%';
+                document.getElementById('weatherImpact').textContent = (current.weather * multiplier).toFixed(2);
+                document.getElementById('gridEfficiency').textContent = (current.efficiency * multiplier).toFixed(2);
+            }
+
+            generateWeatherVisualization(weatherData) {
+                const temperatureTrace = {
+                    x: weatherData.map(d => d.x),
+                    y: weatherData.map(d => d.temperature),
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Temperature (°C)',
+                    line: { color: '#e74c3c', width: 2 },
+                    yaxis: 'y'
+                };
+                
+                const humidityTrace = {
+                    x: weatherData.map(d => d.x),
+                    y: weatherData.map(d => d.humidity),
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Humidity (%)',
+                    line: { color: '#3498db', width: 2 },
+                    yaxis: 'y2'
+                };
+                
+                const layout = {
+                    title: 'Weather Impact on Energy Demand',
+                    xaxis: { title: 'Time' },
+                    yaxis: { title: 'Temperature (°C)', side: 'left', color: '#e74c3c' },
+                    yaxis2: { title: 'Humidity (%)', side: 'right', overlaying: 'y', color: '#3498db' },
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    font: { color: '#e0e0e0' },
+                    legend: { font: { color: '#e0e0e0' } }
+                };
+                
+                Plotly.newPlot('weatherChart', [temperatureTrace, humidityTrace], layout, {responsive: true});
+            }
+
+            generateForecast() {
+                if (this.isGenerating) return;
+                
+                this.isGenerating = true;
+                const sector = document.getElementById('energySector').value;
+                const period = document.getElementById('forecastPeriod').value;
+                const weatherWeight = parseFloat(document.getElementById('weatherWeight').value);
+                const peakSensitivity = parseFloat(document.getElementById('peakSensitivity').value);
+                
+                document.getElementById('forecastBtn').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Forecasting...';
+                
+                // Simulate energy forecasting
+                setTimeout(() => {
+                    // Generate historical data
+                    const historicalData = this.generateEnergyData(sector, 168); // 1 week of hourly data
+                    const weatherData = this.generateWeatherData(168);
+                    
+                    // Generate forecast
+                    const forecastData = this.generateEnergyForecast(historicalData, period, weatherWeight, peakSensitivity);
+                    
+                    // Create visualization
+                    const traces = [
+                        {
+                            x: historicalData.map(d => d.x),
+                            y: historicalData.map(d => d.y),
+                            type: 'scatter',
+                            mode: 'lines',
+                            name: 'Historical Demand',
+                            line: { color: '#667eea', width: 3 }
+                        },
+                        {
+                            x: forecastData.map(d => d.x),
+                            y: forecastData.map(d => d.y),
+                            type: 'scatter',
+                            mode: 'lines',
+                            name: 'Forecasted Demand',
+                            line: { color: '#27ae60', width: 3, dash: 'dash' }
+                        }
+                    ];
+                    
+                    const layout = {
+                        title: `${sector.charAt(0).toUpperCase() + sector.slice(1)} Energy Demand Forecast`,
+                        xaxis: { title: 'Time' },
+                        yaxis: { title: 'Energy Demand (MW)' },
+                        plot_bgcolor: 'rgba(0,0,0,0)',
+                        paper_bgcolor: 'rgba(0,0,0,0)',
+                        font: { color: '#e0e0e0' },
+                        legend: { font: { color: '#e0e0e0' } }
+                    };
+                    
+                    Plotly.newPlot('energyChart', traces, layout, {responsive: true});
+                    
+                    // Generate weather visualization
+                    this.generateWeatherVisualization(weatherData);
+                    
+                    // Update metrics
+                    this.updateMetrics(sector, period);
+                    
+                    this.isGenerating = false;
+                    document.getElementById('forecastBtn').innerHTML = '<i class="fas fa-bolt"></i> Forecast Demand';
+                }, 1000 + Math.random() * 500);
+            }
+
+            resetForecast() {
+                document.getElementById('energyChart').innerHTML = '';
+                document.getElementById('weatherChart').innerHTML = '';
+                
+                document.getElementById('demandAccuracy').textContent = '--';
+                document.getElementById('peakPrediction').textContent = '--';
+                document.getElementById('weatherImpact').textContent = '--';
+                document.getElementById('gridEfficiency').textContent = '--';
+            }
+
+            init() {
+                // Initialize with default values
+                this.updateMetrics('total', 'hourly');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            new EnergyDemandForecasting();
+        });
+    </script>
+</body>
+</html>
