@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Execution - Interactive Demo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%); color: #e0e0e0; line-height: 1.6; }
+        .navigation-bar { position: fixed; top: 0; left: 0; right: 0; background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(10px); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; z-index: 1000; border-bottom: 1px solid rgba(102, 126, 234, 0.3); }
+        .nav-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.3s ease; }
+        .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .hero-section { padding: 120px 2rem 4rem; text-align: center; max-width: 1200px; margin: 0 auto; }
+        .hero-title { font-size: 3rem; font-weight: 800; margin-bottom: 1rem; background: linear-gradient(135deg, #667eea, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero-subtitle { font-size: 1.2rem; color: #667eea; margin-bottom: 2rem; }
+        .content-container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        .section { margin-bottom: 3rem; }
+        .section-title { font-size: 2rem; font-weight: 700; color: #667eea; margin-bottom: 1rem; border-bottom: 2px solid rgba(102, 126, 234, 0.3); padding-bottom: 0.5rem; }
+        .demo-container { background: rgba(20, 20, 20, 0.8); border-radius: 15px; padding: 2rem; margin: 2rem 0; border: 1px solid rgba(102, 126, 234, 0.3); }
+        .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .control-group { background: rgba(102, 126, 234, 0.1); padding: 1rem; border-radius: 10px; border: 1px solid rgba(102, 126, 234, 0.2); }
+        .control-label { color: #667eea; font-weight: 600; margin-bottom: 0.5rem; display: block; }
+        .control-input { width: 100%; padding: 0.5rem; background: rgba(30, 30, 30, 0.8); border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 5px; color: #e0e0e0; }
+        .btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .chart-container { background: rgba(30, 30, 30, 0.8); border-radius: 10px; padding: 1rem; margin: 1rem 0; border: 1px solid rgba(102, 126, 234, 0.2); }
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin: 1rem 0; }
+        .metric-card { background: rgba(102, 126, 234, 0.1); padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid rgba(102, 126, 234, 0.2); }
+        .metric-value { font-size: 1.5rem; font-weight: 700; color: #667eea; }
+        .metric-label { font-size: 0.9rem; color: #a0a0a0; margin-top: 0.25rem; }
+        .order-book { background: rgba(30, 30, 30, 0.8); border-radius: 10px; padding: 1rem; margin: 1rem 0; border: 1px solid rgba(102, 126, 234, 0.2); }
+        .order-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1rem; padding: 0.5rem; border-bottom: 1px solid rgba(102, 126, 234, 0.1); }
+        .order-header { font-weight: 600; color: #667eea; }
+        .buy-order { color: #28a745; }
+        .sell-order { color: #dc3545; }
+        .status-indicator { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 0.5rem; }
+        .status-connected { background: #28a745; }
+        .status-disconnected { background: #dc3545; }
+        .status-executing { background: #ffc107; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    </style>
+</head>
+<body>
+    <nav class="navigation-bar">
+        <div class="nav-title"><i class="fas fa-bolt"></i> Real-Time Execution</div>
+        <a href="rl-trading-bot-suite.html" class="nav-btn"><i class="fas fa-arrow-left"></i> Back to Suite</a>
+    </nav>
+
+    <section class="hero-section">
+        <h1 class="hero-title">Real-Time Execution</h1>
+        <p class="hero-subtitle">Live Trading Execution Simulation</p>
+        <p style="color: #a0a0a0; max-width: 800px; margin: 0 auto;">Live trading execution simulation with order management, slippage modeling, and latency optimization for real-world deployment.</p>
+    </section>
+
+    <div class="content-container">
+        <!-- Execution Configuration -->
+        <section class="section">
+            <h2 class="section-title">Execution Configuration</h2>
+            <div class="demo-container">
+                <div class="controls">
+                    <div class="control-group">
+                        <label class="control-label">Exchange Connection</label>
+                        <select id="exchange" class="control-input">
+                            <option value="simulated">Simulated Exchange</option>
+                            <option value="alpaca">Alpaca Markets</option>
+                            <option value="interactive">Interactive Brokers</option>
+                            <option value="tdameritrade">TD Ameritrade</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Connection Status</label>
+                        <div style="display: flex; align-items: center; padding: 0.5rem;">
+                            <span id="connection-status" class="status-indicator status-disconnected"></span>
+                            <span id="connection-text">Disconnected</span>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Latency (ms)</label>
+                        <input type="number" id="latency" class="control-input" value="5" min="1" max="100" step="1">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Slippage Model</label>
+                        <select id="slippage-model" class="control-input">
+                            <option value="fixed">Fixed Slippage</option>
+                            <option value="volume">Volume-Based</option>
+                            <option value="volatility">Volatility-Based</option>
+                            <option value="adaptive">Adaptive</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                    <button id="connect-exchange" class="btn">Connect to Exchange</button>
+                    <button id="disconnect-exchange" class="btn" disabled>Disconnect</button>
+                    <button id="start-execution" class="btn" disabled>Start Live Execution</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Real-Time Metrics -->
+        <section class="section">
+            <h2 class="section-title">Execution Performance Metrics</h2>
+            <div class="demo-container">
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value" id="avg-latency">5.2ms</div>
+                        <div class="metric-label">Avg Latency</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="execution-rate">99.7%</div>
+                        <div class="metric-label">Execution Rate</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="avg-slippage">0.03%</div>
+                        <div class="metric-label">Avg Slippage</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="orders-filled">1,247</div>
+                        <div class="metric-label">Orders Filled</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="rejections">3</div>
+                        <div class="metric-label">Rejections</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="partial-fills">12</div>
+                        <div class="metric-label">Partial Fills</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Live Order Book -->
+        <section class="section">
+            <h2 class="section-title">Live Order Book</h2>
+            <div class="demo-container">
+                <div class="order-book">
+                    <div class="order-row order-header">
+                        <div>Symbol</div>
+                        <div>Side</div>
+                        <div>Quantity</div>
+                        <div>Price</div>
+                        <div>Status</div>
+                        <div>Time</div>
+                    </div>
+                    <div id="order-entries"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Execution Charts -->
+        <section class="section">
+            <h2 class="section-title">Execution Analysis</h2>
+            <div class="demo-container">
+                <div class="chart-container">
+                    <h3 style="color: #667eea; margin-bottom: 1rem;">Latency Distribution</h3>
+                    <div id="latency-chart" style="height: 300px;"></div>
+                </div>
+                
+                <div class="chart-container">
+                    <h3 style="color: #667eea; margin-bottom: 1rem;">Slippage Analysis</h3>
+                    <div id="slippage-chart" style="height: 300px;"></div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        let isConnected = false;
+        let isExecuting = false;
+        let orderCounter = 0;
+
+        function addOrderEntry(symbol, side, quantity, price, status) {
+            const orderEntries = document.getElementById('order-entries');
+            const orderRow = document.createElement('div');
+            orderRow.className = 'order-row';
+            orderRow.innerHTML = `
+                <div>${symbol}</div>
+                <div class="${side === 'BUY' ? 'buy-order' : 'sell-order'}">${side}</div>
+                <div>${quantity}</div>
+                <div>$${price.toFixed(2)}</div>
+                <div>${status}</div>
+                <div>${new Date().toLocaleTimeString()}</div>
+            `;
+            orderEntries.insertBefore(orderRow, orderEntries.firstChild);
+            
+            // Keep only last 20 orders
+            while (orderEntries.children.length > 21) {
+                orderEntries.removeChild(orderEntries.lastChild);
+            }
+        }
+
+        function simulateExecution() {
+            if (!isExecuting) return;
+            
+            const symbols = ['AAPL', 'GOOGL', 'MSFT', 'TSLA', 'AMZN'];
+            const sides = ['BUY', 'SELL'];
+            const statuses = ['FILLED', 'PARTIAL', 'PENDING'];
+            
+            const symbol = symbols[Math.floor(Math.random() * symbols.length)];
+            const side = sides[Math.floor(Math.random() * sides.length)];
+            const quantity = Math.floor(Math.random() * 1000) + 100;
+            const price = 100 + Math.random() * 200;
+            const status = statuses[Math.floor(Math.random() * statuses.length)];
+            
+            addOrderEntry(symbol, side, quantity, price, status);
+            
+            // Update metrics
+            document.getElementById('orders-filled').textContent = (parseInt(document.getElementById('orders-filled').textContent.replace(',', '')) + 1).toLocaleString();
+            document.getElementById('avg-latency').textContent = (5 + Math.random() * 2).toFixed(1) + 'ms';
+            document.getElementById('avg-slippage').textContent = (Math.random() * 0.1).toFixed(3) + '%';
+        }
+
+        // Event listeners
+        document.getElementById('connect-exchange').addEventListener('click', () => {
+            setTimeout(() => {
+                isConnected = true;
+                document.getElementById('connection-status').className = 'status-indicator status-connected';
+                document.getElementById('connection-text').textContent = 'Connected';
+                document.getElementById('connect-exchange').disabled = true;
+                document.getElementById('disconnect-exchange').disabled = false;
+                document.getElementById('start-execution').disabled = false;
+            }, 1000);
+        });
+
+        document.getElementById('disconnect-exchange').addEventListener('click', () => {
+            isConnected = false;
+            isExecuting = false;
+            document.getElementById('connection-status').className = 'status-indicator status-disconnected';
+            document.getElementById('connection-text').textContent = 'Disconnected';
+            document.getElementById('connect-exchange').disabled = false;
+            document.getElementById('disconnect-exchange').disabled = true;
+            document.getElementById('start-execution').disabled = true;
+        });
+
+        document.getElementById('start-execution').addEventListener('click', () => {
+            isExecuting = true;
+            document.getElementById('connection-status').className = 'status-indicator status-executing';
+            document.getElementById('connection-text').textContent = 'Executing';
+            document.getElementById('start-execution').disabled = true;
+            
+            // Start simulation
+            setInterval(simulateExecution, 2000);
+        });
+
+        // Initialize charts
+        function initializeCharts() {
+            // Latency Chart
+            const latencyData = [{
+                x: ['1ms', '2ms', '3ms', '4ms', '5ms', '6ms', '7ms', '8ms', '9ms', '10ms'],
+                y: [5, 12, 18, 25, 35, 28, 20, 15, 8, 3],
+                type: 'bar',
+                name: 'Latency Distribution',
+                marker: { color: '#667eea' }
+            }];
+
+            const latencyLayout = {
+                title: 'Order Execution Latency Distribution',
+                xaxis: { title: 'Latency Range' },
+                yaxis: { title: 'Number of Orders' },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' }
+            };
+
+            Plotly.newPlot('latency-chart', latencyData, latencyLayout);
+
+            // Slippage Chart
+            const slippageData = [{
+                x: ['Positive', 'Negative', 'Zero'],
+                y: [45, 35, 20],
+                type: 'pie',
+                name: 'Slippage Distribution',
+                marker: {
+                    colors: ['#dc3545', '#28a745', '#ffc107']
+                }
+            }];
+
+            const slippageLayout = {
+                title: 'Slippage Distribution',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' }
+            };
+
+            Plotly.newPlot('slippage-chart', slippageData, slippageLayout);
+        }
+
+        // Initialize charts on load
+        initializeCharts();
+    </script>
+</body>
+</html>
