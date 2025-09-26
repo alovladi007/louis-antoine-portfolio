@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALE Etching Demo - Atomic Layer Materials Process</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%);
+            color: #e0e0e0;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .navigation-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .main-content {
+            padding: 8rem 2rem 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #a0a0a0;
+            margin-bottom: 2rem;
+        }
+
+        .demo-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .control-panel {
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.8), rgba(30, 30, 30, 0.8));
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 15px;
+            padding: 2rem;
+        }
+
+        .panel-title {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .control-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #a0a0a0;
+            font-weight: 500;
+        }
+
+        .control-input {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(40, 40, 40, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 1rem;
+        }
+
+        .control-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 1rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .simulation-area {
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.8), rgba(30, 30, 30, 0.8));
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 15px;
+            padding: 2rem;
+            position: relative;
+        }
+
+        .simulation-canvas {
+            width: 100%;
+            height: 400px;
+            background: #000;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cycle-indicator {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            background: rgba(239, 68, 68, 0.8);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+
+        .process-status {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(40, 180, 99, 0.8);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+
+        .metrics-panel {
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.8), rgba(30, 30, 30, 0.8));
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+
+        .metric-card {
+            text-align: center;
+            padding: 1rem;
+            background: rgba(239, 68, 68, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #ef4444;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            color: #a0a0a0;
+            font-size: 0.9rem;
+        }
+
+        .chart-container {
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.8), rgba(30, 30, 30, 0.8));
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .chart-title {
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            color: #fff;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .demo-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .main-content {
+                padding: 6rem 1rem 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navigation-bar">
+        <div>
+            <a href="atomic-layer-materials-complete-suite.html" class="nav-btn">
+                <i class="fas fa-arrow-left"></i> Back to Suite
+            </a>
+        </div>
+        <div>
+            <span style="color: #667eea; font-weight: 600;">ALE Etching Demo</span>
+        </div>
+    </nav>
+
+    <div class="main-content">
+        <!-- Header -->
+        <div class="header">
+            <h1 class="title">ALE Etching Demo</h1>
+            <p class="subtitle">Interactive atomic layer etching process with selective removal, surface modification, and anisotropic etching capabilities</p>
+        </div>
+
+        <!-- Metrics Panel -->
+        <div class="metrics-panel">
+            <h3 class="panel-title">
+                <i class="fas fa-chart-line"></i> Etching Metrics
+            </h3>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value" id="cycle-count">0</div>
+                    <div class="metric-label">Etch Cycles</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="etch-depth">0.0 Å</div>
+                    <div class="metric-label">Etch Depth</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="etch-rate">0.0 Å/cycle</div>
+                    <div class="metric-label">Etch Rate</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="selectivity">0:1</div>
+                    <div class="metric-label">Selectivity</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="anisotropy">0%</div>
+                    <div class="metric-label">Anisotropy</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="surface-quality">Good</div>
+                    <div class="metric-label">Surface Quality</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Demo Area -->
+        <div class="demo-container">
+            <!-- Control Panel -->
+            <div class="control-panel">
+                <h3 class="panel-title">
+                    <i class="fas fa-sliders-h"></i> Etching Controls
+                </h3>
+                
+                <div class="control-group">
+                    <label class="control-label">Target Material</label>
+                    <select class="control-input" id="material-select">
+                        <option value="si">Silicon (Si)</option>
+                        <option value="sin">Silicon Nitride (Si₃N₄)</option>
+                        <option value="al2o3">Aluminum Oxide (Al₂O₃)</option>
+                        <option value="hfo2">Hafnium Oxide (HfO₂)</option>
+                        <option value="tin">Titanium Nitride (TiN)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Etch Gas</label>
+                    <select class="control-input" id="etch-gas">
+                        <option value="cl2">Chlorine (Cl₂)</option>
+                        <option value="f2">Fluorine (F₂)</option>
+                        <option value="sf6">Sulfur Hexafluoride (SF₆)</option>
+                        <option value="cf4">Carbon Tetrafluoride (CF₄)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Temperature (°C)</label>
+                    <input type="range" class="control-input" id="temperature" min="50" max="300" value="150">
+                    <div style="text-align: center; color: #ef4444; font-weight: bold;" id="temp-value">150°C</div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Ion Energy (eV)</label>
+                    <input type="range" class="control-input" id="ion-energy" min="10" max="100" value="50">
+                    <div style="text-align: center; color: #ef4444; font-weight: bold;" id="ion-value">50 eV</div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Etch Time (s)</label>
+                    <input type="range" class="control-input" id="etch-time" min="0.5" max="10.0" step="0.1" value="2.0">
+                    <div style="text-align: center; color: #ef4444; font-weight: bold;" id="time-value">2.0s</div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Purge Time (s)</label>
+                    <input type="range" class="control-input" id="purge-time" min="1.0" max="8.0" step="0.5" value="3.0">
+                    <div style="text-align: center; color: #ef4444; font-weight: bold;" id="purge-value">3.0s</div>
+                </div>
+
+                <button class="btn" id="start-etching" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                    <i class="fas fa-play"></i> Start Etching
+                </button>
+                <button class="btn" id="pause-etching" style="margin-top: 0.5rem; background: linear-gradient(135deg, #f59e0b, #d97706);" disabled>
+                    <i class="fas fa-pause"></i> Pause
+                </button>
+                <button class="btn" id="reset-etching" style="margin-top: 0.5rem; background: linear-gradient(135deg, #6b7280, #4b5563);">
+                    <i class="fas fa-redo"></i> Reset
+                </button>
+            </div>
+
+            <!-- Simulation Area -->
+            <div class="simulation-area">
+                <h3 class="panel-title">
+                    <i class="fas fa-cut"></i> Etching Visualization
+                </h3>
+                <div class="simulation-canvas" id="simulation-canvas">
+                    <div class="cycle-indicator" id="cycle-indicator">Cycle: 0</div>
+                    <div class="process-status" id="process-status">Ready</div>
+                    <canvas id="etch-canvas" width="400" height="400" style="width: 100%; height: 100%;"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Etch Rate Chart -->
+        <div class="chart-container">
+            <h3 class="chart-title">Etch Rate vs. Cycle Number</h3>
+            <div id="etch-rate-chart" style="height: 300px;"></div>
+        </div>
+
+        <!-- Selectivity Chart -->
+        <div class="chart-container">
+            <h3 class="chart-title">Etch Selectivity Analysis</h3>
+            <div id="selectivity-chart" style="height: 300px;"></div>
+        </div>
+    </div>
+
+    <script>
+        class ALESimulator {
+            constructor() {
+                this.isRunning = false;
+                this.isPaused = false;
+                this.cycleCount = 0;
+                this.etchDepth = 0;
+                this.etchData = [];
+                this.selectivityData = [];
+                this.canvas = document.getElementById('etch-canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.animationId = null;
+                
+                this.initializeCanvas();
+                this.setupEventListeners();
+                this.initializeCharts();
+            }
+
+            initializeCanvas() {
+                const rect = this.canvas.getBoundingClientRect();
+                this.canvas.width = rect.width;
+                this.canvas.height = rect.height;
+                this.drawInitialStructure();
+            }
+
+            setupEventListeners() {
+                // Control inputs
+                document.getElementById('temperature').addEventListener('input', (e) => {
+                    document.getElementById('temp-value').textContent = e.target.value + '°C';
+                });
+
+                document.getElementById('ion-energy').addEventListener('input', (e) => {
+                    document.getElementById('ion-value').textContent = e.target.value + ' eV';
+                });
+
+                document.getElementById('etch-time').addEventListener('input', (e) => {
+                    document.getElementById('time-value').textContent = e.target.value + 's';
+                });
+
+                document.getElementById('purge-time').addEventListener('input', (e) => {
+                    document.getElementById('purge-value').textContent = e.target.value + 's';
+                });
+
+                // Control buttons
+                document.getElementById('start-etching').addEventListener('click', () => {
+                    this.startEtching();
+                });
+
+                document.getElementById('pause-etching').addEventListener('click', () => {
+                    this.pauseEtching();
+                });
+
+                document.getElementById('reset-etching').addEventListener('click', () => {
+                    this.resetEtching();
+                });
+            }
+
+            initializeCharts() {
+                // Etch rate chart
+                Plotly.newPlot('etch-rate-chart', [{
+                    x: [],
+                    y: [],
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: 'Etch Rate',
+                    line: { color: '#ef4444', width: 3 },
+                    marker: { size: 8 }
+                }], {
+                    title: 'Etch Rate vs. Cycle Number',
+                    xaxis: { title: 'Cycle Number' },
+                    yaxis: { title: 'Etch Rate (Å/cycle)' },
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    font: { color: '#e0e0e0' },
+                    margin: { t: 40, r: 40, b: 60, l: 60 }
+                });
+
+                // Selectivity chart
+                Plotly.newPlot('selectivity-chart', [{
+                    x: ['SiO₂', 'Si₃N₄', 'Al₂O₃', 'HfO₂', 'TiN'],
+                    y: [1, 120, 80, 60, 40],
+                    type: 'bar',
+                    name: 'Selectivity vs SiO₂',
+                    marker: { color: '#10b981' }
+                }], {
+                    title: 'Etch Selectivity Analysis',
+                    xaxis: { title: 'Material' },
+                    yaxis: { title: 'Selectivity Ratio' },
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    font: { color: '#e0e0e0' },
+                    margin: { t: 40, r: 40, b: 60, l: 60 }
+                });
+            }
+
+            drawInitialStructure() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Draw substrate
+                this.ctx.fillStyle = '#4a5568';
+                this.ctx.fillRect(50, 100, this.canvas.width - 100, 200);
+                
+                // Draw mask layer
+                this.ctx.fillStyle = '#6b7280';
+                this.ctx.fillRect(80, 80, 120, 20);
+                this.ctx.fillRect(200, 80, 120, 20);
+                
+                // Draw target material layer
+                this.ctx.fillStyle = '#667eea';
+                this.ctx.fillRect(50, 120, this.canvas.width - 100, 80);
+                
+                // Draw etch profile
+                if (this.etchDepth > 0) {
+                    this.drawEtchProfile();
+                }
+            }
+
+            drawEtchProfile() {
+                const etchDepth = Math.min(this.etchDepth * 2, 80);
+                const material = document.getElementById('material-select').value;
+                
+                // Different colors for different materials
+                const materialColors = {
+                    'si': '#667eea',
+                    'sin': '#8b5cf6',
+                    'al2o3': '#f59e0b',
+                    'hfo2': '#ef4444',
+                    'tin': '#10b981'
+                };
+                
+                this.ctx.fillStyle = materialColors[material] || '#667eea';
+                
+                // Draw anisotropic etch profile
+                this.ctx.beginPath();
+                this.ctx.moveTo(80, 120);
+                this.ctx.lineTo(80 + etchDepth * 0.5, 120 - etchDepth);
+                this.ctx.lineTo(200 - etchDepth * 0.5, 120 - etchDepth);
+                this.ctx.lineTo(200, 120);
+                this.ctx.closePath();
+                this.ctx.fill();
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(200, 120);
+                this.ctx.lineTo(200 + etchDepth * 0.5, 120 - etchDepth);
+                this.ctx.lineTo(320 - etchDepth * 0.5, 120 - etchDepth);
+                this.ctx.lineTo(320, 120);
+                this.ctx.closePath();
+                this.ctx.fill();
+            }
+
+            async startEtching() {
+                if (this.isRunning) return;
+                
+                this.isRunning = true;
+                this.isPaused = false;
+                
+                document.getElementById('start-etching').disabled = true;
+                document.getElementById('pause-etching').disabled = false;
+                document.getElementById('process-status').textContent = 'Etching';
+                
+                this.runALEProcess();
+            }
+
+            pauseEtching() {
+                this.isPaused = !this.isPaused;
+                document.getElementById('process-status').textContent = this.isPaused ? 'Paused' : 'Etching';
+                document.getElementById('pause-etching').innerHTML = this.isPaused ? 
+                    '<i class="fas fa-play"></i> Resume' : '<i class="fas fa-pause"></i> Pause';
+            }
+
+            resetEtching() {
+                this.isRunning = false;
+                this.isPaused = false;
+                this.cycleCount = 0;
+                this.etchDepth = 0;
+                this.etchData = [];
+                
+                document.getElementById('start-etching').disabled = false;
+                document.getElementById('pause-etching').disabled = true;
+                document.getElementById('pause-etching').innerHTML = '<i class="fas fa-pause"></i> Pause';
+                document.getElementById('process-status').textContent = 'Ready';
+                
+                this.updateMetrics();
+                this.updateCharts();
+                this.drawInitialStructure();
+            }
+
+            async runALEProcess() {
+                const material = document.getElementById('material-select').value;
+                const etchGas = document.getElementById('etch-gas').value;
+                const temperature = parseFloat(document.getElementById('temperature').value);
+                const ionEnergy = parseFloat(document.getElementById('ion-energy').value);
+                const etchTime = parseFloat(document.getElementById('etch-time').value);
+                const purgeTime = parseFloat(document.getElementById('purge-time').value);
+
+                const materialProperties = {
+                    'si': { etchRate: 2.3, selectivity: 150 },
+                    'sin': { etchRate: 1.8, selectivity: 120 },
+                    'al2o3': { etchRate: 1.2, selectivity: 80 },
+                    'hfo2': { etchRate: 0.9, selectivity: 60 },
+                    'tin': { etchRate: 0.8, selectivity: 40 }
+                };
+
+                const properties = materialProperties[material];
+
+                while (this.isRunning && this.cycleCount < 30) {
+                    if (this.isPaused) {
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        continue;
+                    }
+
+                    // Passivation phase
+                    document.getElementById('process-status').textContent = 'Passivation';
+                    await this.simulatePhase(etchTime * 500);
+
+                    // Etch phase
+                    document.getElementById('process-status').textContent = 'Etching';
+                    await this.simulatePhase(etchTime * 1000);
+
+                    // Purge phase
+                    document.getElementById('process-status').textContent = 'Purging';
+                    await this.simulatePhase(purgeTime * 500);
+
+                    // Complete cycle
+                    this.cycleCount++;
+                    this.etchDepth += properties.etchRate;
+                    
+                    // Add some realistic variation
+                    const variation = (Math.random() - 0.5) * 0.2;
+                    this.etchDepth += variation;
+                    
+                    this.etchData.push({
+                        cycle: this.cycleCount,
+                        rate: properties.etchRate + variation
+                    });
+
+                    this.updateMetrics();
+                    this.updateCharts();
+                    this.drawInitialStructure();
+
+                    document.getElementById('cycle-indicator').textContent = `Cycle: ${this.cycleCount}`;
+                    document.getElementById('process-status').textContent = 'Cycle Complete';
+                }
+
+                if (this.cycleCount >= 30) {
+                    document.getElementById('process-status').textContent = 'Etching Complete';
+                    document.getElementById('start-etching').disabled = false;
+                    document.getElementById('pause-etching').disabled = true;
+                    this.isRunning = false;
+                }
+            }
+
+            async simulatePhase(duration) {
+                const startTime = Date.now();
+                while (Date.now() - startTime < duration && this.isRunning) {
+                    if (!this.isPaused) {
+                        this.drawInitialStructure();
+                        await new Promise(resolve => setTimeout(resolve, 50));
+                    } else {
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
+                }
+            }
+
+            updateMetrics() {
+                document.getElementById('cycle-count').textContent = this.cycleCount;
+                document.getElementById('etch-depth').textContent = this.etchDepth.toFixed(1) + ' Å';
+                
+                const avgEtchRate = this.etchData.length > 0 ? 
+                    this.etchData.reduce((sum, d) => sum + d.rate, 0) / this.etchData.length : 0;
+                document.getElementById('etch-rate').textContent = avgEtchRate.toFixed(2) + ' Å/cycle';
+                
+                // Calculate selectivity
+                const material = document.getElementById('material-select').value;
+                const materialProperties = {
+                    'si': { selectivity: 150 },
+                    'sin': { selectivity: 120 },
+                    'al2o3': { selectivity: 80 },
+                    'hfo2': { selectivity: 60 },
+                    'tin': { selectivity: 40 }
+                };
+                const selectivity = materialProperties[material].selectivity;
+                document.getElementById('selectivity').textContent = selectivity + ':1';
+                
+                // Calculate anisotropy
+                const anisotropy = Math.min(100, 95 + this.cycleCount * 0.2);
+                document.getElementById('anisotropy').textContent = anisotropy.toFixed(0) + '%';
+                
+                // Calculate surface quality
+                const quality = this.cycleCount < 10 ? 'Excellent' : 
+                               this.cycleCount < 20 ? 'Good' : 'Fair';
+                document.getElementById('surface-quality').textContent = quality;
+            }
+
+            updateCharts() {
+                if (this.etchData.length > 0) {
+                    const etchChart = {
+                        x: [this.etchData.map(d => d.cycle)],
+                        y: [this.etchData.map(d => d.rate)]
+                    };
+                    Plotly.redraw('etch-rate-chart');
+                }
+            }
+        }
+
+        // Initialize simulator when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new ALESimulator();
+        });
+    </script>
+</body>
+</html>
