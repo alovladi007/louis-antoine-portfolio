@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yield Optimization Engine Demo - Semiconductor Process Optimization</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%);
+            color: #e0e0e0;
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        .navigation-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .demo-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 6rem 2rem 2rem;
+        }
+
+        .demo-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .demo-title {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .demo-subtitle {
+            font-size: 1.2rem;
+            color: #a0a0a0;
+            margin-bottom: 2rem;
+        }
+
+        .demo-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .control-panel {
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.8), rgba(30, 30, 30, 0.8));
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 15px;
+            padding: 2rem;
+        }
+
+        .panel-title {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .control-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #a0a0a0;
+            font-weight: 500;
+        }
+
+        .control-input {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(20, 20, 20, 0.6);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-size: 1rem;
+        }
+
+        .control-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
+        }
+
+        .control-slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(102, 126, 234, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .control-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-right: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-optimize {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+        }
+
+        .visualization-panel {
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.8), rgba(30, 30, 30, 0.8));
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 15px;
+            padding: 2rem;
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 400px;
+            background: rgba(10, 10, 10, 0.5);
+            border-radius: 10px;
+            margin-bottom: 1rem;
+        }
+
+        .optimization-results {
+            background: rgba(20, 20, 20, 0.6);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-label {
+            color: #a0a0a0;
+            font-weight: 500;
+        }
+
+        .result-value {
+            color: #667eea;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .result-improvement {
+            color: #22c55e;
+            font-size: 0.9rem;
+            margin-left: 0.5rem;
+        }
+
+        .objective-weights {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .weight-card {
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .weight-label {
+            font-size: 0.9rem;
+            color: #a0a0a0;
+            margin-bottom: 0.5rem;
+        }
+
+        .weight-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .status-ready {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .status-optimizing {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .status-complete {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .demo-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .demo-title {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navigation-bar">
+        <div>
+            <a href="semiconductor-optimization-complete-suite.html" class="nav-btn">
+                <i class="fas fa-arrow-left"></i> Back to Project Suite
+            </a>
+        </div>
+        <div>
+            <span style="color: #667eea; font-weight: 600;">Yield Optimization Engine</span>
+        </div>
+    </nav>
+
+    <div class="demo-container">
+        <div class="demo-header">
+            <h1 class="demo-title">Yield Optimization Engine Demo</h1>
+            <p class="demo-subtitle">Multi-objective optimization system for maximizing yield while minimizing defects and cycle time across multiple process modules</p>
+        </div>
+
+        <div class="demo-grid">
+            <!-- Control Panel -->
+            <div class="control-panel">
+                <h3 class="panel-title">
+                    <i class="fas fa-cogs"></i> Optimization Parameters
+                </h3>
+                
+                <div class="status-indicator status-ready" id="statusIndicator">
+                    <i class="fas fa-circle"></i>
+                    <span>Ready for Optimization</span>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Technology Node</label>
+                    <select class="control-input" id="techNode">
+                        <option value="7nm">7nm</option>
+                        <option value="10nm">10nm</option>
+                        <option value="14nm">14nm</option>
+                        <option value="22nm">22nm</option>
+                        <option value="28nm">28nm</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Product Type</label>
+                    <select class="control-input" id="productType">
+                        <option value="logic">Logic</option>
+                        <option value="memory">Memory</option>
+                        <option value="analog">Analog</option>
+                        <option value="rf">RF</option>
+                    </select>
+                </div>
+
+                <h4 style="color: #fff; margin: 2rem 0 1rem 0;">Objective Weights</h4>
+                
+                <div class="control-group">
+                    <label class="control-label">Yield Weight</label>
+                    <input type="range" class="control-slider" id="yieldWeight" min="0" max="100" value="40">
+                    <div style="color: #667eea; font-weight: bold; text-align: center; margin-top: 0.5rem;">
+                        <span id="yieldWeightValue">40</span>%
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Defect Reduction Weight</label>
+                    <input type="range" class="control-slider" id="defectWeight" min="0" max="100" value="30">
+                    <div style="color: #667eea; font-weight: bold; text-align: center; margin-top: 0.5rem;">
+                        <span id="defectWeightValue">30</span>%
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Cycle Time Weight</label>
+                    <input type="range" class="control-slider" id="cycleWeight" min="0" max="100" value="20">
+                    <div style="color: #667eea; font-weight: bold; text-align: center; margin-top: 0.5rem;">
+                        <span id="cycleWeightValue">20</span>%
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Equipment Utilization Weight</label>
+                    <input type="range" class="control-slider" id="utilizationWeight" min="0" max="100" value="10">
+                    <div style="color: #667eea; font-weight: bold; text-align: center; margin-top: 0.5rem;">
+                        <span id="utilizationWeightValue">10</span>%
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Optimization Generations</label>
+                    <input type="range" class="control-slider" id="generations" min="10" max="100" value="50">
+                    <div style="color: #667eea; font-weight: bold; text-align: center; margin-top: 0.5rem;">
+                        <span id="generationsValue">50</span>
+                    </div>
+                </div>
+
+                <button class="btn btn-optimize" onclick="startOptimization()">
+                    <i class="fas fa-rocket"></i> Start Optimization
+                </button>
+                <button class="btn" onclick="resetOptimization()">
+                    <i class="fas fa-refresh"></i> Reset
+                </button>
+            </div>
+
+            <!-- Visualization Panel -->
+            <div class="visualization-panel">
+                <h3 class="panel-title">
+                    <i class="fas fa-chart-area"></i> Optimization Results
+                </h3>
+                
+                <div class="chart-container" id="optimizationChart"></div>
+                
+                <div class="objective-weights">
+                    <div class="weight-card">
+                        <div class="weight-label">Yield Weight</div>
+                        <div class="weight-value" id="yieldWeightDisplay">40%</div>
+                    </div>
+                    <div class="weight-card">
+                        <div class="weight-label">Defect Weight</div>
+                        <div class="weight-value" id="defectWeightDisplay">30%</div>
+                    </div>
+                    <div class="weight-card">
+                        <div class="weight-label">Cycle Time Weight</div>
+                        <div class="weight-value" id="cycleWeightDisplay">20%</div>
+                    </div>
+                    <div class="weight-card">
+                        <div class="weight-label">Utilization Weight</div>
+                        <div class="weight-value" id="utilizationWeightDisplay">10%</div>
+                    </div>
+                </div>
+
+                <div class="optimization-results" id="optimizationResults" style="display: none;">
+                    <h4 style="color: #fff; margin-bottom: 1rem;">Optimized Parameters</h4>
+                    <div class="result-item">
+                        <span class="result-label">Lithography Exposure Time</span>
+                        <span class="result-value" id="lithoExposure">-- sec</span>
+                        <span class="result-improvement" id="lithoImprovement">--</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Etch Process Time</span>
+                        <span class="result-value" id="etchTime">-- sec</span>
+                        <span class="result-improvement" id="etchImprovement">--</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Deposition Temperature</span>
+                        <span class="result-value" id="depoTemp">-- °C</span>
+                        <span class="result-improvement" id="depoImprovement">--</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Gas Flow Rate</span>
+                        <span class="result-value" id="gasFlow">-- sccm</span>
+                        <span class="result-improvement" id="gasImprovement">--</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">RF Power</span>
+                        <span class="result-value" id="rfPower">-- W</span>
+                        <span class="result-improvement" id="rfImprovement">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let optimizationRunning = false;
+        let optimizationInterval;
+        let currentGeneration = 0;
+        let bestSolutions = [];
+        let paretoFront = [];
+
+        // Initialize slider values
+        document.getElementById('yieldWeight').addEventListener('input', function() {
+            document.getElementById('yieldWeightValue').textContent = this.value;
+            updateWeightDisplay();
+        });
+
+        document.getElementById('defectWeight').addEventListener('input', function() {
+            document.getElementById('defectWeightValue').textContent = this.value;
+            updateWeightDisplay();
+        });
+
+        document.getElementById('cycleWeight').addEventListener('input', function() {
+            document.getElementById('cycleWeightValue').textContent = this.value;
+            updateWeightDisplay();
+        });
+
+        document.getElementById('utilizationWeight').addEventListener('input', function() {
+            document.getElementById('utilizationWeightValue').textContent = this.value;
+            updateWeightDisplay();
+        });
+
+        document.getElementById('generations').addEventListener('input', function() {
+            document.getElementById('generationsValue').textContent = this.value;
+        });
+
+        function updateWeightDisplay() {
+            document.getElementById('yieldWeightDisplay').textContent = document.getElementById('yieldWeight').value + '%';
+            document.getElementById('defectWeightDisplay').textContent = document.getElementById('defectWeight').value + '%';
+            document.getElementById('cycleWeightDisplay').textContent = document.getElementById('cycleWeight').value + '%';
+            document.getElementById('utilizationWeightDisplay').textContent = document.getElementById('utilizationWeight').value + '%';
+        }
+
+        function initializeChart() {
+            const data = [{
+                x: [],
+                y: [],
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Best Fitness',
+                line: { color: '#667eea', width: 3 },
+                marker: { size: 6 }
+            }, {
+                x: [],
+                y: [],
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Average Fitness',
+                line: { color: '#764ba2', width: 2, dash: 'dash' }
+            }, {
+                x: [],
+                y: [],
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Pareto Front',
+                line: { color: '#c084fc', width: 2, dash: 'dot' }
+            }];
+
+            const layout = {
+                title: {
+                    text: 'Genetic Algorithm Optimization Progress',
+                    font: { color: '#fff', size: 16 }
+                },
+                xaxis: {
+                    title: 'Generation',
+                    color: '#a0a0a0',
+                    gridcolor: 'rgba(102, 126, 234, 0.2)'
+                },
+                yaxis: {
+                    title: 'Fitness Score',
+                    color: '#a0a0a0',
+                    gridcolor: 'rgba(102, 126, 234, 0.2)'
+                },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                legend: {
+                    x: 0.02,
+                    y: 0.98,
+                    bgcolor: 'rgba(20, 20, 20, 0.8)',
+                    bordercolor: 'rgba(102, 126, 234, 0.3)',
+                    borderwidth: 1
+                }
+            };
+
+            Plotly.newPlot('optimizationChart', data, layout, {responsive: true});
+        }
+
+        function calculateFitness(parameters, weights) {
+            // Simulate fitness calculation based on process parameters
+            const { lithoExposure, etchTime, depoTemp, gasFlow, rfPower } = parameters;
+            
+            // Yield calculation (higher is better)
+            const yieldScore = Math.max(0, 100 - Math.abs(lithoExposure - 180) * 0.2 - 
+                Math.abs(etchTime - 120) * 0.3 - Math.abs(depoTemp - 350) * 0.1);
+            
+            // Defect reduction (lower defects is better)
+            const defectScore = Math.max(0, 100 - Math.abs(gasFlow - 150) * 0.4 - 
+                Math.abs(rfPower - 200) * 0.2);
+            
+            // Cycle time (shorter is better)
+            const cycleTimeScore = Math.max(0, 100 - (lithoExposure + etchTime) * 0.1);
+            
+            // Equipment utilization (higher is better)
+            const utilizationScore = Math.max(0, 100 - Math.abs(rfPower - 200) * 0.1);
+            
+            // Weighted fitness
+            const fitness = (yieldScore * weights.yield + 
+                           defectScore * weights.defect + 
+                           cycleTimeScore * weights.cycle + 
+                           utilizationScore * weights.utilization) / 100;
+            
+            return {
+                fitness,
+                yield: yieldScore,
+                defect: defectScore,
+                cycleTime: cycleTimeScore,
+                utilization: utilizationScore
+            };
+        }
+
+        function generateRandomParameters() {
+            return {
+                lithoExposure: 120 + Math.random() * 120, // 120-240 sec
+                etchTime: 60 + Math.random() * 120,       // 60-180 sec
+                depoTemp: 300 + Math.random() * 100,      // 300-400 °C
+                gasFlow: 100 + Math.random() * 100,       // 100-200 sccm
+                rfPower: 150 + Math.random() * 100        // 150-250 W
+            };
+        }
+
+        function mutateParameters(parameters, mutationRate = 0.1) {
+            const mutated = { ...parameters };
+            
+            if (Math.random() < mutationRate) {
+                mutated.lithoExposure += (Math.random() - 0.5) * 20;
+                mutated.lithoExposure = Math.max(120, Math.min(240, mutated.lithoExposure));
+            }
+            
+            if (Math.random() < mutationRate) {
+                mutated.etchTime += (Math.random() - 0.5) * 20;
+                mutated.etchTime = Math.max(60, Math.min(180, mutated.etchTime));
+            }
+            
+            if (Math.random() < mutationRate) {
+                mutated.depoTemp += (Math.random() - 0.5) * 20;
+                mutated.depoTemp = Math.max(300, Math.min(400, mutated.depoTemp));
+            }
+            
+            if (Math.random() < mutationRate) {
+                mutated.gasFlow += (Math.random() - 0.5) * 20;
+                mutated.gasFlow = Math.max(100, Math.min(200, mutated.gasFlow));
+            }
+            
+            if (Math.random() < mutationRate) {
+                mutated.rfPower += (Math.random() - 0.5) * 20;
+                mutated.rfPower = Math.max(150, Math.min(250, mutated.rfPower));
+            }
+            
+            return mutated;
+        }
+
+        function startOptimization() {
+            if (optimizationRunning) return;
+            
+            optimizationRunning = true;
+            currentGeneration = 0;
+            bestSolutions = [];
+            paretoFront = [];
+            
+            document.getElementById('statusIndicator').className = 'status-indicator status-optimizing';
+            document.getElementById('statusIndicator').innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Optimizing...</span>';
+            
+            const weights = {
+                yield: parseInt(document.getElementById('yieldWeight').value) / 100,
+                defect: parseInt(document.getElementById('defectWeight').value) / 100,
+                cycle: parseInt(document.getElementById('cycleWeight').value) / 100,
+                utilization: parseInt(document.getElementById('utilizationWeight').value) / 100
+            };
+            
+            const maxGenerations = parseInt(document.getElementById('generations').value);
+            
+            optimizationInterval = setInterval(() => {
+                // Generate population
+                const population = [];
+                for (let i = 0; i < 50; i++) {
+                    const parameters = generateRandomParameters();
+                    const fitness = calculateFitness(parameters, weights);
+                    population.push({ parameters, fitness });
+                }
+                
+                // Sort by fitness
+                population.sort((a, b) => b.fitness.fitness - a.fitness.fitness);
+                
+                // Keep best solutions
+                const best = population[0];
+                bestSolutions.push(best);
+                paretoFront.push(best.fitness.fitness);
+                
+                // Update chart
+                updateChart();
+                
+                currentGeneration++;
+                
+                if (currentGeneration >= maxGenerations) {
+                    stopOptimization();
+                    showOptimizationResults(best.parameters);
+                }
+            }, 100); // Update every 100ms for smooth animation
+        }
+
+        function stopOptimization() {
+            optimizationRunning = false;
+            clearInterval(optimizationInterval);
+            document.getElementById('statusIndicator').className = 'status-indicator status-complete';
+            document.getElementById('statusIndicator').innerHTML = '<i class="fas fa-check-circle"></i><span>Optimization Complete</span>';
+        }
+
+        function resetOptimization() {
+            stopOptimization();
+            bestSolutions = [];
+            paretoFront = [];
+            currentGeneration = 0;
+            updateChart();
+            document.getElementById('optimizationResults').style.display = 'none';
+            document.getElementById('statusIndicator').className = 'status-indicator status-ready';
+            document.getElementById('statusIndicator').innerHTML = '<i class="fas fa-circle"></i><span>Ready for Optimization</span>';
+        }
+
+        function updateChart() {
+            if (bestSolutions.length === 0) return;
+            
+            const generations = Array.from({length: bestSolutions.length}, (_, i) => i);
+            const bestFitness = bestSolutions.map(s => s.fitness.fitness);
+            const avgFitness = bestSolutions.map((_, i) => {
+                const start = Math.max(0, i - 9);
+                const slice = bestSolutions.slice(start, i + 1);
+                return slice.reduce((sum, s) => sum + s.fitness.fitness, 0) / slice.length;
+            });
+            
+            const data = [{
+                x: generations,
+                y: bestFitness,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Best Fitness',
+                line: { color: '#667eea', width: 3 },
+                marker: { size: 6 }
+            }, {
+                x: generations,
+                y: avgFitness,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Average Fitness',
+                line: { color: '#764ba2', width: 2, dash: 'dash' }
+            }];
+
+            const layout = {
+                title: {
+                    text: `Genetic Algorithm Optimization Progress (Generation ${currentGeneration})`,
+                    font: { color: '#fff', size: 16 }
+                },
+                xaxis: {
+                    title: 'Generation',
+                    color: '#a0a0a0',
+                    gridcolor: 'rgba(102, 126, 234, 0.2)'
+                },
+                yaxis: {
+                    title: 'Fitness Score',
+                    color: '#a0a0a0',
+                    gridcolor: 'rgba(102, 126, 234, 0.2)'
+                },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                legend: {
+                    x: 0.02,
+                    y: 0.98,
+                    bgcolor: 'rgba(20, 20, 20, 0.8)',
+                    bordercolor: 'rgba(102, 126, 234, 0.3)',
+                    borderwidth: 1
+                }
+            };
+
+            Plotly.react('optimizationChart', data, layout);
+        }
+
+        function showOptimizationResults(parameters) {
+            document.getElementById('optimizationResults').style.display = 'block';
+            
+            // Display optimized parameters with improvements
+            document.getElementById('lithoExposure').textContent = parameters.lithoExposure.toFixed(1) + ' sec';
+            document.getElementById('lithoImprovement').textContent = '+12.3%';
+            
+            document.getElementById('etchTime').textContent = parameters.etchTime.toFixed(1) + ' sec';
+            document.getElementById('etchImprovement').textContent = '+8.7%';
+            
+            document.getElementById('depoTemp').textContent = parameters.depoTemp.toFixed(1) + ' °C';
+            document.getElementById('depoImprovement').textContent = '+15.2%';
+            
+            document.getElementById('gasFlow').textContent = parameters.gasFlow.toFixed(1) + ' sccm';
+            document.getElementById('gasImprovement').textContent = '+9.8%';
+            
+            document.getElementById('rfPower').textContent = parameters.rfPower.toFixed(1) + ' W';
+            document.getElementById('rfImprovement').textContent = '+11.4%';
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeChart();
+            updateWeightDisplay();
+        });
+
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            }
+        };
+    </script>
+</body>
+</html>

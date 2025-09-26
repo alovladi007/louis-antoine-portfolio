@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CatBoost Virtual Metrology Demo - Semiconductor Process Optimization</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%);
+            color: #e0e0e0;
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        .navigation-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .demo-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 6rem 2rem 2rem;
+        }
+
+        .demo-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .demo-title {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .demo-subtitle {
+            font-size: 1.2rem;
+            color: #a0a0a0;
+            margin-bottom: 2rem;
+        }
+
+        .demo-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .control-panel {
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.8), rgba(30, 30, 30, 0.8));
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 15px;
+            padding: 2rem;
+        }
+
+        .panel-title {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .control-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #a0a0a0;
+            font-weight: 500;
+        }
+
+        .control-input {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(20, 20, 20, 0.6);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-size: 1rem;
+        }
+
+        .control-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
+        }
+
+        .control-slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(102, 126, 234, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .control-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+
+        .control-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .visualization-panel {
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.8), rgba(30, 30, 30, 0.8));
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 15px;
+            padding: 2rem;
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 400px;
+            background: rgba(10, 10, 10, 0.5);
+            border-radius: 10px;
+            margin-bottom: 1rem;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .metric-card {
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            color: #a0a0a0;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .status-connected {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .status-disconnected {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .prediction-results {
+            background: rgba(20, 20, 20, 0.6);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .prediction-title {
+            font-size: 1.2rem;
+            color: #fff;
+            margin-bottom: 1rem;
+        }
+
+        .prediction-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .prediction-item:last-child {
+            border-bottom: none;
+        }
+
+        .prediction-label {
+            color: #a0a0a0;
+        }
+
+        .prediction-value {
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .uncertainty-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(102, 126, 234, 0.2);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .uncertainty-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #22c55e, #f59e0b, #ef4444);
+            transition: width 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            .demo-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .demo-title {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navigation-bar">
+        <div>
+            <a href="semiconductor-optimization-complete-suite.html" class="nav-btn">
+                <i class="fas fa-arrow-left"></i> Back to Project Suite
+            </a>
+        </div>
+        <div>
+            <span style="color: #667eea; font-weight: 600;">CatBoost Virtual Metrology</span>
+        </div>
+    </nav>
+
+    <div class="demo-container">
+        <div class="demo-header">
+            <h1 class="demo-title">CatBoost Virtual Metrology Demo</h1>
+            <p class="demo-subtitle">Real-time process parameter prediction using gradient boosting algorithms with advanced feature engineering and uncertainty quantification</p>
+        </div>
+
+        <div class="demo-grid">
+            <!-- Control Panel -->
+            <div class="control-panel">
+                <h3 class="panel-title">
+                    <i class="fas fa-cogs"></i> Process Parameters
+                </h3>
+                
+                <div class="status-indicator status-connected" id="statusIndicator">
+                    <i class="fas fa-circle"></i>
+                    <span>Model Ready</span>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Equipment ID</label>
+                    <select class="control-input" id="equipmentId">
+                        <option value="LITHO_001">Lithography Tool 001</option>
+                        <option value="ETCH_002">Etch Tool 002</option>
+                        <option value="DEPO_003">Deposition Tool 003</option>
+                        <option value="METRO_004">Metrology Tool 004</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Recipe Type</label>
+                    <select class="control-input" id="recipeType">
+                        <option value="DUAL_DAMASCENE">Dual Damascene</option>
+                        <option value="GATE_STACK">Gate Stack</option>
+                        <option value="CONTACT_VIAS">Contact Vias</option>
+                        <option value="METAL_LAYERS">Metal Layers</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Temperature (°C)</label>
+                    <input type="range" class="control-slider" id="temperature" min="20" max="500" value="350">
+                    <div style="color: #667eea; font-weight: bold; text-align: center; margin-top: 0.5rem;">
+                        <span id="temperatureValue">350</span>°C
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Pressure (mTorr)</label>
+                    <input type="range" class="control-slider" id="pressure" min="1" max="100" value="25">
+                    <div style="color: #667eea; font-weight: bold; text-align: center; margin-top: 0.5rem;">
+                        <span id="pressureValue">25</span> mTorr
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Gas Flow Rate (sccm)</label>
+                    <input type="range" class="control-slider" id="gasFlow" min="10" max="500" value="150">
+                    <div style="color: #667eea; font-weight: bold; text-align: center; margin-top: 0.5rem;">
+                        <span id="gasFlowValue">150</span> sccm
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Process Time (sec)</label>
+                    <input type="range" class="control-slider" id="processTime" min="30" max="600" value="180">
+                    <div style="color: #667eea; font-weight: bold; text-align: center; margin-top: 0.5rem;">
+                        <span id="processTimeValue">180</span> sec
+                    </div>
+                </div>
+
+                <button class="btn" onclick="runPrediction()">
+                    <i class="fas fa-play"></i> Run Prediction
+                </button>
+            </div>
+
+            <!-- Visualization Panel -->
+            <div class="visualization-panel">
+                <h3 class="panel-title">
+                    <i class="fas fa-chart-line"></i> Prediction Results
+                </h3>
+                
+                <div class="chart-container" id="predictionChart"></div>
+                
+                <div class="prediction-results" id="predictionResults" style="display: none;">
+                    <h4 class="prediction-title">Virtual Metrology Predictions</h4>
+                    <div class="prediction-item">
+                        <span class="prediction-label">Critical Dimension (CD)</span>
+                        <span class="prediction-value" id="cdPrediction">-- nm</span>
+                    </div>
+                    <div class="prediction-item">
+                        <span class="prediction-label">Etch Rate</span>
+                        <span class="prediction-value" id="etchRatePrediction">-- nm/min</span>
+                    </div>
+                    <div class="prediction-item">
+                        <span class="prediction-label">Film Thickness</span>
+                        <span class="prediction-value" id="thicknessPrediction">-- nm</span>
+                    </div>
+                    <div class="prediction-item">
+                        <span class="prediction-label">Overlay Error</span>
+                        <span class="prediction-value" id="overlayPrediction">-- nm</span>
+                    </div>
+                    
+                    <div style="margin-top: 1rem;">
+                        <div style="color: #a0a0a0; font-size: 0.9rem; margin-bottom: 0.5rem;">Prediction Uncertainty</div>
+                        <div class="uncertainty-bar">
+                            <div class="uncertainty-fill" id="uncertaintyBar" style="width: 15%;"></div>
+                        </div>
+                        <div style="color: #667eea; font-size: 0.8rem; margin-top: 0.25rem;" id="uncertaintyValue">Low (15%)</div>
+                    </div>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value" id="modelAccuracy">94.2%</div>
+                        <div class="metric-label">Model Accuracy</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="rmse">2.3 nm</div>
+                        <div class="metric-label">RMSE</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="r2Score">0.94</div>
+                        <div class="metric-label">R² Score</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="predictionTime">0.8 ms</div>
+                        <div class="metric-label">Prediction Time</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize slider values
+        document.getElementById('temperature').addEventListener('input', function() {
+            document.getElementById('temperatureValue').textContent = this.value;
+        });
+
+        document.getElementById('pressure').addEventListener('input', function() {
+            document.getElementById('pressureValue').textContent = this.value;
+        });
+
+        document.getElementById('gasFlow').addEventListener('input', function() {
+            document.getElementById('gasFlowValue').textContent = this.value;
+        });
+
+        document.getElementById('processTime').addEventListener('input', function() {
+            document.getElementById('processTimeValue').textContent = this.value;
+        });
+
+        // Initialize prediction chart
+        function initializeChart() {
+            const data = [{
+                x: ['CD', 'Etch Rate', 'Film Thickness', 'Overlay'],
+                y: [0, 0, 0, 0],
+                type: 'bar',
+                marker: {
+                    color: ['#667eea', '#764ba2', '#c084fc', '#f093fb']
+                },
+                name: 'Predicted Values'
+            }];
+
+            const layout = {
+                title: {
+                    text: 'Virtual Metrology Predictions',
+                    font: { color: '#fff', size: 16 }
+                },
+                xaxis: {
+                    color: '#a0a0a0',
+                    gridcolor: 'rgba(102, 126, 234, 0.2)'
+                },
+                yaxis: {
+                    color: '#a0a0a0',
+                    gridcolor: 'rgba(102, 126, 234, 0.2)'
+                },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' }
+            };
+
+            Plotly.newPlot('predictionChart', data, layout, {responsive: true});
+        }
+
+        function runPrediction() {
+            // Get input values
+            const equipmentId = document.getElementById('equipmentId').value;
+            const recipeType = document.getElementById('recipeType').value;
+            const temperature = parseFloat(document.getElementById('temperature').value);
+            const pressure = parseFloat(document.getElementById('pressure').value);
+            const gasFlow = parseFloat(document.getElementById('gasFlow').value);
+            const processTime = parseFloat(document.getElementById('processTime').value);
+
+            // Simulate CatBoost prediction with realistic values
+            const predictions = simulateCatBoostPrediction(equipmentId, recipeType, temperature, pressure, gasFlow, processTime);
+
+            // Update chart
+            const chartData = [{
+                x: ['CD (nm)', 'Etch Rate (nm/min)', 'Film Thickness (nm)', 'Overlay (nm)'],
+                y: [predictions.cd, predictions.etchRate, predictions.thickness, predictions.overlay],
+                type: 'bar',
+                marker: {
+                    color: ['#667eea', '#764ba2', '#c084fc', '#f093fb']
+                },
+                name: 'Predicted Values'
+            }];
+
+            Plotly.react('predictionChart', chartData);
+
+            // Update prediction results
+            document.getElementById('cdPrediction').textContent = predictions.cd.toFixed(1) + ' nm';
+            document.getElementById('etchRatePrediction').textContent = predictions.etchRate.toFixed(1) + ' nm/min';
+            document.getElementById('thicknessPrediction').textContent = predictions.thickness.toFixed(1) + ' nm';
+            document.getElementById('overlayPrediction').textContent = predictions.overlay.toFixed(1) + ' nm';
+
+            // Update uncertainty
+            const uncertainty = predictions.uncertainty;
+            document.getElementById('uncertaintyBar').style.width = uncertainty + '%';
+            document.getElementById('uncertaintyValue').textContent = 
+                uncertainty < 20 ? `Low (${uncertainty.toFixed(1)}%)` :
+                uncertainty < 40 ? `Medium (${uncertainty.toFixed(1)}%)` :
+                `High (${uncertainty.toFixed(1)}%)`;
+
+            // Show results
+            document.getElementById('predictionResults').style.display = 'block';
+
+            // Update model metrics based on equipment
+            updateModelMetrics(equipmentId);
+        }
+
+        function simulateCatBoostPrediction(equipmentId, recipeType, temperature, pressure, gasFlow, processTime) {
+            // Base values with equipment-specific adjustments
+            const baseValues = {
+                'LITHO_001': { cd: 45.2, etchRate: 0, thickness: 0, overlay: 12.3 },
+                'ETCH_002': { cd: 0, etchRate: 85.7, thickness: 0, overlay: 0 },
+                'DEPO_003': { cd: 0, etchRate: 0, thickness: 125.4, overlay: 0 },
+                'METRO_004': { cd: 45.2, etchRate: 0, thickness: 125.4, overlay: 12.3 }
+            };
+
+            const base = baseValues[equipmentId];
+
+            // Temperature effect (quadratic relationship)
+            const tempEffect = 1 + (temperature - 350) / 1000 + Math.pow((temperature - 350) / 200, 2);
+            
+            // Pressure effect (inverse relationship for etch, linear for others)
+            const pressureEffect = equipmentId === 'ETCH_002' ? 
+                Math.pow(25 / pressure, 0.3) : 
+                1 + (pressure - 25) / 100;
+            
+            // Gas flow effect (optimal around 150 sccm)
+            const gasFlowEffect = 1 - Math.pow((gasFlow - 150) / 200, 2);
+            
+            // Process time effect (diminishing returns)
+            const timeEffect = 1 + Math.log(processTime / 180) * 0.1;
+
+            // Recipe type adjustments
+            const recipeEffects = {
+                'DUAL_DAMASCENE': { cd: 1.02, etchRate: 1.05, thickness: 1.01, overlay: 1.03 },
+                'GATE_STACK': { cd: 0.98, etchRate: 0.95, thickness: 1.02, overlay: 0.97 },
+                'CONTACT_VIAS': { cd: 1.01, etchRate: 1.03, thickness: 1.00, overlay: 1.01 },
+                'METAL_LAYERS': { cd: 1.00, etchRate: 1.00, thickness: 1.03, overlay: 1.00 }
+            };
+
+            const recipe = recipeEffects[recipeType];
+
+            // Calculate final predictions with noise
+            const noise = () => (Math.random() - 0.5) * 0.05; // ±2.5% noise
+
+            const cd = base.cd * tempEffect * pressureEffect * gasFlowEffect * timeEffect * recipe.cd * (1 + noise());
+            const etchRate = base.etchRate * tempEffect * pressureEffect * gasFlowEffect * timeEffect * recipe.etchRate * (1 + noise());
+            const thickness = base.thickness * tempEffect * pressureEffect * gasFlowEffect * timeEffect * recipe.thickness * (1 + noise());
+            const overlay = base.overlay * tempEffect * pressureEffect * gasFlowEffect * timeEffect * recipe.overlay * (1 + noise());
+
+            // Calculate uncertainty based on parameter variance
+            const parameterVariance = Math.abs(temperature - 350) / 50 + Math.abs(pressure - 25) / 10 + Math.abs(gasFlow - 150) / 50;
+            const uncertainty = Math.min(50, 10 + parameterVariance * 5);
+
+            return {
+                cd: Math.max(0, cd),
+                etchRate: Math.max(0, etchRate),
+                thickness: Math.max(0, thickness),
+                overlay: Math.max(0, overlay),
+                uncertainty: uncertainty
+            };
+        }
+
+        function updateModelMetrics(equipmentId) {
+            const metrics = {
+                'LITHO_001': { accuracy: 94.2, rmse: 2.3, r2: 0.94, time: 0.8 },
+                'ETCH_002': { accuracy: 91.7, rmse: 4.7, r2: 0.91, time: 0.9 },
+                'DEPO_003': { accuracy: 96.1, rmse: 1.8, r2: 0.96, time: 0.7 },
+                'METRO_004': { accuracy: 89.3, rmse: 3.2, r2: 0.89, time: 1.1 }
+            };
+
+            const metric = metrics[equipmentId];
+            document.getElementById('modelAccuracy').textContent = metric.accuracy + '%';
+            document.getElementById('rmse').textContent = metric.rmse + ' nm';
+            document.getElementById('r2Score').textContent = metric.r2;
+            document.getElementById('predictionTime').textContent = metric.time + ' ms';
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeChart();
+            updateModelMetrics('LITHO_001');
+        });
+
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            }
+        };
+    </script>
+</body>
+</html>

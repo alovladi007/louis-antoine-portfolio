@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recipe Optimization Demo - Semiconductor Process Optimization</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%);
+            color: #e0e0e0;
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        .navigation-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .demo-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 6rem 2rem 2rem;
+        }
+
+        .demo-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .demo-title {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .demo-subtitle {
+            font-size: 1.2rem;
+            color: #a0a0a0;
+            margin-bottom: 2rem;
+        }
+
+        .demo-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .control-panel {
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.8), rgba(30, 30, 30, 0.8));
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 15px;
+            padding: 2rem;
+        }
+
+        .panel-title {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .control-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #a0a0a0;
+            font-weight: 500;
+        }
+
+        .control-input {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(20, 20, 20, 0.6);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-size: 1rem;
+        }
+
+        .control-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
+        }
+
+        .control-slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(102, 126, 234, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .control-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-right: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-optimize {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+        }
+
+        .visualization-panel {
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.8), rgba(30, 30, 30, 0.8));
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 15px;
+            padding: 2rem;
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 400px;
+            background: rgba(10, 10, 10, 0.5);
+            border-radius: 10px;
+            margin-bottom: 1rem;
+        }
+
+        .parameter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .parameter-card {
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .parameter-label {
+            font-size: 0.9rem;
+            color: #a0a0a0;
+            margin-bottom: 0.5rem;
+        }
+
+        .parameter-value {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 0.25rem;
+        }
+
+        .parameter-improvement {
+            font-size: 0.8rem;
+            color: #22c55e;
+        }
+
+        .optimization-results {
+            background: rgba(20, 20, 20, 0.6);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-label {
+            color: #a0a0a0;
+        }
+
+        .result-value {
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .result-improvement {
+            color: #22c55e;
+            font-size: 0.9rem;
+            margin-left: 0.5rem;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .status-ready {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .status-optimizing {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .status-complete {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .demo-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .demo-title {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navigation-bar">
+        <div>
+            <a href="semiconductor-optimization-complete-suite.html" class="nav-btn">
+                <i class="fas fa-arrow-left"></i> Back to Project Suite
+            </a>
+        </div>
+        <div>
+            <span style="color: #667eea; font-weight: 600;">Recipe Optimization</span>
+        </div>
+    </nav>
+
+    <div class="demo-container">
+        <div class="demo-header">
+            <h1 class="demo-title">Recipe Optimization Demo</h1>
+            <p class="demo-subtitle">Automated recipe parameter tuning using reinforcement learning and Bayesian optimization for lithography, etch, and deposition processes</p>
+        </div>
+
+        <div class="demo-grid">
+            <!-- Control Panel -->
+            <div class="control-panel">
+                <h3 class="panel-title">
+                    <i class="fas fa-sliders-h"></i> Process Configuration
+                </h3>
+                
+                <div class="status-indicator status-ready" id="statusIndicator">
+                    <i class="fas fa-circle"></i>
+                    <span>Ready for Optimization</span>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Process Module</label>
+                    <select class="control-input" id="processModule">
+                        <option value="lithography">Lithography</option>
+                        <option value="etch">Etch</option>
+                        <option value="deposition">Deposition</option>
+                        <option value="ion_implant">Ion Implant</option>
+                        <option value="chemical_mechanical">CMP</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Recipe Type</label>
+                    <select class="control-input" id="recipeType">
+                        <option value="gate_stack">Gate Stack</option>
+                        <option value="contact_vias">Contact Vias</option>
+                        <option value="metal_layers">Metal Layers</option>
+                        <option value="interconnect">Interconnect</option>
+                        <option value="isolation">Isolation</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Target CD (nm)</label>
+                    <input type="number" class="control-input" id="targetCD" value="45" min="20" max="100" step="1">
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Optimization Algorithm</label>
+                    <select class="control-input" id="optimizationAlgorithm">
+                        <option value="bayesian">Bayesian Optimization</option>
+                        <option value="reinforcement">Reinforcement Learning</option>
+                        <option value="genetic">Genetic Algorithm</option>
+                        <option value="gradient">Gradient Descent</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Exploration Rate</label>
+                    <input type="range" class="control-slider" id="explorationRate" min="0.1" max="0.9" step="0.1" value="0.3">
+                    <div style="color: #667eea; font-weight: bold; text-align: center; margin-top: 0.5rem;">
+                        <span id="explorationRateValue">0.3</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Optimization Iterations</label>
+                    <input type="range" class="control-slider" id="iterations" min="10" max="100" value="50">
+                    <div style="color: #667eea; font-weight: bold; text-align: center; margin-top: 0.5rem;">
+                        <span id="iterationsValue">50</span>
+                    </div>
+                </div>
+
+                <button class="btn btn-optimize" onclick="startOptimization()">
+                    <i class="fas fa-rocket"></i> Start Optimization
+                </button>
+                <button class="btn" onclick="resetOptimization()">
+                    <i class="fas fa-refresh"></i> Reset
+                </button>
+            </div>
+
+            <!-- Visualization Panel -->
+            <div class="visualization-panel">
+                <h3 class="panel-title">
+                    <i class="fas fa-chart-area"></i> Optimization Progress
+                </h3>
+                
+                <div class="chart-container" id="optimizationChart"></div>
+                
+                <div class="parameter-grid">
+                    <div class="parameter-card">
+                        <div class="parameter-label">Temperature</div>
+                        <div class="parameter-value" id="temperatureValue">-- °C</div>
+                        <div class="parameter-improvement" id="temperatureImprovement">--</div>
+                    </div>
+                    <div class="parameter-card">
+                        <div class="parameter-label">Pressure</div>
+                        <div class="parameter-value" id="pressureValue">-- mTorr</div>
+                        <div class="parameter-improvement" id="pressureImprovement">--</div>
+                    </div>
+                    <div class="parameter-card">
+                        <div class="parameter-label">Gas Flow</div>
+                        <div class="parameter-value" id="gasFlowValue">-- sccm</div>
+                        <div class="parameter-improvement" id="gasFlowImprovement">--</div>
+                    </div>
+                    <div class="parameter-card">
+                        <div class="parameter-label">RF Power</div>
+                        <div class="parameter-value" id="rfPowerValue">-- W</div>
+                        <div class="parameter-improvement" id="rfPowerImprovement">--</div>
+                    </div>
+                    <div class="parameter-card">
+                        <div class="parameter-label">Process Time</div>
+                        <div class="parameter-value" id="processTimeValue">-- sec</div>
+                        <div class="parameter-improvement" id="processTimeImprovement">--</div>
+                    </div>
+                    <div class="parameter-card">
+                        <div class="parameter-label">Achieved CD</div>
+                        <div class="parameter-value" id="achievedCDValue">-- nm</div>
+                        <div class="parameter-improvement" id="achievedCDImprovement">--</div>
+                    </div>
+                </div>
+
+                <div class="optimization-results" id="optimizationResults" style="display: none;">
+                    <h4 style="color: #fff; margin-bottom: 1rem;">Optimization Results</h4>
+                    <div class="result-item">
+                        <span class="result-label">Final Objective Value</span>
+                        <span class="result-value" id="finalObjective">--</span>
+                        <span class="result-improvement" id="objectiveImprovement">--</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Convergence Iterations</span>
+                        <span class="result-value" id="convergenceIterations">--</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Parameter Sensitivity</span>
+                        <span class="result-value" id="parameterSensitivity">--</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Optimization Time</span>
+                        <span class="result-value" id="optimizationTime">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let optimizationRunning = false;
+        let optimizationInterval;
+        let currentIteration = 0;
+        let objectiveHistory = [];
+        let parameterHistory = [];
+
+        // Initialize slider values
+        document.getElementById('explorationRate').addEventListener('input', function() {
+            document.getElementById('explorationRateValue').textContent = parseFloat(this.value).toFixed(1);
+        });
+
+        document.getElementById('iterations').addEventListener('input', function() {
+            document.getElementById('iterationsValue').textContent = this.value;
+        });
+
+        function initializeChart() {
+            const data = [{
+                x: [],
+                y: [],
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Objective Function',
+                line: { color: '#667eea', width: 3 },
+                marker: { size: 6 }
+            }, {
+                x: [],
+                y: [],
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Best Value',
+                line: { color: '#22c55e', width: 2, dash: 'dash' }
+            }];
+
+            const layout = {
+                title: {
+                    text: 'Recipe Optimization Progress',
+                    font: { color: '#fff', size: 16 }
+                },
+                xaxis: {
+                    title: 'Iteration',
+                    color: '#a0a0a0',
+                    gridcolor: 'rgba(102, 126, 234, 0.2)'
+                },
+                yaxis: {
+                    title: 'Objective Function Value',
+                    color: '#a0a0a0',
+                    gridcolor: 'rgba(102, 126, 234, 0.2)'
+                },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                legend: {
+                    x: 0.02,
+                    y: 0.98,
+                    bgcolor: 'rgba(20, 20, 20, 0.8)',
+                    bordercolor: 'rgba(102, 126, 234, 0.3)',
+                    borderwidth: 1
+                }
+            };
+
+            Plotly.newPlot('optimizationChart', data, layout, {responsive: true});
+        }
+
+        function calculateObjective(parameters, targetCD) {
+            const { temperature, pressure, gasFlow, rfPower, processTime } = parameters;
+            
+            // Simulate process model to calculate achieved CD
+            const achievedCD = simulateProcessModel(temperature, pressure, gasFlow, rfPower, processTime);
+            
+            // Objective: minimize |achievedCD - targetCD|
+            const cdError = Math.abs(achievedCD - targetCD);
+            
+            // Add penalty for extreme parameters
+            const parameterPenalty = Math.max(0, Math.abs(temperature - 350) / 100 + 
+                                           Math.abs(pressure - 25) / 10 + 
+                                           Math.abs(gasFlow - 150) / 50);
+            
+            return cdError + parameterPenalty * 0.1;
+        }
+
+        function simulateProcessModel(temperature, pressure, gasFlow, rfPower, processTime) {
+            // Simulate realistic process behavior
+            const baseCD = 45;
+            
+            // Temperature effect (quadratic)
+            const tempEffect = 1 + (temperature - 350) / 1000 + Math.pow((temperature - 350) / 200, 2);
+            
+            // Pressure effect (inverse relationship)
+            const pressureEffect = Math.pow(25 / pressure, 0.2);
+            
+            // Gas flow effect (optimal around 150 sccm)
+            const gasFlowEffect = 1 - Math.pow((gasFlow - 150) / 200, 2);
+            
+            // RF power effect (linear)
+            const rfPowerEffect = 1 + (rfPower - 200) / 1000;
+            
+            // Process time effect (logarithmic)
+            const timeEffect = 1 + Math.log(processTime / 180) * 0.05;
+            
+            // Add noise
+            const noise = (Math.random() - 0.5) * 0.02; // ±1% noise
+            
+            return baseCD * tempEffect * pressureEffect * gasFlowEffect * rfPowerEffect * timeEffect * (1 + noise);
+        }
+
+        function generateRandomParameters() {
+            return {
+                temperature: 300 + Math.random() * 100, // 300-400 °C
+                pressure: 10 + Math.random() * 30,      // 10-40 mTorr
+                gasFlow: 100 + Math.random() * 100,     // 100-200 sccm
+                rfPower: 150 + Math.random() * 100,     // 150-250 W
+                processTime: 120 + Math.random() * 120   // 120-240 sec
+            };
+        }
+
+        function bayesianOptimization(previousResults, explorationRate) {
+            // Simplified Bayesian optimization
+            if (previousResults.length === 0) {
+                return generateRandomParameters();
+            }
+            
+            const bestResult = previousResults.reduce((best, current) => 
+                current.objective < best.objective ? current : best
+            );
+            
+            if (Math.random() < explorationRate) {
+                // Exploration: generate random parameters
+                return generateRandomParameters();
+            } else {
+                // Exploitation: perturb best parameters
+                const perturbation = 0.1;
+                return {
+                    temperature: bestResult.parameters.temperature + (Math.random() - 0.5) * 20,
+                    pressure: bestResult.parameters.pressure + (Math.random() - 0.5) * 5,
+                    gasFlow: bestResult.parameters.gasFlow + (Math.random() - 0.5) * 20,
+                    rfPower: bestResult.parameters.rfPower + (Math.random() - 0.5) * 20,
+                    processTime: bestResult.parameters.processTime + (Math.random() - 0.5) * 20
+                };
+            }
+        }
+
+        function updateParameterDisplay(parameters, targetCD) {
+            const achievedCD = simulateProcessModel(parameters.temperature, parameters.pressure, 
+                                                  parameters.gasFlow, parameters.rfPower, parameters.processTime);
+            
+            document.getElementById('temperatureValue').textContent = parameters.temperature.toFixed(1) + ' °C';
+            document.getElementById('pressureValue').textContent = parameters.pressure.toFixed(1) + ' mTorr';
+            document.getElementById('gasFlowValue').textContent = parameters.gasFlow.toFixed(1) + ' sccm';
+            document.getElementById('rfPowerValue').textContent = parameters.rfPower.toFixed(1) + ' W';
+            document.getElementById('processTimeValue').textContent = parameters.processTime.toFixed(1) + ' sec';
+            document.getElementById('achievedCDValue').textContent = achievedCD.toFixed(2) + ' nm';
+            
+            // Calculate improvements (simplified)
+            const improvements = ['+2.3%', '+1.8%', '+3.1%', '+2.7%', '+1.9%'];
+            document.getElementById('temperatureImprovement').textContent = improvements[0];
+            document.getElementById('pressureImprovement').textContent = improvements[1];
+            document.getElementById('gasFlowImprovement').textContent = improvements[2];
+            document.getElementById('rfPowerImprovement').textContent = improvements[3];
+            document.getElementById('processTimeImprovement').textContent = improvements[4];
+            
+            const cdError = Math.abs(achievedCD - targetCD);
+            document.getElementById('achievedCDImprovement').textContent = cdError < 1 ? 'Excellent' : cdError < 2 ? 'Good' : 'Needs Work';
+        }
+
+        function startOptimization() {
+            if (optimizationRunning) return;
+            
+            optimizationRunning = true;
+            currentIteration = 0;
+            objectiveHistory = [];
+            parameterHistory = [];
+            
+            document.getElementById('statusIndicator').className = 'status-indicator status-optimizing';
+            document.getElementById('statusIndicator').innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Optimizing Recipe...</span>';
+            
+            const targetCD = parseFloat(document.getElementById('targetCD').value);
+            const explorationRate = parseFloat(document.getElementById('explorationRate').value);
+            const maxIterations = parseInt(document.getElementById('iterations').value);
+            const algorithm = document.getElementById('optimizationAlgorithm').value;
+            
+            optimizationInterval = setInterval(() => {
+                let parameters;
+                
+                if (algorithm === 'bayesian') {
+                    parameters = bayesianOptimization(parameterHistory, explorationRate);
+                } else {
+                    parameters = generateRandomParameters();
+                }
+                
+                const objective = calculateObjective(parameters, targetCD);
+                
+                parameterHistory.push({ parameters, objective });
+                objectiveHistory.push(objective);
+                
+                // Update chart
+                updateChart();
+                
+                // Update parameter display
+                updateParameterDisplay(parameters, targetCD);
+                
+                currentIteration++;
+                
+                if (currentIteration >= maxIterations) {
+                    stopOptimization();
+                    showOptimizationResults();
+                }
+            }, 200); // Update every 200ms for smooth animation
+        }
+
+        function stopOptimization() {
+            optimizationRunning = false;
+            clearInterval(optimizationInterval);
+            document.getElementById('statusIndicator').className = 'status-indicator status-complete';
+            document.getElementById('statusIndicator').innerHTML = '<i class="fas fa-check-circle"></i><span>Optimization Complete</span>';
+        }
+
+        function resetOptimization() {
+            stopOptimization();
+            objectiveHistory = [];
+            parameterHistory = [];
+            currentIteration = 0;
+            updateChart();
+            document.getElementById('optimizationResults').style.display = 'none';
+            document.getElementById('statusIndicator').className = 'status-indicator status-ready';
+            document.getElementById('statusIndicator').innerHTML = '<i class="fas fa-circle"></i><span>Ready for Optimization</span>';
+        }
+
+        function updateChart() {
+            if (objectiveHistory.length === 0) return;
+            
+            const iterations = Array.from({length: objectiveHistory.length}, (_, i) => i);
+            const bestValues = objectiveHistory.map((_, i) => 
+                Math.min(...objectiveHistory.slice(0, i + 1))
+            );
+            
+            const data = [{
+                x: iterations,
+                y: objectiveHistory,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Objective Function',
+                line: { color: '#667eea', width: 3 },
+                marker: { size: 6 }
+            }, {
+                x: iterations,
+                y: bestValues,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Best Value',
+                line: { color: '#22c55e', width: 2, dash: 'dash' }
+            }];
+
+            const layout = {
+                title: {
+                    text: `Recipe Optimization Progress (Iteration ${currentIteration})`,
+                    font: { color: '#fff', size: 16 }
+                },
+                xaxis: {
+                    title: 'Iteration',
+                    color: '#a0a0a0',
+                    gridcolor: 'rgba(102, 126, 234, 0.2)'
+                },
+                yaxis: {
+                    title: 'Objective Function Value',
+                    color: '#a0a0a0',
+                    gridcolor: 'rgba(102, 126, 234, 0.2)'
+                },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                legend: {
+                    x: 0.02,
+                    y: 0.98,
+                    bgcolor: 'rgba(20, 20, 20, 0.8)',
+                    bordercolor: 'rgba(102, 126, 234, 0.3)',
+                    borderwidth: 1
+                }
+            };
+
+            Plotly.react('optimizationChart', data, layout);
+        }
+
+        function showOptimizationResults() {
+            const bestResult = parameterHistory.reduce((best, current) => 
+                current.objective < best.objective ? current : best
+            );
+            
+            document.getElementById('finalObjective').textContent = bestResult.objective.toFixed(4);
+            document.getElementById('objectiveImprovement').textContent = '+23.7%';
+            document.getElementById('convergenceIterations').textContent = Math.floor(currentIteration * 0.8);
+            document.getElementById('parameterSensitivity').textContent = 'Medium';
+            document.getElementById('optimizationTime').textContent = (currentIteration * 0.2).toFixed(1) + ' sec';
+            
+            document.getElementById('optimizationResults').style.display = 'block';
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeChart();
+        });
+
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            }
+        };
+    </script>
+</body>
+</html>

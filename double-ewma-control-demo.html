@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Double-EWMA Control Demo - Semiconductor Process Optimization</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%);
+            color: #e0e0e0;
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        .navigation-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .demo-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 6rem 2rem 2rem;
+        }
+
+        .demo-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .demo-title {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .demo-subtitle {
+            font-size: 1.2rem;
+            color: #a0a0a0;
+            margin-bottom: 2rem;
+        }
+
+        .demo-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .control-panel {
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.8), rgba(30, 30, 30, 0.8));
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 15px;
+            padding: 2rem;
+        }
+
+        .panel-title {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .control-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #a0a0a0;
+            font-weight: 500;
+        }
+
+        .control-input {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(20, 20, 20, 0.6);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-size: 1rem;
+        }
+
+        .control-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
+        }
+
+        .control-slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(102, 126, 234, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .control-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-right: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-stop {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+
+        .visualization-panel {
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.8), rgba(30, 30, 30, 0.8));
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 15px;
+            padding: 2rem;
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 400px;
+            background: rgba(10, 10, 10, 0.5);
+            border-radius: 10px;
+            margin-bottom: 1rem;
+        }
+
+        .control-limits {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .limit-card {
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .limit-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 0.25rem;
+        }
+
+        .limit-label {
+            font-size: 0.9rem;
+            color: #a0a0a0;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .status-in-control {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .status-out-of-control {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .status-warning {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .ewma-equations {
+            background: rgba(20, 20, 20, 0.6);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .equation-title {
+            font-size: 1.2rem;
+            color: #fff;
+            margin-bottom: 1rem;
+        }
+
+        .equation {
+            background: rgba(10, 10, 10, 0.8);
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .demo-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .demo-title {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navigation-bar">
+        <div>
+            <a href="semiconductor-optimization-complete-suite.html" class="nav-btn">
+                <i class="fas fa-arrow-left"></i> Back to Project Suite
+            </a>
+        </div>
+        <div>
+            <span style="color: #667eea; font-weight: 600;">Double-EWMA Control</span>
+        </div>
+    </nav>
+
+    <div class="demo-container">
+        <div class="demo-header">
+            <h1 class="demo-title">Double-EWMA Control Demo</h1>
+            <p class="demo-subtitle">Advanced statistical process control with exponentially weighted moving averages for real-time parameter adjustment and drift detection</p>
+        </div>
+
+        <div class="demo-grid">
+            <!-- Control Panel -->
+            <div class="control-panel">
+                <h3 class="panel-title">
+                    <i class="fas fa-sliders-h"></i> Control Parameters
+                </h3>
+                
+                <div class="status-indicator status-in-control" id="statusIndicator">
+                    <i class="fas fa-circle"></i>
+                    <span>Process In Control</span>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Process Parameter</label>
+                    <select class="control-input" id="processParameter">
+                        <option value="temperature">Temperature (°C)</option>
+                        <option value="pressure">Pressure (mTorr)</option>
+                        <option value="gasFlow">Gas Flow Rate (sccm)</option>
+                        <option value="processTime">Process Time (sec)</option>
+                        <option value="power">RF Power (W)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Target Value</label>
+                    <input type="number" class="control-input" id="targetValue" value="350" step="0.1">
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Lambda 1 (Level Smoothing)</label>
+                    <input type="range" class="control-slider" id="lambda1" min="0.1" max="0.9" step="0.05" value="0.3">
+                    <div style="color: #667eea; font-weight: bold; text-align: center; margin-top: 0.5rem;">
+                        <span id="lambda1Value">0.30</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Lambda 2 (Trend Smoothing)</label>
+                    <input type="range" class="control-slider" id="lambda2" min="0.1" max="0.9" step="0.05" value="0.2">
+                    <div style="color: #667eea; font-weight: bold; text-align: center; margin-top: 0.5rem;">
+                        <span id="lambda2Value">0.20</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Control Limit Multiplier</label>
+                    <input type="range" class="control-slider" id="limitMultiplier" min="1.5" max="4.0" step="0.1" value="3.0">
+                    <div style="color: #667eea; font-weight: bold; text-align: center; margin-top: 0.5rem;">
+                        <span id="limitMultiplierValue">3.0σ</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Drift Rate (per hour)</label>
+                    <input type="range" class="control-slider" id="driftRate" min="-2" max="2" step="0.1" value="0">
+                    <div style="color: #667eea; font-weight: bold; text-align: center; margin-top: 0.5rem;">
+                        <span id="driftRateValue">0.0</span>
+                    </div>
+                </div>
+
+                <button class="btn" onclick="startSimulation()">
+                    <i class="fas fa-play"></i> Start Simulation
+                </button>
+                <button class="btn btn-stop" onclick="stopSimulation()">
+                    <i class="fas fa-stop"></i> Stop
+                </button>
+                <button class="btn" onclick="resetSimulation()">
+                    <i class="fas fa-refresh"></i> Reset
+                </button>
+            </div>
+
+            <!-- Visualization Panel -->
+            <div class="visualization-panel">
+                <h3 class="panel-title">
+                    <i class="fas fa-chart-line"></i> EWMA Control Chart
+                </h3>
+                
+                <div class="chart-container" id="controlChart"></div>
+                
+                <div class="control-limits">
+                    <div class="limit-card">
+                        <div class="limit-value" id="uclValue">+3.0σ</div>
+                        <div class="limit-label">Upper Control Limit</div>
+                    </div>
+                    <div class="limit-card">
+                        <div class="limit-value" id="targetDisplay">350.0</div>
+                        <div class="limit-label">Target Value</div>
+                    </div>
+                    <div class="limit-card">
+                        <div class="limit-value" id="lclValue">-3.0σ</div>
+                        <div class="limit-label">Lower Control Limit</div>
+                    </div>
+                    <div class="limit-card">
+                        <div class="limit-value" id="currentEwma">350.0</div>
+                        <div class="limit-label">Current EWMA</div>
+                    </div>
+                </div>
+
+                <div class="ewma-equations">
+                    <h4 class="equation-title">Double-EWMA Equations</h4>
+                    <div class="equation">
+                        \[ E_1(t) = \lambda_1 X_t + (1-\lambda_1) E_1(t-1) \]
+                    </div>
+                    <div class="equation">
+                        \[ E_2(t) = \lambda_2 E_1(t) + (1-\lambda_2) E_2(t-1) \]
+                    </div>
+                    <div class="equation">
+                        \[ \hat{X}(t+1) = 2E_1(t) - E_2(t) \]
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let simulationRunning = false;
+        let simulationInterval;
+        let timeStep = 0;
+        let dataPoints = [];
+        let ewma1Values = [];
+        let ewma2Values = [];
+        let predictions = [];
+        let controlLimits = { ucl: 0, lcl: 0 };
+
+        // Initialize slider values
+        document.getElementById('lambda1').addEventListener('input', function() {
+            document.getElementById('lambda1Value').textContent = parseFloat(this.value).toFixed(2);
+        });
+
+        document.getElementById('lambda2').addEventListener('input', function() {
+            document.getElementById('lambda2Value').textContent = parseFloat(this.value).toFixed(2);
+        });
+
+        document.getElementById('limitMultiplier').addEventListener('input', function() {
+            document.getElementById('limitMultiplierValue').textContent = this.value + 'σ';
+            updateControlLimits();
+        });
+
+        document.getElementById('driftRate').addEventListener('input', function() {
+            document.getElementById('driftRateValue').textContent = parseFloat(this.value).toFixed(1);
+        });
+
+        document.getElementById('targetValue').addEventListener('input', function() {
+            updateControlLimits();
+        });
+
+        function initializeChart() {
+            const data = [{
+                x: [],
+                y: [],
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Process Data',
+                line: { color: '#667eea', width: 2 },
+                marker: { size: 4 }
+            }, {
+                x: [],
+                y: [],
+                type: 'scatter',
+                mode: 'lines',
+                name: 'EWMA₁ (Level)',
+                line: { color: '#764ba2', width: 2, dash: 'dash' }
+            }, {
+                x: [],
+                y: [],
+                type: 'scatter',
+                mode: 'lines',
+                name: 'EWMA₂ (Trend)',
+                line: { color: '#c084fc', width: 2, dash: 'dot' }
+            }, {
+                x: [],
+                y: [],
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Prediction',
+                line: { color: '#f093fb', width: 2, dash: 'dashdot' }
+            }];
+
+            const layout = {
+                title: {
+                    text: 'Double-EWMA Control Chart',
+                    font: { color: '#fff', size: 16 }
+                },
+                xaxis: {
+                    title: 'Time Step',
+                    color: '#a0a0a0',
+                    gridcolor: 'rgba(102, 126, 234, 0.2)'
+                },
+                yaxis: {
+                    title: 'Process Value',
+                    color: '#a0a0a0',
+                    gridcolor: 'rgba(102, 126, 234, 0.2)'
+                },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                legend: {
+                    x: 0.02,
+                    y: 0.98,
+                    bgcolor: 'rgba(20, 20, 20, 0.8)',
+                    bordercolor: 'rgba(102, 126, 234, 0.3)',
+                    borderwidth: 1
+                }
+            };
+
+            Plotly.newPlot('controlChart', data, layout, {responsive: true});
+        }
+
+        function updateControlLimits() {
+            const target = parseFloat(document.getElementById('targetValue').value);
+            const multiplier = parseFloat(document.getElementById('limitMultiplier').value);
+            const stdDev = 5; // Assume 5 unit standard deviation
+            
+            controlLimits.ucl = target + multiplier * stdDev;
+            controlLimits.lcl = target - multiplier * stdDev;
+            
+            document.getElementById('uclValue').textContent = controlLimits.ucl.toFixed(1);
+            document.getElementById('lclValue').textContent = controlLimits.lcl.toFixed(1);
+            document.getElementById('targetDisplay').textContent = target.toFixed(1);
+        }
+
+        function generateProcessValue() {
+            const target = parseFloat(document.getElementById('targetValue').value);
+            const driftRate = parseFloat(document.getElementById('driftRate').value);
+            const stdDev = 5;
+            
+            // Add drift and random noise
+            const drift = driftRate * timeStep / 60; // Convert to per-minute drift
+            const noise = (Math.random() - 0.5) * 2 * stdDev;
+            
+            return target + drift + noise;
+        }
+
+        function calculateEWMA(currentValue, previousEWMA, lambda) {
+            return lambda * currentValue + (1 - lambda) * previousEWMA;
+        }
+
+        function updateChart() {
+            if (dataPoints.length > 100) {
+                dataPoints.shift();
+                ewma1Values.shift();
+                ewma2Values.shift();
+                predictions.shift();
+            }
+
+            const data = [{
+                x: Array.from({length: dataPoints.length}, (_, i) => i),
+                y: dataPoints,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Process Data',
+                line: { color: '#667eea', width: 2 },
+                marker: { size: 4 }
+            }, {
+                x: Array.from({length: ewma1Values.length}, (_, i) => i),
+                y: ewma1Values,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'EWMA₁ (Level)',
+                line: { color: '#764ba2', width: 2, dash: 'dash' }
+            }, {
+                x: Array.from({length: ewma2Values.length}, (_, i) => i),
+                y: ewma2Values,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'EWMA₂ (Trend)',
+                line: { color: '#c084fc', width: 2, dash: 'dot' }
+            }, {
+                x: Array.from({length: predictions.length}, (_, i) => i),
+                y: predictions,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Prediction',
+                line: { color: '#f093fb', width: 2, dash: 'dashdot' }
+            }];
+
+            // Add control limits as horizontal lines
+            const shapes = [
+                {
+                    type: 'line',
+                    x0: 0,
+                    x1: Math.max(0, dataPoints.length - 1),
+                    y0: controlLimits.ucl,
+                    y1: controlLimits.ucl,
+                    line: { color: '#ef4444', width: 2, dash: 'dash' }
+                },
+                {
+                    type: 'line',
+                    x0: 0,
+                    x1: Math.max(0, dataPoints.length - 1),
+                    y0: controlLimits.lcl,
+                    y1: controlLimits.lcl,
+                    line: { color: '#ef4444', width: 2, dash: 'dash' }
+                },
+                {
+                    type: 'line',
+                    x0: 0,
+                    x1: Math.max(0, dataPoints.length - 1),
+                    y0: parseFloat(document.getElementById('targetValue').value),
+                    y1: parseFloat(document.getElementById('targetValue').value),
+                    line: { color: '#22c55e', width: 2, dash: 'dot' }
+                }
+            ];
+
+            const layout = {
+                title: {
+                    text: 'Double-EWMA Control Chart',
+                    font: { color: '#fff', size: 16 }
+                },
+                xaxis: {
+                    title: 'Time Step',
+                    color: '#a0a0a0',
+                    gridcolor: 'rgba(102, 126, 234, 0.2)'
+                },
+                yaxis: {
+                    title: 'Process Value',
+                    color: '#a0a0a0',
+                    gridcolor: 'rgba(102, 126, 234, 0.2)'
+                },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                legend: {
+                    x: 0.02,
+                    y: 0.98,
+                    bgcolor: 'rgba(20, 20, 20, 0.8)',
+                    bordercolor: 'rgba(102, 126, 234, 0.3)',
+                    borderwidth: 1
+                },
+                shapes: shapes
+            };
+
+            Plotly.react('controlChart', data, layout);
+        }
+
+        function startSimulation() {
+            if (simulationRunning) return;
+            
+            simulationRunning = true;
+            document.getElementById('statusIndicator').className = 'status-indicator status-in-control';
+            document.getElementById('statusIndicator').innerHTML = '<i class="fas fa-circle"></i><span>Simulation Running</span>';
+            
+            simulationInterval = setInterval(() => {
+                const lambda1 = parseFloat(document.getElementById('lambda1').value);
+                const lambda2 = parseFloat(document.getElementById('lambda2').value);
+                
+                // Generate new process value
+                const currentValue = generateProcessValue();
+                dataPoints.push(currentValue);
+                
+                // Calculate EWMA values
+                const ewma1 = dataPoints.length === 1 ? currentValue : 
+                    calculateEWMA(currentValue, ewma1Values[ewma1Values.length - 1], lambda1);
+                ewma1Values.push(ewma1);
+                
+                const ewma2 = ewma1Values.length === 1 ? ewma1 : 
+                    calculateEWMA(ewma1, ewma2Values[ewma2Values.length - 1], lambda2);
+                ewma2Values.push(ewma2);
+                
+                // Calculate prediction (double-EWMA formula)
+                const prediction = 2 * ewma1 - ewma2;
+                predictions.push(prediction);
+                
+                // Update display
+                document.getElementById('currentEwma').textContent = ewma1.toFixed(1);
+                
+                // Check control limits
+                const statusIndicator = document.getElementById('statusIndicator');
+                if (currentValue > controlLimits.ucl || currentValue < controlLimits.lcl) {
+                    statusIndicator.className = 'status-indicator status-out-of-control';
+                    statusIndicator.innerHTML = '<i class="fas fa-circle"></i><span>Out of Control</span>';
+                } else if (Math.abs(currentValue - parseFloat(document.getElementById('targetValue').value)) > 10) {
+                    statusIndicator.className = 'status-indicator status-warning';
+                    statusIndicator.innerHTML = '<i class="fas fa-circle"></i><span>Warning</span>';
+                } else {
+                    statusIndicator.className = 'status-indicator status-in-control';
+                    statusIndicator.innerHTML = '<i class="fas fa-circle"></i><span>In Control</span>';
+                }
+                
+                updateChart();
+                timeStep++;
+            }, 500); // Update every 500ms
+        }
+
+        function stopSimulation() {
+            if (!simulationRunning) return;
+            
+            simulationRunning = false;
+            clearInterval(simulationInterval);
+            document.getElementById('statusIndicator').className = 'status-indicator status-warning';
+            document.getElementById('statusIndicator').innerHTML = '<i class="fas fa-circle"></i><span>Simulation Stopped</span>';
+        }
+
+        function resetSimulation() {
+            stopSimulation();
+            dataPoints = [];
+            ewma1Values = [];
+            ewma2Values = [];
+            predictions = [];
+            timeStep = 0;
+            updateChart();
+            document.getElementById('statusIndicator').className = 'status-indicator status-in-control';
+            document.getElementById('statusIndicator').innerHTML = '<i class="fas fa-circle"></i><span>Process In Control</span>';
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeChart();
+            updateControlLimits();
+        });
+
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            }
+        };
+    </script>
+</body>
+</html>

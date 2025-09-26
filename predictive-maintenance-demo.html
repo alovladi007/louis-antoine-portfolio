@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Predictive Maintenance Demo - Semiconductor Process Optimization</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%);
+            color: #e0e0e0;
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        .navigation-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .demo-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 6rem 2rem 2rem;
+        }
+
+        .demo-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .demo-title {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .demo-subtitle {
+            font-size: 1.2rem;
+            color: #a0a0a0;
+            margin-bottom: 2rem;
+        }
+
+        .demo-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .control-panel {
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.8), rgba(30, 30, 30, 0.8));
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 15px;
+            padding: 2rem;
+        }
+
+        .panel-title {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .control-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #a0a0a0;
+            font-weight: 500;
+        }
+
+        .control-input {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(20, 20, 20, 0.6);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-size: 1rem;
+        }
+
+        .control-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-right: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-analyze {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+        }
+
+        .visualization-panel {
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.8), rgba(30, 30, 30, 0.8));
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 15px;
+            padding: 2rem;
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 400px;
+            background: rgba(10, 10, 10, 0.5);
+            border-radius: 10px;
+            margin-bottom: 1rem;
+        }
+
+        .health-indicators {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .health-card {
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .health-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+        }
+
+        .health-good { color: #22c55e; }
+        .health-warning { color: #f59e0b; }
+        .health-critical { color: #ef4444; }
+
+        .health-label {
+            font-size: 0.9rem;
+            color: #a0a0a0;
+        }
+
+        .maintenance-schedule {
+            background: rgba(20, 20, 20, 0.6);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .schedule-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .schedule-item:last-child {
+            border-bottom: none;
+        }
+
+        .schedule-label {
+            color: #a0a0a0;
+        }
+
+        .schedule-date {
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .schedule-priority {
+            padding: 0.25rem 0.75rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .priority-high {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .priority-medium {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+        }
+
+        .priority-low {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .status-ready {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .status-analyzing {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .status-complete {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .demo-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .demo-title {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navigation-bar">
+        <div>
+            <a href="semiconductor-optimization-complete-suite.html" class="nav-btn">
+                <i class="fas fa-arrow-left"></i> Back to Project Suite
+            </a>
+        </div>
+        <div>
+            <span style="color: #667eea; font-weight: 600;">Predictive Maintenance</span>
+        </div>
+    </nav>
+
+    <div class="demo-container">
+        <div class="demo-header">
+            <h1 class="demo-title">Predictive Maintenance Demo</h1>
+            <p class="demo-subtitle">ML-based equipment health monitoring with failure prediction, maintenance scheduling, and cost optimization for semiconductor tools</p>
+        </div>
+
+        <div class="demo-grid">
+            <!-- Control Panel -->
+            <div class="control-panel">
+                <h3 class="panel-title">
+                    <i class="fas fa-tools"></i> Equipment Selection
+                </h3>
+                
+                <div class="status-indicator status-ready" id="statusIndicator">
+                    <i class="fas fa-circle"></i>
+                    <span>Ready for Analysis</span>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Equipment Type</label>
+                    <select class="control-input" id="equipmentType">
+                        <option value="lithography">Lithography Tool</option>
+                        <option value="etch">Etch Tool</option>
+                        <option value="deposition">Deposition Tool</option>
+                        <option value="metrology">Metrology Tool</option>
+                        <option value="ion_implant">Ion Implant Tool</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Equipment ID</label>
+                    <select class="control-input" id="equipmentId">
+                        <option value="LITHO_001">LITHO_001</option>
+                        <option value="ETCH_002">ETCH_002</option>
+                        <option value="DEPO_003">DEPO_003</option>
+                        <option value="METRO_004">METRO_004</option>
+                        <option value="IMPLANT_005">IMPLANT_005</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Analysis Period</label>
+                    <select class="control-input" id="analysisPeriod">
+                        <option value="7">Last 7 Days</option>
+                        <option value="30">Last 30 Days</option>
+                        <option value="90">Last 90 Days</option>
+                        <option value="365">Last Year</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Maintenance Budget ($)</label>
+                    <input type="number" class="control-input" id="maintenanceBudget" value="50000" min="10000" max="200000" step="5000">
+                </div>
+
+                <button class="btn btn-analyze" onclick="analyzeEquipment()">
+                    <i class="fas fa-search"></i> Analyze Equipment Health
+                </button>
+                <button class="btn" onclick="generateMaintenanceSchedule()">
+                    <i class="fas fa-calendar-alt"></i> Generate Schedule
+                </button>
+                <button class="btn" onclick="resetAnalysis()">
+                    <i class="fas fa-refresh"></i> Reset
+                </button>
+            </div>
+
+            <!-- Visualization Panel -->
+            <div class="visualization-panel">
+                <h3 class="panel-title">
+                    <i class="fas fa-chart-line"></i> Health Analysis
+                </h3>
+                
+                <div class="chart-container" id="healthChart"></div>
+                
+                <div class="health-indicators">
+                    <div class="health-card">
+                        <div class="health-value health-good" id="overallHealth">85%</div>
+                        <div class="health-label">Overall Health</div>
+                    </div>
+                    <div class="health-card">
+                        <div class="health-value health-warning" id="failureRisk">25%</div>
+                        <div class="health-label">Failure Risk</div>
+                    </div>
+                    <div class="health-card">
+                        <div class="health-value health-good" id="remainingLife">78%</div>
+                        <div class="health-label">Remaining Life</div>
+                    </div>
+                    <div class="health-card">
+                        <div class="health-value health-critical" id="maintenanceUrgency">High</div>
+                        <div class="health-label">Maintenance Urgency</div>
+                    </div>
+                </div>
+
+                <div class="maintenance-schedule" id="maintenanceSchedule" style="display: none;">
+                    <h4 style="color: #fff; margin-bottom: 1rem;">Recommended Maintenance Schedule</h4>
+                    <div class="schedule-item">
+                        <span class="schedule-label">Preventive Maintenance</span>
+                        <span class="schedule-date" id="preventiveDate">--</span>
+                        <span class="schedule-priority priority-medium" id="preventivePriority">--</span>
+                    </div>
+                    <div class="schedule-item">
+                        <span class="schedule-label">Calibration Check</span>
+                        <span class="schedule-date" id="calibrationDate">--</span>
+                        <span class="schedule-priority priority-low" id="calibrationPriority">--</span>
+                    </div>
+                    <div class="schedule-item">
+                        <span class="schedule-label">Component Replacement</span>
+                        <span class="schedule-date" id="replacementDate">--</span>
+                        <span class="schedule-priority priority-high" id="replacementPriority">--</span>
+                    </div>
+                    <div class="schedule-item">
+                        <span class="schedule-label">System Upgrade</span>
+                        <span class="schedule-date" id="upgradeDate">--</span>
+                        <span class="schedule-priority priority-medium" id="upgradePriority">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let analysisData = [];
+        let equipmentHealth = {};
+
+        function initializeChart() {
+            const data = [{
+                x: [],
+                y: [],
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Health Score',
+                line: { color: '#667eea', width: 3 }
+            }, {
+                x: [],
+                y: [],
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Failure Risk',
+                line: { color: '#ef4444', width: 2, dash: 'dash' }
+            }, {
+                x: [],
+                y: [],
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Maintenance Threshold',
+                line: { color: '#f59e0b', width: 2, dash: 'dot' }
+            }];
+
+            const layout = {
+                title: {
+                    text: 'Equipment Health Trend Analysis',
+                    font: { color: '#fff', size: 16 }
+                },
+                xaxis: {
+                    title: 'Time',
+                    color: '#a0a0a0',
+                    gridcolor: 'rgba(102, 126, 234, 0.2)'
+                },
+                yaxis: {
+                    title: 'Health Score (%)',
+                    color: '#a0a0a0',
+                    gridcolor: 'rgba(102, 126, 234, 0.2)',
+                    range: [0, 100]
+                },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                legend: {
+                    x: 0.02,
+                    y: 0.98,
+                    bgcolor: 'rgba(20, 20, 20, 0.8)',
+                    bordercolor: 'rgba(102, 126, 234, 0.3)',
+                    borderwidth: 1
+                }
+            };
+
+            Plotly.newPlot('healthChart', data, layout, {responsive: true});
+        }
+
+        function generateHealthData(equipmentType, period) {
+            const dataPoints = period * 24; // Hourly data points
+            const healthData = [];
+            const riskData = [];
+            const timeLabels = [];
+            
+            let baseHealth = 90;
+            let baseRisk = 5;
+            
+            // Equipment-specific characteristics
+            const equipmentConfig = {
+                'lithography': { degradation: 0.8, variability: 2.5, criticalThreshold: 70 },
+                'etch': { degradation: 1.2, variability: 3.0, criticalThreshold: 65 },
+                'deposition': { degradation: 0.6, variability: 2.0, criticalThreshold: 75 },
+                'metrology': { degradation: 0.4, variability: 1.5, criticalThreshold: 80 },
+                'ion_implant': { degradation: 1.5, variability: 4.0, criticalThreshold: 60 }
+            };
+            
+            const config = equipmentConfig[equipmentType] || equipmentConfig['lithography'];
+            
+            for (let i = 0; i < dataPoints; i++) {
+                const time = new Date(Date.now() - (dataPoints - i) * 60 * 60 * 1000);
+                timeLabels.push(time.toISOString().split('T')[0]);
+                
+                // Gradual degradation with random variations
+                const degradation = (i / dataPoints) * config.degradation * 20;
+                const variation = (Math.random() - 0.5) * config.variability;
+                const health = Math.max(0, baseHealth - degradation + variation);
+                
+                // Failure risk increases as health decreases
+                const risk = Math.min(100, baseRisk + (100 - health) * 0.8 + (Math.random() - 0.5) * 5);
+                
+                healthData.push(health);
+                riskData.push(risk);
+            }
+            
+            return { timeLabels, healthData, riskData, config };
+        }
+
+        function analyzeEquipment() {
+            document.getElementById('statusIndicator').className = 'status-indicator status-analyzing';
+            document.getElementById('statusIndicator').innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Analyzing Equipment...</span>';
+            
+            setTimeout(() => {
+                const equipmentType = document.getElementById('equipmentType').value;
+                const period = parseInt(document.getElementById('analysisPeriod').value);
+                
+                const healthData = generateHealthData(equipmentType, period);
+                
+                // Update chart
+                const data = [{
+                    x: healthData.timeLabels,
+                    y: healthData.healthData,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Health Score',
+                    line: { color: '#667eea', width: 3 }
+                }, {
+                    x: healthData.timeLabels,
+                    y: healthData.riskData,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Failure Risk',
+                    line: { color: '#ef4444', width: 2, dash: 'dash' }
+                }, {
+                    x: healthData.timeLabels,
+                    y: Array(healthData.timeLabels.length).fill(healthData.config.criticalThreshold),
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Maintenance Threshold',
+                    line: { color: '#f59e0b', width: 2, dash: 'dot' }
+                }];
+
+                Plotly.react('healthChart', data);
+
+                // Update health indicators
+                const currentHealth = healthData.healthData[healthData.healthData.length - 1];
+                const currentRisk = healthData.riskData[healthData.riskData.length - 1];
+                const remainingLife = Math.max(0, currentHealth);
+                const urgency = currentRisk > 40 ? 'High' : currentRisk > 20 ? 'Medium' : 'Low';
+
+                document.getElementById('overallHealth').textContent = currentHealth.toFixed(0) + '%';
+                document.getElementById('overallHealth').className = `health-value ${
+                    currentHealth > 80 ? 'health-good' : currentHealth > 60 ? 'health-warning' : 'health-critical'
+                }`;
+
+                document.getElementById('failureRisk').textContent = currentRisk.toFixed(0) + '%';
+                document.getElementById('failureRisk').className = `health-value ${
+                    currentRisk > 40 ? 'health-critical' : currentRisk > 20 ? 'health-warning' : 'health-good'
+                }`;
+
+                document.getElementById('remainingLife').textContent = remainingLife.toFixed(0) + '%';
+                document.getElementById('remainingLife').className = `health-value ${
+                    remainingLife > 70 ? 'health-good' : remainingLife > 40 ? 'health-warning' : 'health-critical'
+                }`;
+
+                document.getElementById('maintenanceUrgency').textContent = urgency;
+                document.getElementById('maintenanceUrgency').className = `health-value ${
+                    urgency === 'High' ? 'health-critical' : urgency === 'Medium' ? 'health-warning' : 'health-good'
+                }`;
+
+                // Store data for maintenance scheduling
+                equipmentHealth = {
+                    currentHealth,
+                    currentRisk,
+                    equipmentType,
+                    config: healthData.config
+                };
+
+                document.getElementById('statusIndicator').className = 'status-indicator status-complete';
+                document.getElementById('statusIndicator').innerHTML = '<i class="fas fa-check-circle"></i><span>Analysis Complete</span>';
+            }, 2000);
+        }
+
+        function generateMaintenanceSchedule() {
+            if (!equipmentHealth.currentHealth) {
+                alert('Please analyze equipment health first');
+                return;
+            }
+
+            const budget = parseInt(document.getElementById('maintenanceBudget').value);
+            const currentHealth = equipmentHealth.currentHealth;
+            const currentRisk = equipmentHealth.currentRisk;
+
+            // Calculate maintenance dates based on health and risk
+            const now = new Date();
+            const preventiveDate = new Date(now.getTime() + (currentHealth > 80 ? 30 : currentHealth > 60 ? 14 : 7) * 24 * 60 * 60 * 1000);
+            const calibrationDate = new Date(now.getTime() + (currentHealth > 70 ? 21 : 14) * 24 * 60 * 60 * 1000);
+            const replacementDate = new Date(now.getTime() + (currentRisk > 40 ? 3 : currentRisk > 20 ? 7 : 14) * 24 * 60 * 60 * 1000);
+            const upgradeDate = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000);
+
+            // Determine priorities based on health and risk
+            const preventivePriority = currentHealth > 70 ? 'Low' : currentHealth > 50 ? 'Medium' : 'High';
+            const calibrationPriority = currentHealth > 80 ? 'Low' : 'Medium';
+            const replacementPriority = currentRisk > 40 ? 'High' : currentRisk > 20 ? 'Medium' : 'Low';
+            const upgradePriority = budget > 100000 ? 'Medium' : 'Low';
+
+            // Update schedule display
+            document.getElementById('preventiveDate').textContent = preventiveDate.toLocaleDateString();
+            document.getElementById('preventivePriority').textContent = preventivePriority;
+            document.getElementById('preventivePriority').className = `schedule-priority priority-${preventivePriority.toLowerCase()}`;
+
+            document.getElementById('calibrationDate').textContent = calibrationDate.toLocaleDateString();
+            document.getElementById('calibrationPriority').textContent = calibrationPriority;
+            document.getElementById('calibrationPriority').className = `schedule-priority priority-${calibrationPriority.toLowerCase()}`;
+
+            document.getElementById('replacementDate').textContent = replacementDate.toLocaleDateString();
+            document.getElementById('replacementPriority').textContent = replacementPriority;
+            document.getElementById('replacementPriority').className = `schedule-priority priority-${replacementPriority.toLowerCase()}`;
+
+            document.getElementById('upgradeDate').textContent = upgradeDate.toLocaleDateString();
+            document.getElementById('upgradePriority').textContent = upgradePriority;
+            document.getElementById('upgradePriority').className = `schedule-priority priority-${upgradePriority.toLowerCase()}`;
+
+            document.getElementById('maintenanceSchedule').style.display = 'block';
+        }
+
+        function resetAnalysis() {
+            document.getElementById('statusIndicator').className = 'status-indicator status-ready';
+            document.getElementById('statusIndicator').innerHTML = '<i class="fas fa-circle"></i><span>Ready for Analysis</span>';
+            
+            document.getElementById('maintenanceSchedule').style.display = 'none';
+            equipmentHealth = {};
+            
+            // Reset health indicators
+            document.getElementById('overallHealth').textContent = '--';
+            document.getElementById('failureRisk').textContent = '--';
+            document.getElementById('remainingLife').textContent = '--';
+            document.getElementById('maintenanceUrgency').textContent = '--';
+            
+            initializeChart();
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeChart();
+        });
+
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            }
+        };
+    </script>
+</body>
+</html>
