@@ -1190,7 +1190,7 @@
                 </div>
                 <div class="contact-form-container">
                     <h3>Send me a message</h3>
-                    <form class="contact-form" action="mailto:alovladi@gmail.com" method="post" enctype="text/plain">
+                    <form class="contact-form" id="contactForm" action="https://formspree.io/f/xanyynbv" method="POST">
                         <div class="form-group">
                             <label for="name">Name *</label>
                             <input type="text" id="name" name="name" required>
@@ -1214,6 +1214,7 @@
                         <button type="submit" class="submit-btn">
                             <i class="fas fa-paper-plane"></i> Send Message
                         </button>
+                        <div id="formStatus" style="margin-top: 1rem; padding: 1rem; border-radius: 4px; display: none;"></div>
                     </form>
                 </div>
                 <div class="social-links">
@@ -1446,12 +1447,64 @@
                 });
             });
 
-            // Track contact form interactions
+            // Track contact form interactions and handle submission
             const contactForm = document.querySelector('.contact-form');
+            const formStatus = document.getElementById('formStatus');
+
             if (contactForm) {
-                contactForm.addEventListener('submit', function() {
-                    if (typeof gtag !== 'undefined') {
-                        gtag('event', 'contact_form_submit');
+                contactForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+
+                    const submitBtn = this.querySelector('.submit-btn');
+                    const originalBtnText = submitBtn.innerHTML;
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+                    submitBtn.disabled = true;
+
+                    try {
+                        const formData = new FormData(this);
+                        const response = await fetch(this.action, {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'Accept': 'application/json'
+                            }
+                        });
+
+                        if (response.ok) {
+                            formStatus.style.display = 'block';
+                            formStatus.style.backgroundColor = '#10b981';
+                            formStatus.style.color = 'white';
+                            formStatus.innerHTML = '<i class="fas fa-check-circle"></i> Thank you! Your message has been sent successfully.';
+                            this.reset();
+
+                            // Track successful submission
+                            if (typeof gtag !== 'undefined') {
+                                gtag('event', 'contact_form_submit', {
+                                    'status': 'success'
+                                });
+                            }
+
+                            setTimeout(() => {
+                                formStatus.style.display = 'none';
+                            }, 5000);
+                        } else {
+                            throw new Error('Form submission failed');
+                        }
+                    } catch (error) {
+                        formStatus.style.display = 'block';
+                        formStatus.style.backgroundColor = '#ef4444';
+                        formStatus.style.color = 'white';
+                        formStatus.innerHTML = '<i class="fas fa-exclamation-circle"></i> Oops! There was a problem sending your message. Please try again or email me directly.';
+
+                        // Track failed submission
+                        if (typeof gtag !== 'undefined') {
+                            gtag('event', 'contact_form_submit', {
+                                'status': 'error'
+                            });
+                        }
+                    } finally {
+                        submitBtn.innerHTML = originalBtnText;
+                        submitBtn.disabled = false;
                     }
                 });
             }
