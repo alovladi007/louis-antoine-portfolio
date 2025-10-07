@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>USBL Simulator - Undersea Navigation Suite</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #0a0a0a;
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+        .navbar {
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid rgba(59, 130, 246, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .nav-title {
+            color: #60a5fa;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        .nav-btn {
+            background: linear-gradient(135deg, #1e40af, #3b82f6);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4);
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .hero {
+            text-align: center;
+            padding: 3rem 0;
+            background: linear-gradient(135deg, rgba(30, 64, 175, 0.1), rgba(59, 130, 246, 0.1));
+            border-radius: 20px;
+            margin-bottom: 3rem;
+        }
+        .hero h1 {
+            font-size: 3rem;
+            background: linear-gradient(135deg, #1e40af, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+        .hero-subtitle {
+            font-size: 1.2rem;
+            color: #a0a0a0;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .controls-panel {
+            background: rgba(59, 130, 246, 0.05);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        .controls-title {
+            color: #60a5fa;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+        .control-label {
+            display: block;
+            color: #c0c0c0;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        .control-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .slider {
+            flex: 1;
+            height: 8px;
+            border-radius: 5px;
+            background: rgba(59, 130, 246, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+        }
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            border: none;
+        }
+        .value-display {
+            min-width: 120px;
+            background: rgba(59, 130, 246, 0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            color: #60a5fa;
+            font-weight: 600;
+            text-align: center;
+        }
+        .btn {
+            width: 100%;
+            padding: 1rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #1e40af, #3b82f6);
+            color: white;
+            margin-top: 1.5rem;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4);
+        }
+        .plot-container {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        .plot-title {
+            color: #60a5fa;
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+        }
+        .info-box {
+            background: rgba(16, 185, 129, 0.1);
+            border-left: 4px solid #10b981;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+        .info-box h3 {
+            color: #10b981;
+            margin-bottom: 0.5rem;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #3b82f6;
+            margin-bottom: 0.5rem;
+        }
+        .stat-label {
+            color: #a0a0a0;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-title">
+            <i class="fas fa-satellite-dish"></i> USBL Positioning Simulator
+        </div>
+        <a href="undersea-navigation-complete-project.html" class="nav-btn">
+            <i class="fas fa-arrow-left"></i> Back to Suite
+        </a>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h1><i class="fas fa-satellite-dish"></i> Ultra-Short Baseline Acoustic Positioning</h1>
+            <p class="hero-subtitle">
+                Ship-mounted USBL system with phase interferometry bearing estimation and range-dependent accuracy
+            </p>
+        </div>
+
+        <div class="info-box">
+            <h3><i class="fas fa-info-circle"></i> About This Demo</h3>
+            <p>
+                Ultra-Short Baseline (USBL) systems mount a compact transceiver array on a surface ship or buoy.
+                Unlike LBL which requires deployed seafloor transponders, USBL provides mobile positioning capability.
+                The system measures range via acoustic time-of-flight and bearing via phase interferometry across
+                a small baseline (10-20cm). Accuracy is typically 1% of slant range.
+            </p>
+        </div>
+
+        <div class="controls-panel">
+            <h2 class="controls-title"><i class="fas fa-sliders-h"></i> USBL Configuration</h2>
+
+            <div class="control-group">
+                <label class="control-label">Water Depth (meters)</label>
+                <div class="control-row">
+                    <input type="range" id="depth" class="slider" min="50" max="2000" step="50" value="500">
+                    <span class="value-display" id="depth-val">500 m</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Vehicle Offset from Ship (meters)</label>
+                <div class="control-row">
+                    <input type="range" id="offset" class="slider" min="0" max="1000" step="50" value="200">
+                    <span class="value-display" id="offset-val">200 m</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Acoustic Frequency (kHz)</label>
+                <div class="control-row">
+                    <input type="range" id="frequency" class="slider" min="12" max="48" step="6" value="24">
+                    <span class="value-display" id="frequency-val">24 kHz</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Array Baseline (cm)</label>
+                <div class="control-row">
+                    <input type="range" id="baseline" class="slider" min="10" max="30" step="5" value="15">
+                    <span class="value-display" id="baseline-val">15 cm</span>
+                </div>
+            </div>
+
+            <button class="btn" onclick="runSimulation()">
+                <i class="fas fa-sync"></i> Run USBL Simulation
+            </button>
+        </div>
+
+        <div class="stats-grid" id="stats-container" style="display: none;">
+            <div class="stat-card">
+                <div class="stat-value" id="slant-range">--</div>
+                <div class="stat-label">Slant Range</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="position-acc">--</div>
+                <div class="stat-label">Position Accuracy</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="bearing-acc">--</div>
+                <div class="stat-label">Bearing Accuracy</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="update-rate">--</div>
+                <div class="stat-label">Update Rate</div>
+            </div>
+        </div>
+
+        <div class="plot-container">
+            <h3 class="plot-title"><i class="fas fa-water"></i> 3D USBL Geometry</h3>
+            <div id="geometry-plot"></div>
+        </div>
+
+        <div class="plot-container">
+            <h3 class="plot-title"><i class="fas fa-chart-line"></i> Position Accuracy vs Range</h3>
+            <div id="accuracy-plot"></div>
+        </div>
+
+        <div class="plot-container">
+            <h3 class="plot-title"><i class="fas fa-crosshairs"></i> Measurement Scatter Pattern</h3>
+            <div id="scatter-plot"></div>
+        </div>
+    </div>
+
+    <script>
+        const sliders = ['depth', 'offset', 'frequency', 'baseline'];
+        const units = { 'depth': ' m', 'offset': ' m', 'frequency': ' kHz', 'baseline': ' cm' };
+
+        sliders.forEach(id => {
+            document.getElementById(id).addEventListener('input', function(e) {
+                document.getElementById(id + '-val').textContent = e.target.value + units[id];
+            });
+        });
+
+        function runSimulation() {
+            const depth = parseFloat(document.getElementById('depth').value);
+            const offset = parseFloat(document.getElementById('offset').value);
+            const frequency = parseFloat(document.getElementById('frequency').value);
+            const baseline = parseFloat(document.getElementById('baseline').value) / 100; // Convert to meters
+
+            // Calculate slant range
+            const slantRange = Math.sqrt(depth * depth + offset * offset);
+
+            // Position accuracy ~ 1% of slant range
+            const positionAcc = slantRange * 0.01;
+
+            // Bearing accuracy depends on baseline and wavelength
+            const soundSpeed = 1500; // m/s
+            const wavelength = soundSpeed / (frequency * 1000); // meters
+            const bearingAccDeg = (wavelength / baseline) * (180 / Math.PI) / 2;
+
+            // Update rate ~ 1 Hz for USBL
+            const updateRate = 1.0;
+
+            // Update stats
+            document.getElementById('stats-container').style.display = 'grid';
+            document.getElementById('slant-range').textContent = slantRange.toFixed(1) + ' m';
+            document.getElementById('position-acc').textContent = positionAcc.toFixed(1) + ' m';
+            document.getElementById('bearing-acc').textContent = bearingAccDeg.toFixed(2) + '°';
+            document.getElementById('update-rate').textContent = updateRate.toFixed(1) + ' Hz';
+
+            // 3D Geometry plot
+            const shipTrace = {
+                x: [0], y: [0], z: [0],
+                mode: 'markers',
+                marker: { size: 15, color: '#10b981', symbol: 'diamond' },
+                name: 'Surface Ship (USBL)'
+            };
+
+            const vehicleTrace = {
+                x: [offset], y: [0], z: [-depth],
+                mode: 'markers',
+                marker: { size: 12, color: '#3b82f6' },
+                name: 'AUV'
+            };
+
+            const beamTrace = {
+                x: [0, offset],
+                y: [0, 0],
+                z: [0, -depth],
+                mode: 'lines',
+                line: { color: '#f59e0b', width: 2, dash: 'dash' },
+                name: 'Acoustic Path'
+            };
+
+            const layout1 = {
+                title: { text: 'USBL Positioning Geometry', font: { color: '#e0e0e0' }},
+                scene: {
+                    xaxis: { title: 'Horizontal Offset (m)', gridcolor: '#333', color: '#e0e0e0' },
+                    yaxis: { title: 'Y (m)', gridcolor: '#333', color: '#e0e0e0' },
+                    zaxis: { title: 'Depth (m)', gridcolor: '#333', color: '#e0e0e0' },
+                    bgcolor: '#0a0a0a'
+                },
+                paper_bgcolor: '#0a0a0a',
+                font: { color: '#e0e0e0' },
+                showlegend: true
+            };
+
+            Plotly.newPlot('geometry-plot', [shipTrace, vehicleTrace, beamTrace], layout1, {responsive: true});
+
+            // Accuracy vs Range
+            const ranges = [];
+            const accuracies = [];
+            for (let r = 100; r <= 5000; r += 100) {
+                ranges.push(r);
+                accuracies.push(r * 0.01); // 1% of range
+            }
+
+            const trace2 = {
+                x: ranges,
+                y: accuracies,
+                mode: 'lines',
+                line: { color: '#3b82f6', width: 3 },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(59, 130, 246, 0.2)'
+            };
+
+            const layout2 = {
+                title: { text: 'USBL Position Accuracy (1% of Slant Range)', font: { color: '#e0e0e0' }},
+                xaxis: { title: 'Slant Range (m)', gridcolor: '#333', color: '#e0e0e0' },
+                yaxis: { title: 'Position Accuracy (m)', gridcolor: '#333', color: '#e0e0e0' },
+                plot_bgcolor: '#0a0a0a',
+                paper_bgcolor: '#0a0a0a',
+                font: { color: '#e0e0e0' },
+                annotations: [{
+                    x: slantRange,
+                    y: positionAcc,
+                    text: 'Current Config',
+                    showarrow: true,
+                    arrowhead: 2,
+                    ax: 40,
+                    ay: -40,
+                    font: { color: '#10b981' },
+                    arrowcolor: '#10b981'
+                }]
+            };
+
+            Plotly.newPlot('accuracy-plot', [trace2], layout2, {responsive: true});
+
+            // Measurement scatter (simulate 50 measurements)
+            const scatterX = [];
+            const scatterY = [];
+            for (let i = 0; i < 50; i++) {
+                const rangeError = positionAcc * (Math.random() - 0.5) * 2;
+                const bearingError = bearingAccDeg * (Math.PI / 180) * (Math.random() - 0.5) * 2;
+
+                const x = (offset + rangeError) * Math.cos(bearingError);
+                const y = (offset + rangeError) * Math.sin(bearingError);
+                scatterX.push(x);
+                scatterY.push(y);
+            }
+
+            const trace3 = {
+                x: scatterX,
+                y: scatterY,
+                mode: 'markers',
+                marker: { size: 6, color: '#3b82f6', opacity: 0.6 }
+            };
+
+            const truePos = {
+                x: [offset],
+                y: [0],
+                mode: 'markers',
+                marker: { size: 12, color: '#ef4444', symbol: 'x' },
+                name: 'True Position'
+            };
+
+            const layout3 = {
+                title: { text: 'USBL Measurement Scatter (50 samples)', font: { color: '#e0e0e0' }},
+                xaxis: { title: 'East (m)', gridcolor: '#333', color: '#e0e0e0' },
+                yaxis: { title: 'North (m)', gridcolor: '#333', color: '#e0e0e0', scaleanchor: 'x' },
+                plot_bgcolor: '#0a0a0a',
+                paper_bgcolor: '#0a0a0a',
+                font: { color: '#e0e0e0' },
+                showlegend: false
+            };
+
+            Plotly.newPlot('scatter-plot', [trace3, truePos], layout3, {responsive: true});
+        }
+
+        window.addEventListener('load', runSimulation);
+    </script>
+</body>
+</html>

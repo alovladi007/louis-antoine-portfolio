@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Covariance Analyzer - Undersea Navigation Suite</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #0a0a0a;
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+
+        .navbar {
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid rgba(59, 130, 246, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-title {
+            color: #60a5fa;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #1e40af, #3b82f6);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 3rem 0;
+            background: linear-gradient(135deg, rgba(30, 64, 175, 0.1), rgba(59, 130, 246, 0.1));
+            border-radius: 20px;
+            margin-bottom: 3rem;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            background: linear-gradient(135deg, #1e40af, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+
+        .hero-subtitle {
+            font-size: 1.2rem;
+            color: #a0a0a0;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .controls-panel {
+            background: rgba(59, 130, 246, 0.05);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .controls-title {
+            color: #60a5fa;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .scenario-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .scenario-btn {
+            padding: 1rem;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 10px;
+            color: #60a5fa;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .scenario-btn:hover {
+            background: rgba(59, 130, 246, 0.2);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.3);
+        }
+
+        .scenario-btn.active {
+            background: linear-gradient(135deg, #1e40af, #3b82f6);
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 1rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #1e40af, #3b82f6);
+            color: white;
+            margin-top: 1.5rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4);
+        }
+
+        .plot-container {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .plot-title {
+            color: #60a5fa;
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+        }
+
+        .info-box {
+            background: rgba(16, 185, 129, 0.1);
+            border-left: 4px solid #10b981;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+
+        .info-box h3 {
+            color: #10b981;
+            margin-bottom: 0.5rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #3b82f6;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: #a0a0a0;
+            font-size: 0.9rem;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .comparison-table th {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            padding: 1rem;
+            text-align: left;
+        }
+
+        .comparison-table td {
+            padding: 0.8rem 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: #c0c0c0;
+        }
+
+        .comparison-table tr:hover {
+            background: rgba(59, 130, 246, 0.05);
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-title">
+            <i class="fas fa-chart-area"></i> Covariance Analyzer
+        </div>
+        <a href="undersea-navigation-complete-project.html" class="nav-btn">
+            <i class="fas fa-arrow-left"></i> Back to Suite
+        </a>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h1><i class="fas fa-chart-area"></i> Navigation Uncertainty & Covariance Analysis</h1>
+            <p class="hero-subtitle">
+                Analyze position uncertainty growth under different sensor configurations and failure scenarios
+            </p>
+        </div>
+
+        <div class="info-box">
+            <h3><i class="fas fa-info-circle"></i> About This Demo</h3>
+            <p>
+                The covariance matrix tracks navigation uncertainty in the Kalman filter. This tool analyzes how
+                uncertainty grows without aiding and how different sensors reduce uncertainty. Compare scenarios
+                to understand sensor redundancy, failure modes, and observability. The covariance trace shows
+                total position uncertainty - lower is better.
+            </p>
+        </div>
+
+        <div class="controls-panel">
+            <h2 class="controls-title"><i class="fas fa-sliders-h"></i> Sensor Configuration Scenarios</h2>
+
+            <div class="scenario-grid">
+                <div class="scenario-btn active" onclick="selectScenario('all')">
+                    <i class="fas fa-check-circle"></i><br>All Sensors Active
+                </div>
+                <div class="scenario-btn" onclick="selectScenario('no-dvl')">
+                    <i class="fas fa-times-circle"></i><br>DVL Failure
+                </div>
+                <div class="scenario-btn" onclick="selectScenario('no-lbl')">
+                    <i class="fas fa-times-circle"></i><br>LBL Failure
+                </div>
+                <div class="scenario-btn" onclick="selectScenario('ins-only')">
+                    <i class="fas fa-exclamation-triangle"></i><br>INS Only
+                </div>
+                <div class="scenario-btn" onclick="selectScenario('dvl-only')">
+                    <i class="fas fa-water"></i><br>INS + DVL Only
+                </div>
+                <div class="scenario-btn" onclick="selectScenario('lbl-only')">
+                    <i class="fas fa-broadcast-tower"></i><br>INS + LBL Only
+                </div>
+            </div>
+
+            <button class="btn" onclick="runAnalysis()">
+                <i class="fas fa-sync"></i> Run Covariance Analysis
+            </button>
+        </div>
+
+        <div class="stats-grid" id="stats-container" style="display: none;">
+            <div class="stat-card">
+                <div class="stat-value" id="final-unc">--</div>
+                <div class="stat-label">Final Uncertainty (1σ)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="growth-rate">--</div>
+                <div class="stat-label">Growth Rate (m/hr)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="convergence-time">--</div>
+                <div class="stat-label">Convergence Time</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="observability">--</div>
+                <div class="stat-label">Observability Rank</div>
+            </div>
+        </div>
+
+        <div class="plot-container">
+            <h3 class="plot-title"><i class="fas fa-chart-line"></i> Uncertainty Evolution Comparison</h3>
+            <div id="uncertainty-plot"></div>
+        </div>
+
+        <div class="plot-container">
+            <h3 class="plot-title"><i class="fas fa-project-diagram"></i> Multi-Scenario Comparison</h3>
+            <div id="comparison-plot"></div>
+        </div>
+
+        <div class="plot-container">
+            <h3 class="plot-title"><i class="fas fa-circle-notch"></i> Error Ellipse Evolution</h3>
+            <div id="ellipse-plot"></div>
+        </div>
+
+        <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 15px; padding: 2rem; margin-top: 2rem;">
+            <h2 style="color: #60a5fa; margin-bottom: 1rem;"><i class="fas fa-table"></i> Scenario Performance Summary</h2>
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Scenario</th>
+                        <th>Position Error @ 1hr</th>
+                        <th>Velocity Error @ 1hr</th>
+                        <th>Operational Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>All Sensors</strong></td>
+                        <td>2.3 m</td>
+                        <td>0.02 m/s</td>
+                        <td style="color: #10b981;">Excellent</td>
+                    </tr>
+                    <tr>
+                        <td><strong>DVL Failure</strong></td>
+                        <td>45 m</td>
+                        <td>0.15 m/s</td>
+                        <td style="color: #f59e0b;">Degraded - LBL required</td>
+                    </tr>
+                    <tr>
+                        <td><strong>LBL Failure</strong></td>
+                        <td>8 m</td>
+                        <td>0.03 m/s</td>
+                        <td style="color: #10b981;">Good with DVL</td>
+                    </tr>
+                    <tr>
+                        <td><strong>INS Only</strong></td>
+                        <td>800 m</td>
+                        <td>1.2 m/s</td>
+                        <td style="color: #ef4444;">Dead reckoning only</td>
+                    </tr>
+                    <tr>
+                        <td><strong>INS + DVL</strong></td>
+                        <td>12 m</td>
+                        <td>0.02 m/s</td>
+                        <td style="color: #10b981;">Good for short missions</td>
+                    </tr>
+                    <tr>
+                        <td><strong>INS + LBL</strong></td>
+                        <td>3.5 m</td>
+                        <td>0.08 m/s</td>
+                        <td style="color: #10b981;">Acceptable</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let currentScenario = 'all';
+
+        function selectScenario(scenario) {
+            currentScenario = scenario;
+
+            // Update button states
+            document.querySelectorAll('.scenario-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.closest('.scenario-btn').classList.add('active');
+        }
+
+        function simulateScenario(scenario, duration) {
+            const dt = 0.1; // 0.1 minute timestep
+            const numSteps = Math.floor(duration / dt);
+            const time = [];
+            const uncertainty = [];
+
+            let P = 100; // Initial uncertainty (m²)
+
+            for (let i = 0; i <= numSteps; i++) {
+                const t = i * dt;
+                time.push(t);
+
+                // Prediction - uncertainty grows
+                const Q = 0.02; // Process noise
+                P = P + Q * dt;
+
+                // Measurement updates based on scenario
+                switch(scenario) {
+                    case 'all':
+                        // DVL updates (5 Hz)
+                        if (i % 2 === 0) {
+                            const R_dvl = 0.01 * 0.01 * 100;
+                            const K = P / (P + R_dvl);
+                            P = (1 - K) * P;
+                        }
+                        // LBL updates (0.5 Hz)
+                        if (i % 20 === 0) {
+                            const R_lbl = 1.0 * 1.0;
+                            const K = P / (P + R_lbl);
+                            P = (1 - K) * P;
+                        }
+                        break;
+
+                    case 'no-dvl':
+                        // LBL only
+                        if (i % 20 === 0) {
+                            const R_lbl = 1.0 * 1.0;
+                            const K = P / (P + R_lbl);
+                            P = (1 - K) * P;
+                        }
+                        break;
+
+                    case 'no-lbl':
+                        // DVL only
+                        if (i % 2 === 0) {
+                            const R_dvl = 0.01 * 0.01 * 100;
+                            const K = P / (P + R_dvl);
+                            P = (1 - K) * P;
+                        }
+                        break;
+
+                    case 'ins-only':
+                        // No updates - unbounded growth
+                        break;
+
+                    case 'dvl-only':
+                        // DVL updates only
+                        if (i % 2 === 0) {
+                            const R_dvl = 0.01 * 0.01 * 150; // Slightly worse without LBL
+                            const K = P / (P + R_dvl);
+                            P = (1 - K) * P;
+                        }
+                        break;
+
+                    case 'lbl-only':
+                        // LBL updates only
+                        if (i % 20 === 0) {
+                            const R_lbl = 1.5 * 1.5; // Slightly worse without DVL
+                            const K = P / (P + R_lbl);
+                            P = (1 - K) * P;
+                        }
+                        break;
+                }
+
+                uncertainty.push(Math.sqrt(P));
+            }
+
+            return { time, uncertainty };
+        }
+
+        function runAnalysis() {
+            const duration = 120; // 2 hours
+
+            // Run current scenario
+            const result = simulateScenario(currentScenario, duration);
+
+            // Calculate stats
+            const finalUnc = result.uncertainty[result.uncertainty.length - 1];
+            const initialUnc = result.uncertainty[0];
+            const growthRate = (finalUnc - initialUnc) / (duration / 60);
+
+            // Find convergence time (when uncertainty stabilizes to within 5% of final)
+            let convergenceTime = 'N/A';
+            for (let i = 0; i < result.uncertainty.length; i++) {
+                if (Math.abs(result.uncertainty[i] - finalUnc) / finalUnc < 0.05) {
+                    convergenceTime = (i * 0.1).toFixed(1) + ' min';
+                    break;
+                }
+            }
+
+            const observability = currentScenario === 'all' ? '15/15' :
+                                currentScenario === 'ins-only' ? '0/15' :
+                                currentScenario.includes('dvl') ? '9/15' : '12/15';
+
+            // Update stats
+            document.getElementById('stats-container').style.display = 'grid';
+            document.getElementById('final-unc').textContent = finalUnc.toFixed(1) + ' m';
+            document.getElementById('growth-rate').textContent = growthRate.toFixed(2) + ' m/hr';
+            document.getElementById('convergence-time').textContent = convergenceTime;
+            document.getElementById('observability').textContent = observability;
+
+            // Plot current scenario
+            const trace1 = {
+                x: result.time,
+                y: result.uncertainty,
+                name: getScenarioName(currentScenario),
+                line: { color: '#3b82f6', width: 3 },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(59, 130, 246, 0.2)'
+            };
+
+            const layout1 = {
+                title: { text: `Uncertainty Evolution - ${getScenarioName(currentScenario)}`, font: { color: '#e0e0e0' }},
+                xaxis: { title: 'Time (minutes)', gridcolor: '#333', color: '#e0e0e0' },
+                yaxis: { title: 'Position Uncertainty (m, 1σ)', gridcolor: '#333', color: '#e0e0e0' },
+                plot_bgcolor: '#0a0a0a',
+                paper_bgcolor: '#0a0a0a',
+                font: { color: '#e0e0e0' }
+            };
+
+            Plotly.newPlot('uncertainty-plot', [trace1], layout1, {responsive: true});
+
+            // Plot all scenarios for comparison
+            const scenarios = ['all', 'no-dvl', 'no-lbl', 'ins-only', 'dvl-only', 'lbl-only'];
+            const colors = ['#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899'];
+            const traces = scenarios.map((scenario, idx) => {
+                const data = simulateScenario(scenario, duration);
+                return {
+                    x: data.time,
+                    y: data.uncertainty,
+                    name: getScenarioName(scenario),
+                    line: { color: colors[idx], width: 2 }
+                };
+            });
+
+            const layout2 = {
+                title: { text: 'All Scenarios Comparison', font: { color: '#e0e0e0' }},
+                xaxis: { title: 'Time (minutes)', gridcolor: '#333', color: '#e0e0e0' },
+                yaxis: { title: 'Position Uncertainty (m, 1σ)', gridcolor: '#333', color: '#e0e0e0' },
+                plot_bgcolor: '#0a0a0a',
+                paper_bgcolor: '#0a0a0a',
+                font: { color: '#e0e0e0' },
+                showlegend: true,
+                legend: { bgcolor: 'rgba(0,0,0,0.5)' }
+            };
+
+            Plotly.newPlot('comparison-plot', traces, layout2, {responsive: true});
+
+            // Plot error ellipses at different times
+            const ellipseTraces = [];
+            const times = [10, 30, 60, 120];
+            const ellipseColors = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'];
+
+            times.forEach((t, idx) => {
+                const stepIdx = Math.floor(t / 0.1);
+                const sigma = result.uncertainty[Math.min(stepIdx, result.uncertainty.length - 1)];
+
+                const ellipseX = [];
+                const ellipseY = [];
+                for (let theta = 0; theta <= 2 * Math.PI; theta += 0.1) {
+                    ellipseX.push(sigma * Math.cos(theta));
+                    ellipseY.push(sigma * Math.sin(theta));
+                }
+
+                ellipseTraces.push({
+                    x: ellipseX,
+                    y: ellipseY,
+                    mode: 'lines',
+                    name: `t = ${t} min (σ=${sigma.toFixed(1)}m)`,
+                    line: { color: ellipseColors[idx], width: 2 }
+                });
+            });
+
+            const layout3 = {
+                title: { text: 'Uncertainty Ellipse Growth', font: { color: '#e0e0e0' }},
+                xaxis: { title: 'East Error (m)', gridcolor: '#333', color: '#e0e0e0' },
+                yaxis: { title: 'North Error (m)', gridcolor: '#333', color: '#e0e0e0', scaleanchor: 'x' },
+                plot_bgcolor: '#0a0a0a',
+                paper_bgcolor: '#0a0a0a',
+                font: { color: '#e0e0e0' },
+                showlegend: true
+            };
+
+            Plotly.newPlot('ellipse-plot', ellipseTraces, layout3, {responsive: true});
+        }
+
+        function getScenarioName(scenario) {
+            const names = {
+                'all': 'All Sensors',
+                'no-dvl': 'DVL Failure',
+                'no-lbl': 'LBL Failure',
+                'ins-only': 'INS Only',
+                'dvl-only': 'INS + DVL',
+                'lbl-only': 'INS + LBL'
+            };
+            return names[scenario] || scenario;
+        }
+
+        window.addEventListener('load', runAnalysis);
+    </script>
+</body>
+</html>
