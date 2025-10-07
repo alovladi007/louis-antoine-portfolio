@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Batch Processing - Undersea Navigation</title>
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            color: #e0e0e0;
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            font-size: 2.8em;
+            margin-bottom: 15px;
+            color: #f59e0b;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        .subtitle {
+            font-size: 1.2em;
+            color: #60a5fa;
+            margin-bottom: 10px;
+        }
+        .controls-section {
+            background: rgba(30, 41, 59, 0.8);
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(96, 165, 250, 0.2);
+        }
+        .section-title {
+            color: #60a5fa;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+        }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+            color: white;
+        }
+        .btn:hover {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            transform: translateY(-2px);
+        }
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: rgba(15, 23, 42, 0.8);
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #60a5fa 0%, #10b981 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        .plot-container {
+            background: rgba(30, 41, 59, 0.6);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(96, 165, 250, 0.2);
+        }
+        .plot-title {
+            font-size: 1.3em;
+            color: #f59e0b;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-cogs"></i> Batch Processing</h1>
+            <p class="subtitle">Parameter Sweeps & Sensitivity Analysis</p>
+        </header>
+
+        <div class="controls-section">
+            <div class="section-title"><i class="fas fa-sliders-h"></i> Batch Configuration</div>
+            <button class="btn" onclick="runParameterSweep()"><i class="fas fa-play"></i> Run Parameter Sweep</button>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress">0%</div>
+            </div>
+        </div>
+
+        <div class="plot-container">
+            <div class="plot-title"><i class="fas fa-chart-area"></i> Sensitivity Analysis</div>
+            <div id="sensitivityPlot"></div>
+        </div>
+
+        <div class="plot-container">
+            <div class="plot-title"><i class="fas fa-layer-group"></i> Parameter Sweep Results</div>
+            <div id="sweepPlot"></div>
+        </div>
+    </div>
+
+    <script>
+        function runParameterSweep() {
+            const progress = document.getElementById('progress');
+            let current = 0;
+            const total = 100;
+
+            const interval = setInterval(() => {
+                current += 5;
+                progress.style.width = current + '%';
+                progress.textContent = current + '%';
+
+                if (current >= 100) {
+                    clearInterval(interval);
+                    generatePlots();
+                }
+            }, 100);
+        }
+
+        function generatePlots() {
+            // Sensitivity analysis
+            const params = ['Gyro Drift', 'DVL Accuracy', 'LBL Update Rate', 'Mission Duration'];
+            const sensitivity = [0.8, 0.6, 0.4, 0.3];
+
+            Plotly.newPlot('sensitivityPlot', [{
+                x: params,
+                y: sensitivity,
+                type: 'bar',
+                marker: {color: ['#ef4444', '#f59e0b', '#60a5fa', '#10b981']}
+            }], {
+                plot_bgcolor: 'rgba(15, 23, 42, 0.8)',
+                paper_bgcolor: 'rgba(0, 0, 0, 0)',
+                font: {color: '#e0e0e0'},
+                yaxis: {title: 'Sensitivity Factor'}
+            });
+
+            // Parameter sweep heatmap
+            const x = Array.from({length: 20}, (_, i) => i * 5);
+            const y = Array.from({length: 20}, (_, i) => i * 0.5);
+            const z = [];
+            for (let i = 0; i < 20; i++) {
+                const row = [];
+                for (let j = 0; j < 20; j++) {
+                    row.push(Math.sqrt(x[j]**2 + y[i]**2) / 10);
+                }
+                z.push(row);
+            }
+
+            Plotly.newPlot('sweepPlot', [{
+                x: x,
+                y: y,
+                z: z,
+                type: 'contour',
+                colorscale: 'Viridis'
+            }], {
+                plot_bgcolor: 'rgba(15, 23, 42, 0.8)',
+                paper_bgcolor: 'rgba(0, 0, 0, 0)',
+                font: {color: '#e0e0e0'},
+                xaxis: {title: 'Parameter 1'},
+                yaxis: {title: 'Parameter 2'}
+            });
+        }
+    </script>
+</body>
+</html>
