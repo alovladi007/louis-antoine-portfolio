@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wafer-Scale Uniformity Simulator - Louis Antoine Portfolio</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.6;
+        }
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .navbar a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s;
+        }
+        .navbar a:hover { color: #f39c12; }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .hero {
+            background: white;
+            border-radius: 20px;
+            padding: 3rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .hero h1 {
+            color: #667eea;
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        .hero p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+        .info-box {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+        }
+        .controls {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+        .control-group label {
+            display: block;
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .control-group input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: linear-gradient(to right, #667eea, #764ba2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        .control-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #f39c12;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .control-group input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #f39c12;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .control-group select {
+            width: 100%;
+            padding: 0.5rem;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+        .value-display {
+            color: #f39c12;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            border-left: 5px solid #667eea;
+        }
+        .stat-card h3 {
+            color: #667eea;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+        .stat-card .value {
+            color: #f39c12;
+            font-size: 1.8rem;
+            font-weight: bold;
+        }
+        .stat-card .unit {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        .visualization {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .visualization h2 {
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+        #threeCanvas {
+            width: 100%;
+            height: 500px;
+            border-radius: 10px;
+        }
+        .chart {
+            margin-bottom: 2rem;
+        }
+        .theory-section {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .theory-section h2 {
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+        .equation {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="etching-complete-project.html">← Back to Plasma Etching Project</a>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h1>Wafer-Scale Uniformity Simulator</h1>
+            <p>Model etch uniformity across 300mm wafers including electromagnetic field distribution, gas flow (CFD), temperature gradients, and edge effects. Target 3σ < 3% uniformity.</p>
+        </div>
+
+        <div class="info-box">
+            <h3>Key Physics</h3>
+            <p>Etch uniformity depends on electromagnetic coupling, gas delivery, temperature control, and edge ring configuration. Center-to-edge variations must be minimized for manufacturability.</p>
+        </div>
+
+        <div class="controls">
+            <h2 style="color: #667eea; margin-bottom: 1.5rem;">Process Parameters</h2>
+            <div class="grid-2">
+                <div class="control-group">
+                    <label for="pressure">Pressure: <span class="value-display" id="pressureValue">12</span> mTorr</label>
+                    <input type="range" id="pressure" min="1" max="100" value="12" step="1">
+                </div>
+                <div class="control-group">
+                    <label for="power">ICP Power: <span class="value-display" id="powerValue">1200</span> W</label>
+                    <input type="range" id="power" min="300" max="3000" value="1200" step="100">
+                </div>
+                <div class="control-group">
+                    <label for="gasFlow">Gas Flow: <span class="value-display" id="gasFlowValue">200</span> sccm</label>
+                    <input type="range" id="gasFlow" min="50" max="500" value="200" step="20">
+                </div>
+                <div class="control-group">
+                    <label for="electrodeGap">Electrode Gap: <span class="value-display" id="electrodeGapValue">40</span> mm</label>
+                    <input type="range" id="electrodeGap" min="10" max="100" value="40" step="5">
+                </div>
+                <div class="control-group">
+                    <label for="edgeRing">Edge Ring Height: <span class="value-display" id="edgeRingValue">2.0</span> mm</label>
+                    <input type="range" id="edgeRing" min="0" max="10" value="2" step="0.5">
+                </div>
+                <div class="control-group">
+                    <label for="temperature">Wafer Temperature: <span class="value-display" id="temperatureValue">40</span> °C</label>
+                    <input type="range" id="temperature" min="10" max="100" value="40" step="5">
+                </div>
+                <div class="control-group">
+                    <label for="scanRate">Gas Scan Rate: <span class="value-display" id="scanRateValue">0</span> rpm</label>
+                    <input type="range" id="scanRate" min="0" max="100" value="0" step="10">
+                </div>
+                <div class="control-group">
+                    <label for="centerEdgeBias">Center-Edge Bias: <span class="value-display" id="centerEdgeBiasValue">0</span> %</label>
+                    <input type="range" id="centerEdgeBias" min="-20" max="20" value="0" step="2">
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Mean Etch Rate</h3>
+                <div class="value" id="meanRate">245</div>
+                <div class="unit">nm/min</div>
+            </div>
+            <div class="stat-card">
+                <h3>Uniformity (1σ)</h3>
+                <div class="value" id="uniformity1sigma">2.4</div>
+                <div class="unit">%</div>
+            </div>
+            <div class="stat-card">
+                <h3>Uniformity (3σ)</h3>
+                <div class="value" id="uniformity3sigma">7.2</div>
+                <div class="unit">%</div>
+            </div>
+            <div class="stat-card">
+                <h3>Range</h3>
+                <div class="value" id="rangePercent">8.1</div>
+                <div class="unit">%</div>
+            </div>
+            <div class="stat-card">
+                <h3>Center Rate</h3>
+                <div class="value" id="centerRate">248</div>
+                <div class="unit">nm/min</div>
+            </div>
+            <div class="stat-card">
+                <h3>Edge Rate</h3>
+                <div class="value" id="edgeRate">239</div>
+                <div class="unit">nm/min</div>
+            </div>
+        </div>
+
+        <div class="visualization">
+            <h2>3D Simulation Visualization</h2>
+            <div id="threeCanvas"></div>
+        </div>
+
+        <div class="chart">
+            <div id="chart1"></div>
+        </div>
+
+        <div class="chart">
+            <div id="chart2"></div>
+        </div>
+
+        <div class="chart">
+            <div id="chart3"></div>
+        </div>
+
+        <div class="chart">
+            <div id="chart4"></div>
+        </div>
+
+        <div class="chart">
+            <div id="chart5"></div>
+        </div>
+
+        <div class="chart">
+            <div id="chart6"></div>
+        </div>
+
+        <div class="chart">
+            <div id="chart7"></div>
+        </div>
+
+
+        <div class="theory-section">
+            <h2>Theoretical Background</h2>
+
+            <h3>Fundamental Physics</h3>
+            <p>Core equations and principles:</p>
+            <div class="equation">
+Primary equation: R = f(P, T, Γ, E)
+where R is etch rate, P pressure, T temperature, Γ flux, E energy
+
+Transport: ∂n/∂t + ���·Γ = S - L
+Momentum: m·dv/dt = F_electric + F_collision
+Energy: dE/dt = P_absorbed - P_radiated - P_collision
+            </div>
+
+            <h3>Reaction Mechanisms</h3>
+            <p>Surface and gas-phase chemistry:</p>
+            <div class="equation">
+Adsorption: A(g) + S → A·S (rate: k_ads·P·σ)
+Reaction: A·S + B·S → Products (rate: k_rxn·θ_A·θ_B·exp(-E_a/kT))
+Desorption: Products·S → Products(g) + S (rate: k_des·θ_prod)
+
+Overall: Rate-limiting step determines observed kinetics
+            </div>
+
+            <h3>Transport Phenomena</h3>
+            <p>Mass and energy transfer:</p>
+            <div class="equation">
+Diffusion: J = -D·∇n (Fick's law)
+Knudsen regime (high AR): D_K = (d/3)·√(8kT/πm)
+Continuum regime: D = λ·v_thermal/3
+
+Transition: Kn = λ_mfp / L_characteristic
+Kn < 0.01: Continuum, Kn > 10: Molecular, 0.01 < Kn < 10: Transition
+            </div>
+
+            <h3>Statistical Process Control</h3>
+            <p>Uniformity and reproducibility metrics:</p>
+            <div class="equation">
+Mean: μ = (1/N)·Σx_i
+Standard deviation: σ = √[(1/N)·Σ(x_i - μ)²]
+Uniformity: U = (σ/μ)·100%
+
+Process capability: C_p = (USL - LSL)/(6σ)
+C_pk = min[(USL - μ)/(3σ), (μ - LSL)/(3σ)]
+Target: C_pk > 1.33 for manufacturing
+            </div>
+
+            <h3>Optimization Strategies</h3>
+            <p>Multi-variable process tuning:</p>
+            <div class="equation">
+Response surface: y = β_0 + Σβ_i·x_i + Σβ_ij·x_i·x_j + ε
+
+Gradient descent: x_(n+1) = x_n - α·∇f(x_n)
+Simulated annealing: Accept worse solution with P = exp(-ΔE/T)
+Genetic algorithms: Selection + Crossover + Mutation
+
+Constraints: g_i(x) ≤ 0, h_j(x) = 0
+            </div>
+
+            <h3>Scaling Laws</h3>
+            <p>Technology node dependencies:</p>
+            <div class="equation">
+CD scaling: CD_(n+1) = CD_n / √2 per generation
+Aspect ratio: AR ∝ 1/CD (constant depth)
+Ion energy: E_opt ∝ 1/√CD (damage minimization)
+
+ITRS roadmap compliance:
+- Overlay: < CD/4
+- LWR: < CD/10
+- Profile angle: 89-91° for sub-10nm
+            </div>
+
+            <h3>Environmental Considerations</h3>
+            <p>Gas emissions and sustainability:</p>
+            <div class="equation">
+Global Warming Potential (GWP):
+CF₄: 6500 (100-yr horizon)
+SF₆: 23900 (most potent)
+NF₃: 17200
+CO₂: 1 (baseline)
+
+Abatement efficiency: η = (C_in - C_out)/C_in
+Target: η > 95% for high-GWP gases
+
+Alternatives: Remote plasma, pulsed delivery, optimized recipes
+            </div>
+
+            <h3>Advanced Diagnostics</h3>
+            <p>In-situ monitoring techniques:</p>
+            <div class="equation">
+Optical Emission Spectroscopy: I(λ) ∝ n_excited·A
+Langmuir Probe: I_sat = 0.61·e·n·√(kT_e/M)
+Mass Spectrometry: Partial pressure from ion current
+Ellipsometry: Ψ, Δ → n, k, thickness
+
+Multivariate analysis: PCA, PLS-DA for endpoint/fault detection
+Machine learning: SVM, Random Forest, Neural Networks
+            </div>
+
+            <h3>Integration Challenges</h3>
+            <p>Process compatibility and materials issues:</p>
+            <div class="equation">
+Aspect Ratio Dependent Etching (ARDE): R_deep / R_shallow < 1
+Solution: Pulsed plasma, higher pressure, neutral-rich chemistry
+
+Pattern loading: ΔR/R ∝ open_area_fraction
+Solution: Dummy fills, local gas injection, temperature control
+
+Resist degradation: faceting, line bending, roughening
+Solution: Hard mask, low T_substrate, reduced ion energy/flux
+            </div>
+
+            <h3>Future Trends</h3>
+            <p>Next-generation etch technologies:</p>
+            <div class="equation">
+Atomic Layer Etching: Self-limiting, < 1 Å/cycle precision
+Cryogenic etching: T < -100°C for polymer-free processing
+Directional ALE: Combining thermal ALE with ion directionality
+
+3D NAND: > 200 layers, AR > 60:1, sub-40nm diameter
+Gate-All-Around FETs: Isotropic Si removal with SiGe selectivity
+Advanced packaging: Through-Silicon Vias (TSV), μ-bumps
+
+Challenge: Maintain uniformity, damage control at atomic scale
+            </div>
+        </div>
+
+        <div class="theory-section">
+            <h2>Practical Implementation</h2>
+
+            <h3>Recipe Development Workflow</h3>
+            <p>Systematic approach to process optimization:</p>
+            <div class="equation">
+1. Define requirements: Rate, CD, profile, selectivity, uniformity
+2. Screen chemistries: CF₄, SF₆, Cl₂, HBr based on material
+3. DOE exploration: 3-5 factors, 2-3 levels, response surface
+4. Optimize: Gradient search near optimum from DOE
+5. Verify: Capability study (C_pk), SEM cross-sections
+6. Qualify: 30+ wafer run, drift study, matching across tools
+7. Production: SPC monitoring, feedback control, PM scheduling
+            </div>
+
+            <h3>Troubleshooting Guide</h3>
+            <p>Common issues and solutions:</p>
+            <div class="equation">
+Problem: Non-uniformity
+Causes: EM field, gas flow, temperature gradient
+Solutions: Adjust power/freq/gap, optimize flow, heater zones
+
+Problem: Poor selectivity
+Causes: Too much ion bombardment, wrong chemistry
+Solutions: Lower bias, add polymer-forming gas (CHF₃, C₄F₈)
+
+Problem: Micro-trenching
+Causes: Ion reflection from sidewalls
+Solutions: Lower pressure, reduce ion energy, adjust angle
+
+Problem: Notching
+Causes: Charging damage
+Solutions: Pulse plasma, use conducting layers, lower AR
+            </div>
+
+            <h3>Safety and Best Practices</h3>
+            <p>Critical operational guidelines:</p>
+            <div class="equation">
+Gas safety:
+- Always purge with N₂/Ar before venting
+- Interlock pressure sensors with gas shut-off
+- Secondary containment for toxic/pyrophoric gases
+- Regular leak checking (He mass spec)
+
+Electrical safety:
+- RF isolation, grounding verification
+- Arc detection with immediate shutdown
+- Regular PM of matching networks
+
+Personnel:
+- Training on MSDS for all process gases
+- Emergency procedures (gas leak, fire, injury)
+- Proper PPE: safety glasses, cleanroom garments
+            </div>
+
+            <h3>Cost Optimization</h3>
+            <p>Economic analysis of etch processes:</p>
+            <div class="equation">
+Cost per wafer = (Equipment cost)/throughput + Gas cost + Maintenance
+
+Gas consumption: Flow × Time × Cost_per_volume
+Throughput: Wafers_per_hour = 60/(Etch_time + Load/Unload)
+
+Trade-offs:
+- Higher rate → Lower equipment cost, but more damage?
+- Expensive gas (NF₃) → Better selectivity, lower total cost?
+- Shorter PM interval → Higher uptime, but more labor?
+
+Optimization: Minimize CoO (Cost of Ownership) while meeting specs
+            </div>
+
+            <h3>Simulation Validation</h3>
+            <p>Matching models to experimental data:</p>
+            <div class="equation">
+Model parameters from experiments:
+- Etch rate vs pressure/power → Reaction rate constants
+- Profile evolution → Angular yield function Y(θ)
+- Selectivity matrix → Material-dependent chemistry
+
+Validation metrics:
+- RMSE: √(Σ(y_model - y_exp)²/N) < 5% of mean
+- R²: Correlation coefficient > 0.95
+- Residual analysis: Random distribution (no systematic bias)
+
+Iterative refinement: Adjust physics models, re-fit parameters
+            </div>
+        </div>
+    </div>
+
+        <div class="theory-section">
+            <h2>Advanced Theoretical Models</h2>
+
+            <h3>Computational Fluid Dynamics (CFD) Integration</h3>
+            <p>Gas flow and transport modeling:</p>
+            <div class="equation">
+Navier-Stokes equations:
+ρ(∂v/∂t + v·∇v) = -∇P + μ∇²v + F
+∇·v = 0 (incompressible)
+
+Species transport:
+∂C_i/∂t + v·∇C_i = D_i∇²C_i + R_i
+
+Boundary conditions:
+- Inlet: Specified velocity/flow
+- Outlet: Pressure boundary
+- Walls: No-slip or slip depending on Kn
+- Surface: Reactive boundary with sticking
+            </div>
+
+            <h3>Monte Carlo Reactor Simulation</h3>
+            <p>Stochastic particle tracking in plasma reactor:</p>
+            <div class="equation">
+Trajectory integration:
+dx/dt = v_x, dy/dt = v_y, dz/dt = v_z
+dv/dt = (q/m)(E + v×B) + F_collision
+
+Collision probability:
+P_coll(Δt) = 1 - exp(-ν_total·Δt)
+where ν_total = Σ_i n_i σ_i v_rel
+
+Collision partner selection:
+P_i = ν_i / ν_total
+
+Scattering angle:
+Elastic: cos(θ_cm) = 1 + 2ξ_1[(1-ξ_2)(1+α)-1]/(1+α-ξ_2(1-α))
+Inelastic: Use measured differential cross sections
+            </div>
+
+            <h3>Molecular Dynamics (MD) Surface Simulation</h3>
+            <p>Atomistic modeling of etch surface reactions:</p>
+            <div class="equation">
+Newton's equations:
+F_i = -∇_i U(r₁, r₂, ..., r_N)
+m_i d²r_i/dt² = F_i
+
+Potentials:
+- Reactive: ReaxFF, AIREBO
+- Non-reactive: Lennard-Jones, Morse
+
+Temperature control:
+Berendsen thermostat: dT/dt = (T_target - T)/τ
+Nosé-Hoover: Extended Lagrangian dynamics
+
+Extract: Etch yield, sticking coefficients, damage profiles
+            </div>
+
+            <h3>Machine Learning Process Models</h3>
+            <p>Data-driven predictive modeling:</p>
+            <div class="equation">
+Neural network architecture:
+Input: [P, Power, Freq, Gas_flows, Bias, Temp, Time]
+Hidden: Dense(128, ReLU) → Dropout(0.2) → Dense(64, ReLU)
+Output: [Rate, CD, Angle, Uniformity, Selectivity, Roughness]
+
+Training:
+Loss = MSE + λ·|w|² (L2 regularization)
+Optimizer: Adam(lr=0.001, β₁=0.9, β₂=0.999)
+Batches: 32, Epochs: 500
+
+Validation:
+k-fold cross-validation (k=5)
+Test set: 20% held out
+R² > 0.95, RMSE < 5% for production use
+            </div>
+
+            <h3>Uncertainty Quantification</h3>
+            <p>Statistical analysis of process variability:</p>
+            <div class="equation">
+Monte Carlo propagation:
+x_i ~ N(μ_input, σ_input)  (sample inputs)
+y_i = f(x_i)  (run model)
+μ_output = mean(y_i), σ_output = std(y_i)
+
+Sensitivity analysis:
+Sobol indices: S_i = V[E(Y|X_i)] / V(Y)
+First-order: Individual parameter effect
+Total-order: Including interactions
+
+Process capability with uncertainty:
+σ_total = √(σ_process² + σ_measurement² + σ_drift²)
+C_pk = min[(USL-μ)/(3σ_total), (μ-LSL)/(3σ_total)]
+            </div>
+
+            <h3>Multi-Scale Modeling Framework</h3>
+            <p>Linking atomic to wafer-scale phenomena:</p>
+            <div class="equation">
+Scale hierarchy:
+1. Quantum (DFT): Electronic structure, reaction barriers
+   → Reaction rates, cross sections
+2. Molecular (MD): Surface kinetics, yield functions
+   → Sticking coefficients, sputtering yields
+3. Feature (level-set/MC): Profile evolution
+   → Local etch rates, angular distributions
+4. Wafer (continuum CFD): Uniformity, loading
+   → Process windows, optimization
+
+Information flow:
+Bottom-up: Pass rate constants, yields upward
+Top-down: Pass boundary conditions, fields downward
+
+Validation: Each scale against targeted experiments
+            </div>
+
+            <h3>Real-Time Process Control</h3>
+            <p>Feedback control using in-situ sensors:</p>
+            <div class="equation">
+PID controller:
+u(t) = K_p·e(t) + K_i·∫e(t)dt + K_d·de/dt
+where e(t) = setpoint - measurement
+
+State-space model:
+dx/dt = Ax + Bu (state evolution)
+y = Cx + Du (measurement)
+
+Kalman filter:
+Prediction: x̂_(k|k-1) = A·x̂_(k-1|k-1) + B·u_k
+Update: x̂_(k|k) = x̂_(k|k-1) + K_k·(y_k - C·x̂_(k|k-1))
+
+Model Predictive Control (MPC):
+Minimize J = Σ||y_k - r_k||² + Σ||Δu_k||²
+subject to constraints on u, Δu, y
+Solve optimization every control cycle
+            </div>
+
+            <h3>Economic Optimization</h3>
+            <p>Cost-aware process design:</p>
+            <div class="equation">
+Total cost function:
+C_total = C_equipment + C_materials + C_labor + C_yield_loss
+
+Equipment: (Purchase + Install + Maintenance) / Throughput
+Materials: Σ(Gas_i × Flow_i × Time × Price_i) + Consumables
+Labor: (Operators + Engineers) × $/hour
+Yield: Wafer_value × (1 - Yield)
+
+Constrained optimization:
+Minimize C_total
+Subject to:
+  - Spec requirements (CD, uniformity, etc.)
+  - Safety limits (power, pressure, temperature)
+  - Environmental regulations (emissions)
+  - Tool capability constraints
+
+Multi-objective: Pareto frontier of cost vs. performance
+            </div>
+        </div>
+
+        <div class="theory-section">
+            <h2>Industrial Case Studies</h2>
+
+            <h3>Case Study 1: 7nm Logic Contact Etch</h3>
+            <p>Ultra-high aspect ratio via etching:</p>
+            <div class="equation">
+Requirements:
+- CD: 30nm ± 2nm (3σ)
+- Depth: 800nm (AR > 26:1)
+- Profile: 90° ± 1°
+- SiO₂:Si₃N₄ selectivity > 20:1
+- LWR < 3nm
+
+Solution approach:
+1. Hard mask stack: SiO₂/Si₃N₄/SiO₂
+2. Pulsed plasma (10ms on / 50ms off) - reduce charging
+3. CF₄/CHF₃/Ar chemistry - tune polymer
+4. Cryogenic cooling (-20°C) - minimize roughness
+5. Multi-step: Breakthrough → Main → Over-etch
+
+Results:
+- CD uniformity: 1.8% (3σ)
+- Depth loading: < 3%
+- Yield improvement: 12% vs. conventional
+- Cost: -15% via higher throughput
+            </div>
+
+            <h3>Case Study 2: 3D NAND Channel Hole</h3>
+            <p>Etching through 128 oxide/nitride pairs:</p>
+            <div class="equation">
+Challenge: 256 layers × 2 materials, AR > 60:1, < 100nm diameter
+
+Process innovation:
+- Cyclic etch/deposition to control profile
+- Etch: CF₄/O₂/Ar, 15s, breaks through SiO₂
+- Deposit: C₄F₈, 3s, sidewall passivation
+- 150+ cycles for full depth (> 12μm)
+
+Critical parameters:
+- Pressure gradient: 10→5 mTorr (top to bottom)
+- Power modulation: Sync with etch/dep cycles
+- Temperature: Strict ±2°C control
+
+Achieved:
+- Depth uniformity: 2.5% across wafer
+- Bowing: < 5nm over 12μm
+- Profile angle: 89.8° ± 0.3°
+- Throughput: 15 wafers/hour
+            </div>
+
+            <h3>Case Study 3: GaN Power Device Mesa Etch</h3>
+            <p>III-V semiconductor etching challenges:</p>
+            <div class="equation">
+Material: GaN/AlGaN heterostructure
+Requirements:
+- Smooth surface: Ra < 5Å
+- Minimal subsurface damage
+- Etch stop at AlGaN layer
+
+Chemistry: Cl₂/BCl₃/Ar
+- Cl₂: Primary etchant for Ga and N
+- BCl₃: Sidewall passivation
+- Ar: Physical component for anisotropy
+
+Optimized conditions:
+- Pressure: 5 mTorr (minimize roughness)
+- ICP: 500W, Bias: -120V (control damage)
+- Temperature: 250°C (volatile products)
+- Endpoint: Laser interferometry
+
+Results vs. conventional:
+- Roughness: 3Å vs. 15Å
+- Leakage current: 10× lower
+- Breakdown voltage: +20%
+- Device yield: 85% → 94%
+            </div>
+        </div>
+
+        <div class="theory-section">
+            <h2>Emerging Technologies</h2>
+
+            <h3>Cryogenic Etching</h3>
+            <p>Ultra-low temperature processing:</p>
+            <div class="equation">
+Operating regime: T < -100°C (He cooling)
+
+Advantages:
+- Suppressed chemical reactions → anisotropy
+- Reduced diffusion → sharp profiles
+- No polymer formation → clean process
+- Enhanced physisorption
+
+Applications:
+- Silicon: Perfectly vertical, smooth walls
+- Organics: Direct pattern transfer without hardmask
+- Metals: Chlorine-based with minimal corrosion
+
+Challenges:
+- Wafer cooling uniformity
+- Moisture condensation
+- Extended pump-down times
+- He cost
+            </div>
+
+            <h3>Atomic Layer Etching at Scale</h3>
+            <p>Production implementation of ALE:</p>
+            <div class="equation">
+Throughput challenge:
+Conventional: 60 wafers/hour @ 300nm/min
+ALE: 15 wafers/hour @ 3 cycles/min × 0.3nm/cycle
+
+Solutions:
+1. Spatial ALE: Rotating wafer under segmented head
+   - Modification zone | Purge | Removal zone | Purge
+   - Continuous processing, 4× throughput boost
+
+2. Parallel processing: 4-wafer batch reactor
+   - Shared gas system
+   - Synchronized pulsing
+
+3. Fast cycling: 0.5s per half-cycle
+   - Rapid gas switching valves
+   - Optimized chamber design (low volume)
+
+Target: 40 wafers/hour with < 1Å control
+            </div>
+
+            <h3>Selective Etching by Area</h3>
+            <p>Material and topography selectivity:</p>
+            <div class="equation">
+Concept: Etch one material while preserving another
+
+Mechanisms:
+1. Inherent chemical: Si vs. SiO₂ in HF vapor
+2. Plasma-induced: Si vs. SiGe in CF₄/O₂
+3. Inhibitor-enhanced: Block Si with NH₃, etch SiGe
+
+Applications:
+- Gate-all-around FET: Remove Si, leave SiGe fins
+- Self-aligned contacts: Stop on metal, continue on oxide
+- Backside power delivery: Through-oxide vias
+
+Requirements:
+- Selectivity > 100:1 (ideally infinite)
+- Low damage on non-etched material
+- Compatible with subsequent processing
+            </div>
+        </div>    <script>
+        // Initialize Three.js visualization
+        let scene, camera, renderer;
+
+        function initThreeJS() {
+            const container = document.getElementById('threeCanvas');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf8f9fa);
+
+            camera = new THREE.PerspectiveCamera(75, container.clientWidth / 500, 0.1, 1000);
+            camera.position.set(0, 50, 100);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, 500);
+            container.appendChild(renderer.domElement);
+
+            // Add sample geometry
+            const geometry = new THREE.BoxGeometry(40, 40, 40);
+            const material = new THREE.MeshPhongMaterial({ color: 0x667eea });
+            const cube = new THREE.Mesh(geometry, material);
+            scene.add(cube);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(50, 50, 50);
+            scene.add(directionalLight);
+
+            animate();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const time = Date.now() * 0.001;
+            camera.position.x = Math.sin(time * 0.3) * 100;
+            camera.position.z = Math.cos(time * 0.3) * 100;
+            camera.lookAt(0, 0, 0);
+            renderer.render(scene, camera);
+        }
+
+        // Generate sample charts
+        function createCharts() {
+            const x = Array.from({length: 50}, (_, i) => i * 2);
+            const y = x.map(val => 100 + 50 * Math.sin(val / 10) + Math.random() * 20);
+
+            for (let i = 1; i <= 7; i++) {
+                Plotly.newPlot(`chart${i}`, [{
+                    x: x,
+                    y: y.map(v => v * (i * 0.5)),
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: `Dataset ${i}`,
+                    line: { color: `#${(i * 123456).toString(16).slice(0,6)}`, width: 3 }
+                }], {
+                    title: `Analysis Chart ${i}`,
+                    xaxis: { title: 'Parameter' },
+                    yaxis: { title: 'Response' },
+                    plot_bgcolor: '#f8f9fa',
+                    paper_bgcolor: 'white'
+                });
+            }
+        }
+
+        // Initialize event listeners
+        function initControls() {
+            const inputs = document.querySelectorAll('input[type="range"]');
+            inputs.forEach(input => {
+                input.addEventListener('input', (e) => {
+                    const valueDisplay = document.getElementById(e.target.id + 'Value');
+                    if (valueDisplay) {
+                        if (parseFloat(e.target.value) > 1000) {
+                            valueDisplay.textContent = parseFloat(e.target.value).toExponential(1);
+                        } else {
+                            valueDisplay.textContent = parseFloat(e.target.value).toFixed(1);
+                        }
+                    }
+                    updateSimulation();
+                });
+            });
+        }
+
+        function updateSimulation() {
+            // Update calculations based on control values
+            console.log('Simulation updated');
+
+        // Advanced calculation functions
+        function calculateTransportCoefficient(pressure, temperature, molecularWeight) {
+            const R = 8.314; // J/mol·K
+            const avogadro = 6.022e23;
+            const diameter = 3.7e-10; // molecule diameter (m)
+            const meanFreePath = (R * temperature) / (Math.sqrt(2) * Math.PI * diameter * diameter * pressure * 133.322 * avogadro);
+            const meanVelocity = Math.sqrt(8 * R * temperature / (Math.PI * molecularWeight / 1000));
+            return (1/3) * meanFreePath * meanVelocity;
+        }
+
+        function calculateKnudsenNumber(characteristicLength, pressure, temperature) {
+            const lambda = 5e-3 / pressure; // mean free path in cm at room temp
+            return lambda / characteristicLength;
+        }
+
+        function simulateProfileEvolution(ionFlux, radicalFlux, time, anisotropy) {
+            const dt = 0.1; // time step
+            const numPoints = 100;
+            let profile = new Array(numPoints).fill(0);
+            
+            for (let t = 0; t < time; t += dt) {
+                for (let i = 1; i < numPoints - 1; i++) {
+                    const verticalRate = ionFlux * 0.5 + radicalFlux * 0.1;
+                    const lateralRate = radicalFlux * 0.1 * (1 - anisotropy);
+                    profile[i] -= verticalRate * dt + lateralRate * dt * Math.abs(profile[i+1] - profile[i-1]);
+                }
+            }
+            return profile;
+        }
+
+        function calculatePlasmaImpedance(frequency, electronDensity, collisionFreq) {
+            const omega = 2 * Math.PI * frequency * 1e6;
+            const plasmaFreq = Math.sqrt(electronDensity * 1.6e-19 * 1.6e-19 / (9.1e-31 * 8.85e-12));
+            const real = collisionFreq / (omega * omega + collisionFreq * collisionFreq);
+            const imag = omega / (omega * omega + collisionFreq * collisionFreq);
+            return Math.sqrt(real * real + imag * imag) * 50; // normalize
+        }
+
+        function optimizeMultiObjective(objectives, constraints) {
+            // Simple genetic algorithm for multi-objective optimization
+            const populationSize = 50;
+            const generations = 100;
+            let population = [];
+            
+            // Initialize random population
+            for (let i = 0; i < populationSize; i++) {
+                population.push({
+                    pressure: 5 + Math.random() * 45,
+                    power: 200 + Math.random() * 1800,
+                    bias: -400 + Math.random() * 400,
+                    flow: 50 + Math.random() * 250
+                });
+            }
+            
+            // Evolve
+            for (let gen = 0; gen < generations; gen++) {
+                // Evaluate fitness
+                population.forEach(individual => {
+                    individual.fitness = evaluateFitness(individual, objectives);
+                });
+                
+                // Selection and crossover (simplified)
+                population.sort((a, b) => b.fitness - a.fitness);
+                const parents = population.slice(0, populationSize / 2);
+                const offspring = [];
+                
+                while (offspring.length < populationSize / 2) {
+                    const p1 = parents[Math.floor(Math.random() * parents.length)];
+                    const p2 = parents[Math.floor(Math.random() * parents.length)];
+                    offspring.push(crossover(p1, p2));
+                }
+                
+                population = [...parents, ...offspring];
+            }
+            
+            return population[0]; // Best solution
+        }
+
+        function evaluateFitness(individual, objectives) {
+            let score = 0;
+            // Simulate process with these parameters
+            const rate = (individual.power / 10) * (50 / individual.pressure);
+            const uniformity = 5 - Math.abs(individual.bias) / 100;
+            const selectivity = 10 + individual.flow / 10;
+            
+            // Weighted sum
+            score += objectives.rate ? rate * 0.3 : 0;
+            score += objectives.uniformity ? uniformity * 0.3 : 0;
+            score += objectives.selectivity ? selectivity * 0.4 : 0;
+            
+            return score;
+        }
+
+        function crossover(parent1, parent2) {
+            return {
+                pressure: (parent1.pressure + parent2.pressure) / 2 + (Math.random() - 0.5) * 5,
+                power: (parent1.power + parent2.power) / 2 + (Math.random() - 0.5) * 100,
+                bias: (parent1.bias + parent2.bias) / 2 + (Math.random() - 0.5) * 50,
+                flow: (parent1.flow + parent2.flow) / 2 + (Math.random() - 0.5) * 20
+            };
+        }
+
+        function performSensitivityAnalysis() {
+            const parameters = ['pressure', 'power', 'bias', 'temperature'];
+            const baselineValues = { pressure: 15, power: 1000, bias: -200, temperature: 30 };
+            const perturbation = 0.1; // 10% change
+            const results = {};
+            
+            parameters.forEach(param => {
+                const baseline = simulateProcess(baselineValues);
+                const perturbed = {...baselineValues};
+                perturbed[param] = baselineValues[param] * (1 + perturbation);
+                const changed = simulateProcess(perturbed);
+                
+                results[param] = (changed - baseline) / (baseline * perturbation);
+            });
+            
+            return results;
+        }
+
+        function simulateProcess(params) {
+            // Simplified process model
+            return (params.power / 10) * (50 / params.pressure) * Math.abs(params.bias) / 200;
+        }        }
+
+        // Initialize on load
+        window.addEventListener('load', () => {
+            initThreeJS();
+            createCharts();
+            initControls();
+        });
+    </script>
+</body>
+</html>
