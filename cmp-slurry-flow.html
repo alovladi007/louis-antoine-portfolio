@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slurry Flow Dynamics - CMP Models</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #0a0a0a;
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+
+        .navbar {
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-title {
+            color: #667eea;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 3rem 0;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            border-radius: 20px;
+            margin-bottom: 3rem;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            background: linear-gradient(135deg, #667eea, #f39c12);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+
+        .hero-subtitle {
+            font-size: 1.2rem;
+            color: #a0a0a0;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .controls-panel {
+            background: rgba(102, 126, 234, 0.05);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .controls-title {
+            color: #667eea;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .control-label {
+            display: block;
+            color: #c0c0c0;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .control-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .slider {
+            flex: 1;
+            height: 8px;
+            border-radius: 5px;
+            background: rgba(102, 126, 234, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+        }
+
+        .value-display {
+            min-width: 120px;
+            background: rgba(102, 126, 234, 0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            color: #667eea;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 1rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .plot-container {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .plot-title {
+            color: #667eea;
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+        }
+
+        .info-box {
+            background: rgba(243, 156, 18, 0.1);
+            border-left: 4px solid #f39c12;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+
+        .info-box h3 {
+            color: #f39c12;
+            margin-bottom: 0.5rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: #a0a0a0;
+            font-size: 0.9rem;
+        }
+
+        .comparison-table {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            overflow-x: auto;
+        }
+
+        .comparison-table h3 {
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .comparison-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .comparison-table th {
+            background: rgba(102, 126, 234, 0.2);
+            color: #667eea;
+            padding: 1rem;
+            text-align: left;
+        }
+
+        .comparison-table td {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: #c0c0c0;
+        }
+
+        .comparison-table tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .theory-section {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-top: 2rem;
+        }
+
+        .theory-section h2 {
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .theory-section h3 {
+            color: #667eea;
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+            font-size: 1.2rem;
+        }
+
+        .equation-box {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+            font-size: 1.1rem;
+            color: #667eea;
+        }
+
+        .theory-section p {
+            color: #c0c0c0;
+            margin-bottom: 1rem;
+        }
+
+        .theory-section ul {
+            margin-left: 2rem;
+            color: #c0c0c0;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-title">
+            <i class="fas fa-water"></i> Slurry Flow Dynamics
+        </div>
+        <a href="cmp-complete-project.html" class="nav-btn">
+            <i class="fas fa-arrow-left"></i> Back to Suite
+        </a>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h1><i class="fas fa-water"></i> CFD-Based Slurry Flow Simulation</h1>
+            <p class="hero-subtitle">
+                Computational fluid dynamics simulation of slurry transport: Particle concentration profiles, velocity fields, and shear-induced migration in the CMP process.
+            </p>
+        </div>
+
+        <div class="info-box">
+            <h3><i class="fas fa-info-circle"></i> About Slurry Flow in CMP</h3>
+            <p>
+                Slurry flow governs particle transport to the wafer-pad interface. Key phenomena include: convective transport (bulk flow),
+                shear-induced particle migration (creates concentration gradients), centrifugal effects (radial pumping), and bow wave formation
+                ahead of the wafer edge. Typical flow rates: 100-300 mL/min with particle concentrations 1-5 wt%.
+            </p>
+        </div>
+
+        <div class="controls-panel">
+            <h2 class="controls-title"><i class="fas fa-sliders-h"></i> Flow Configuration</h2>
+
+            <div class="control-group">
+                <label class="control-label">Slurry Flow Rate (mL/min)</label>
+                <div class="control-row">
+                    <input type="range" id="flow-rate" class="slider" min="50" max="350" step="25" value="150">
+                    <span class="value-display" id="flow-rate-val">150 mL/min</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Particle Concentration (wt%)</label>
+                <div class="control-row">
+                    <input type="range" id="concentration" class="slider" min="0.5" max="10" step="0.5" value="3">
+                    <span class="value-display" id="concentration-val">3.0 wt%</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Particle Diameter (nm)</label>
+                <div class="control-row">
+                    <input type="range" id="particle-size" class="slider" min="30" max="200" step="10" value="80">
+                    <span class="value-display" id="particle-size-val">80 nm</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Platen Rotation Speed (RPM)</label>
+                <div class="control-row">
+                    <input type="range" id="rotation" class="slider" min="30" max="120" step="10" value="60">
+                    <span class="value-display" id="rotation-val">60 RPM</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Pad Groove Depth (μm)</label>
+                <div class="control-row">
+                    <input type="range" id="groove-depth" class="slider" min="200" max="1000" step="100" value="500">
+                    <span class="value-display" id="groove-depth-val">500 μm</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Slurry Viscosity (cP)</label>
+                <div class="control-row">
+                    <input type="range" id="viscosity" class="slider" min="1" max="10" step="0.5" value="3">
+                    <span class="value-display" id="viscosity-val">3.0 cP</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Wafer-Pad Gap (μm)</label>
+                <div class="control-row">
+                    <input type="range" id="gap" class="slider" min="5" max="50" step="5" value="20">
+                    <span class="value-display" id="gap-val">20 μm</span>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="runSimulation()">
+                    <i class="fas fa-play"></i> Run CFD Simulation
+                </button>
+                <button class="btn btn-secondary" onclick="resetDefaults()">
+                    <i class="fas fa-undo"></i> Reset Defaults
+                </button>
+            </div>
+        </div>
+
+        <div class="stats-grid" id="stats-container" style="display: none;">
+            <div class="stat-card">
+                <div class="stat-value" id="reynolds">--</div>
+                <div class="stat-label">Reynolds Number</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="peclet">--</div>
+                <div class="stat-label">Péclet Number</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="shear-rate">--</div>
+                <div class="stat-label">Shear Rate (1/s)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="residence-time">--</div>
+                <div class="stat-label">Residence Time (s)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="particle-flux">--</div>
+                <div class="stat-label">Particle Flux (×10¹⁵/s)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="uniformity-index">--</div>
+                <div class="stat-label">Flow Uniformity (%)</div>
+            </div>
+        </div>
+
+        <div class="plot-container">
+            <h3 class="plot-title"><i class="fas fa-wind"></i> Velocity Profile Across Wafer-Pad Gap</h3>
+            <div id="velocity-profile"></div>
+        </div>
+
+        <div class="plot-container">
+            <h3 class="plot-title"><i class="fas fa-chart-area"></i> Particle Concentration Distribution</h3>
+            <div id="concentration-profile"></div>
+        </div>
+
+        <div class="plot-container">
+            <h3 class="plot-title"><i class="fas fa-vector-square"></i> 2D Velocity Field (Top View)</h3>
+            <div id="velocity-field"></div>
+        </div>
+
+        <div class="plot-container">
+            <h3 class="plot-title"><i class="fas fa-arrows-alt"></i> Shear-Induced Migration Effect</h3>
+            <div id="migration-plot"></div>
+        </div>
+
+        <div class="comparison-table">
+            <h3><i class="fas fa-table"></i> Slurry Flow Regimes in CMP</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Flow Regime</th>
+                        <th>Reynolds Number</th>
+                        <th>Flow Rate (mL/min)</th>
+                        <th>Characteristics</th>
+                        <th>MRR Impact</th>
+                        <th>Uniformity</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Insufficient Flow</td>
+                        <td>< 50</td>
+                        <td>< 80</td>
+                        <td>Particle starvation, dry zones</td>
+                        <td>Low, unstable</td>
+                        <td>Poor (> 10%)</td>
+                    </tr>
+                    <tr>
+                        <td>Laminar Flow</td>
+                        <td>50-500</td>
+                        <td>80-150</td>
+                        <td>Smooth, predictable flow</td>
+                        <td>Moderate, stable</td>
+                        <td>Good (3-5%)</td>
+                    </tr>
+                    <tr>
+                        <td>Optimal Flow</td>
+                        <td>500-1500</td>
+                        <td>150-250</td>
+                        <td>Turbulent mixing, good transport</td>
+                        <td>High, stable</td>
+                        <td>Excellent (< 3%)</td>
+                    </tr>
+                    <tr>
+                        <td>Excessive Flow</td>
+                        <td>> 1500</td>
+                        <td>> 250</td>
+                        <td>Hydroplaning, pad saturation</td>
+                        <td>Decreased</td>
+                        <td>Fair (5-8%)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="comparison-table">
+            <h3><i class="fas fa-flask"></i> Slurry Rheology and Particle Properties</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Particle Type</th>
+                        <th>Size (nm)</th>
+                        <th>Concentration (wt%)</th>
+                        <th>Viscosity (cP)</th>
+                        <th>Sedimentation</th>
+                        <th>Application</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Colloidal Silica</td>
+                        <td>50-80</td>
+                        <td>2-5</td>
+                        <td>2-4</td>
+                        <td>Stable (weeks)</td>
+                        <td>Oxide CMP</td>
+                    </tr>
+                    <tr>
+                        <td>Fumed Silica</td>
+                        <td>100-150</td>
+                        <td>3-8</td>
+                        <td>5-10</td>
+                        <td>Thixotropic</td>
+                        <td>STI, ILD</td>
+                    </tr>
+                    <tr>
+                        <td>Alumina (Al₂O₃)</td>
+                        <td>80-120</td>
+                        <td>1-3</td>
+                        <td>3-6</td>
+                        <td>Moderate (days)</td>
+                        <td>Sapphire, GaN</td>
+                    </tr>
+                    <tr>
+                        <td>Ceria (CeO₂)</td>
+                        <td>100-200</td>
+                        <td>1-4</td>
+                        <td>2-5</td>
+                        <td>Fast (hours)</td>
+                        <td>Glass, SiC</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="theory-section">
+            <h2><i class="fas fa-book-open"></i> Slurry Flow Theory</h2>
+
+            <h3>Navier-Stokes Equations</h3>
+            <p>
+                Slurry flow in the wafer-pad gap is governed by the incompressible Navier-Stokes equations:
+            </p>
+            <div class="equation-box">
+                ρ(∂u/∂t + u·∇u) = -∇p + μ∇²u + f<sub>body</sub>
+            </div>
+            <p>Where:</p>
+            <ul>
+                <li>ρ = slurry density (1.01-1.05 g/cm³)</li>
+                <li>u = velocity vector field</li>
+                <li>p = pressure field</li>
+                <li>μ = dynamic viscosity (function of shear rate for non-Newtonian slurries)</li>
+                <li>f<sub>body</sub> = body forces (centrifugal, gravitational)</li>
+            </ul>
+
+            <h3>Reynolds Number</h3>
+            <p>
+                The Reynolds number characterizes the flow regime (laminar vs turbulent):
+            </p>
+            <div class="equation-box">
+                Re = ρVL/μ
+            </div>
+            <p>
+                For CMP: V ~ 0.5-2 m/s (tangential velocity), L ~ 20 μm (gap height), giving Re ~ 100-2000.
+                Transition to turbulence occurs around Re ~ 1000 in confined geometries.
+            </p>
+
+            <h3>Shear-Induced Migration</h3>
+            <p>
+                Particles migrate from high to low shear regions, creating concentration gradients:
+            </p>
+            <div class="equation-box">
+                J<sub>migration</sub> = -D<sub>shear</sub>∇γ̇
+            </div>
+            <p>
+                Where γ̇ is the shear rate and D<sub>shear</sub> is the shear-induced diffusivity proportional to a²γ̇ (a = particle radius).
+                This causes particles to concentrate at the center of the gap, affecting MRR distribution.
+            </p>
+
+            <h3>Particle Transport Equation</h3>
+            <p>
+                Particle concentration C evolves according to the advection-diffusion equation:
+            </p>
+            <div class="equation-box">
+                ∂C/∂t + u·∇C = D∇²C + S<sub>migration</sub>
+            </div>
+            <p>
+                Where D is the Brownian diffusivity (D = kT/(6πμa) ~ 10⁻¹² m²/s for 80 nm particles) and
+                S<sub>migration</sub> accounts for shear-induced migration.
+            </p>
+
+            <h3>Péclet Number</h3>
+            <p>
+                The Péclet number compares convective to diffusive transport:
+            </p>
+            <div class="equation-box">
+                Pe = VL/D
+            </div>
+            <p>
+                For typical CMP conditions: Pe ~ 10⁶-10⁸, indicating convection-dominated transport.
+                Particles follow streamlines with minimal lateral diffusion.
+            </p>
+
+            <h3>Groove Flow Dynamics</h3>
+            <p>
+                Pad grooves act as slurry reservoirs and distribution channels. Groove-to-gap flow rate ratio:
+            </p>
+            <div class="equation-box">
+                Q<sub>groove</sub>/Q<sub>gap</sub> = (h<sub>groove</sub>/h<sub>gap</sub>)³
+            </div>
+            <p>
+                With h<sub>groove</sub> ~ 500 μm and h<sub>gap</sub> ~ 20 μm, the ratio is ~15,000:1, showing grooves carry most
+                of the flow while the gap relies on lateral transport.
+            </p>
+
+            <h3>Bow Wave Effect</h3>
+            <p>
+                The wafer edge creates a stagnation point and pressure buildup (bow wave), affecting slurry entry:
+            </p>
+            <ul>
+                <li>Bow wave height: Δh ~ V²/(2g) ~ 50-200 μm</li>
+                <li>Creates backflow at wafer edge</li>
+                <li>Reduces edge MRR by 5-15%</li>
+                <li>Can be mitigated by retaining ring design and flow rate optimization</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const sliders = ['flow-rate', 'concentration', 'particle-size', 'rotation', 'groove-depth', 'viscosity', 'gap'];
+        const units = {
+            'flow-rate': ' mL/min',
+            'concentration': ' wt%',
+            'particle-size': ' nm',
+            'rotation': ' RPM',
+            'groove-depth': ' μm',
+            'viscosity': ' cP',
+            'gap': ' μm'
+        };
+
+        sliders.forEach(id => {
+            document.getElementById(id).addEventListener('input', function(e) {
+                document.getElementById(id + '-val').textContent = parseFloat(e.target.value).toFixed(1) + units[id];
+            });
+        });
+
+        function resetDefaults() {
+            document.getElementById('flow-rate').value = 150;
+            document.getElementById('concentration').value = 3;
+            document.getElementById('particle-size').value = 80;
+            document.getElementById('rotation').value = 60;
+            document.getElementById('groove-depth').value = 500;
+            document.getElementById('viscosity').value = 3;
+            document.getElementById('gap').value = 20;
+
+            sliders.forEach(id => {
+                document.getElementById(id).dispatchEvent(new Event('input'));
+            });
+        }
+
+        function runSimulation() {
+            const Q = parseFloat(document.getElementById('flow-rate').value) / 60000; // L/s
+            const C_wt = parseFloat(document.getElementById('concentration').value);
+            const d_p = parseFloat(document.getElementById('particle-size').value) * 1e-9; // m
+            const omega = parseFloat(document.getElementById('rotation').value) * 2 * Math.PI / 60; // rad/s
+            const h_groove = parseFloat(document.getElementById('groove-depth').value) * 1e-6; // m
+            const mu = parseFloat(document.getElementById('viscosity').value) * 0.001; // Pa·s
+            const h_gap = parseFloat(document.getElementById('gap').value) * 1e-6; // m
+
+            // Calculate parameters
+            const r_wafer = 0.15; // 300mm wafer radius in m
+            const V_tangential = omega * r_wafer; // m/s
+            const rho = 1020; // kg/m³ (slurry density)
+
+            // Reynolds number
+            const Re = rho * V_tangential * h_gap / mu;
+
+            // Brownian diffusivity
+            const kT = 1.38e-23 * 300; // J (at 27°C)
+            const D_brownian = kT / (6 * Math.PI * mu * d_p / 2);
+
+            // Péclet number
+            const Pe = V_tangential * h_gap / D_brownian;
+
+            // Shear rate
+            const gamma_dot = V_tangential / h_gap;
+
+            // Residence time
+            const t_res = Math.PI * r_wafer * r_wafer / Q;
+
+            // Particle flux (particles per second)
+            const V_slurry = Q; // m³/s
+            const rho_particle = 2200; // kg/m³ (silica)
+            const mass_particle = rho_particle * (4/3) * Math.PI * Math.pow(d_p/2, 3);
+            const mass_flow = Q * rho * (C_wt / 100);
+            const particle_flux = mass_flow / mass_particle;
+
+            // Flow uniformity (better at moderate Re)
+            const uniformity = 100 - Math.abs(Re - 800) / 30;
+
+            // Update stats
+            document.getElementById('stats-container').style.display = 'grid';
+            document.getElementById('reynolds').textContent = Re.toFixed(0);
+            document.getElementById('peclet').textContent = Pe.toExponential(1);
+            document.getElementById('shear-rate').textContent = gamma_dot.toFixed(0);
+            document.getElementById('residence-time').textContent = t_res.toFixed(2);
+            document.getElementById('particle-flux').textContent = (particle_flux / 1e15).toFixed(2);
+            document.getElementById('uniformity-index').textContent = Math.max(Math.min(uniformity, 98), 75).toFixed(1);
+
+            // Velocity profile (Couette flow)
+            const z_vals = [];
+            const v_vals = [];
+            for (let z = 0; z <= h_gap * 1e6; z += h_gap * 1e6 / 50) {
+                z_vals.push(z);
+                v_vals.push(V_tangential * (z / (h_gap * 1e6)));
+            }
+
+            const trace1 = {
+                x: v_vals,
+                y: z_vals,
+                mode: 'lines',
+                line: { color: '#667eea', width: 3 },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(102, 126, 234, 0.3)'
+            };
+
+            const layout1 = {
+                title: { text: 'Velocity Profile (Couette Flow)', font: { color: '#e0e0e0' }},
+                xaxis: { title: 'Velocity (m/s)', gridcolor: '#333', color: '#e0e0e0' },
+                yaxis: { title: 'Gap Height (μm)', gridcolor: '#333', color: '#e0e0e0' },
+                plot_bgcolor: '#0a0a0a',
+                paper_bgcolor: '#0a0a0a',
+                font: { color: '#e0e0e0' }
+            };
+
+            Plotly.newPlot('velocity-profile', [trace1], layout1, {responsive: true});
+
+            // Concentration profile (shear-induced migration)
+            const C_vals = [];
+            for (let z = 0; z <= h_gap * 1e6; z += h_gap * 1e6 / 50) {
+                const z_norm = z / (h_gap * 1e6);
+                // Parabolic concentration (higher in center)
+                const C_local = C_wt * (1 + 0.3 * (1 - 4 * (z_norm - 0.5) ** 2));
+                C_vals.push(C_local);
+            }
+
+            const trace2 = {
+                x: C_vals,
+                y: z_vals,
+                mode: 'lines',
+                line: { color: '#f39c12', width: 3 }
+            };
+
+            const layout2 = {
+                title: { text: 'Particle Concentration Profile', font: { color: '#e0e0e0' }},
+                xaxis: { title: 'Concentration (wt%)', gridcolor: '#333', color: '#e0e0e0' },
+                yaxis: { title: 'Gap Height (μm)', gridcolor: '#333', color: '#e0e0e0' },
+                plot_bgcolor: '#0a0a0a',
+                paper_bgcolor: '#0a0a0a',
+                font: { color: '#e0e0e0' }
+            };
+
+            Plotly.newPlot('concentration-profile', [trace2], layout2, {responsive: true});
+
+            // 2D velocity field
+            const r_points = 20;
+            const theta_points = 30;
+            const x_grid = [];
+            const y_grid = [];
+            const vx_grid = [];
+            const vy_grid = [];
+
+            for (let i = 0; i < r_points; i++) {
+                const x_row = [];
+                const y_row = [];
+                const vx_row = [];
+                const vy_row = [];
+                for (let j = 0; j < theta_points; j++) {
+                    const r = (i + 1) * r_wafer / r_points;
+                    const theta = j * 2 * Math.PI / theta_points;
+                    x_row.push(r * Math.cos(theta) * 100); // cm
+                    y_row.push(r * Math.sin(theta) * 100); // cm
+                    const v_mag = omega * r;
+                    vx_row.push(-v_mag * Math.sin(theta));
+                    vy_row.push(v_mag * Math.cos(theta));
+                }
+                x_grid.push(x_row);
+                y_grid.push(y_row);
+                vx_grid.push(vx_row);
+                vy_grid.push(vy_row);
+            }
+
+            const trace3 = {
+                x: x_grid.flat(),
+                y: y_grid.flat(),
+                u: vx_grid.flat(),
+                v: vy_grid.flat(),
+                type: 'cone',
+                colorscale: 'Viridis',
+                showscale: true,
+                colorbar: { title: 'Velocity (m/s)', titlefont: { color: '#e0e0e0' }, tickfont: { color: '#e0e0e0' }}
+            };
+
+            const layout3 = {
+                title: { text: '2D Velocity Field (Rotational Flow)', font: { color: '#e0e0e0' }},
+                xaxis: { title: 'X Position (cm)', gridcolor: '#333', color: '#e0e0e0', scaleanchor: 'y' },
+                yaxis: { title: 'Y Position (cm)', gridcolor: '#333', color: '#e0e0e0' },
+                plot_bgcolor: '#0a0a0a',
+                paper_bgcolor: '#0a0a0a',
+                font: { color: '#e0e0e0' }
+            };
+
+            Plotly.newPlot('velocity-field', [trace3], layout3, {responsive: true});
+
+            // Migration effect
+            const shear_range = [];
+            const migration_flux = [];
+            for (let gamma = 0; gamma <= gamma_dot * 2; gamma += gamma_dot * 2 / 100) {
+                shear_range.push(gamma);
+                const D_shear = Math.pow(d_p, 2) * gamma / 1000; // Simplified model
+                migration_flux.push(D_shear * 1e12); // Scale for visualization
+            }
+
+            const trace4 = {
+                x: shear_range,
+                y: migration_flux,
+                mode: 'lines',
+                line: { color: '#764ba2', width: 3 }
+            };
+
+            const layout4 = {
+                title: { text: 'Shear-Induced Migration Flux', font: { color: '#e0e0e0' }},
+                xaxis: { title: 'Shear Rate (1/s)', gridcolor: '#333', color: '#e0e0e0' },
+                yaxis: { title: 'Migration Flux (arb. units)', gridcolor: '#333', color: '#e0e0e0' },
+                plot_bgcolor: '#0a0a0a',
+                paper_bgcolor: '#0a0a0a',
+                font: { color: '#e0e0e0' }
+            };
+
+            Plotly.newPlot('migration-plot', [trace4], layout4, {responsive: true});
+        }
+
+        window.addEventListener('load', runSimulation);
+    </script>
+</body>
+</html>

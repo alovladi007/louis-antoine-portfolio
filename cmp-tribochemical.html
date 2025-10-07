@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tribochemical CMP Model</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #0a0a0a; color: #e0e0e0; line-height: 1.6; }
+        .navbar { background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(10px); padding: 1rem 2rem; border-bottom: 1px solid rgba(102, 126, 234, 0.3); position: sticky; top: 0; z-index: 100; display: flex; justify-content: space-between; align-items: center; }
+        .nav-title { color: #667eea; font-size: 1.5rem; font-weight: 600; }
+        .nav-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; transition: all 0.3s ease; }
+        .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .hero { text-align: center; padding: 3rem 0; background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1)); border-radius: 20px; margin-bottom: 3rem; }
+        .hero h1 { font-size: 3rem; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 1rem; }
+        .hero-subtitle { font-size: 1.2rem; color: #a0a0a0; max-width: 800px; margin: 0 auto; }
+        .controls-panel { background: rgba(102, 126, 234, 0.05); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; margin-bottom: 2rem; }
+        .controls-title { color: #667eea; font-size: 1.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .control-group { margin-bottom: 1.5rem; }
+        .control-label { display: block; color: #c0c0c0; margin-bottom: 0.5rem; font-weight: 500; }
+        .control-row { display: flex; align-items: center; gap: 1rem; }
+        .slider { flex: 1; height: 8px; border-radius: 5px; background: rgba(102, 126, 234, 0.2); outline: none; -webkit-appearance: none; }
+        .slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #667eea; cursor: pointer; }
+        .slider::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: #667eea; cursor: pointer; border: none; }
+        .value-display { min-width: 120px; background: rgba(102, 126, 234, 0.1); padding: 0.5rem 1rem; border-radius: 8px; color: #667eea; font-weight: 600; text-align: center; }
+        .button-group { display: flex; gap: 1rem; margin-top: 2rem; }
+        .btn { flex: 1; padding: 1rem; border: none; border-radius: 10px; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+        .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4); }
+        .btn-secondary { background: rgba(102, 126, 234, 0.1); color: #667eea; border: 1px solid rgba(102, 126, 234, 0.3); }
+        .btn-secondary:hover { background: rgba(102, 126, 234, 0.2); }
+        .plot-container { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; margin-bottom: 2rem; }
+        .plot-title { color: #667eea; font-size: 1.3rem; margin-bottom: 1rem; }
+        .info-box { background: rgba(102, 126, 234, 0.1); border-left: 4px solid #667eea; padding: 1rem; border-radius: 8px; margin-bottom: 2rem; }
+        .info-box h3 { color: #667eea; margin-bottom: 0.5rem; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .stat-card { background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.2); padding: 1.5rem; border-radius: 12px; text-align: center; }
+        .stat-value { font-size: 2rem; font-weight: bold; color: #667eea; margin-bottom: 0.5rem; }
+        .stat-label { color: #a0a0a0; font-size: 0.9rem; }
+        .theory-section { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; margin-top: 2rem; }
+        .theory-section h2 { color: #667eea; margin-bottom: 1rem; }
+        .theory-section h3 { color: #667eea; margin-top: 1.5rem; margin-bottom: 0.5rem; font-size: 1.2rem; }
+        .equation-box { background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 10px; padding: 1.5rem; margin: 1.5rem 0; text-align: center; font-family: 'Courier New', monospace; font-size: 1.1rem; color: #667eea; }
+        .theory-section p { color: #c0c0c0; margin-bottom: 1rem; }
+        .theory-section ul { margin-left: 2rem; color: #c0c0c0; }
+        select { background: rgba(102, 126, 234, 0.1); color: #e0e0e0; border: 1px solid rgba(102, 126, 234, 0.3); padding: 0.5rem; border-radius: 8px; font-size: 1rem; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-title"><i class="fas fa-flask-vial"></i> Tribochemical CMP Model</div>
+        <a href="cmp-complete-project.html" class="nav-btn"><i class="fas fa-arrow-left"></i> Back to Project</a>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h1><i class="fas fa-atom"></i> Tribochemical Wear-Corrosion Model</h1>
+            <p class="hero-subtitle">Coupled mechanical wear and chemical corrosion for metal CMP with oxidation kinetics and passivation effects</p>
+        </div>
+
+        <div class="info-box">
+            <h3><i class="fas fa-info-circle"></i> About Tribochemical CMP</h3>
+            <p>Metal CMP combines mechanical wear and chemical corrosion in a synergistic process. The mechanical action removes the oxidized layer while chemical oxidizers continuously form new oxide. This tribochemical mechanism is essential for copper and tungsten CMP.</p>
+        </div>
+
+        <div class="controls-panel">
+            <h2 class="controls-title"><i class="fas fa-sliders-h"></i> Process Parameters</h2>
+
+            <div class="control-group">
+                <label class="control-label">Material</label>
+                <select id="material" onchange="updateSimulation()">
+                    <option value="cu">Copper (Cu)</option>
+                    <option value="w">Tungsten (W)</option>
+                    <option value="al">Aluminum (Al)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Pressure (psi): <span class="value-display" id="pressure-val">3</span></label>
+                <div class="control-row">
+                    <input type="range" id="pressure" class="slider" min="1" max="7" step="0.5" value="3" oninput="updateDisplay()">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Velocity (m/s): <span class="value-display" id="velocity-val">1.0</span></label>
+                <div class="control-row">
+                    <input type="range" id="velocity" class="slider" min="0.3" max="2.0" step="0.1" value="1.0" oninput="updateDisplay()">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">pH: <span class="value-display" id="ph-val">5</span></label>
+                <div class="control-row">
+                    <input type="range" id="ph" class="slider" min="2" max="12" step="0.5" value="5" oninput="updateDisplay()">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Oxidizer Conc. (%): <span class="value-display" id="oxidizer-val">2</span></label>
+                <div class="control-row">
+                    <input type="range" id="oxidizer" class="slider" min="0.5" max="5" step="0.5" value="2" oninput="updateDisplay()">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Temperature (°C): <span class="value-display" id="temp-val">30</span></label>
+                <div class="control-row">
+                    <input type="range" id="temp" class="slider" min="20" max="60" step="5" value="30" oninput="updateDisplay()">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Time (min): <span class="value-display" id="time-val">2</span></label>
+                <div class="control-row">
+                    <input type="range" id="time" class="slider" min="0.5" max="5" step="0.5" value="2" oninput="updateDisplay()">
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="updateSimulation()"><i class="fas fa-play"></i> Run Simulation</button>
+                <button class="btn btn-secondary" onclick="resetDefaults()"><i class="fas fa-undo"></i> Reset</button>
+            </div>
+        </div>
+
+        <div class="stats-grid" id="stats-container" style="display: none;">
+            <div class="stat-card"><div class="stat-value" id="mrr-total">--</div><div class="stat-label">Total MRR (nm/min)</div></div>
+            <div class="stat-card"><div class="stat-value" id="mrr-mech">--</div><div class="stat-label">Mechanical Component</div></div>
+            <div class="stat-card"><div class="stat-value" id="mrr-chem">--</div><div class="stat-label">Chemical Component</div></div>
+            <div class="stat-card"><div class="stat-value" id="synergy">--</div><div class="stat-label">Synergy Factor</div></div>
+            <div class="stat-card"><div class="stat-value" id="oxide-thickness">--</div><div class="stat-label">Oxide Thickness (nm)</div></div>
+            <div class="stat-card"><div class="stat-value" id="removal">--</div><div class="stat-label">Total Removal (nm)</div></div>
+        </div>
+
+        <div class="plot-container">
+            <h3 class="plot-title"><i class="fas fa-chart-line"></i> MRR vs pH</h3>
+            <div id="ph-plot"></div>
+        </div>
+
+        <div class="plot-container">
+            <h3 class="plot-title"><i class="fas fa-chart-area"></i> Oxidation Kinetics</h3>
+            <div id="kinetics-plot"></div>
+        </div>
+
+        <div class="plot-container">
+            <h3 class="plot-title"><i class="fas fa-layer-group"></i> Oxide Layer Evolution</h3>
+            <div id="oxide-plot"></div>
+        </div>
+
+        <div class="plot-container">
+            <h3 class="plot-title"><i class="fas fa-temperature-high"></i> Temperature Effects on MRR</h3>
+            <div id="temp-plot"></div>
+        </div>
+
+        <div class="plot-container">
+            <h3 class="plot-title"><i class="fas fa-vial"></i> Oxidizer Concentration Effects</h3>
+            <div id="oxidizer-plot"></div>
+        </div>
+
+        <div class="plot-container">
+            <h3 class="plot-title"><i class="fas fa-chart-pie"></i> MRR Component Breakdown</h3>
+            <div id="breakdown-plot"></div>
+        </div>
+
+        <div class="theory-section">
+            <h2><i class="fas fa-book-open"></i> Tribochemical Theory</h2>
+
+            <h3>Kaufman Mechanism</h3>
+            <p>The Kaufman model describes metal CMP as a wear-corrosion process where mechanical action removes the chemically formed oxide layer:</p>
+            <div class="equation-box">MRR<sub>total</sub> = MRR<sub>mech</sub> + MRR<sub>chem</sub> + MRR<sub>synergy</sub></div>
+
+            <h3>Oxidation Kinetics</h3>
+            <p>The formation of metal oxide follows Arrhenius kinetics:</p>
+            <div class="equation-box">k<sub>ox</sub> = A × exp(-E<sub>a</sub> / RT) × [Oxidizer]<sup>n</sup></div>
+
+            <h3>pH Effects</h3>
+            <p>pH strongly influences the dissolution rate and passivation behavior. Copper is stable in acidic pH (4-8), while tungsten prefers acidic conditions (2-4).</p>
+
+            <h3>Passivation Layer</h3>
+            <p>The steady-state oxide thickness h<sub>ss</sub> balances formation and removal rates. Thinner oxides lead to higher MRR but risk substrate damage.</p>
+
+            <h3>Material-Specific Considerations</h3>
+            <ul>
+                <li><strong>Copper CMP:</strong> Uses H₂O₂ as oxidizer in slightly acidic pH (4-6). Forms Cu₂O and CuO layers.</li>
+                <li><strong>Tungsten CMP:</strong> Requires strong oxidizers (Fe³⁺, IO₃⁻) at low pH (2-4). Forms WO₃ passive layer.</li>
+                <li><strong>Aluminum CMP:</strong> Uses mild oxidizers at moderate pH (4-5). Forms Al₂O₃ protective layer.</li>
+            </ul>
+
+            <h3>Process Optimization</h3>
+            <p>Optimal tribochemical CMP requires balancing several factors:</p>
+            <ul>
+                <li>Mechanical wear must be sufficient to remove oxide but not damage substrate</li>
+                <li>Chemical oxidation rate should match mechanical removal rate</li>
+                <li>pH must be controlled to prevent excessive corrosion or passivation</li>
+                <li>Temperature affects both chemical kinetics and mechanical properties</li>
+                <li>Slurry flow ensures fresh oxidizer delivery and byproduct removal</li>
+            </ul>
+
+            <h3>Advanced Models</h3>
+            <p>Modern tribochemical models incorporate:</p>
+            <ul>
+                <li>Electrochemical potential measurements for real-time monitoring</li>
+                <li>Surface roughness evolution during polishing</li>
+                <li>Multi-layer oxide structures (e.g., Cu/Cu₂O/CuO)</li>
+                <li>Complexing agents that modify dissolution rates</li>
+                <li>Inhibitor effects on passivation stability</li>
+            </ul>
+
+            <h3>Practical Applications</h3>
+            <p>Understanding tribochemical mechanisms enables:</p>
+            <ul>
+                <li>Recipe development for new metal materials</li>
+                <li>Optimization of process windows for high selectivity</li>
+                <li>Defect reduction through controlled passivation</li>
+                <li>Extended pad life by matching chemical and mechanical rates</li>
+                <li>Cost reduction through lower oxidizer consumption</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const materialData = {
+            cu: { name: 'Copper', kMech: 1.8e-7, kChem: 50, phOpt: 5, Ea: 45, color: '#e74c3c' },
+            w: { name: 'Tungsten', kMech: 1.2e-7, kChem: 30, phOpt: 3, Ea: 55, color: '#3498db' },
+            al: { name: 'Aluminum', kMech: 1.5e-7, kChem: 40, phOpt: 4, Ea: 50, color: '#9b59b6' }
+        };
+
+        function updateDisplay() {
+            document.getElementById('pressure-val').textContent = document.getElementById('pressure').value;
+            document.getElementById('velocity-val').textContent = document.getElementById('velocity').value;
+            document.getElementById('ph-val').textContent = document.getElementById('ph').value;
+            document.getElementById('oxidizer-val').textContent = document.getElementById('oxidizer').value;
+            document.getElementById('temp-val').textContent = document.getElementById('temp').value;
+            document.getElementById('time-val').textContent = document.getElementById('time').value;
+        }
+
+        function resetDefaults() {
+            document.getElementById('material').value = 'cu';
+            document.getElementById('pressure').value = 3;
+            document.getElementById('velocity').value = 1.0;
+            document.getElementById('ph').value = 5;
+            document.getElementById('oxidizer').value = 2;
+            document.getElementById('temp').value = 30;
+            document.getElementById('time').value = 2;
+            updateDisplay();
+        }
+
+        function updateSimulation() {
+            const mat = document.getElementById('material').value;
+            const P = parseFloat(document.getElementById('pressure').value);
+            const V = parseFloat(document.getElementById('velocity').value);
+            const pH = parseFloat(document.getElementById('ph').value);
+            const oxidizer = parseFloat(document.getElementById('oxidizer').value);
+            const T = parseFloat(document.getElementById('temp').value);
+            const time = parseFloat(document.getElementById('time').value);
+
+            const material = materialData[mat];
+
+            // Mechanical component (Preston)
+            const mrrMech = material.kMech * P * 6894.76 * V * 100 * 60; // Convert to nm/min
+
+            // Chemical component (Arrhenius)
+            const R = 8.314;
+            const kChem = material.kChem * Math.exp(-material.Ea * 1000 / (R * (T + 273.15))) * Math.pow(oxidizer, 0.5);
+            const mrrChem = kChem * (1 + Math.exp(-Math.abs(pH - material.phOpt)));
+
+            // Synergy factor
+            const synergy = 0.3 * Math.sqrt(mrrMech * mrrChem);
+            const mrrTotal = mrrMech + mrrChem + synergy;
+
+            // Oxide thickness (steady state)
+            const oxideThickness = (kChem / (mrrMech / 10));
+
+            // Total removal
+            const totalRemoval = mrrTotal * time;
+
+            // Update stats
+            document.getElementById('stats-container').style.display = 'grid';
+            document.getElementById('mrr-total').textContent = mrrTotal.toFixed(1);
+            document.getElementById('mrr-mech').textContent = mrrMech.toFixed(1);
+            document.getElementById('mrr-chem').textContent = mrrChem.toFixed(1);
+            document.getElementById('synergy').textContent = synergy.toFixed(1);
+            document.getElementById('oxide-thickness').textContent = oxideThickness.toFixed(2);
+            document.getElementById('removal').textContent = totalRemoval.toFixed(0);
+
+            // Plot 1: MRR vs pH
+            const phRange = [];
+            const mrrVsPh = [];
+            for (let p = 2; p <= 12; p += 0.5) {
+                phRange.push(p);
+                const chemRate = kChem * (1 + Math.exp(-Math.abs(p - material.phOpt)));
+                const totalRate = mrrMech + chemRate + 0.3 * Math.sqrt(mrrMech * chemRate);
+                mrrVsPh.push(totalRate);
+            }
+
+            Plotly.newPlot('ph-plot', [{
+                x: phRange,
+                y: mrrVsPh,
+                mode: 'lines+markers',
+                line: { color: material.color, width: 3 }
+            }], {
+                title: { text: `${material.name} MRR vs pH`, font: { color: '#e0e0e0' }},
+                xaxis: { title: 'pH', gridcolor: '#333', color: '#e0e0e0' },
+                yaxis: { title: 'MRR (nm/min)', gridcolor: '#333', color: '#e0e0e0' },
+                plot_bgcolor: '#0a0a0a',
+                paper_bgcolor: '#0a0a0a',
+                font: { color: '#e0e0e0' }
+            }, {responsive: true});
+
+            // Plot 2: Oxidation kinetics
+            const timeRange = [];
+            const oxideGrowth = [];
+            for (let t = 0; t <= 300; t += 5) {
+                timeRange.push(t);
+                const growth = oxideThickness * (1 - Math.exp(-kChem * t / 100));
+                oxideGrowth.push(growth);
+            }
+
+            Plotly.newPlot('kinetics-plot', [{
+                x: timeRange,
+                y: oxideGrowth,
+                mode: 'lines',
+                line: { color: '#f39c12', width: 3 },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(243, 156, 18, 0.2)'
+            }], {
+                title: { text: 'Oxide Layer Growth', font: { color: '#e0e0e0' }},
+                xaxis: { title: 'Time (s)', gridcolor: '#333', color: '#e0e0e0' },
+                yaxis: { title: 'Thickness (nm)', gridcolor: '#333', color: '#e0e0e0' },
+                plot_bgcolor: '#0a0a0a',
+                paper_bgcolor: '#0a0a0a',
+                font: { color: '#e0e0e0' }
+            }, {responsive: true});
+
+            // Plot 3: Layer evolution
+            const layers = ['Passivation Oxide', 'Reaction Zone', 'Bulk Metal'];
+            const thicknesses = [oxideThickness, oxideThickness * 2, 1000];
+            const colors = ['#f39c12', '#667eea', '#95a5a6'];
+
+            Plotly.newPlot('oxide-plot', [{
+                y: layers,
+                x: thicknesses,
+                type: 'bar',
+                orientation: 'h',
+                marker: { color: colors }
+            }], {
+                title: { text: 'Layer Structure', font: { color: '#e0e0e0' }},
+                xaxis: { title: 'Thickness (nm)', gridcolor: '#333', color: '#e0e0e0', type: 'log' },
+                yaxis: { gridcolor: '#333', color: '#e0e0e0' },
+                plot_bgcolor: '#0a0a0a',
+                paper_bgcolor: '#0a0a0a',
+                font: { color: '#e0e0e0' }
+            }, {responsive: true});
+
+            // Plot 4: Temperature effects
+            const tempRange = [];
+            const mrrVsTemp = [];
+            for (let temp = 20; temp <= 60; temp += 2) {
+                tempRange.push(temp);
+                const kChemTemp = material.kChem * Math.exp(-material.Ea * 1000 / (R * (temp + 273.15))) * Math.pow(oxidizer, 0.5);
+                const chemRate = kChemTemp * (1 + Math.exp(-Math.abs(pH - material.phOpt)));
+                const totalRate = mrrMech + chemRate + 0.3 * Math.sqrt(mrrMech * chemRate);
+                mrrVsTemp.push(totalRate);
+            }
+
+            Plotly.newPlot('temp-plot', [{
+                x: tempRange,
+                y: mrrVsTemp,
+                mode: 'lines+markers',
+                line: { color: '#e74c3c', width: 3 },
+                marker: { size: 6 }
+            }], {
+                title: { text: 'MRR vs Temperature', font: { color: '#e0e0e0' }},
+                xaxis: { title: 'Temperature (°C)', gridcolor: '#333', color: '#e0e0e0' },
+                yaxis: { title: 'MRR (nm/min)', gridcolor: '#333', color: '#e0e0e0' },
+                plot_bgcolor: '#0a0a0a',
+                paper_bgcolor: '#0a0a0a',
+                font: { color: '#e0e0e0' }
+            }, {responsive: true});
+
+            // Plot 5: Oxidizer concentration effects
+            const oxidizerRange = [];
+            const mrrVsOxidizer = [];
+            for (let ox = 0.5; ox <= 5; ox += 0.25) {
+                oxidizerRange.push(ox);
+                const kChemOx = material.kChem * Math.exp(-material.Ea * 1000 / (R * (T + 273.15))) * Math.pow(ox, 0.5);
+                const chemRate = kChemOx * (1 + Math.exp(-Math.abs(pH - material.phOpt)));
+                const totalRate = mrrMech + chemRate + 0.3 * Math.sqrt(mrrMech * chemRate);
+                mrrVsOxidizer.push(totalRate);
+            }
+
+            Plotly.newPlot('oxidizer-plot', [{
+                x: oxidizerRange,
+                y: mrrVsOxidizer,
+                mode: 'lines',
+                line: { color: '#667eea', width: 3 },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(102, 126, 234, 0.3)'
+            }], {
+                title: { text: 'MRR vs Oxidizer Concentration', font: { color: '#e0e0e0' }},
+                xaxis: { title: 'Oxidizer Conc. (%)', gridcolor: '#333', color: '#e0e0e0' },
+                yaxis: { title: 'MRR (nm/min)', gridcolor: '#333', color: '#e0e0e0' },
+                plot_bgcolor: '#0a0a0a',
+                paper_bgcolor: '#0a0a0a',
+                font: { color: '#e0e0e0' }
+            }, {responsive: true});
+
+            // Plot 6: Component breakdown
+            const components = ['Mechanical Wear', 'Chemical Corrosion', 'Synergy'];
+            const values = [mrrMech, mrrChem, synergy];
+            const pieColors = ['#667eea', '#f39c12', '#e74c3c'];
+
+            Plotly.newPlot('breakdown-plot', [{
+                values: values,
+                labels: components,
+                type: 'pie',
+                marker: { colors: pieColors },
+                textinfo: 'label+percent',
+                textfont: { size: 14, color: '#fff' },
+                hoverinfo: 'label+value+percent'
+            }], {
+                title: { text: 'MRR Component Distribution', font: { color: '#e0e0e0' }},
+                plot_bgcolor: '#0a0a0a',
+                paper_bgcolor: '#0a0a0a',
+                font: { color: '#e0e0e0' },
+                showlegend: true,
+                legend: { font: { color: '#e0e0e0' }}
+            }, {responsive: true});
+        }
+
+        window.addEventListener('load', updateSimulation);
+    </script>
+</body>
+</html>

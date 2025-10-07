@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMP Particle Dynamics - Interactive Demo</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .nav-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+            transition: color 0.3s;
+        }
+
+        .nav-link:hover {
+            color: #f39c12;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f39c12 100%);
+            padding: 60px 40px;
+            border-radius: 20px;
+            text-align: center;
+            margin-bottom: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .hero h1 {
+            color: white;
+            font-size: 3.5em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .hero p {
+            color: rgba(255, 255, 255, 0.95);
+            font-size: 1.3em;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .info-box {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            border-left: 5px solid #667eea;
+        }
+
+        .info-box h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.8em;
+        }
+
+        .info-box p {
+            line-height: 1.8;
+            color: #555;
+            font-size: 1.1em;
+        }
+
+        .controls-panel {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .controls-panel h3 {
+            color: #667eea;
+            margin-bottom: 25px;
+            font-size: 1.6em;
+            border-bottom: 3px solid #f39c12;
+            padding-bottom: 10px;
+        }
+
+        .control-group {
+            margin-bottom: 25px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 1.05em;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: linear-gradient(to right, #667eea, #764ba2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .control-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #f39c12;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .control-group input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #f39c12;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .value-display {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            margin-left: 10px;
+            min-width: 100px;
+            text-align: center;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
+        }
+
+        .stat-card h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .stat-value {
+            font-size: 2.2em;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea, #f39c12);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-unit {
+            color: #999;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .chart-title {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.4em;
+            font-weight: 600;
+        }
+
+        #threejs-container {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            height: 700px;
+        }
+
+        .theory-section {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .theory-section h2 {
+            color: #667eea;
+            margin-bottom: 25px;
+            font-size: 2em;
+            border-bottom: 3px solid #f39c12;
+            padding-bottom: 15px;
+        }
+
+        .theory-section h3 {
+            color: #764ba2;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .theory-section p {
+            line-height: 1.9;
+            color: #555;
+            margin-bottom: 15px;
+            font-size: 1.05em;
+        }
+
+        .equation {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+            font-size: 1.2em;
+            border-left: 4px solid #667eea;
+            overflow-x: auto;
+        }
+
+        .grid-2col {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .sim-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2em;
+            }
+
+            .grid-2col {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="navbar">
+            <a href="cmp-complete-project.html" class="nav-link">← Back to CMP Project</a>
+            <a href="#controls" class="nav-link">Controls</a>
+            <a href="#visualizations" class="nav-link">Visualizations</a>
+            <a href="#theory" class="nav-link">Theory</a>
+        </nav>
+
+        <div class="hero">
+            <h1>CMP Particle Dynamics Simulator</h1>
+            <p>Explore Discrete Element Method (DEM) simulations of abrasive particle behavior, size distribution effects, agglomeration mechanisms, and force-based trajectory modeling</p>
+        </div>
+
+        <div class="info-box">
+            <h2>Understanding Particle Dynamics in CMP</h2>
+            <p>
+                Abrasive particles in CMP slurry play a critical role in material removal through mechanical interactions at the wafer-pad interface. Particle dynamics encompass transport through the slurry film, mechanical contact with the wafer surface, force transmission through particle-particle and particle-surface interactions, and agglomeration behavior. The Discrete Element Method (DEM) provides a powerful framework for simulating individual particle trajectories and contact forces. Understanding particle size distributions, particle-surface interactions, and agglomeration kinetics is essential for optimizing slurry formulations and predicting process performance.
+            </p>
+        </div>
+
+        <div id="controls" class="controls-panel">
+            <h3>Interactive Controls</h3>
+
+            <div class="sim-controls">
+                <button class="btn" onclick="toggleSimulation()">▶ Play/Pause</button>
+                <button class="btn" onclick="resetSimulation()">↻ Reset</button>
+                <button class="btn" onclick="randomizeParticles()">⚡ Randomize</button>
+            </div>
+
+            <div class="control-group">
+                <label>
+                    Number of Particles: <span class="value-display" id="numparticles-value">80</span>
+                </label>
+                <input type="range" id="numparticles" min="20" max="100" value="80" step="10">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    Mean Particle Size: <span class="value-display" id="particlesize-value">200 nm</span>
+                </label>
+                <input type="range" id="particlesize" min="50" max="500" value="200" step="25">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    Size Distribution Width: <span class="value-display" id="sizewidth-value">50 nm</span>
+                </label>
+                <input type="range" id="sizewidth" min="10" max="100" value="50" step="10">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    Flow Velocity: <span class="value-display" id="flowvel-value">0.5 m/s</span>
+                </label>
+                <input type="range" id="flowvel" min="0.1" max="2.0" value="0.5" step="0.1">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    Shear Rate: <span class="value-display" id="shearrate-value">1000 s⁻¹</span>
+                </label>
+                <input type="range" id="shearrate" min="100" max="5000" value="1000" step="100">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    Particle Stiffness: <span class="value-display" id="stiffness-value">1000 N/m</span>
+                </label>
+                <input type="range" id="stiffness" min="100" max="5000" value="1000" step="100">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    Friction Coefficient: <span class="value-display" id="particlefriction-value">0.3</span>
+                </label>
+                <input type="range" id="particlefriction" min="0.1" max="0.8" value="0.3" step="0.1">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    Agglomeration Factor: <span class="value-display" id="agglomeration-value">0.2</span>
+                </label>
+                <input type="range" id="agglomeration" min="0.0" max="1.0" value="0.2" step="0.1">
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h4>Active Particles</h4>
+                <div class="stat-value" id="active-stat">80</div>
+                <div class="stat-unit">particles</div>
+            </div>
+            <div class="stat-card">
+                <h4>Avg Contact Force</h4>
+                <div class="stat-value" id="force-stat">2.5</div>
+                <div class="stat-unit">μN</div>
+            </div>
+            <div class="stat-card">
+                <h4>Collision Events</h4>
+                <div class="stat-value" id="collisions-stat">152</div>
+                <div class="stat-unit">count</div>
+            </div>
+            <div class="stat-card">
+                <h4>Agglomerate Size</h4>
+                <div class="stat-value" id="agglomsize-stat">3.2</div>
+                <div class="stat-unit">particles</div>
+            </div>
+            <div class="stat-card">
+                <h4>Removal Rate Contrib</h4>
+                <div class="stat-value" id="removal-stat">1850</div>
+                <div class="stat-unit">Å/min</div>
+            </div>
+            <div class="stat-card">
+                <h4>Transport Efficiency</h4>
+                <div class="stat-value" id="efficiency-stat">75</div>
+                <div class="stat-unit">%</div>
+            </div>
+        </div>
+
+        <div id="visualizations">
+            <div id="threejs-container">
+                <div class="chart-title">3D Particle Dynamics: DEM Simulation</div>
+            </div>
+
+            <div class="grid-2col">
+                <div class="chart-container">
+                    <div class="chart-title">Particle Size Distribution</div>
+                    <div id="size-dist-chart"></div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Particle Velocity Distribution</div>
+                    <div id="velocity-dist-chart"></div>
+                </div>
+            </div>
+
+            <div class="grid-2col">
+                <div class="chart-container">
+                    <div class="chart-title">Contact Force Distribution</div>
+                    <div id="force-dist-chart"></div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Particle Trajectory Tracking</div>
+                    <div id="trajectory-chart"></div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">Agglomeration Kinetics Over Time</div>
+                <div id="agglomeration-chart"></div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">Removal Rate vs Particle Size</div>
+                <div id="mrr-size-chart"></div>
+            </div>
+        </div>
+
+        <div id="theory" class="theory-section">
+            <h2>Theoretical Background</h2>
+
+            <h3>1. Discrete Element Method (DEM) Fundamentals</h3>
+            <p>
+                DEM is a computational technique that simulates the motion and interaction of individual particles by solving Newton's equations of motion for each particle. Forces on each particle include contact forces (normal and tangential), drag forces from the fluid, gravitational forces, and external applied forces. DEM provides detailed information about particle trajectories, contact forces, and collective behavior.
+            </p>
+            <div class="equation">
+                m_i × d²x_i/dt² = ΣF_contact + F_drag + F_gravity + F_external
+            </div>
+            <p>where m_i is particle mass, x_i is position, and F terms represent different force contributions.</p>
+
+            <h3>2. Contact Force Model: Hertzian Contact</h3>
+            <p>
+                Normal contact forces between elastic spheres follow Hertzian contact mechanics, where the force is proportional to the overlap raised to the 3/2 power. This nonlinear relationship captures the elastic deformation of particles during collision. A damping term is added to account for energy dissipation.
+            </p>
+            <div class="equation">
+                F_n = k_n × δ^(3/2) + γ_n × v_n
+            </div>
+            <p>where k_n is normal stiffness, δ is overlap distance, γ_n is damping coefficient, and v_n is normal relative velocity.</p>
+
+            <h3>3. Tangential Friction Forces</h3>
+            <p>
+                Tangential forces arise from friction when particles slide against each other or against surfaces. The tangential force is limited by the Coulomb friction criterion, where the maximum static friction is proportional to the normal force.
+            </p>
+            <div class="equation">
+                F_t = min(k_t × δ_t, μ × F_n)
+            </div>
+            <p>where k_t is tangential stiffness, δ_t is tangential displacement, and μ is friction coefficient.</p>
+
+            <h3>4. Drag Force in Viscous Fluid</h3>
+            <p>
+                Particles experience drag forces as they move through the slurry. For small particles in the Stokes regime (low Reynolds number), the drag force is proportional to particle velocity relative to the fluid. This is the dominant force for nanoscale abrasive particles.
+            </p>
+            <div class="equation">
+                F_drag = 6π × η × r × (v_fluid - v_particle)
+            </div>
+            <p>where η is fluid viscosity, r is particle radius, and v terms are velocities.</p>
+
+            <h3>5. Particle Size Distribution Effects</h3>
+            <p>
+                Real slurries contain particles with a distribution of sizes, often approximated by a log-normal distribution. Particle size affects contact mechanics (larger particles exert higher forces), transport behavior (smaller particles follow fluid streamlines better), and removal efficiency. Optimal distributions balance mechanical abrasion with uniform transport.
+            </p>
+            <div class="equation">
+                f(d) = (1 / (d × σ × √(2π))) × exp[-(ln(d) - μ)² / (2σ²)]
+            </div>
+            <p>where d is particle diameter, μ is mean of ln(d), and σ is standard deviation of ln(d).</p>
+
+            <h3>6. Agglomeration Mechanisms</h3>
+            <p>
+                Particles can agglomerate due to van der Waals forces, electrostatic interactions, or mechanical entrapment. Agglomeration reduces the effective number of active particles and can lead to defects (scratches from large agglomerates) or reduced removal rates. Surfactants and pH control are used to prevent agglomeration by maintaining repulsive forces.
+            </p>
+            <div class="equation">
+                F_vdW = -A × r / (12 × h²)
+            </div>
+            <p>where A is Hamaker constant, r is particle radius, and h is surface separation distance.</p>
+
+            <h3>7. Particle-Surface Indentation and Material Removal</h3>
+            <p>
+                When particles contact the wafer surface under load, they indent and remove material through plastic deformation and fracture. The indentation depth depends on particle hardness, applied load, and contact geometry. Material removal per particle per pass is proportional to the indented volume.
+            </p>
+            <div class="equation">
+                V_indent = k × (F / H_wafer)^(3/2) × r^(1/2)
+            </div>
+            <p>where V_indent is indented volume, F is contact force, H_wafer is wafer hardness, and r is particle radius.</p>
+
+            <h3>8. Shear-Induced Particle Migration</h3>
+            <p>
+                In shear flows, particles migrate laterally due to gradients in shear rate and particle interactions. This phenomenon, known as shear-induced migration, causes particles to concentrate in certain regions of the flow field. In CMP, this affects the local particle concentration at the wafer-pad interface.
+            </p>
+            <div class="equation">
+                v_migration = -D × ∇φ - φ × v_shear × (∇γ / γ)
+            </div>
+            <p>where D is diffusion coefficient, φ is particle concentration, γ is shear rate, and ∇ represents gradient.</p>
+
+            <h3>9. Collision Frequency and Contact Statistics</h3>
+            <p>
+                The frequency of particle-particle and particle-surface collisions depends on particle concentration, relative velocities, and system geometry. Higher collision rates increase the probability of agglomeration but also enhance mixing and material removal. DEM simulations provide detailed contact statistics.
+            </p>
+            <div class="equation">
+                f_collision = 4 × n × r² × v_rel × (1 + φ)
+            </div>
+            <p>where n is number density, r is particle radius, v_rel is relative velocity, and φ accounts for particle concentration effects.</p>
+        </div>
+    </div>
+
+    <script>
+        let params = {
+            numParticles: 80,
+            particleSize: 200,
+            sizeWidth: 50,
+            flowVel: 0.5,
+            shearRate: 1000,
+            stiffness: 1000,
+            friction: 0.3,
+            agglomeration: 0.2
+        };
+
+        let scene, camera, renderer, particles = [];
+        let simulationRunning = true;
+        let collisionCount = 0;
+        let trajectoryData = [];
+
+        class Particle {
+            constructor(x, y, z, size) {
+                this.pos = new THREE.Vector3(x, y, z);
+                this.vel = new THREE.Vector3(
+                    (Math.random() - 0.5) * params.flowVel,
+                    (Math.random() - 0.5) * params.flowVel * 0.3,
+                    (Math.random() - 0.5) * params.flowVel
+                );
+                this.size = size;
+                this.mass = size * size * size * 0.001;
+                this.force = new THREE.Vector3(0, 0, 0);
+                this.contacts = 0;
+                this.agglomerateSize = 1;
+
+                const geometry = new THREE.SphereGeometry(size * 0.005, 16, 16);
+                const material = new THREE.MeshPhongMaterial({
+                    color: new THREE.Color().setHSL(size / 500, 0.8, 0.6),
+                    shininess: 80
+                });
+                this.mesh = new THREE.Mesh(geometry, material);
+                this.mesh.position.copy(this.pos);
+            }
+
+            update(dt) {
+                this.force.set(0, 0, 0);
+
+                const dragCoeff = 6 * Math.PI * 0.001 * this.size * 0.001;
+                const drag = new THREE.Vector3(-this.vel.x, -this.vel.y, -this.vel.z).multiplyScalar(dragCoeff);
+                this.force.add(drag);
+
+                const shearForce = new THREE.Vector3(params.shearRate * 0.0001, 0, 0);
+                this.force.add(shearForce);
+
+                const acc = this.force.clone().divideScalar(this.mass);
+                this.vel.add(acc.multiplyScalar(dt));
+
+                this.vel.multiplyScalar(0.98);
+
+                this.pos.add(this.vel.clone().multiplyScalar(dt));
+
+                const bounds = 10;
+                if (Math.abs(this.pos.x) > bounds) {
+                    this.pos.x = -Math.sign(this.pos.x) * bounds;
+                    this.vel.x *= -0.8;
+                }
+                if (Math.abs(this.pos.y) > bounds) {
+                    this.pos.y = -Math.sign(this.pos.y) * bounds;
+                    this.vel.y *= -0.8;
+                }
+                if (Math.abs(this.pos.z) > bounds) {
+                    this.pos.z = -Math.sign(this.pos.z) * bounds;
+                    this.vel.z *= -0.8;
+                }
+
+                this.mesh.position.copy(this.pos);
+            }
+
+            checkCollision(other) {
+                const dist = this.pos.distanceTo(other.pos);
+                const minDist = (this.size + other.size) * 0.005;
+
+                if (dist < minDist && dist > 0) {
+                    collisionCount++;
+
+                    const overlap = minDist - dist;
+                    const normal = new THREE.Vector3().subVectors(this.pos, other.pos).normalize();
+
+                    const relVel = new THREE.Vector3().subVectors(this.vel, other.vel);
+                    const normalVel = relVel.dot(normal);
+
+                    const forceMag = params.stiffness * Math.pow(overlap, 1.5) + 10 * normalVel;
+                    const force = normal.multiplyScalar(forceMag);
+
+                    this.force.add(force);
+                    other.force.sub(force);
+
+                    if (Math.random() < params.agglomeration * 0.1) {
+                        this.agglomerateSize += 0.1;
+                        other.agglomerateSize += 0.1;
+                    }
+
+                    this.contacts++;
+                    other.contacts++;
+                }
+            }
+        }
+
+        function initThreeJS() {
+            const container = document.getElementById('threejs-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight - 50;
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000011);
+
+            camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
+            camera.position.set(20, 15, 20);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+
+            const pointLight1 = new THREE.PointLight(0x667eea, 1, 100);
+            pointLight1.position.set(10, 10, 10);
+            scene.add(pointLight1);
+
+            const pointLight2 = new THREE.PointLight(0xf39c12, 0.8, 100);
+            pointLight2.position.set(-10, 10, -10);
+            scene.add(pointLight2);
+
+            const gridHelper = new THREE.GridHelper(20, 20, 0x667eea, 0x333344);
+            scene.add(gridHelper);
+
+            const boxGeometry = new THREE.BoxGeometry(20, 20, 20);
+            const boxEdges = new THREE.EdgesGeometry(boxGeometry);
+            const boxLines = new THREE.LineSegments(boxEdges, new THREE.LineBasicMaterial({ color: 0x667eea }));
+            scene.add(boxLines);
+
+            createParticles();
+            animate3D();
+        }
+
+        function createParticles() {
+            particles.forEach(p => scene.remove(p.mesh));
+            particles = [];
+
+            for (let i = 0; i < params.numParticles; i++) {
+                const size = params.particleSize + (Math.random() - 0.5) * params.sizeWidth;
+                const x = (Math.random() - 0.5) * 18;
+                const y = (Math.random() - 0.5) * 18;
+                const z = (Math.random() - 0.5) * 18;
+
+                const particle = new Particle(x, y, z, Math.max(50, size));
+                particles.push(particle);
+                scene.add(particle.mesh);
+            }
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+
+            if (simulationRunning) {
+                const dt = 0.05;
+
+                for (let i = 0; i < particles.length; i++) {
+                    for (let j = i + 1; j < particles.length; j++) {
+                        particles[i].checkCollision(particles[j]);
+                    }
+                }
+
+                particles.forEach(p => {
+                    p.update(dt);
+                });
+
+                if (Math.random() < 0.1 && particles.length > 0) {
+                    const p = particles[0];
+                    trajectoryData.push({ x: p.pos.x, y: p.pos.y, z: p.pos.z });
+                    if (trajectoryData.length > 100) trajectoryData.shift();
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function toggleSimulation() {
+            simulationRunning = !simulationRunning;
+        }
+
+        function resetSimulation() {
+            createParticles();
+            collisionCount = 0;
+            trajectoryData = [];
+            updateStats();
+            updateAllCharts();
+        }
+
+        function randomizeParticles() {
+            particles.forEach(p => {
+                p.vel.set(
+                    (Math.random() - 0.5) * params.flowVel * 2,
+                    (Math.random() - 0.5) * params.flowVel,
+                    (Math.random() - 0.5) * params.flowVel * 2
+                );
+            });
+        }
+
+        function calculateStats() {
+            let totalForce = 0;
+            let totalAgglomSize = 0;
+
+            particles.forEach(p => {
+                totalForce += p.force.length() * 1e6;
+                totalAgglomSize += p.agglomerateSize;
+            });
+
+            const avgForce = particles.length > 0 ? totalForce / particles.length : 0;
+            const avgAgglomSize = particles.length > 0 ? totalAgglomSize / particles.length : 1;
+
+            const removalRate = 1500 + avgForce * 50 + params.particleSize * 2;
+            const efficiency = Math.min(100, 50 + params.flowVel * 30 + (1 - params.agglomeration) * 30);
+
+            return {
+                activeParticles: particles.length,
+                avgForce: avgForce,
+                collisions: collisionCount,
+                avgAgglomSize: avgAgglomSize,
+                removalRate: removalRate,
+                efficiency: efficiency
+            };
+        }
+
+        function updateStats() {
+            const stats = calculateStats();
+
+            document.getElementById('active-stat').textContent = stats.activeParticles;
+            document.getElementById('force-stat').textContent = stats.avgForce.toFixed(1);
+            document.getElementById('collisions-stat').textContent = stats.collisions;
+            document.getElementById('agglomsize-stat').textContent = stats.avgAgglomSize.toFixed(1);
+            document.getElementById('removal-stat').textContent = Math.round(stats.removalRate);
+            document.getElementById('efficiency-stat').textContent = Math.round(stats.efficiency);
+        }
+
+        function plotSizeDistribution() {
+            const sizes = particles.map(p => p.size);
+
+            const trace = {
+                x: sizes,
+                type: 'histogram',
+                nbinsx: 20,
+                marker: {
+                    color: '#667eea',
+                    line: { color: '#764ba2', width: 1 }
+                }
+            };
+
+            const layout = {
+                xaxis: { title: 'Particle Size (nm)', gridcolor: '#e0e0e0' },
+                yaxis: { title: 'Count', gridcolor: '#e0e0e0' },
+                plot_bgcolor: '#fafafa',
+                paper_bgcolor: 'white',
+                font: { family: 'Segoe UI' }
+            };
+
+            Plotly.newPlot('size-dist-chart', [trace], layout, { responsive: true });
+        }
+
+        function plotVelocityDistribution() {
+            const velocities = particles.map(p => p.vel.length());
+
+            const trace = {
+                x: velocities,
+                type: 'histogram',
+                nbinsx: 20,
+                marker: {
+                    color: '#f39c12',
+                    line: { color: '#764ba2', width: 1 }
+                }
+            };
+
+            const layout = {
+                xaxis: { title: 'Velocity (m/s)', gridcolor: '#e0e0e0' },
+                yaxis: { title: 'Count', gridcolor: '#e0e0e0' },
+                plot_bgcolor: '#fafafa',
+                paper_bgcolor: 'white',
+                font: { family: 'Segoe UI' }
+            };
+
+            Plotly.newPlot('velocity-dist-chart', [trace], layout, { responsive: true });
+        }
+
+        function plotForceDistribution() {
+            const forces = particles.map(p => p.force.length() * 1e6);
+
+            const trace = {
+                y: forces,
+                type: 'box',
+                marker: { color: '#667eea' },
+                boxmean: 'sd'
+            };
+
+            const layout = {
+                yaxis: { title: 'Contact Force (μN)', gridcolor: '#e0e0e0' },
+                plot_bgcolor: '#fafafa',
+                paper_bgcolor: 'white',
+                font: { family: 'Segoe UI' }
+            };
+
+            Plotly.newPlot('force-dist-chart', [trace], layout, { responsive: true });
+        }
+
+        function plotTrajectory() {
+            if (trajectoryData.length < 2) {
+                return;
+            }
+
+            const trace = {
+                x: trajectoryData.map(d => d.x),
+                y: trajectoryData.map(d => d.y),
+                z: trajectoryData.map(d => d.z),
+                type: 'scatter3d',
+                mode: 'lines+markers',
+                marker: {
+                    size: 3,
+                    color: Array.from({ length: trajectoryData.length }, (_, i) => i),
+                    colorscale: 'Viridis',
+                    showscale: false
+                },
+                line: { color: '#667eea', width: 2 }
+            };
+
+            const layout = {
+                scene: {
+                    xaxis: { title: 'X' },
+                    yaxis: { title: 'Y' },
+                    zaxis: { title: 'Z' }
+                },
+                plot_bgcolor: '#fafafa',
+                paper_bgcolor: 'white',
+                font: { family: 'Segoe UI' }
+            };
+
+            Plotly.newPlot('trajectory-chart', [trace], layout, { responsive: true });
+        }
+
+        function plotAgglomeration() {
+            const time = Array.from({ length: 50 }, (_, i) => i);
+            const agglomSizes = time.map(t => 1 + params.agglomeration * (1 - Math.exp(-t / 20)) * 5);
+
+            const trace = {
+                x: time,
+                y: agglomSizes,
+                type: 'scatter',
+                mode: 'lines',
+                fill: 'tozeroy',
+                line: { color: '#764ba2', width: 3 }
+            };
+
+            const layout = {
+                xaxis: { title: 'Time (arbitrary units)', gridcolor: '#e0e0e0' },
+                yaxis: { title: 'Average Agglomerate Size', gridcolor: '#e0e0e0' },
+                plot_bgcolor: '#fafafa',
+                paper_bgcolor: 'white',
+                font: { family: 'Segoe UI' }
+            };
+
+            Plotly.newPlot('agglomeration-chart', [trace], layout, { responsive: true });
+        }
+
+        function plotMRRvsSize() {
+            const sizes = Array.from({ length: 50 }, (_, i) => 50 + i * 10);
+            const mrr = sizes.map(s => 1000 + s * 3 + Math.pow(s / 100, 2) * 200);
+
+            const trace = {
+                x: sizes,
+                y: mrr,
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: { color: '#f39c12', width: 3 },
+                marker: { size: 8 }
+            };
+
+            const layout = {
+                xaxis: { title: 'Particle Size (nm)', gridcolor: '#e0e0e0' },
+                yaxis: { title: 'Removal Rate (Å/min)', gridcolor: '#e0e0e0' },
+                plot_bgcolor: '#fafafa',
+                paper_bgcolor: 'white',
+                font: { family: 'Segoe UI' }
+            };
+
+            Plotly.newPlot('mrr-size-chart', [trace], layout, { responsive: true });
+        }
+
+        function updateAllCharts() {
+            plotSizeDistribution();
+            plotVelocityDistribution();
+            plotForceDistribution();
+            plotTrajectory();
+            plotAgglomeration();
+            plotMRRvsSize();
+        }
+
+        document.getElementById('numparticles').addEventListener('input', (e) => {
+            params.numParticles = parseInt(e.target.value);
+            document.getElementById('numparticles-value').textContent = params.numParticles;
+            createParticles();
+            updateStats();
+            updateAllCharts();
+        });
+
+        document.getElementById('particlesize').addEventListener('input', (e) => {
+            params.particleSize = parseInt(e.target.value);
+            document.getElementById('particlesize-value').textContent = params.particleSize + ' nm';
+            createParticles();
+            updateStats();
+            updateAllCharts();
+        });
+
+        document.getElementById('sizewidth').addEventListener('input', (e) => {
+            params.sizeWidth = parseInt(e.target.value);
+            document.getElementById('sizewidth-value').textContent = params.sizeWidth + ' nm';
+            createParticles();
+            updateStats();
+            updateAllCharts();
+        });
+
+        document.getElementById('flowvel').addEventListener('input', (e) => {
+            params.flowVel = parseFloat(e.target.value);
+            document.getElementById('flowvel-value').textContent = params.flowVel.toFixed(1) + ' m/s';
+            updateStats();
+            updateAllCharts();
+        });
+
+        document.getElementById('shearrate').addEventListener('input', (e) => {
+            params.shearRate = parseInt(e.target.value);
+            document.getElementById('shearrate-value').textContent = params.shearRate + ' s⁻¹';
+            updateStats();
+            updateAllCharts();
+        });
+
+        document.getElementById('stiffness').addEventListener('input', (e) => {
+            params.stiffness = parseInt(e.target.value);
+            document.getElementById('stiffness-value').textContent = params.stiffness + ' N/m';
+            updateStats();
+            updateAllCharts();
+        });
+
+        document.getElementById('particlefriction').addEventListener('input', (e) => {
+            params.friction = parseFloat(e.target.value);
+            document.getElementById('particlefriction-value').textContent = params.friction.toFixed(1);
+            updateStats();
+            updateAllCharts();
+        });
+
+        document.getElementById('agglomeration').addEventListener('input', (e) => {
+            params.agglomeration = parseFloat(e.target.value);
+            document.getElementById('agglomeration-value').textContent = params.agglomeration.toFixed(1);
+            updateStats();
+            updateAllCharts();
+        });
+
+        window.addEventListener('load', () => {
+            initThreeJS();
+            updateStats();
+            updateAllCharts();
+
+            setInterval(() => {
+                updateStats();
+            }, 1000);
+        });
+
+        window.addEventListener('resize', () => {
+            const container = document.getElementById('threejs-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight - 50;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        });
+    </script>
+</body>
+</html>

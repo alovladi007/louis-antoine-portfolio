@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMP Temperature Effects - Interactive Demo</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .nav-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+            transition: color 0.3s;
+        }
+
+        .nav-link:hover {
+            color: #f39c12;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f39c12 100%);
+            padding: 60px 40px;
+            border-radius: 20px;
+            text-align: center;
+            margin-bottom: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .hero h1 {
+            color: white;
+            font-size: 3.5em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .hero p {
+            color: rgba(255, 255, 255, 0.95);
+            font-size: 1.3em;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .info-box {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            border-left: 5px solid #667eea;
+        }
+
+        .info-box h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.8em;
+        }
+
+        .info-box p {
+            line-height: 1.8;
+            color: #555;
+            font-size: 1.1em;
+        }
+
+        .controls-panel {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .controls-panel h3 {
+            color: #667eea;
+            margin-bottom: 25px;
+            font-size: 1.6em;
+            border-bottom: 3px solid #f39c12;
+            padding-bottom: 10px;
+        }
+
+        .control-group {
+            margin-bottom: 25px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 1.05em;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: linear-gradient(to right, #667eea, #764ba2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .control-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #f39c12;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .control-group input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #f39c12;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .value-display {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            margin-left: 10px;
+            min-width: 100px;
+            text-align: center;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
+        }
+
+        .stat-card h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .stat-value {
+            font-size: 2.2em;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea, #f39c12);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-unit {
+            color: #999;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .chart-title {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.4em;
+            font-weight: 600;
+        }
+
+        #threejs-container {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            height: 600px;
+        }
+
+        .theory-section {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .theory-section h2 {
+            color: #667eea;
+            margin-bottom: 25px;
+            font-size: 2em;
+            border-bottom: 3px solid #f39c12;
+            padding-bottom: 15px;
+        }
+
+        .theory-section h3 {
+            color: #764ba2;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .theory-section p {
+            line-height: 1.9;
+            color: #555;
+            margin-bottom: 15px;
+            font-size: 1.05em;
+        }
+
+        .equation {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+            font-size: 1.2em;
+            border-left: 4px solid #667eea;
+            overflow-x: auto;
+        }
+
+        .grid-2col {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2em;
+            }
+
+            .grid-2col {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="navbar">
+            <a href="cmp-complete-project.html" class="nav-link">← Back to CMP Project</a>
+            <a href="#controls" class="nav-link">Controls</a>
+            <a href="#visualizations" class="nav-link">Visualizations</a>
+            <a href="#theory" class="nav-link">Theory</a>
+        </nav>
+
+        <div class="hero">
+            <h1>CMP Temperature Effects Simulator</h1>
+            <p>Explore thermal distribution across wafers, temperature-dependent slurry viscosity, Arrhenius kinetics, pad stiffness variations, and hot spot formation mechanisms</p>
+        </div>
+
+        <div class="info-box">
+            <h2>Understanding Temperature Effects in CMP</h2>
+            <p>
+                Temperature plays a critical role in CMP performance through multiple interconnected mechanisms. Frictional heating at the wafer-pad interface generates thermal gradients that affect slurry rheology, chemical reaction rates, pad mechanical properties, and material removal uniformity. Temperature rise is influenced by friction coefficient, relative velocity, applied pressure, and heat dissipation rates. Understanding these thermal effects is essential for maintaining process stability, especially for advanced nodes where even small temperature variations can impact critical dimension control and within-wafer uniformity.
+            </p>
+        </div>
+
+        <div id="controls" class="controls-panel">
+            <h3>Interactive Controls</h3>
+
+            <div class="control-group">
+                <label>
+                    Applied Pressure: <span class="value-display" id="pressure-value">4.0 psi</span>
+                </label>
+                <input type="range" id="pressure" min="1" max="8" value="4" step="0.5">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    Platen Velocity: <span class="value-display" id="velocity-value">80 rpm</span>
+                </label>
+                <input type="range" id="velocity" min="30" max="150" value="80" step="10">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    Friction Coefficient: <span class="value-display" id="friction-value">0.25</span>
+                </label>
+                <input type="range" id="friction" min="0.10" max="0.50" value="0.25" step="0.05">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    Ambient Temperature: <span class="value-display" id="ambient-value">22°C</span>
+                </label>
+                <input type="range" id="ambient" min="18" max="28" value="22" step="1">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    Slurry Flow Rate: <span class="value-display" id="flowrate-value">200 mL/min</span>
+                </label>
+                <input type="range" id="flowrate" min="100" max="400" value="200" step="20">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    Polish Time: <span class="value-display" id="polishtime-value">60 s</span>
+                </label>
+                <input type="range" id="polishtime" min="10" max="180" value="60" step="10">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    Pad Thermal Conductivity: <span class="value-display" id="conductivity-value">0.25 W/m·K</span>
+                </label>
+                <input type="range" id="conductivity" min="0.10" max="0.50" value="0.25" step="0.05">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    Carrier Back Cooling: <span class="value-display" id="cooling-value">15°C</span>
+                </label>
+                <input type="range" id="cooling" min="10" max="25" value="15" step="1">
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h4>Wafer Center Temp</h4>
+                <div class="stat-value" id="centtemp-stat">35</div>
+                <div class="stat-unit">°C</div>
+            </div>
+            <div class="stat-card">
+                <h4>Wafer Edge Temp</h4>
+                <div class="stat-value" id="edgetemp-stat">28</div>
+                <div class="stat-unit">°C</div>
+            </div>
+            <div class="stat-card">
+                <h4>Temperature Delta</h4>
+                <div class="stat-value" id="deltatemp-stat">7</div>
+                <div class="stat-unit">°C</div>
+            </div>
+            <div class="stat-card">
+                <h4>Slurry Viscosity</h4>
+                <div class="stat-value" id="viscosity-stat">2.8</div>
+                <div class="stat-unit">cP</div>
+            </div>
+            <div class="stat-card">
+                <h4>Reaction Rate Factor</h4>
+                <div class="stat-value" id="reaction-stat">1.45</div>
+                <div class="stat-unit">x</div>
+            </div>
+            <div class="stat-card">
+                <h4>Pad Stiffness Ratio</h4>
+                <div class="stat-value" id="stiffness-stat">0.92</div>
+                <div class="stat-unit">-</div>
+            </div>
+        </div>
+
+        <div id="visualizations">
+            <div id="threejs-container">
+                <div class="chart-title">3D Temperature Distribution Across Wafer</div>
+            </div>
+
+            <div class="grid-2col">
+                <div class="chart-container">
+                    <div class="chart-title">Radial Temperature Profile</div>
+                    <div id="radial-temp-chart"></div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Temperature Evolution Over Time</div>
+                    <div id="temp-time-chart"></div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">2D Wafer Temperature Heatmap</div>
+                <div id="heatmap-chart"></div>
+            </div>
+
+            <div class="grid-2col">
+                <div class="chart-container">
+                    <div class="chart-title">Slurry Viscosity vs Temperature</div>
+                    <div id="viscosity-chart"></div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Arrhenius Plot: Reaction Rate</div>
+                    <div id="arrhenius-chart"></div>
+                </div>
+            </div>
+
+            <div class="grid-2col">
+                <div class="chart-container">
+                    <div class="chart-title">Pad Stiffness vs Temperature</div>
+                    <div id="stiffness-chart"></div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">MRR Temperature Dependency</div>
+                    <div id="mrr-temp-chart"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="theory" class="theory-section">
+            <h2>Theoretical Background</h2>
+
+            <h3>1. Frictional Heat Generation</h3>
+            <p>
+                Heat generation in CMP arises primarily from friction between the wafer and polishing pad. The frictional power dissipated is proportional to the normal force, friction coefficient, and relative sliding velocity. This heat flux is distributed between the wafer, pad, and slurry, with partitioning determined by thermal properties and contact conditions.
+            </p>
+            <div class="equation">
+                Q = μ × F_N × V
+            </div>
+            <p>where Q is heat generation rate (W), μ is friction coefficient, F_N is normal force (N), and V is relative velocity (m/s).</p>
+
+            <h3>2. Temperature Distribution Model</h3>
+            <p>
+                The temperature distribution across the wafer is governed by the heat equation with frictional source terms and boundary conditions representing cooling at the backside and edges. In steady state, the radial temperature profile can be approximated analytically for axisymmetric loading.
+            </p>
+            <div class="equation">
+                T(r) = T_edge + (Q / 4πk) × [1 - (r/R)²]
+            </div>
+            <p>where T(r) is temperature at radius r, k is thermal conductivity, and R is wafer radius.</p>
+
+            <h3>3. Slurry Viscosity Temperature Dependence</h3>
+            <p>
+                Slurry viscosity decreases exponentially with temperature following an Arrhenius-type relationship. Lower viscosity improves transport and slurry penetration into the pad-wafer interface but may reduce removal rates if viscous drag is beneficial for particle transport.
+            </p>
+            <div class="equation">
+                η(T) = η_0 × exp[E_a / (R × T)]
+            </div>
+            <p>where η is viscosity (cP), η_0 is reference viscosity, E_a is activation energy, R is gas constant, and T is absolute temperature (K).</p>
+
+            <h3>4. Arrhenius Kinetics for Chemical Reactions</h3>
+            <p>
+                Chemical reaction rates in CMP follow Arrhenius behavior, with rate constants increasing exponentially with temperature. For oxidation-based removal mechanisms, higher temperatures accelerate surface layer formation and dissolution, potentially increasing removal rates.
+            </p>
+            <div class="equation">
+                k(T) = A × exp[-E_a / (R × T)]
+            </div>
+            <p>where k is reaction rate constant, A is pre-exponential factor, and E_a is activation energy (typically 20-60 kJ/mol for CMP chemistries).</p>
+
+            <h3>5. Pad Stiffness Temperature Dependency</h3>
+            <p>
+                Polishing pads are typically made from polyurethane, which exhibits temperature-dependent mechanical properties. As temperature increases, the elastic modulus decreases and the pad becomes more compliant, affecting contact mechanics and pressure distribution.
+            </p>
+            <div class="equation">
+                E(T) = E_0 × [1 - α × (T - T_0)]
+            </div>
+            <p>where E is elastic modulus, E_0 is reference modulus, α is temperature coefficient (typically 0.01-0.03 /°C), and T_0 is reference temperature.</p>
+
+            <h3>6. Hot Spot Formation</h3>
+            <p>
+                Hot spots are localized regions of elevated temperature that can occur due to non-uniform pressure distribution, edge effects, or pattern-dependent contact variations. Hot spots can lead to non-uniform removal rates and process instabilities. They are more pronounced at higher velocities and pressures.
+            </p>
+            <div class="equation">
+                ΔT_hotspot = f × (P_local / P_avg) × ΔT_avg
+            </div>
+            <p>where f is an enhancement factor (typically 1.5-2.5), P_local is local pressure, and ΔT_avg is average temperature rise.</p>
+
+            <h3>7. Thermal Equilibrium Time</h3>
+            <p>
+                The time required to reach thermal steady-state depends on the thermal mass and heat transfer characteristics of the system. Typical equilibration times range from 10-60 seconds, meaning that transients during the initial phase of polishing can affect within-wafer uniformity.
+            </p>
+            <div class="equation">
+                τ_thermal = ρ × c_p × L² / k
+            </div>
+            <p>where τ is thermal time constant, ρ is density, c_p is specific heat, L is characteristic length, and k is thermal conductivity.</p>
+
+            <h3>8. Cooling Strategies</h3>
+            <p>
+                Active cooling methods include backside wafer cooling, slurry cooling, and platen cooling. Backside cooling via the carrier is most effective for controlling wafer temperature, while slurry flow provides distributed cooling and debris removal. Optimal cooling balances temperature control with process requirements.
+            </p>
+            <div class="equation">
+                Q_cooling = h × A × (T_surface - T_coolant)
+            </div>
+            <p>where h is heat transfer coefficient (W/m²·K), A is contact area, and T values are surface and coolant temperatures.</p>
+        </div>
+    </div>
+
+    <script>
+        let params = {
+            pressure: 4.0,
+            velocity: 80,
+            friction: 0.25,
+            ambient: 22,
+            flowRate: 200,
+            polishTime: 60,
+            conductivity: 0.25,
+            cooling: 15
+        };
+
+        let scene, camera, renderer, waferMesh;
+
+        function initThreeJS() {
+            const container = document.getElementById('threejs-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight - 50;
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf0f0f0);
+
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+            camera.position.set(0, 25, 35);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.5);
+            directionalLight1.position.set(10, 20, 10);
+            scene.add(directionalLight1);
+
+            const axesHelper = new THREE.AxesHelper(15);
+            scene.add(axesHelper);
+
+            createWaferTemperature();
+            animate3D();
+        }
+
+        function createWaferTemperature() {
+            if (waferMesh) scene.remove(waferMesh);
+
+            const calc = calculateTemperatures();
+            const radius = 15;
+            const geometry = new THREE.CylinderGeometry(radius, radius, 0.5, 64, 64);
+            const vertices = geometry.attributes.position;
+
+            const colors = new Float32Array(vertices.count * 3);
+
+            for (let i = 0; i < vertices.count; i++) {
+                const x = vertices.getX(i);
+                const z = vertices.getZ(i);
+                const r = Math.sqrt(x * x + z * z);
+                const temp = calc.centerTemp - (calc.centerTemp - calc.edgeTemp) * (r / radius) ** 2;
+
+                const normalized = (temp - calc.edgeTemp) / (calc.centerTemp - calc.edgeTemp);
+                const color = new THREE.Color();
+                if (normalized < 0.5) {
+                    color.setRGB(0.4, 0.49 + normalized, 0.92);
+                } else {
+                    color.setRGB(0.4 + (normalized - 0.5) * 2 * 0.56, 0.74 - (normalized - 0.5) * 0.35, 0.92 - (normalized - 0.5) * 0.74);
+                }
+
+                colors[i * 3] = color.r;
+                colors[i * 3 + 1] = color.g;
+                colors[i * 3 + 2] = color.b;
+            }
+
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const material = new THREE.MeshPhongMaterial({
+                vertexColors: true,
+                shininess: 80,
+                side: THREE.DoubleSide
+            });
+
+            waferMesh = new THREE.Mesh(geometry, material);
+            scene.add(waferMesh);
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+            if (waferMesh) {
+                waferMesh.rotation.y += 0.005;
+            }
+            renderer.render(scene, camera);
+        }
+
+        function calculateTemperatures() {
+            const P = params.pressure * 6894.76; // psi to Pa
+            const V = params.velocity * 0.10472; // rpm to m/s (approximate)
+            const mu = params.friction;
+            const T_amb = params.ambient;
+            const Q_flow = params.flowRate / 60000; // mL/min to L/s
+            const t = params.polishTime;
+            const k = params.conductivity;
+            const T_cool = params.cooling;
+
+            const waferArea = Math.PI * 0.15 * 0.15; // 300mm wafer in m²
+            const F_N = P * waferArea;
+            const Q_gen = mu * F_N * V;
+
+            const h_cooling = 50 + Q_flow * 100;
+            const T_ss_center = T_amb + Q_gen / (h_cooling * waferArea * 4);
+
+            const coolingEffect = (T_amb - T_cool) * 0.3;
+            const centerTemp = T_ss_center - coolingEffect * (1 - Math.exp(-t / 30));
+            const edgeTemp = T_amb + (centerTemp - T_amb) * 0.4;
+
+            const deltaTemp = centerTemp - edgeTemp;
+
+            const T_avg_K = (centerTemp + 273.15);
+            const eta_0 = 5.0;
+            const E_visc = 2000;
+            const R = 8.314;
+            const viscosity = eta_0 * Math.exp(-E_visc / (R * T_avg_K));
+
+            const E_rxn = 40000;
+            const reactionFactor = Math.exp(-E_rxn / (R * T_avg_K)) / Math.exp(-E_rxn / (R * 298.15));
+
+            const alpha_stiffness = 0.02;
+            const stiffness = 1 - alpha_stiffness * (centerTemp - 25);
+
+            return {
+                centerTemp: centerTemp,
+                edgeTemp: edgeTemp,
+                deltaTemp: deltaTemp,
+                viscosity: viscosity,
+                reactionFactor: reactionFactor,
+                stiffness: Math.max(0.5, Math.min(1.2, stiffness))
+            };
+        }
+
+        function updateStats() {
+            const calc = calculateTemperatures();
+
+            document.getElementById('centtemp-stat').textContent = calc.centerTemp.toFixed(0);
+            document.getElementById('edgetemp-stat').textContent = calc.edgeTemp.toFixed(0);
+            document.getElementById('deltatemp-stat').textContent = calc.deltaTemp.toFixed(0);
+            document.getElementById('viscosity-stat').textContent = calc.viscosity.toFixed(1);
+            document.getElementById('reaction-stat').textContent = calc.reactionFactor.toFixed(2);
+            document.getElementById('stiffness-stat').textContent = calc.stiffness.toFixed(2);
+        }
+
+        function plotRadialTemperature() {
+            const radii = [];
+            const temps = [];
+            const calc = calculateTemperatures();
+
+            for (let r = 0; r <= 150; r += 2) {
+                radii.push(r);
+                const temp = calc.centerTemp - (calc.centerTemp - calc.edgeTemp) * (r / 150) ** 2;
+                temps.push(temp);
+            }
+
+            const trace = {
+                x: radii,
+                y: temps,
+                type: 'scatter',
+                mode: 'lines',
+                fill: 'tozeroy',
+                name: 'Temperature',
+                line: { color: '#f39c12', width: 3 },
+                fillcolor: 'rgba(243, 156, 18, 0.3)'
+            };
+
+            const layout = {
+                xaxis: { title: 'Radial Position (mm)', gridcolor: '#e0e0e0' },
+                yaxis: { title: 'Temperature (°C)', gridcolor: '#e0e0e0' },
+                plot_bgcolor: '#fafafa',
+                paper_bgcolor: 'white',
+                font: { family: 'Segoe UI' }
+            };
+
+            Plotly.newPlot('radial-temp-chart', [trace], layout, { responsive: true });
+        }
+
+        function plotTemperatureTime() {
+            const times = [];
+            const centerTemps = [];
+            const edgeTemps = [];
+
+            for (let t = 0; t <= 180; t += 2) {
+                times.push(t);
+                const tempParams = { ...params, polishTime: t };
+                const oldParams = params;
+                params = tempParams;
+                const calc = calculateTemperatures();
+                centerTemps.push(calc.centerTemp);
+                edgeTemps.push(calc.edgeTemp);
+                params = oldParams;
+            }
+
+            const trace1 = {
+                x: times,
+                y: centerTemps,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Center',
+                line: { color: '#f39c12', width: 3 }
+            };
+
+            const trace2 = {
+                x: times,
+                y: edgeTemps,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Edge',
+                line: { color: '#667eea', width: 3 }
+            };
+
+            const layout = {
+                xaxis: { title: 'Time (s)', gridcolor: '#e0e0e0' },
+                yaxis: { title: 'Temperature (°C)', gridcolor: '#e0e0e0' },
+                plot_bgcolor: '#fafafa',
+                paper_bgcolor: 'white',
+                font: { family: 'Segoe UI' }
+            };
+
+            Plotly.newPlot('temp-time-chart', [trace1, trace2], layout, { responsive: true });
+        }
+
+        function plotHeatmap() {
+            const calc = calculateTemperatures();
+            const size = 40;
+            const z = [];
+            const radius = 150;
+
+            for (let i = 0; i < size; i++) {
+                const row = [];
+                for (let j = 0; j < size; j++) {
+                    const x = (j - size / 2) * (radius * 2 / size);
+                    const y = (i - size / 2) * (radius * 2 / size);
+                    const r = Math.sqrt(x * x + y * y);
+
+                    if (r <= radius) {
+                        const temp = calc.centerTemp - (calc.centerTemp - calc.edgeTemp) * (r / radius) ** 2;
+                        row.push(temp);
+                    } else {
+                        row.push(null);
+                    }
+                }
+                z.push(row);
+            }
+
+            const trace = {
+                z: z,
+                type: 'heatmap',
+                colorscale: [
+                    [0, '#667eea'],
+                    [0.5, '#764ba2'],
+                    [1, '#f39c12']
+                ],
+                colorbar: { title: 'Temp (°C)' }
+            };
+
+            const layout = {
+                xaxis: { title: 'X Position', showticklabels: false },
+                yaxis: { title: 'Y Position', showticklabels: false },
+                plot_bgcolor: '#fafafa',
+                paper_bgcolor: 'white',
+                font: { family: 'Segoe UI' }
+            };
+
+            Plotly.newPlot('heatmap-chart', [trace], layout, { responsive: true });
+        }
+
+        function plotViscosity() {
+            const temps = [];
+            const viscosities = [];
+
+            for (let T = 15; T <= 50; T += 0.5) {
+                temps.push(T);
+                const T_K = T + 273.15;
+                const eta = 5.0 * Math.exp(-2000 / (8.314 * T_K));
+                viscosities.push(eta);
+            }
+
+            const trace = {
+                x: temps,
+                y: viscosities,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Viscosity',
+                line: { color: '#667eea', width: 3 }
+            };
+
+            const layout = {
+                xaxis: { title: 'Temperature (°C)', gridcolor: '#e0e0e0' },
+                yaxis: { title: 'Viscosity (cP)', gridcolor: '#e0e0e0' },
+                plot_bgcolor: '#fafafa',
+                paper_bgcolor: 'white',
+                font: { family: 'Segoe UI' }
+            };
+
+            Plotly.newPlot('viscosity-chart', [trace], layout, { responsive: true });
+        }
+
+        function plotArrhenius() {
+            const temps = [];
+            const rates = [];
+
+            for (let T = 15; T <= 50; T += 1) {
+                temps.push(1000 / (T + 273.15));
+                const T_K = T + 273.15;
+                const k = Math.exp(-40000 / (8.314 * T_K));
+                rates.push(Math.log(k));
+            }
+
+            const trace = {
+                x: temps,
+                y: rates,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'ln(k)',
+                line: { color: '#764ba2', width: 3 },
+                marker: { size: 6 }
+            };
+
+            const layout = {
+                xaxis: { title: '1000/T (K⁻¹)', gridcolor: '#e0e0e0' },
+                yaxis: { title: 'ln(Rate Constant)', gridcolor: '#e0e0e0' },
+                plot_bgcolor: '#fafafa',
+                paper_bgcolor: 'white',
+                font: { family: 'Segoe UI' }
+            };
+
+            Plotly.newPlot('arrhenius-chart', [trace], layout, { responsive: true });
+        }
+
+        function plotStiffness() {
+            const temps = [];
+            const stiffness = [];
+
+            for (let T = 15; T <= 50; T += 0.5) {
+                temps.push(T);
+                const E = 1 - 0.02 * (T - 25);
+                stiffness.push(E);
+            }
+
+            const trace = {
+                x: temps,
+                y: stiffness,
+                type: 'scatter',
+                mode: 'lines',
+                fill: 'tozeroy',
+                name: 'Relative Stiffness',
+                line: { color: '#f39c12', width: 3 }
+            };
+
+            const layout = {
+                xaxis: { title: 'Temperature (°C)', gridcolor: '#e0e0e0' },
+                yaxis: { title: 'Relative Stiffness', gridcolor: '#e0e0e0' },
+                plot_bgcolor: '#fafafa',
+                paper_bgcolor: 'white',
+                font: { family: 'Segoe UI' }
+            };
+
+            Plotly.newPlot('stiffness-chart', [trace], layout, { responsive: true });
+        }
+
+        function plotMRRvsTemp() {
+            const temps = [];
+            const mrr = [];
+
+            for (let T = 15; T <= 50; T += 1) {
+                temps.push(T);
+                const T_K = T + 273.15;
+                const reactionFactor = Math.exp(-40000 / (8.314 * T_K)) / Math.exp(-40000 / (8.314 * 298.15));
+                const stiffnessFactor = 1 - 0.02 * (T - 25);
+                const mrrValue = 2500 * reactionFactor * stiffnessFactor;
+                mrr.push(mrrValue);
+            }
+
+            const trace = {
+                x: temps,
+                y: mrr,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'MRR',
+                line: { color: '#667eea', width: 3 },
+                marker: { size: 6 }
+            };
+
+            const layout = {
+                xaxis: { title: 'Temperature (°C)', gridcolor: '#e0e0e0' },
+                yaxis: { title: 'MRR (Å/min)', gridcolor: '#e0e0e0' },
+                plot_bgcolor: '#fafafa',
+                paper_bgcolor: 'white',
+                font: { family: 'Segoe UI' }
+            };
+
+            Plotly.newPlot('mrr-temp-chart', [trace], layout, { responsive: true });
+        }
+
+        function updateAllCharts() {
+            plotRadialTemperature();
+            plotTemperatureTime();
+            plotHeatmap();
+            plotViscosity();
+            plotArrhenius();
+            plotStiffness();
+            plotMRRvsTemp();
+        }
+
+        document.getElementById('pressure').addEventListener('input', (e) => {
+            params.pressure = parseFloat(e.target.value);
+            document.getElementById('pressure-value').textContent = params.pressure.toFixed(1) + ' psi';
+            updateStats();
+            updateAllCharts();
+            createWaferTemperature();
+        });
+
+        document.getElementById('velocity').addEventListener('input', (e) => {
+            params.velocity = parseInt(e.target.value);
+            document.getElementById('velocity-value').textContent = params.velocity + ' rpm';
+            updateStats();
+            updateAllCharts();
+            createWaferTemperature();
+        });
+
+        document.getElementById('friction').addEventListener('input', (e) => {
+            params.friction = parseFloat(e.target.value);
+            document.getElementById('friction-value').textContent = params.friction.toFixed(2);
+            updateStats();
+            updateAllCharts();
+            createWaferTemperature();
+        });
+
+        document.getElementById('ambient').addEventListener('input', (e) => {
+            params.ambient = parseInt(e.target.value);
+            document.getElementById('ambient-value').textContent = params.ambient + '°C';
+            updateStats();
+            updateAllCharts();
+            createWaferTemperature();
+        });
+
+        document.getElementById('flowrate').addEventListener('input', (e) => {
+            params.flowRate = parseInt(e.target.value);
+            document.getElementById('flowrate-value').textContent = params.flowRate + ' mL/min';
+            updateStats();
+            updateAllCharts();
+            createWaferTemperature();
+        });
+
+        document.getElementById('polishtime').addEventListener('input', (e) => {
+            params.polishTime = parseInt(e.target.value);
+            document.getElementById('polishtime-value').textContent = params.polishTime + ' s';
+            updateStats();
+            updateAllCharts();
+            createWaferTemperature();
+        });
+
+        document.getElementById('conductivity').addEventListener('input', (e) => {
+            params.conductivity = parseFloat(e.target.value);
+            document.getElementById('conductivity-value').textContent = params.conductivity.toFixed(2) + ' W/m·K';
+            updateStats();
+            updateAllCharts();
+        });
+
+        document.getElementById('cooling').addEventListener('input', (e) => {
+            params.cooling = parseInt(e.target.value);
+            document.getElementById('cooling-value').textContent = params.cooling + '°C';
+            updateStats();
+            updateAllCharts();
+            createWaferTemperature();
+        });
+
+        window.addEventListener('load', () => {
+            initThreeJS();
+            updateStats();
+            updateAllCharts();
+        });
+
+        window.addEventListener('resize', () => {
+            const container = document.getElementById('threejs-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight - 50;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        });
+    </script>
+</body>
+</html>
