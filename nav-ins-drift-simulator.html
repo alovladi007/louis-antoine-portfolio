@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INS Drift Simulator - Undersea Navigation Suite</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #0a0a0a;
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+
+        .navbar {
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid rgba(59, 130, 246, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-title {
+            color: #60a5fa;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #1e40af, #3b82f6);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 3rem 0;
+            background: linear-gradient(135deg, rgba(30, 64, 175, 0.1), rgba(59, 130, 246, 0.1));
+            border-radius: 20px;
+            margin-bottom: 3rem;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            background: linear-gradient(135deg, #1e40af, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+
+        .hero-subtitle {
+            font-size: 1.2rem;
+            color: #a0a0a0;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .controls-panel {
+            background: rgba(59, 130, 246, 0.05);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .controls-title {
+            color: #60a5fa;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .control-label {
+            display: block;
+            color: #c0c0c0;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .control-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .slider {
+            flex: 1;
+            height: 8px;
+            border-radius: 5px;
+            background: rgba(59, 130, 246, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            border: none;
+        }
+
+        .value-display {
+            min-width: 120px;
+            background: rgba(59, 130, 246, 0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            color: #60a5fa;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 1rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #1e40af, #3b82f6);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(59, 130, 246, 0.1);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(59, 130, 246, 0.2);
+        }
+
+        .plot-container {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .plot-title {
+            color: #60a5fa;
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+        }
+
+        .info-box {
+            background: rgba(16, 185, 129, 0.1);
+            border-left: 4px solid #10b981;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+
+        .info-box h3 {
+            color: #10b981;
+            margin-bottom: 0.5rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #3b82f6;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: #a0a0a0;
+            font-size: 0.9rem;
+        }
+
+        .equation-box {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+            font-size: 1.1rem;
+            color: #60a5fa;
+        }
+
+        .theory-section {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-top: 2rem;
+        }
+
+        .theory-section h2 {
+            color: #60a5fa;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-title">
+            <i class="fas fa-compass"></i> INS Drift Simulator
+        </div>
+        <a href="undersea-navigation-complete-project.html" class="nav-btn">
+            <i class="fas fa-arrow-left"></i> Back to Suite
+        </a>
+    </nav>
+
+    <div class="container">
+        <!-- Hero Section -->
+        <div class="hero">
+            <h1><i class="fas fa-compass"></i> Inertial Navigation System Drift Simulator</h1>
+            <p class="hero-subtitle">
+                Visualize error propagation in dead-reckoning navigation systems and understand why external aiding is critical for underwater vehicles
+            </p>
+        </div>
+
+        <!-- Info Box -->
+        <div class="info-box">
+            <h3><i class="fas fa-info-circle"></i> About This Demo</h3>
+            <p>
+                This interactive simulator demonstrates how inertial navigation errors grow over time due to sensor imperfections.
+                Gyroscope and accelerometer biases cause unbounded position drift that accumulates quadratically.
+                Configure IMU parameters to see how sensor quality affects navigation accuracy.
+            </p>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="controls-panel">
+            <h2 class="controls-title"><i class="fas fa-sliders-h"></i> IMU Configuration</h2>
+
+            <div class="control-group">
+                <label class="control-label">Gyroscope Bias Stability (deg/hr)</label>
+                <div class="control-row">
+                    <input type="range" id="gyro-bias" class="slider" min="0.1" max="10" step="0.1" value="1.0">
+                    <span class="value-display" id="gyro-bias-val">1.0 deg/hr</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Gyroscope Random Walk (deg/√hr)</label>
+                <div class="control-row">
+                    <input type="range" id="gyro-walk" class="slider" min="0.01" max="0.5" step="0.01" value="0.05">
+                    <span class="value-display" id="gyro-walk-val">0.05 deg/√hr</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Accelerometer Bias Stability (μg)</label>
+                <div class="control-row">
+                    <input type="range" id="accel-bias" class="slider" min="10" max="200" step="10" value="50">
+                    <span class="value-display" id="accel-bias-val">50 μg</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Accelerometer Random Walk (μg/√Hz)</label>
+                <div class="control-row">
+                    <input type="range" id="accel-walk" class="slider" min="1" max="50" step="1" value="10">
+                    <span class="value-display" id="accel-walk-val">10 μg/√Hz</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Mission Duration (minutes)</label>
+                <div class="control-row">
+                    <input type="range" id="duration" class="slider" min="10" max="180" step="10" value="60">
+                    <span class="value-display" id="duration-val">60 min</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Vehicle Speed (m/s)</label>
+                <div class="control-row">
+                    <input type="range" id="speed" class="slider" min="0.5" max="5" step="0.5" value="2.0">
+                    <span class="value-display" id="speed-val">2.0 m/s</span>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="runSimulation()">
+                    <i class="fas fa-play"></i> Run Simulation
+                </button>
+                <button class="btn btn-secondary" onclick="resetDefaults()">
+                    <i class="fas fa-undo"></i> Reset to Defaults
+                </button>
+            </div>
+        </div>
+
+        <!-- Statistics -->
+        <div class="stats-grid" id="stats-container" style="display: none;">
+            <div class="stat-card">
+                <div class="stat-value" id="final-error">--</div>
+                <div class="stat-label">Final Position Error</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="drift-rate">--</div>
+                <div class="stat-label">Drift Rate (% distance)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="max-velocity-error">--</div>
+                <div class="stat-label">Max Velocity Error</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="distance-traveled">--</div>
+                <div class="stat-label">Distance Traveled</div>
+            </div>
+        </div>
+
+        <!-- Position Error Plot -->
+        <div class="plot-container">
+            <h3 class="plot-title"><i class="fas fa-chart-line"></i> Position Error Growth Over Time</h3>
+            <div id="position-plot"></div>
+        </div>
+
+        <!-- Velocity Error Plot -->
+        <div class="plot-container">
+            <h3 class="plot-title"><i class="fas fa-tachometer-alt"></i> Velocity Error Accumulation</h3>
+            <div id="velocity-plot"></div>
+        </div>
+
+        <!-- 2D Trajectory Plot -->
+        <div class="plot-container">
+            <h3 class="plot-title"><i class="fas fa-route"></i> 2D Position Drift Visualization</h3>
+            <div id="trajectory-plot"></div>
+        </div>
+
+        <!-- Theory Section -->
+        <div class="theory-section">
+            <h2><i class="fas fa-book-open"></i> Understanding INS Error Propagation</h2>
+
+            <h3>Error State Dynamics</h3>
+            <p>
+                Inertial navigation errors grow due to the double integration of acceleration and integration of angular rate:
+            </p>
+            <div class="equation-box">
+                δẋ = F δx + G w
+            </div>
+            <p>Where the error state vector contains:</p>
+            <div class="equation-box">
+                δx = [δp<sup>T</sup> δv<sup>T</sup> δψ<sup>T</sup> b<sub>g</sub><sup>T</sup> b<sub>a</sub><sup>T</sup>]<sup>T</sup>
+            </div>
+
+            <h3>Why Errors Grow Quadratically</h3>
+            <p>
+                Accelerometer biases directly cause velocity errors through integration. These velocity errors
+                then integrate again to cause position errors, resulting in quadratic growth:
+            </p>
+            <div class="equation-box">
+                δp(t) ≈ δp<sub>0</sub> + δv<sub>0</sub>t + ½b<sub>a</sub>t²
+            </div>
+
+            <h3>Typical IMU Classes</h3>
+            <ul style="margin-left: 2rem; color: #c0c0c0;">
+                <li><strong>Consumer-grade:</strong> 10-100 deg/hr gyro bias, 1000+ μg accel bias (phone IMUs)</li>
+                <li><strong>Tactical-grade:</strong> 0.1-10 deg/hr gyro bias, 10-100 μg accel bias (AUV navigation)</li>
+                <li><strong>Navigation-grade:</strong> 0.001-0.1 deg/hr gyro bias, 1-10 μg accel bias (submarines)</li>
+                <li><strong>Strategic-grade:</strong> < 0.001 deg/hr gyro bias, < 1 μg accel bias (ICBMs)</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let simulationData = null;
+
+        // Update value displays
+        document.getElementById('gyro-bias').addEventListener('input', function(e) {
+            document.getElementById('gyro-bias-val').textContent = e.target.value + ' deg/hr';
+        });
+
+        document.getElementById('gyro-walk').addEventListener('input', function(e) {
+            document.getElementById('gyro-walk-val').textContent = e.target.value + ' deg/√hr';
+        });
+
+        document.getElementById('accel-bias').addEventListener('input', function(e) {
+            document.getElementById('accel-bias-val').textContent = e.target.value + ' μg';
+        });
+
+        document.getElementById('accel-walk').addEventListener('input', function(e) {
+            document.getElementById('accel-walk-val').textContent = e.target.value + ' μg/√Hz';
+        });
+
+        document.getElementById('duration').addEventListener('input', function(e) {
+            document.getElementById('duration-val').textContent = e.target.value + ' min';
+        });
+
+        document.getElementById('speed').addEventListener('input', function(e) {
+            document.getElementById('speed-val').textContent = e.target.value + ' m/s';
+        });
+
+        function resetDefaults() {
+            document.getElementById('gyro-bias').value = 1.0;
+            document.getElementById('gyro-walk').value = 0.05;
+            document.getElementById('accel-bias').value = 50;
+            document.getElementById('accel-walk').value = 10;
+            document.getElementById('duration').value = 60;
+            document.getElementById('speed').value = 2.0;
+
+            // Trigger input events to update displays
+            document.getElementById('gyro-bias').dispatchEvent(new Event('input'));
+            document.getElementById('gyro-walk').dispatchEvent(new Event('input'));
+            document.getElementById('accel-bias').dispatchEvent(new Event('input'));
+            document.getElementById('accel-walk').dispatchEvent(new Event('input'));
+            document.getElementById('duration').dispatchEvent(new Event('input'));
+            document.getElementById('speed').dispatchEvent(new Event('input'));
+        }
+
+        function runSimulation() {
+            // Get parameters
+            const gyroBias = parseFloat(document.getElementById('gyro-bias').value);
+            const gyroWalk = parseFloat(document.getElementById('gyro-walk').value);
+            const accelBias = parseFloat(document.getElementById('accel-bias').value);
+            const accelWalk = parseFloat(document.getElementById('accel-walk').value);
+            const duration = parseFloat(document.getElementById('duration').value);
+            const speed = parseFloat(document.getElementById('speed').value);
+
+            // Simulation parameters
+            const dt = 0.1; // 0.1 minute time steps
+            const numSteps = Math.floor(duration / dt);
+
+            const time = [];
+            const posError = [];
+            const velError = [];
+            const posX = [];
+            const posY = [];
+
+            // Convert units
+            const gyroBiasRadSec = gyroBias * (Math.PI / 180) / 3600; // deg/hr to rad/s
+            const accelBiasMS2 = accelBias * 9.81e-6; // μg to m/s²
+
+            // Initialize
+            let heading = 0; // radians
+            let x = 0, y = 0;
+            let vx = speed, vy = 0;
+            let headingError = 0;
+            let velErrorMag = 0;
+
+            for (let i = 0; i <= numSteps; i++) {
+                const t = i * dt;
+                time.push(t);
+
+                // Heading error from gyro bias (integrated over time)
+                headingError += gyroBiasRadSec * dt * 60; // dt is in minutes
+
+                // Add random walk component
+                headingError += gyroWalk * (Math.PI / 180) * Math.sqrt(dt) * (Math.random() - 0.5) * 2;
+
+                // Velocity error from accelerometer bias
+                velErrorMag = accelBiasMS2 * t * 60; // t in minutes, convert to seconds
+
+                // Add random walk to velocity
+                velErrorMag += accelWalk * 9.81e-6 * Math.sqrt(t * 60) * (Math.random() - 0.5) * 2;
+
+                // Position error from velocity error (quadratic growth)
+                const posErrorMag = 0.5 * accelBiasMS2 * Math.pow(t * 60, 2) +
+                                    headingError * speed * t * 60;
+
+                posError.push(posErrorMag);
+                velError.push(velErrorMag);
+
+                // True trajectory (straight line)
+                x = speed * t * 60; // t in minutes
+                y = 0;
+
+                // Add drift components
+                const driftX = posErrorMag * Math.cos(headingError);
+                const driftY = posErrorMag * Math.sin(headingError);
+
+                posX.push(x + driftX);
+                posY.push(y + driftY);
+            }
+
+            // Calculate statistics
+            const finalError = posError[posError.length - 1];
+            const distanceTraveled = speed * duration * 60; // meters
+            const driftRate = (finalError / distanceTraveled) * 100;
+            const maxVelError = Math.max(...velError);
+
+            // Update stats display
+            document.getElementById('stats-container').style.display = 'grid';
+            document.getElementById('final-error').textContent = finalError.toFixed(1) + ' m';
+            document.getElementById('drift-rate').textContent = driftRate.toFixed(2) + '%';
+            document.getElementById('max-velocity-error').textContent = maxVelError.toFixed(3) + ' m/s';
+            document.getElementById('distance-traveled').textContent = (distanceTraveled / 1000).toFixed(2) + ' km';
+
+            // Plot position error
+            const trace1 = {
+                x: time,
+                y: posError,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Position Error',
+                line: { color: '#ef4444', width: 3 }
+            };
+
+            const layout1 = {
+                title: { text: 'Position Error vs Time', font: { color: '#e0e0e0' }},
+                xaxis: { title: 'Time (minutes)', gridcolor: '#333', color: '#e0e0e0' },
+                yaxis: { title: 'Position Error (meters)', gridcolor: '#333', color: '#e0e0e0' },
+                plot_bgcolor: '#0a0a0a',
+                paper_bgcolor: '#0a0a0a',
+                font: { color: '#e0e0e0' }
+            };
+
+            Plotly.newPlot('position-plot', [trace1], layout1, {responsive: true});
+
+            // Plot velocity error
+            const trace2 = {
+                x: time,
+                y: velError,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Velocity Error',
+                line: { color: '#f59e0b', width: 3 }
+            };
+
+            const layout2 = {
+                title: { text: 'Velocity Error vs Time', font: { color: '#e0e0e0' }},
+                xaxis: { title: 'Time (minutes)', gridcolor: '#333', color: '#e0e0e0' },
+                yaxis: { title: 'Velocity Error (m/s)', gridcolor: '#333', color: '#e0e0e0' },
+                plot_bgcolor: '#0a0a0a',
+                paper_bgcolor: '#0a0a0a',
+                font: { color: '#e0e0e0' }
+            };
+
+            Plotly.newPlot('velocity-plot', [trace2], layout2, {responsive: true});
+
+            // Plot 2D trajectory
+            const trace3True = {
+                x: time.map(t => speed * t * 60),
+                y: time.map(() => 0),
+                type: 'scatter',
+                mode: 'lines',
+                name: 'True Trajectory',
+                line: { color: '#10b981', width: 2, dash: 'dash' }
+            };
+
+            const trace3Drift = {
+                x: posX,
+                y: posY,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Drifted Trajectory',
+                line: { color: '#3b82f6', width: 3 }
+            };
+
+            const layout3 = {
+                title: { text: '2D Position Drift', font: { color: '#e0e0e0' }},
+                xaxis: { title: 'East (meters)', gridcolor: '#333', color: '#e0e0e0' },
+                yaxis: { title: 'North (meters)', gridcolor: '#333', color: '#e0e0e0', scaleanchor: 'x' },
+                plot_bgcolor: '#0a0a0a',
+                paper_bgcolor: '#0a0a0a',
+                font: { color: '#e0e0e0' },
+                showlegend: true
+            };
+
+            Plotly.newPlot('trajectory-plot', [trace3True, trace3Drift], layout3, {responsive: true});
+        }
+
+        // Run initial simulation on page load
+        window.addEventListener('load', function() {
+            runSimulation();
+        });
+    </script>
+</body>
+</html>
