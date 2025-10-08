@@ -2,58 +2,769 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Lithography Demo</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.26.0/plotly.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Patterning Lithography Simulator - Louis-Antoine Cliche</title>
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #e0e0e0; }
-        .navbar { background: rgba(10, 10, 10, 0.95); padding: 1rem 2rem; border-bottom: 1px solid rgba(102, 126, 234, 0.3); }
-        .nav-content { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
-        .nav-title { color: #667eea; font-size: 1.3rem; font-weight: 600; }
-        .nav-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; }
-        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
-        .header h1 { font-size: 2.8rem; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin: 3rem 0; }
-        .stat-card { background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.3); padding: 1.5rem; border-radius: 12px; text-align: center; }
-        .stat-value { font-size: 2rem; font-weight: bold; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .stat-label { color: #a0a0a0; font-size: 0.9rem; }
-        .visualization { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; margin-bottom: 2rem; }
-        .section-title { color: #667eea; font-size: 1.5rem; margin-bottom: 1.5rem; }
-        .chart-container { background: rgba(0, 0, 0, 0.3); border-radius: 10px; padding: 1rem; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .controls {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 0.95em;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.3);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .control-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #f39c12;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .control-group input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #f39c12;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .slider-value {
+            float: right;
+            background: rgba(243, 156, 18, 0.3);
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-size: 0.9em;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, rgba(243, 156, 18, 0.3), rgba(243, 156, 18, 0.1));
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            border: 2px solid rgba(243, 156, 18, 0.3);
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #f39c12;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .chart-title {
+            color: #764ba2;
+            font-weight: 600;
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 1.1em;
+        }
+
+        #threejs-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        #threejs-canvas {
+            width: 100%;
+            height: 500px;
+            border-radius: 10px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 30px;
+            background: rgba(243, 156, 18, 0.3);
+            color: #fff;
+            text-decoration: none;
+            border-radius: 25px;
+            border: 2px solid #f39c12;
+            transition: all 0.3s;
+        }
+
+        .back-link:hover {
+            background: #f39c12;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
     </style>
 </head>
 <body>
-    <nav class="navbar"><div class="nav-content"><div class="nav-title"><i class="fas fa-microscope"></i> Lithography Analysis</div><a href="lithography-research.html" class="nav-btn">Back</a></div></nav>
     <div class="container">
-        <div class="header"><h1>Advanced Lithography Analysis</h1></div>
-        <div class="stats-grid">
-            <div class="stat-card"><div class="stat-value">5.2 nm</div><div class="stat-label">Resolution</div></div>
-            <div class="stat-card"><div class="stat-value">95%</div><div class="stat-label">Process Window</div></div>
-            <div class="stat-card"><div class="stat-value">2.8</div><div class="stat-label">NILS</div></div>
-            <div class="stat-card"><div class="stat-value">0.8 nm</div><div class="stat-label">Overlay</div></div>
+        <h1>Multi-Patterning Lithography Simulator</h1>
+        <p class="subtitle">LELE / SADP / SAQP Process Physics & Pattern Analysis</p>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>
+                    Process Type: <span class="slider-value" id="processTypeValue">LELE</span>
+                </label>
+                <input type="range" id="processType" min="0" max="2" value="0" step="1">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    Mask Pitch (nm): <span class="slider-value" id="maskPitchValue">160</span>
+                </label>
+                <input type="range" id="maskPitch" min="80" max="320" value="160" step="10">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    Overlay Error (nm): <span class="slider-value" id="overlayValue">2.0</span>
+                </label>
+                <input type="range" id="overlay" min="0" max="10" value="2" step="0.1">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    CD Error (nm): <span class="slider-value" id="cdErrorValue">3.0</span>
+                </label>
+                <input type="range" id="cdError" min="0" max="8" value="3" step="0.1">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    Line Height (nm): <span class="slider-value" id="lineHeightValue">120</span>
+                </label>
+                <input type="range" id="lineHeight" min="60" max="200" value="120" step="10">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    Spacer Thickness (nm): <span class="slider-value" id="spacerThicknessValue">20</span>
+                </label>
+                <input type="range" id="spacerThickness" min="10" max="40" value="20" step="1">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    Stitching Error (nm): <span class="slider-value" id="stitchingValue">1.5</span>
+                </label>
+                <input type="range" id="stitching" min="0" max="5" value="1.5" step="0.1">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    Number of Patterns: <span class="slider-value" id="numPatternsValue">20</span>
+                </label>
+                <input type="range" id="numPatterns" min="10" max="50" value="20" step="5">
+            </div>
         </div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 1</h2><div class="chart-container"><div id="chart1"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 2</h2><div class="chart-container"><div id="chart2"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 3</h2><div class="chart-container"><div id="chart3"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 4</h2><div class="chart-container"><div id="chart4"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 5</h2><div class="chart-container"><div id="chart5"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 6</h2><div class="chart-container"><div id="chart6"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 7</h2><div class="chart-container"><div id="chart7"></div></div></div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="finalPitchStat">80.0</div>
+                <div class="stat-label">Final Pitch (nm)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="numMasksStat">2</div>
+                <div class="stat-label">Number of Masks</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="overlayBudgetStat">40.0</div>
+                <div class="stat-label">Overlay Budget (nm)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="epeStat">2.5</div>
+                <div class="stat-label">EPE (nm)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="collapseRiskStat">Low</div>
+                <div class="stat-label">Collapse Risk</div>
+            </div>
+        </div>
+
+        <div id="threejs-container">
+            <div class="chart-title">3D Layer Stack Visualization</div>
+            <div id="threejs-canvas"></div>
+        </div>
+
+        <div class="charts-grid">
+            <div class="chart-container">
+                <div class="chart-title">Process Flow Diagram</div>
+                <div id="processFlowChart"></div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">Pitch Division Analysis</div>
+                <div id="pitchDivisionChart"></div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">Overlay Budget Analysis</div>
+                <div id="overlayBudgetChart"></div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">EPE Distribution</div>
+                <div id="epeDistChart"></div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">Aspect Ratio vs Pitch</div>
+                <div id="aspectRatioChart"></div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">Stitching Error Impact</div>
+                <div id="stitchingChart"></div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">Line-Space Ratio Analysis</div>
+                <div id="lineSpaceChart"></div>
+            </div>
+        </div>
+
+        <a href="semiconductor.html" class="back-link">Back to Semiconductor Projects</a>
     </div>
+
     <script>
-        const x = Array.from({length:100},(_,i)=>i);
-        const y1 = x.map(v => Math.sin(v/10)*50+50);
-        const y2 = x.map(v => Math.cos(v/10)*50+50);
-        const layout = {paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{color:'#e0e0e0'},xaxis:{gridcolor:'rgba(102,126,234,0.2)'},yaxis:{gridcolor:'rgba(102,126,234,0.2)'},margin:{t:20,r:20,b:50,l:60}};
-        Plotly.newPlot('chart1', [{x,y:y1,type:'scatter',mode:'lines',line:{color:'#667eea',width:3}}], layout, {responsive:true});
-        Plotly.newPlot('chart2', [{x,y:y2,type:'scatter',mode:'lines',line:{color:'#f39c12',width:3}}], layout, {responsive:true});
-        Plotly.newPlot('chart3', [{x,y:y1,type:'bar',marker:{color:'#764ba2'}}], layout, {responsive:true});
-        const z = Array.from({length:20},(_,i)=>Array.from({length:20},(_,j)=>Math.sin(i/5)*Math.cos(j/5)));
-        Plotly.newPlot('chart4', [{z,type:'heatmap',colorscale:[[0,'#0a0a0a'],[0.5,'#667eea'],[1,'#f39c12']]}], layout, {responsive:true});
-        Plotly.newPlot('chart5', [{x,y:y1,type:'scatter',mode:'lines+markers',line:{color:'#667eea'},marker:{size:8}}], layout, {responsive:true});
-        Plotly.newPlot('chart6', [{x,y:y2,type:'scatter',mode:'lines',line:{color:'#f39c12',width:3},fill:'tozeroy',fillcolor:'rgba(243,156,18,0.3)'}], layout, {responsive:true});
-        Plotly.newPlot('chart7', [{values:[30,40,20,10],labels:['A','B','C','D'],type:'pie',marker:{colors:['#667eea','#f39c12','#764ba2','#e67e22']}}], layout, {responsive:true});
+        window.addEventListener('load', function() {
+            // Get DOM elements
+            var processTypeSlider = document.getElementById('processType');
+            var maskPitchSlider = document.getElementById('maskPitch');
+            var overlaySlider = document.getElementById('overlay');
+            var cdErrorSlider = document.getElementById('cdError');
+            var lineHeightSlider = document.getElementById('lineHeight');
+            var spacerThicknessSlider = document.getElementById('spacerThickness');
+            var stitchingSlider = document.getElementById('stitching');
+            var numPatternsSlider = document.getElementById('numPatterns');
+
+            // Three.js setup
+            var scene, camera, renderer;
+            var layerMeshes = [];
+
+            function initThreeJS() {
+                var container = document.getElementById('threejs-canvas');
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0xf0f0f0);
+
+                camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+                camera.position.set(300, 250, 300);
+                camera.lookAt(0, 0, 0);
+
+                renderer = new THREE.WebGLRenderer({ antialias: true });
+                renderer.setSize(container.clientWidth, container.clientHeight);
+                container.appendChild(renderer.domElement);
+
+                var ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                scene.add(ambientLight);
+
+                var directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
+                directionalLight.position.set(100, 200, 100);
+                scene.add(directionalLight);
+
+                var gridHelper = new THREE.GridHelper(400, 20, 0xcccccc, 0xeeeeee);
+                scene.add(gridHelper);
+
+                var axesHelper = new THREE.AxesHelper(150);
+                scene.add(axesHelper);
+
+                animate();
+            }
+
+            function animate() {
+                requestAnimationFrame(animate);
+                scene.rotation.y += 0.002;
+                renderer.render(scene, camera);
+            }
+
+            function updateThreeJS(params) {
+                // Clear existing meshes
+                for (var i = 0; i < layerMeshes.length; i++) {
+                    scene.remove(layerMeshes[i]);
+                }
+                layerMeshes = [];
+
+                var processTypes = ['LELE', 'SADP', 'SAQP'];
+                var processType = processTypes[params.processType];
+                var pitch = params.finalPitch;
+                var height = params.lineHeight;
+                var numLines = 8;
+
+                if (processType === 'LELE') {
+                    // First mask layer
+                    for (var i = 0; i < numLines / 2; i++) {
+                        var geometry = new THREE.BoxGeometry(pitch * 0.4, height, 20);
+                        var material = new THREE.MeshPhongMaterial({ color: 0x667eea, transparent: true, opacity: 0.7 });
+                        var mesh = new THREE.Mesh(geometry, material);
+                        mesh.position.set((i * 2) * pitch - 150, height / 2, 30);
+                        scene.add(mesh);
+                        layerMeshes.push(mesh);
+                    }
+
+                    // Second mask layer
+                    for (var i = 0; i < numLines / 2; i++) {
+                        var geometry = new THREE.BoxGeometry(pitch * 0.4, height, 20);
+                        var material = new THREE.MeshPhongMaterial({ color: 0xf39c12, transparent: true, opacity: 0.7 });
+                        var mesh = new THREE.Mesh(geometry, material);
+                        mesh.position.set((i * 2 + 1) * pitch - 150, height / 2, -30);
+                        scene.add(mesh);
+                        layerMeshes.push(mesh);
+                    }
+                } else if (processType === 'SADP') {
+                    // Core mandrels
+                    for (var i = 0; i < numLines / 2; i++) {
+                        var geometry = new THREE.BoxGeometry(pitch * 0.3, height * 0.8, 20);
+                        var material = new THREE.MeshPhongMaterial({ color: 0x667eea, transparent: true, opacity: 0.5 });
+                        var mesh = new THREE.Mesh(geometry, material);
+                        mesh.position.set(i * pitch * 2 - 150, height * 0.4, 0);
+                        scene.add(mesh);
+                        layerMeshes.push(mesh);
+
+                        // Left spacer
+                        var spacerGeom = new THREE.BoxGeometry(params.spacerThickness, height, 20);
+                        var spacerMat = new THREE.MeshPhongMaterial({ color: 0xf39c12, transparent: true, opacity: 0.8 });
+                        var spacerMeshL = new THREE.Mesh(spacerGeom, spacerMat);
+                        spacerMeshL.position.set(i * pitch * 2 - 150 - pitch * 0.15 - params.spacerThickness / 2, height / 2, 0);
+                        scene.add(spacerMeshL);
+                        layerMeshes.push(spacerMeshL);
+
+                        // Right spacer
+                        var spacerMeshR = new THREE.Mesh(spacerGeom, spacerMat);
+                        spacerMeshR.position.set(i * pitch * 2 - 150 + pitch * 0.15 + params.spacerThickness / 2, height / 2, 0);
+                        scene.add(spacerMeshR);
+                        layerMeshes.push(spacerMeshR);
+                    }
+                } else { // SAQP
+                    // Core mandrels (fewer)
+                    for (var i = 0; i < numLines / 4; i++) {
+                        var geometry = new THREE.BoxGeometry(pitch * 0.25, height * 0.6, 20);
+                        var material = new THREE.MeshPhongMaterial({ color: 0x667eea, transparent: true, opacity: 0.4 });
+                        var mesh = new THREE.Mesh(geometry, material);
+                        mesh.position.set(i * pitch * 4 - 150, height * 0.3, 0);
+                        scene.add(mesh);
+                        layerMeshes.push(mesh);
+
+                        // First generation spacers
+                        for (var j = -1; j <= 1; j += 2) {
+                            var spacerGeom1 = new THREE.BoxGeometry(params.spacerThickness * 0.8, height * 0.8, 20);
+                            var spacerMat1 = new THREE.MeshPhongMaterial({ color: 0xf39c12, transparent: true, opacity: 0.6 });
+                            var spacerMesh1 = new THREE.Mesh(spacerGeom1, spacerMat1);
+                            spacerMesh1.position.set(i * pitch * 4 - 150 + j * pitch, height * 0.4, 0);
+                            scene.add(spacerMesh1);
+                            layerMeshes.push(spacerMesh1);
+
+                            // Second generation spacers
+                            var spacerGeom2 = new THREE.BoxGeometry(params.spacerThickness * 0.6, height, 20);
+                            var spacerMat2 = new THREE.MeshPhongMaterial({ color: 0x764ba2, transparent: true, opacity: 0.8 });
+                            var spacerMesh2 = new THREE.Mesh(spacerGeom2, spacerMat2);
+                            spacerMesh2.position.set(i * pitch * 4 - 150 + j * pitch * 0.5, height / 2, 0);
+                            scene.add(spacerMesh2);
+                            layerMeshes.push(spacerMesh2);
+                        }
+                    }
+                }
+            }
+
+            function calculate() {
+                var processTypes = ['LELE', 'SADP', 'SAQP'];
+                var processType = parseInt(processTypeSlider.value);
+                var maskPitch = parseFloat(maskPitchSlider.value);
+                var overlay = parseFloat(overlaySlider.value);
+                var cdError = parseFloat(cdErrorSlider.value);
+                var lineHeight = parseFloat(lineHeightSlider.value);
+                var spacerThickness = parseFloat(spacerThicknessSlider.value);
+                var stitching = parseFloat(stitchingSlider.value);
+                var numPatterns = parseInt(numPatternsSlider.value);
+
+                // Update slider values
+                document.getElementById('processTypeValue').textContent = processTypes[processType];
+                document.getElementById('maskPitchValue').textContent = maskPitch;
+                document.getElementById('overlayValue').textContent = overlay.toFixed(1);
+                document.getElementById('cdErrorValue').textContent = cdError.toFixed(1);
+                document.getElementById('lineHeightValue').textContent = lineHeight;
+                document.getElementById('spacerThicknessValue').textContent = spacerThickness;
+                document.getElementById('stitchingValue').textContent = stitching.toFixed(1);
+                document.getElementById('numPatternsValue').textContent = numPatterns;
+
+                // Calculate pitch division: P_final = P_mask / (2^n)
+                var n, numMasks;
+                if (processType === 0) { // LELE
+                    n = 1;
+                    numMasks = 2;
+                } else if (processType === 1) { // SADP
+                    n = 1;
+                    numMasks = 1;
+                } else { // SAQP
+                    n = 2;
+                    numMasks = 1;
+                }
+                var finalPitch = maskPitch / Math.pow(2, n);
+
+                // Overlay budget
+                var overlayBudget;
+                if (processType === 0) { // LELE
+                    overlayBudget = finalPitch / 4;
+                } else if (processType === 1) { // SADP
+                    overlayBudget = finalPitch / 8;
+                } else { // SAQP
+                    overlayBudget = finalPitch / 16;
+                }
+
+                // EPE calculation: EPE = sqrt(overlay^2 + (CD_error/2)^2)
+                var epe = Math.sqrt(overlay * overlay + (cdError / 2) * (cdError / 2));
+
+                // Aspect ratio and collapse risk
+                var lineWidth = finalPitch * 0.5;
+                var aspectRatio = lineHeight / lineWidth;
+                var collapseRisk = aspectRatio > 4 ? 'High' : (aspectRatio > 3 ? 'Medium' : 'Low');
+
+                // Update stats
+                document.getElementById('finalPitchStat').textContent = finalPitch.toFixed(1);
+                document.getElementById('numMasksStat').textContent = numMasks;
+                document.getElementById('overlayBudgetStat').textContent = overlayBudget.toFixed(1);
+                document.getElementById('epeStat').textContent = epe.toFixed(2);
+                document.getElementById('collapseRiskStat').textContent = collapseRisk;
+
+                // Update charts
+                updateProcessFlowChart(processType, processTypes);
+                updatePitchDivisionChart(maskPitch, finalPitch, processType, processTypes);
+                updateOverlayBudgetChart(overlayBudget, overlay, finalPitch);
+                updateEPEDistribution(overlay, cdError, numPatterns);
+                updateAspectRatioChart(finalPitch, lineHeight);
+                updateStitchingChart(stitching, finalPitch, numPatterns);
+                updateLineSpaceChart(finalPitch, spacerThickness, processType);
+
+                // Update 3D visualization
+                updateThreeJS({
+                    processType: processType,
+                    finalPitch: finalPitch,
+                    lineHeight: lineHeight,
+                    spacerThickness: spacerThickness
+                });
+            }
+
+            function updateProcessFlowChart(processType, processTypes) {
+                var steps, colors;
+                if (processType === 0) { // LELE
+                    steps = ['Litho 1', 'Etch 1', 'Litho 2', 'Etch 2', 'Final'];
+                    colors = ['#667eea', '#5568d3', '#f39c12', '#e08e0b', '#764ba2'];
+                } else if (processType === 1) { // SADP
+                    steps = ['Mandrel Litho', 'Spacer Dep', 'Mandrel Remove', 'Spacer Etch', 'Final'];
+                    colors = ['#667eea', '#f39c12', '#5568d3', '#e08e0b', '#764ba2'];
+                } else { // SAQP
+                    steps = ['Mandrel Litho', 'Spacer 1 Dep', 'Mandrel Rem', 'Spacer 2 Dep', 'Spacer 1 Rem', 'Etch', 'Final'];
+                    colors = ['#667eea', '#f39c12', '#5568d3', '#764ba2', '#e08e0b', '#9b59b6', '#8e44ad'];
+                }
+
+                var trace = {
+                    x: steps,
+                    y: steps.map(function(s, i) { return steps.length - i; }),
+                    type: 'bar',
+                    marker: { color: colors },
+                    text: steps,
+                    textposition: 'inside',
+                    insidetextanchor: 'middle'
+                };
+
+                var layout = {
+                    margin: { l: 50, r: 30, t: 30, b: 80 },
+                    xaxis: { title: 'Process Step' },
+                    yaxis: { title: 'Step Number', showticklabels: false },
+                    showlegend: false,
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)'
+                };
+
+                Plotly.newPlot('processFlowChart', [trace], layout, {responsive: true});
+            }
+
+            function updatePitchDivisionChart(maskPitch, finalPitch, processType, processTypes) {
+                var iterations = processType === 2 ? 3 : 2;
+                var pitches = [maskPitch];
+                for (var i = 0; i < iterations; i++) {
+                    pitches.push(pitches[pitches.length - 1] / 2);
+                }
+
+                var trace = {
+                    x: pitches.map(function(p, i) { return 'Gen ' + i; }),
+                    y: pitches,
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    marker: { color: '#667eea', size: 10 },
+                    line: { color: '#667eea', width: 3 }
+                };
+
+                var layout = {
+                    margin: { l: 60, r: 30, t: 30, b: 50 },
+                    xaxis: { title: 'Generation' },
+                    yaxis: { title: 'Pitch (nm)', type: 'log' },
+                    showlegend: false,
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)'
+                };
+
+                Plotly.newPlot('pitchDivisionChart', [trace], layout, {responsive: true});
+            }
+
+            function updateOverlayBudgetChart(overlayBudget, overlay, finalPitch) {
+                var labels = ['Overlay Budget', 'Current Overlay', 'Margin'];
+                var values = [overlayBudget, overlay, Math.max(0, overlayBudget - overlay)];
+                var colors = ['#667eea', overlay > overlayBudget ? '#e74c3c' : '#f39c12', '#27ae60'];
+
+                var trace = {
+                    labels: labels,
+                    values: values,
+                    type: 'pie',
+                    marker: { colors: colors },
+                    textinfo: 'label+value',
+                    textposition: 'inside'
+                };
+
+                var layout = {
+                    margin: { l: 30, r: 30, t: 30, b: 30 },
+                    showlegend: true,
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)'
+                };
+
+                Plotly.newPlot('overlayBudgetChart', [trace], layout, {responsive: true});
+            }
+
+            function updateEPEDistribution(overlay, cdError, numPatterns) {
+                var epeValues = [];
+                for (var i = 0; i < numPatterns; i++) {
+                    var randOverlay = overlay * (0.5 + Math.random());
+                    var randCD = cdError * (0.5 + Math.random());
+                    var epe = Math.sqrt(randOverlay * randOverlay + (randCD / 2) * (randCD / 2));
+                    epeValues.push(epe);
+                }
+
+                var trace = {
+                    x: epeValues,
+                    type: 'histogram',
+                    marker: { color: '#764ba2' },
+                    nbinsx: 15
+                };
+
+                var layout = {
+                    margin: { l: 60, r: 30, t: 30, b: 50 },
+                    xaxis: { title: 'EPE (nm)' },
+                    yaxis: { title: 'Frequency' },
+                    showlegend: false,
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)'
+                };
+
+                Plotly.newPlot('epeDistChart', [trace], layout, {responsive: true});
+            }
+
+            function updateAspectRatioChart(finalPitch, lineHeight) {
+                var pitches = [];
+                var aspectRatios = [];
+                for (var p = finalPitch * 0.5; p <= finalPitch * 2; p += finalPitch * 0.1) {
+                    var lineWidth = p * 0.5;
+                    pitches.push(p);
+                    aspectRatios.push(lineHeight / lineWidth);
+                }
+
+                var trace = {
+                    x: pitches,
+                    y: aspectRatios,
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#f39c12', width: 3 },
+                    fill: 'tozeroy',
+                    fillcolor: 'rgba(243, 156, 18, 0.3)'
+                };
+
+                var criticalLine = {
+                    x: pitches,
+                    y: pitches.map(function() { return 3.5; }),
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#e74c3c', width: 2, dash: 'dash' },
+                    name: 'Critical AR'
+                };
+
+                var layout = {
+                    margin: { l: 60, r: 30, t: 30, b: 50 },
+                    xaxis: { title: 'Pitch (nm)' },
+                    yaxis: { title: 'Aspect Ratio' },
+                    showlegend: true,
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)'
+                };
+
+                Plotly.newPlot('aspectRatioChart', [trace, criticalLine], layout, {responsive: true});
+            }
+
+            function updateStitchingChart(stitching, finalPitch, numPatterns) {
+                var positions = [];
+                var errors = [];
+                for (var i = 0; i < numPatterns; i++) {
+                    positions.push(i * finalPitch);
+                    errors.push(stitching * (0.5 + Math.random() * 0.5) * (Math.random() > 0.5 ? 1 : -1));
+                }
+
+                var trace = {
+                    x: positions,
+                    y: errors,
+                    type: 'scatter',
+                    mode: 'markers',
+                    marker: {
+                        color: errors.map(function(e) { return Math.abs(e); }),
+                        colorscale: 'Viridis',
+                        size: 8,
+                        showscale: true,
+                        colorbar: { title: 'Error (nm)' }
+                    }
+                };
+
+                var layout = {
+                    margin: { l: 60, r: 80, t: 30, b: 50 },
+                    xaxis: { title: 'Position (nm)' },
+                    yaxis: { title: 'Stitching Error (nm)' },
+                    showlegend: false,
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)'
+                };
+
+                Plotly.newPlot('stitchingChart', [trace], layout, {responsive: true});
+            }
+
+            function updateLineSpaceChart(finalPitch, spacerThickness, processType) {
+                var lineWidth = processType === 1 ? spacerThickness : finalPitch * 0.5;
+                var spaceWidth = finalPitch - lineWidth;
+                var ratio = lineWidth / spaceWidth;
+
+                var trace = {
+                    x: ['Line Width', 'Space Width'],
+                    y: [lineWidth, spaceWidth],
+                    type: 'bar',
+                    marker: { color: ['#667eea', '#f39c12'] },
+                    text: [lineWidth.toFixed(1) + ' nm', spaceWidth.toFixed(1) + ' nm'],
+                    textposition: 'inside'
+                };
+
+                var layout = {
+                    margin: { l: 60, r: 30, t: 30, b: 50 },
+                    xaxis: { title: 'Feature Type' },
+                    yaxis: { title: 'Width (nm)' },
+                    showlegend: false,
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    annotations: [{
+                        x: 0.5,
+                        y: Math.max(lineWidth, spaceWidth) * 1.1,
+                        text: 'L:S Ratio = ' + ratio.toFixed(2),
+                        showarrow: false,
+                        font: { size: 14, color: '#764ba2' }
+                    }]
+                };
+
+                Plotly.newPlot('lineSpaceChart', [trace], layout, {responsive: true});
+            }
+
+            // Event listeners
+            processTypeSlider.oninput = calculate;
+            maskPitchSlider.oninput = calculate;
+            overlaySlider.oninput = calculate;
+            cdErrorSlider.oninput = calculate;
+            lineHeightSlider.oninput = calculate;
+            spacerThicknessSlider.oninput = calculate;
+            stitchingSlider.oninput = calculate;
+            numPatternsSlider.oninput = calculate;
+
+            // Initialize
+            initThreeJS();
+            calculate();
+        });
     </script>
 </body>
 </html>

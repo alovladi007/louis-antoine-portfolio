@@ -2,58 +2,363 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Lithography Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Immersion Lithography - Water-Based NA Enhancement</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.26.0/plotly.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #e0e0e0; }
-        .navbar { background: rgba(10, 10, 10, 0.95); padding: 1rem 2rem; border-bottom: 1px solid rgba(102, 126, 234, 0.3); }
-        .nav-content { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        .navbar { background: rgba(10, 10, 10, 0.95); padding: 1rem 2rem; border-bottom: 1px solid rgba(102, 126, 234, 0.3); position: sticky; top: 0; z-index: 1000; }
+        .nav-content { max-width: 1600px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
         .nav-title { color: #667eea; font-size: 1.3rem; font-weight: 600; }
-        .nav-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; }
-        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
-        .header h1 { font-size: 2.8rem; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin: 3rem 0; }
-        .stat-card { background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.3); padding: 1.5rem; border-radius: 12px; text-align: center; }
-        .stat-value { font-size: 2rem; font-weight: bold; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .stat-label { color: #a0a0a0; font-size: 0.9rem; }
-        .visualization { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; margin-bottom: 2rem; }
-        .section-title { color: #667eea; font-size: 1.5rem; margin-bottom: 1.5rem; }
-        .chart-container { background: rgba(0, 0, 0, 0.3); border-radius: 10px; padding: 1rem; }
+        .nav-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; transition: transform 0.2s; }
+        .nav-btn:hover { transform: translateY(-2px); }
+        .container { max-width: 1600px; margin: 0 auto; padding: 2rem; }
+        .header h1 { font-size: 2.8rem; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; text-align: center; margin-bottom: 1rem; }
+        .subtitle { text-align: center; color: #888; font-size: 1.1rem; margin-bottom: 2rem; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .stat-card { background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1)); border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 12px; padding: 1.5rem; text-align: center; }
+        .stat-value { font-size: 2rem; font-weight: bold; color: #f39c12; margin-bottom: 0.5rem; }
+        .stat-label { color: #888; font-size: 0.9rem; }
+        .controls-section { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; margin-bottom: 2rem; }
+        .section-title { color: #667eea; font-size: 1.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .controls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+        .slider-group { margin-bottom: 1rem; }
+        .slider-group label { display: flex; justify-content: space-between; color: #667eea; margin-bottom: 0.5rem; font-size: 0.9rem; }
+        .slider-group input[type="range"] { width: 100%; height: 6px; background: rgba(102, 126, 234, 0.2); border-radius: 3px; outline: none; }
+        .slider-group input[type="range"]::-webkit-slider-thumb { appearance: none; width: 18px; height: 18px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 50%; cursor: pointer; }
+        .slider-group input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 50%; cursor: pointer; border: none; }
+        .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .chart-container { background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 10px; padding: 1.5rem; }
+        .chart-title { color: #f39c12; font-size: 1.1rem; margin-bottom: 1rem; }
+        .chart { width: 100%; height: 350px; }
+        .viz-3d { width: 100%; height: 500px; border-radius: 10px; background: rgba(0, 0, 0, 0.5); }
+        .equation-box { background: rgba(102, 126, 234, 0.1); border-left: 4px solid #f39c12; padding: 1rem; border-radius: 8px; margin: 1rem 0; font-family: 'Courier New', monospace; font-size: 0.9rem; }
     </style>
 </head>
 <body>
-    <nav class="navbar"><div class="nav-content"><div class="nav-title"><i class="fas fa-microscope"></i> Lithography Analysis</div><a href="lithography-research.html" class="nav-btn">Back</a></div></nav>
-    <div class="container">
-        <div class="header"><h1>Advanced Lithography Analysis</h1></div>
-        <div class="stats-grid">
-            <div class="stat-card"><div class="stat-value">5.2 nm</div><div class="stat-label">Resolution</div></div>
-            <div class="stat-card"><div class="stat-value">95%</div><div class="stat-label">Process Window</div></div>
-            <div class="stat-card"><div class="stat-value">2.8</div><div class="stat-label">NILS</div></div>
-            <div class="stat-card"><div class="stat-value">0.8 nm</div><div class="stat-label">Overlay</div></div>
+    <nav class="navbar">
+        <div class="nav-content">
+            <div class="nav-title"><i class="fas fa-droplet"></i> Immersion Lithography</div>
+            <a href="lithography-research.html" class="nav-btn"><i class="fas fa-arrow-left"></i> Back to Research</a>
         </div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 1</h2><div class="chart-container"><div id="chart1"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 2</h2><div class="chart-container"><div id="chart2"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 3</h2><div class="chart-container"><div id="chart3"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 4</h2><div class="chart-container"><div id="chart4"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 5</h2><div class="chart-container"><div id="chart5"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 6</h2><div class="chart-container"><div id="chart6"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 7</h2><div class="chart-container"><div id="chart7"></div></div></div>
+    </nav>
+
+    <div class="container">
+        <div class="header">
+            <h1>Immersion Lithography Simulator</h1>
+            <p class="subtitle">Water-Based NA Enhancement | Bubble Defects | Leaching & Topcoat Analysis</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="stat-eff-na">0</div>
+                <div class="stat-label">Effective NA</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-resolution">0</div>
+                <div class="stat-label">Resolution (nm)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-dof">0</div>
+                <div class="stat-label">DOF (nm)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-bubble-count">0</div>
+                <div class="stat-label">Bubble Defects</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-leach-rate">0</div>
+                <div class="stat-label">Leaching Rate (ng/cm²·s)</div>
+            </div>
+        </div>
+
+        <div class="controls-section">
+            <h2 class="section-title"><i class="fas fa-sliders-h"></i> Immersion Parameters</h2>
+            <div class="equation-box">
+                NA_eff = n_medium × sin(θ) | Resolution: R = k₁λ/(n×NA)<br>
+                DOF = k₂λ/(n×NA²) | Bubble: P_critical = 2γ/r (Young-Laplace)<br>
+                Leaching: dm/dt = -k_evap × A × (P_sat - P_ambient)
+            </div>
+            <div class="controls-grid">
+                <div class="slider-group">
+                    <label><span>Water Refractive Index</span><span id="val-n-water">1.436</span></label>
+                    <input type="range" id="n-water" min="1.40" max="1.45" value="1.436" step="0.001">
+                </div>
+                <div class="slider-group">
+                    <label><span>Numerical Aperture (NA)</span><span id="val-na">1.20</span></label>
+                    <input type="range" id="na" min="0.85" max="1.35" value="1.20" step="0.05">
+                </div>
+                <div class="slider-group">
+                    <label><span>Immersion Gap</span><span id="val-gap">2.5</span> mm</label>
+                    <input type="range" id="gap" min="1" max="5" value="2.5" step="0.1">
+                </div>
+                <div class="slider-group">
+                    <label><span>Water Temperature</span><span id="val-temp">23</span> °C</label>
+                    <input type="range" id="temp" min="20" max="25" value="23" step="0.5">
+                </div>
+                <div class="slider-group">
+                    <label><span>Bubble Size</span><span id="val-bubble-size">20</span> µm</label>
+                    <input type="range" id="bubble-size" min="1" max="100" value="20" step="1">
+                </div>
+                <div class="slider-group">
+                    <label><span>Bubble Density</span><span id="val-bubble-density">3</span> /mm²</label>
+                    <input type="range" id="bubble-density" min="0" max="10" value="3" step="0.5">
+                </div>
+                <div class="slider-group">
+                    <label><span>Scan Speed</span><span id="val-scan-speed">400</span> mm/s</label>
+                    <input type="range" id="scan-speed" min="100" max="800" value="400" step="50">
+                </div>
+                <div class="slider-group">
+                    <label><span>Topcoat Thickness</span><span id="val-topcoat">30</span> nm</label>
+                    <input type="range" id="topcoat" min="0" max="50" value="30" step="5">
+                </div>
+            </div>
+        </div>
+
+        <div class="controls-section">
+            <h2 class="section-title"><i class="fas fa-cube"></i> 3D Water Gap Visualization</h2>
+            <div id="three-container" class="viz-3d"></div>
+        </div>
+
+        <div class="charts-grid">
+            <div class="chart-container">
+                <div class="chart-title"><i class="fas fa-chart-line"></i> Resolution vs NA (Immersion vs Dry)</div>
+                <div id="chart1" class="chart"></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title"><i class="fas fa-chart-line"></i> DOF vs NA Comparison</div>
+                <div id="chart2" class="chart"></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title"><i class="fas fa-th"></i> Bubble Defect Map (Wafer)</div>
+                <div id="chart3" class="chart"></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title"><i class="fas fa-chart-bar"></i> Bubble Size Distribution</div>
+                <div id="chart4" class="chart"></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title"><i class="fas fa-angle-up"></i> Effective NA Calculation</div>
+                <div id="chart5" class="chart"></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title"><i class="fas fa-flask"></i> Topcoat Leaching Rate</div>
+                <div id="chart6" class="chart"></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title"><i class="fas fa-fire"></i> Water Temperature Gradient</div>
+                <div id="chart7" class="chart"></div>
+            </div>
+        </div>
     </div>
+
     <script>
-        const x = Array.from({length:100},(_,i)=>i);
-        const y1 = x.map(v => Math.sin(v/10)*50+50);
-        const y2 = x.map(v => Math.cos(v/10)*50+50);
-        const layout = {paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{color:'#e0e0e0'},xaxis:{gridcolor:'rgba(102,126,234,0.2)'},yaxis:{gridcolor:'rgba(102,126,234,0.2)'},margin:{t:20,r:20,b:50,l:60}};
-        Plotly.newPlot('chart1', [{x,y:y1,type:'scatter',mode:'lines',line:{color:'#667eea',width:3}}], layout, {responsive:true});
-        Plotly.newPlot('chart2', [{x,y:y2,type:'scatter',mode:'lines',line:{color:'#f39c12',width:3}}], layout, {responsive:true});
-        Plotly.newPlot('chart3', [{x,y:y1,type:'bar',marker:{color:'#764ba2'}}], layout, {responsive:true});
-        const z = Array.from({length:20},(_,i)=>Array.from({length:20},(_,j)=>Math.sin(i/5)*Math.cos(j/5)));
-        Plotly.newPlot('chart4', [{z,type:'heatmap',colorscale:[[0,'#0a0a0a'],[0.5,'#667eea'],[1,'#f39c12']]}], layout, {responsive:true});
-        Plotly.newPlot('chart5', [{x,y:y1,type:'scatter',mode:'lines+markers',line:{color:'#667eea'},marker:{size:8}}], layout, {responsive:true});
-        Plotly.newPlot('chart6', [{x,y:y2,type:'scatter',mode:'lines',line:{color:'#f39c12',width:3},fill:'tozeroy',fillcolor:'rgba(243,156,18,0.3)'}], layout, {responsive:true});
-        Plotly.newPlot('chart7', [{values:[30,40,20,10],labels:['A','B','C','D'],type:'pie',marker:{colors:['#667eea','#f39c12','#764ba2','#e67e22']}}], layout, {responsive:true});
+    const params = {
+        nWater: 1.436,
+        na: 1.20,
+        gap: 2.5,
+        temp: 23,
+        bubbleSize: 20,
+        bubbleDensity: 3,
+        scanSpeed: 400,
+        topcoat: 30,
+        lambda: 193
+    };
+
+    function calculate() {
+        const effNA = params.nWater * Math.sin(Math.asin(params.na / params.nWater));
+        const resolution = (0.25 * params.lambda) / effNA;
+        const dof = (0.5 * params.lambda) / (effNA * effNA);
+        const bubbleCount = Math.round(params.bubbleDensity * 30000);
+        const leachRate = params.topcoat > 0 ? 0.05 + (25 - params.temp) * 0.01 : 0;
+
+        document.getElementById('stat-eff-na').textContent = effNA.toFixed(3);
+        document.getElementById('stat-resolution').textContent = resolution.toFixed(1);
+        document.getElementById('stat-dof').textContent = dof.toFixed(0);
+        document.getElementById('stat-bubble-count').textContent = bubbleCount;
+        document.getElementById('stat-leach-rate').textContent = leachRate.toFixed(3);
+    }
+
+    const layout = {
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(0,0,0,0.3)',
+        font: { color: '#e0e0e0', size: 11 },
+        xaxis: { gridcolor: 'rgba(102,126,234,0.2)', zerolinecolor: 'rgba(102,126,234,0.3)' },
+        yaxis: { gridcolor: 'rgba(102,126,234,0.2)', zerolinecolor: 'rgba(102,126,234,0.3)' },
+        margin: { t: 30, r: 30, b: 50, l: 60 }
+    };
+
+    function updateCharts() {
+        const naRange = [];
+        const resImmersion = [];
+        const resDry = [];
+        const dofImmersion = [];
+        const dofDry = [];
+        for (let i = 0; i < 50; i++) {
+            const na = 0.85 + i * 0.01;
+            naRange.push(na);
+            resImmersion.push((0.25 * params.lambda) / (params.nWater * na));
+            resDry.push((0.25 * params.lambda) / na);
+            dofImmersion.push((0.5 * params.lambda) / (params.nWater * params.nWater * na * na));
+            dofDry.push((0.5 * params.lambda) / (na * na));
+        }
+
+        Plotly.newPlot('chart1', [
+            {x: naRange, y: resImmersion, name: 'Immersion', type: 'scatter', mode: 'lines', line: {color: '#667eea', width: 3}},
+            {x: naRange, y: resDry, name: 'Dry', type: 'scatter', mode: 'lines', line: {color: '#f39c12', width: 3}}
+        ], Object.assign({}, layout, {xaxis: Object.assign({}, layout.xaxis, {title: 'NA'}), yaxis: Object.assign({}, layout.yaxis, {title: 'Resolution (nm)'})}), {responsive: true});
+
+        Plotly.newPlot('chart2', [
+            {x: naRange, y: dofImmersion, name: 'Immersion', type: 'scatter', mode: 'lines', line: {color: '#667eea', width: 3}},
+            {x: naRange, y: dofDry, name: 'Dry', type: 'scatter', mode: 'lines', line: {color: '#f39c12', width: 3}}
+        ], Object.assign({}, layout, {xaxis: Object.assign({}, layout.xaxis, {title: 'NA'}), yaxis: Object.assign({}, layout.yaxis, {title: 'DOF (nm)'})}), {responsive: true});
+
+        const bubbleX = [];
+        const bubbleY = [];
+        const bubbleSize = [];
+        const numBubbles = Math.round(params.bubbleDensity * 150);
+        for (let i = 0; i < numBubbles; i++) {
+            bubbleX.push((Math.random() - 0.5) * 200);
+            bubbleY.push((Math.random() - 0.5) * 200);
+            bubbleSize.push(params.bubbleSize * (0.5 + Math.random() * 1.5));
+        }
+
+        Plotly.newPlot('chart3', [{
+            x: bubbleX, y: bubbleY, mode: 'markers', type: 'scatter',
+            marker: {size: bubbleSize, color: '#f39c12', opacity: 0.6, line: {color: '#667eea', width: 1}}
+        }], Object.assign({}, layout, {
+            xaxis: Object.assign({}, layout.xaxis, {title: 'X (mm)', range: [-100, 100]}),
+            yaxis: Object.assign({}, layout.yaxis, {title: 'Y (mm)', range: [-100, 100], scaleanchor: 'x'})
+        }), {responsive: true});
+
+        const sizeHist = [];
+        for (let i = 0; i < 50; i++) {
+            sizeHist.push(params.bubbleSize * (0.5 + Math.random() * 1.5));
+        }
+
+        Plotly.newPlot('chart4', [{
+            x: sizeHist, type: 'histogram', nbinsx: 15,
+            marker: {color: '#764ba2'}
+        }], Object.assign({}, layout, {xaxis: Object.assign({}, layout.xaxis, {title: 'Bubble Size (µm)'}), yaxis: Object.assign({}, layout.yaxis, {title: 'Count'})}), {responsive: true});
+
+        const angles = [];
+        const naEff = [];
+        for (let i = 0; i < 90; i++) {
+            angles.push(i);
+            const theta = i * Math.PI / 180;
+            naEff.push(params.nWater * Math.sin(theta));
+        }
+
+        Plotly.newPlot('chart5', [{
+            x: angles, y: naEff, type: 'scatter', mode: 'lines',
+            line: {color: '#667eea', width: 3}
+        }], Object.assign({}, layout, {xaxis: Object.assign({}, layout.xaxis, {title: 'Angle (degrees)'}), yaxis: Object.assign({}, layout.yaxis, {title: 'Effective NA'})}), {responsive: true});
+
+        const time = [];
+        const leachMass = [];
+        for (let i = 0; i <= 60; i++) {
+            time.push(i);
+            const rate = params.topcoat > 0 ? 0.05 + (25 - params.temp) * 0.01 : 0;
+            leachMass.push(rate * i);
+        }
+
+        Plotly.newPlot('chart6', [{
+            x: time, y: leachMass, type: 'scatter', mode: 'lines',
+            line: {color: '#f39c12', width: 3}, fill: 'tozeroy', fillcolor: 'rgba(243,156,18,0.3)'
+        }], Object.assign({}, layout, {xaxis: Object.assign({}, layout.xaxis, {title: 'Time (s)'}), yaxis: Object.assign({}, layout.yaxis, {title: 'Leached Mass (ng/cm²)'})}), {responsive: true});
+
+        const xGrid = [];
+        const yGrid = [];
+        const tempGrid = [];
+        for (let i = 0; i < 20; i++) {
+            const row = [];
+            for (let j = 0; j < 20; j++) {
+                const dist = Math.sqrt((i - 10) * (i - 10) + (j - 10) * (j - 10));
+                row.push(params.temp + (params.scanSpeed / 400) * Math.exp(-dist / 5));
+            }
+            tempGrid.push(row);
+        }
+
+        Plotly.newPlot('chart7', [{
+            z: tempGrid, type: 'heatmap',
+            colorscale: [[0, '#0a0a0a'], [0.5, '#667eea'], [1, '#f39c12']]
+        }], Object.assign({}, layout, {xaxis: Object.assign({}, layout.xaxis, {title: 'X Position'}), yaxis: Object.assign({}, layout.yaxis, {title: 'Y Position'})}), {responsive: true});
+    }
+
+    const container = document.getElementById('three-container');
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setClearColor(0x000000, 0);
+    container.appendChild(renderer.domElement);
+
+    const ambientLight = new THREE.AmbientLight(0x404040, 1.5);
+    scene.add(ambientLight);
+    const light = new THREE.DirectionalLight(0xffffff, 0.8);
+    light.position.set(5, 5, 5);
+    scene.add(light);
+
+    const lensGeo = new THREE.CylinderGeometry(3, 3, 0.5, 32);
+    const lensMat = new THREE.MeshPhongMaterial({ color: 0x667eea, transparent: true, opacity: 0.7 });
+    const lens = new THREE.Mesh(lensGeo, lensMat);
+    lens.position.y = 3;
+    scene.add(lens);
+
+    const waterGeo = new THREE.CylinderGeometry(2.5, 2.5, 2, 32);
+    const waterMat = new THREE.MeshPhongMaterial({ color: 0x4488ff, transparent: true, opacity: 0.4 });
+    const water = new THREE.Mesh(waterGeo, waterMat);
+    water.position.y = 1.5;
+    scene.add(water);
+
+    const waferGeo = new THREE.CylinderGeometry(4, 4, 0.2, 32);
+    const waferMat = new THREE.MeshPhongMaterial({ color: 0x888888 });
+    const wafer = new THREE.Mesh(waferGeo, waferMat);
+    wafer.position.y = 0;
+    scene.add(wafer);
+
+    for (let i = 0; i < 5; i++) {
+        const bubbleGeo = new THREE.SphereGeometry(0.1 + Math.random() * 0.1, 16, 16);
+        const bubbleMat = new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 });
+        const bubble = new THREE.Mesh(bubbleGeo, bubbleMat);
+        bubble.position.set((Math.random() - 0.5) * 2, 0.5 + Math.random() * 2, (Math.random() - 0.5) * 2);
+        scene.add(bubble);
+    }
+
+    camera.position.set(6, 4, 6);
+    camera.lookAt(0, 1.5, 0);
+
+    function animate() {
+        requestAnimationFrame(animate);
+        water.rotation.y += 0.002;
+        renderer.render(scene, camera);
+    }
+    animate();
+
+    const sliders = ['n-water', 'na', 'gap', 'temp', 'bubble-size', 'bubble-density', 'scan-speed', 'topcoat'];
+    sliders.forEach(function(id) {
+        const slider = document.getElementById(id);
+        const valSpan = document.getElementById('val-' + id);
+        slider.addEventListener('input', function() {
+            valSpan.textContent = slider.value;
+            const key = id.replace(/-([a-z])/g, function(g) { return g[1].toUpperCase(); });
+            params[key] = parseFloat(slider.value);
+            calculate();
+            updateCharts();
+        });
+    });
+
+    calculate();
+    updateCharts();
+
+    window.addEventListener('resize', function() {
+        camera.aspect = container.clientWidth / container.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(container.clientWidth, container.clientHeight);
+    });
     </script>
 </body>
 </html>
