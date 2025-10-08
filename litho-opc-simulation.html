@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OPC Simulation - Advanced Lithography</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.26.0/plotly.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #e0e0e0; line-height: 1.6; }
+        .navbar { background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(10px); padding: 1rem 2rem; border-bottom: 1px solid rgba(102, 126, 234, 0.3); position: sticky; top: 0; z-index: 100; }
+        .nav-content { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        .nav-title { color: #667eea; font-size: 1.3rem; font-weight: 600; }
+        .nav-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .header { text-align: center; margin-bottom: 3rem; }
+        .header h1 { font-size: 2.8rem; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 1rem; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 3rem; }
+        .stat-card { background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.3); padding: 1.5rem; border-radius: 12px; text-align: center; }
+        .stat-value { font-size: 2rem; font-weight: bold; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .stat-label { color: #a0a0a0; font-size: 0.9rem; margin-top: 0.5rem; }
+        .controls-section { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; margin-bottom: 2rem; }
+        .section-title { color: #667eea; font-size: 1.5rem; margin-bottom: 1.5rem; }
+        .controls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+        .control-group { background: rgba(102, 126, 234, 0.05); padding: 1.2rem; border-radius: 10px; }
+        .control-group label { display: block; color: #667eea; margin-bottom: 0.5rem; font-weight: 500; }
+        .control-group input[type="range"] { width: 100%; height: 6px; border-radius: 3px; background: rgba(102, 126, 234, 0.3); outline: none; }
+        .control-group input[type="range"]::-webkit-slider-thumb { appearance: none; width: 18px; height: 18px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #f39c12); cursor: pointer; }
+        .control-value { display: flex; justify-content: space-between; margin-top: 0.5rem; color: #a0a0a0; font-size: 0.9rem; }
+        .btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; padding: 0.8rem 2rem; border-radius: 8px; cursor: pointer; }
+        .visualization { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; margin-bottom: 2rem; }
+        .chart-container { background: rgba(0, 0, 0, 0.3); border-radius: 10px; padding: 1rem; margin-top: 1rem; }
+        .equation-box { background: rgba(102, 126, 234, 0.1); border-left: 4px solid #667eea; padding: 1.5rem; border-radius: 8px; margin: 2rem 0; }
+        .equation { color: #e0e0e0; font-family: 'Courier New', monospace; font-size: 1.1rem; line-height: 2; }
+    </style>
+</head>
+<body>
+    <nav class="navbar"><div class="nav-content"><div class="nav-title"><i class="fas fa-vector-square"></i> OPC Simulation</div><a href="lithography-research.html" class="nav-btn"><i class="fas fa-arrow-left"></i> Back</a></div></nav>
+    <div class="container">
+        <div class="header"><h1>Optical Proximity Correction</h1><p>Model-based OPC, SRAF placement, edge placement error minimization</p></div>
+        <div class="stats-grid">
+            <div class="stat-card"><div class="stat-value" id="epe-stat">2.1 nm</div><div class="stat-label">Edge Placement Error</div></div>
+            <div class="stat-card"><div class="stat-value" id="sraf-stat">12</div><div class="stat-label">SRAF Count</div></div>
+            <div class="stat-card"><div class="stat-value" id="iterations-stat">8</div><div class="stat-label">OPC Iterations</div></div>
+            <div class="stat-card"><div class="stat-value" id="correction-stat">8.5 nm</div><div class="stat-label">Max Correction</div></div>
+        </div>
+        <div class="controls-section">
+            <h2 class="section-title">OPC Parameters</h2>
+            <div class="controls-grid">
+                <div class="control-group"><label>OPC Aggressiveness</label><input type="range" id="aggr" min="0.3" max="1.0" step="0.1" value="0.7"><div class="control-value"><span>0.3</span><span id="aggr-val">0.7</span></div></div>
+                <div class="control-group"><label>SRAF Size (nm)</label><input type="range" id="sraf-size" min="20" max="60" step="5" value="40"><div class="control-value"><span>20</span><span id="sraf-size-val">40</span></div></div>
+                <div class="control-group"><label>SRAF Spacing (nm)</label><input type="range" id="sraf-space" min="40" max="100" step="10" value="70"><div class="control-value"><span>40</span><span id="sraf-space-val">70</span></div></div>
+                <div class="control-group"><label>Bias Correction (nm)</label><input type="range" id="bias" min="-10" max="10" step="1" value="0"><div class="control-value"><span>-10</span><span id="bias-val">0</span></div></div>
+                <div class="control-group"><label>Corner Rounding</label><input type="range" id="corner" min="0" max="20" step="2" value="8"><div class="control-value"><span>0</span><span id="corner-val">8</span></div></div>
+                <div class="control-group"><label>Hammerhead Length</label><input type="range" id="hammer" min="0" max="40" step="5" value="20"><div class="control-value"><span>0</span><span id="hammer-val">20</span></div></div>
+                <div class="control-group"><label>Iterations</label><input type="range" id="iter" min="1" max="15" step="1" value="8"><div class="control-value"><span>1</span><span id="iter-val">8</span></div></div>
+                <div class="control-group"><label>EPE Threshold (nm)</label><input type="range" id="epe-thresh" min="1" max="5" step="0.5" value="2"><div class="control-value"><span>1</span><span id="epe-thresh-val">2</span></div></div>
+            </div>
+        </div>
+        <div class="equation-box"><div class="equation">EPE = |CD_target - CD_printed|<br>OPC Correction: Δx(n+1) = Δx(n) + α·EPE(n)<br>SRAF Placement: optimize NILS while keeping transmission < 10%</div></div>
+        <div class="visualization"><h2 class="section-title">Original vs OPC Mask</h2><div class="chart-container"><div id="mask-compare"></div></div></div>
+        <div class="visualization"><h2 class="section-title">EPE Convergence</h2><div class="chart-container"><div id="epe-chart"></div></div></div>
+        <div class="visualization"><h2 class="section-title">SRAF Distribution</h2><div class="chart-container"><div id="sraf-chart"></div></div></div>
+        <div class="visualization"><h2 class="section-title">CD Error Map</h2><div class="chart-container"><div id="cd-error-map"></div></div></div>
+        <div class="visualization"><h2 class="section-title">Correction Magnitude</h2><div class="chart-container"><div id="correction-chart"></div></div></div>
+        <div class="visualization"><h2 class="section-title">OPC Impact on NILS</h2><div class="chart-container"><div id="nils-chart"></div></div></div>
+        <div class="visualization"><h2 class="section-title">Edge Fragments</h2><div class="chart-container"><div id="fragments-chart"></div></div></div>
+    </div>
+    <script>
+        let p = {aggr:0.7, srafSize:40, srafSpace:70, bias:0, corner:8, hammer:20, iter:8, epeThresh:2};
+        ['aggr','sraf-size','sraf-space','bias','corner','hammer','iter','epe-thresh'].forEach(id => {
+            document.getElementById(id).addEventListener('input', e => {
+                p[id.replace(/-/g,'')] = parseFloat(e.target.value);
+                document.getElementById(id+'-val').textContent = e.target.value;
+                if(id==='iter') document.getElementById('iterations-stat').textContent = e.target.value;
+                update();
+            });
+        });
+        function update() {
+            const x = Array.from({length:100}, (_,i)=>(i-50)*2);
+            const orig = x.map(v => Math.abs(v)<20?50:0);
+            const opc = x.map((v,i) => orig[i] + (Math.abs(v)<25?p.aggr*10*Math.sin(i/5):0));
+            document.getElementById('correction-stat').textContent = (p.aggr*10).toFixed(1) + ' nm';
+            Plotly.newPlot('mask-compare', [{x,y:orig,name:'Original',type:'scatter',mode:'lines',line:{color:'#667eea'}},{x,y:opc,name:'OPC',type:'scatter',mode:'lines',line:{color:'#f39c12'}}], 
+                {paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{color:'#e0e0e0'},xaxis:{title:'Position (nm)',gridcolor:'rgba(102,126,234,0.2)'},yaxis:{title:'Width (nm)',gridcolor:'rgba(102,126,234,0.2)'},margin:{t:20,r:20,b:50,l:60},showlegend:true,legend:{font:{color:'#e0e0e0'}}},{responsive:true});
+            
+            const iter = Array.from({length:15},(_,i)=>i+1);
+            const epe = iter.map(i => 10*Math.exp(-i*p.aggr/5));
+            document.getElementById('epe-stat').textContent = epe[p.iter-1].toFixed(1) + ' nm';
+            Plotly.newPlot('epe-chart', [{x:iter,y:epe,type:'scatter',mode:'lines+markers',line:{color:'#764ba2',width:3},marker:{size:8}}],
+                {paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{color:'#e0e0e0'},xaxis:{title:'Iteration',gridcolor:'rgba(102,126,234,0.2)'},yaxis:{title:'EPE (nm)',gridcolor:'rgba(102,126,234,0.2)'},margin:{t:20,r:20,b:50,l:60}},{responsive:true});
+            
+            const srafPos = Array.from({length:Math.floor(200/p.srafSpace)},(_,i)=>-100+i*p.srafSpace);
+            const srafHeight = srafPos.map(_=>p.srafSize);
+            document.getElementById('sraf-stat').textContent = srafPos.length;
+            Plotly.newPlot('sraf-chart', [{x:srafPos,y:srafHeight,type:'bar',marker:{color:'#f39c12'}}],
+                {paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{color:'#e0e0e0'},xaxis:{title:'Position (nm)',gridcolor:'rgba(102,126,234,0.2)'},yaxis:{title:'SRAF Size (nm)',gridcolor:'rgba(102,126,234,0.2)'},margin:{t:20,r:20,b:50,l:60}},{responsive:true});
+            
+            const pos = Array.from({length:20},(_,i)=>i*10);
+            const err = pos.map(p => 5*Math.sin(p/10)*Math.random());
+            const z = [err];
+            Plotly.newPlot('cd-error-map', [{z,type:'heatmap',colorscale:[[0,'#0a0a0a'],[0.5,'#667eea'],[1,'#f39c12']],colorbar:{tickfont:{color:'#e0e0e0'}}}],
+                {paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{color:'#e0e0e0'},xaxis:{title:'X',showgrid:false},yaxis:{title:'Y',showgrid:false},margin:{t:20,r:20,b:50,l:60}},{responsive:true});
+            
+            const corr = x.map(v => Math.abs(v)<30?p.aggr*8*Math.exp(-Math.pow(v,2)/500):0);
+            Plotly.newPlot('correction-chart', [{x,y:corr,type:'scatter',mode:'lines',line:{color:'#667eea',width:3},fill:'tozeroy',fillcolor:'rgba(102,126,234,0.3)'}],
+                {paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{color:'#e0e0e0'},xaxis:{title:'Position (nm)',gridcolor:'rgba(102,126,234,0.2)'},yaxis:{title:'Correction (nm)',gridcolor:'rgba(102,126,234,0.2)'},margin:{t:20,r:20,b:50,l:60}},{responsive:true});
+            
+            const pitch = Array.from({length:30},(_,i)=>40+i*5);
+            const nils = pitch.map(p => 1.5 + 0.02*p*Math.random());
+            Plotly.newPlot('nils-chart', [{x:pitch,y:nils,type:'scatter',mode:'lines+markers',line:{color:'#f39c12',width:3},marker:{size:6}}],
+                {paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{color:'#e0e0e0'},xaxis:{title:'Pitch (nm)',gridcolor:'rgba(102,126,234,0.2)'},yaxis:{title:'NILS',gridcolor:'rgba(102,126,234,0.2)'},margin:{t:20,r:20,b:50,l:60}},{responsive:true});
+            
+            const frag = Array.from({length:50},(_,i)=>i*4);
+            const len = frag.map(_=>20+Math.random()*20);
+            Plotly.newPlot('fragments-chart', [{x:frag,y:len,type:'bar',marker:{color:'#764ba2'}}],
+                {paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{color:'#e0e0e0'},xaxis:{title:'Fragment ID',gridcolor:'rgba(102,126,234,0.2)'},yaxis:{title:'Length (nm)',gridcolor:'rgba(102,126,234,0.2)'},margin:{t:20,r:20,b:50,l:60}},{responsive:true});
+        }
+        update();
+    </script>
+</body>
+</html>
