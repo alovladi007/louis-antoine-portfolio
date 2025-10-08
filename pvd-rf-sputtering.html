@@ -46,6 +46,10 @@
         .viz-panel { background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
         .viz-panel h2 { color: #764ba2; margin-bottom: 1rem; font-size: 1.3rem; }
         #threejs-container { width: 100%; height: 500px; border-radius: 10px; overflow: hidden; background: #000; }
+        .theory-section { background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); margin-bottom: 2rem; }
+        .theory-section h2 { color: #764ba2; margin-bottom: 1rem; }
+        .theory-section h3 { color: #f39c12; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+        .equation { background: #f8f9fa; padding: 1rem; border-radius: 5px; margin: 1rem 0; font-family: 'Courier New', monospace; border-left: 4px solid #f39c12; }
         .chart-container { width: 100%; height: 400px; margin-top: 1rem; }
         @media (max-width: 768px) { .container { padding: 0 1rem; } .visualization-grid { grid-template-columns: 1fr; } .control-group { grid-template-columns: 1fr; } }
     </style>
@@ -56,7 +60,7 @@
     <div class="container">
         <div class="header">
             <h1>RF Magnetron Sputtering Simulation</h1>
-            <p>Radio Frequency PVD for insulating materials with capacitive coupling and RF plasma physics</p>
+            <p>Radio Frequency PVD for insulating materials: Capacitive coupling, RF plasma physics, bias voltage development, and dielectric film deposition</p>
         </div>
 
         <div class="controls-panel">
@@ -86,8 +90,600 @@
         </div>
 
         <div class="viz-panel" style="margin-bottom: 2rem;">
-            <h2>3D RF Sputtering Chamber</h2>
+            <h2>3D RF Sputtering Chamber with Capacitive Sheath</h2>
             <div id="threejs-container"></div>
+        </div>
+
+        <div class="theory-section">
+            <h2>RF Sputtering Physics</h2>
+            <p>RF sputtering enables deposition from insulating targets by using alternating electric fields at 13.56 MHz. The capacitive sheath alternates polarity, preventing charge buildup while maintaining plasma.</p>
+
+            <h3>Self-Bias Voltage Development</h3>
+            <div class="equation">
+V_bias = -V_RF × (A_ground / A_target)^n
+<br>n ≈ 2-4 (area ratio exponent)
+<br>
+<br>Physical origin:
+<br>• Electrons mobile at RF frequency (ω > ω_pi,electron)
+<br>• Ions too heavy to follow RF (ω << ω_pi,ion)
+<br>• DC bias develops to balance electron/ion flux
+<br>
+<br>Typical values:
+<br>V_RF = 100-500 V (peak-to-peak)
+<br>V_bias = -50 to -300 V (DC self-bias)
+<br>
+<br>Asymmetry factor: Γ = (A_powered / A_ground)
+<br>Stronger asymmetry → larger |V_bias|
+            </div>
+
+            <h3>Capacitive Sheath Physics</h3>
+            <div class="equation">
+Sheath thickness (Child-Langmuir):
+<br>s = λ_D × (2V_RF / kT_e)^(3/4)
+<br>λ_D = √(ε₀kT_e / n_e e²) (Debye length)
+<br>
+<br>For T_e = 3 eV, n_e = 10¹¹ cm⁻³:
+<br>λ_D ≈ 60 μm
+<br>s ≈ 0.5-2 mm (time-averaged)
+<br>
+<br>RF impedance:
+<br>Z_sheath = 1 / (jωC_sheath)
+<br>C_sheath = ε₀A / s ≈ 50-200 pF
+<br>
+<br>Reactance dominates at low ω
+<br>→ Requires matching network (L-C circuit)
+            </div>
+
+            <h3>Electron Heating Mechanisms</h3>
+            <div class="equation">
+Stochastic heating (collisionless):
+<br>P_stoch ∝ n_e × V_RF² × ω × (ω / ν_m)
+<br>ν_m: electron-neutral collision frequency
+<br>
+<br>Ohmic heating (collisional):
+<br>P_ohmic = σ E_RF² / 2
+<br>σ = n_e e² / (m_e ν_m) (conductivity)
+<br>
+<br>Dominant regime:
+<br>ω < ν_m: ohmic (high pressure)
+<br>ω > ν_m: stochastic (low pressure)
+<br>
+<br>At 13.56 MHz, 5 mTorr Ar:
+<br>ν_m ≈ 10⁸ s⁻¹, ω ≈ 8.5×10⁷ rad/s
+<br>→ Transition regime
+            </div>
+
+            <h3>Ion Bombardment Energy Distribution</h3>
+            <div class="equation">
+Ion energy at substrate:
+<br>E_ion = e × |V_bias| + E_plasma
+<br>E_plasma ≈ 5 × kT_e (plasma potential)
+<br>
+<br>Energy spread (IEDF width):
+<br>ΔE ≈ 2 × e × V_RF × (ω / ν_i)
+<br>ν_i: ion transit frequency through sheath
+<br>
+<br>Narrow IEDF: ν_i >> ω (thick sheath, slow ions)
+<br>Broad IEDF: ν_i ≈ ω (thin sheath, fast ions)
+<br>
+<br>For SiO₂ deposition:
+<br>E_ion = 50-300 eV (low damage)
+<br>ΔE = 10-50 eV (moderate spread)
+            </div>
+
+            <h3>Impedance Matching Network</h3>
+            <div class="equation">
+L-match configuration:
+<br>Z_load = R_plasma + jX_sheath
+<br>R_plasma ≈ V_RF² / (2P_absorbed)
+<br>
+<br>Matching condition:
+<br>Z_in = 50 Ω (transmission line)
+<br>
+<br>Smith chart solution:
+<br>1. Series inductor L_s → move along constant-R circle
+<br>2. Shunt capacitor C_p → move toward center
+<br>
+<br>Bandwidth:
+<br>Δf / f₀ ≈ 1 / Q
+<br>Q = ω₀L / R ≈ 5-20
+<br>Δf ≈ 0.5-3 MHz (need auto-matching)
+            </div>
+
+            <h3>Sputter Yield for Insulators</h3>
+            <div class="equation">
+RF sputter yield Y_RF:
+<br>Y_RF = Y_DC(E_ion,avg) × η_RF
+<br>η_RF = efficiency factor (0.5-0.8)
+<br>
+<br>Reduced by:
+<br>• Time-varying sheath (ions see average potential)
+<br>• Surface charging effects
+<br>• Neutralization at insulator surface
+<br>
+<br>Typical yields (500 eV Ar⁺):
+<br>SiO₂: Y ≈ 0.4-0.6 molecules/ion
+<br>Al₂O₃: Y ≈ 0.3-0.5 molecules/ion
+<br>Si₃N₄: Y ≈ 0.5-0.7 molecules/ion
+<br>ITO: Y ≈ 0.6-0.9 molecules/ion
+            </div>
+
+            <h3>Deposition Rate Calculation</h3>
+            <div class="equation">
+R_dep = (Y_RF × Γ_ion × M × A_target) / (ρ × A_substrate × d²)
+<br>
+<br>Γ_ion = ion flux density (ions/cm²/s)
+<br>Γ_ion ≈ n_i × v_Bohm / 4
+<br>v_Bohm = √(kT_e / M_ion)
+<br>
+<br>For n_e = 5×10¹¹ cm⁻³, T_e = 3 eV:
+<br>Γ_ion ≈ 2×10¹⁶ ions/cm²/s
+<br>
+<br>SiO₂ at 600 W RF:
+<br>R_dep ≈ 1-3 Å/s
+<br>(slower than metals due to lower Y)
+            </div>
+
+            <h3>Film Stoichiometry Control</h3>
+            <div class="equation">
+Oxygen deficiency in oxides:
+<br>δ = (O_stoich - O_film) / O_stoich
+<br>
+<br>Causes:
+<br>• Preferential O sputtering (lighter)
+<br>• Oxygen loss in flight
+<br>• Insufficient O₂ reactive gas
+<br>
+<br>Solution: Reactive RF sputtering
+<br>P_total = P_Ar + P_O₂
+<br>Ratio: P_O₂ / P_Ar ≈ 0.1-0.3
+<br>
+<br>Hysteresis effect:
+<br>• Metallic mode (low P_O₂): high rate, O-poor
+<br>• Oxide mode (high P_O₂): low rate, stoichiometric
+<br>• Transition mode: optimal balance
+            </div>
+
+            <h3>Plasma Density and Frequency</h3>
+            <div class="equation">
+Electron plasma frequency:
+<br>ω_pe = √(n_e e² / (ε₀ m_e))
+<br>
+<br>For n_e = 10¹¹ cm⁻³:
+<br>ω_pe ≈ 1.8×10¹⁰ rad/s ≈ 2.8 GHz
+<br>
+<br>Condition for RF coupling:
+<br>ω_RF < ω_pe (overdense plasma)
+<br>13.56 MHz << 2.8 GHz ✓
+<br>
+<br>Skin depth:
+<br>δ_skin = c / ω_pe ≈ 1-5 cm
+<br>RF fields penetrate entire plasma
+<br>
+<br>Higher frequencies (27, 40 MHz):
+<br>• Higher n_e possible
+<br>• Better uniformity
+<br>• Narrower IEDF
+            </div>
+
+            <h3>Power Coupling Efficiency</h3>
+            <div class="equation">
+Forward power: P_fwd (from RF generator)
+<br>Reflected power: P_ref (mismatch)
+<br>Absorbed power: P_abs = P_fwd - P_ref
+<br>
+<br>Coupling efficiency:
+<br>η_couple = P_abs / P_fwd
+<br>η_couple = 1 - |Γ|²
+<br>Γ = (Z_load - Z₀) / (Z_load + Z₀)
+<br>
+<br>Optimal matching:
+<br>|Γ| < 0.1 → η > 99%
+<br>P_ref < 1% of P_fwd
+<br>
+<br>Poor matching:
+<br>|Γ| > 0.3 → η < 91%
+<br>→ Overheating, arc risk
+            </div>
+
+            <h3>Film Properties vs RF Parameters</h3>
+            <div class="equation">
+Density: ρ_film / ρ_bulk = f(E_ion, P_Ar)
+<br>
+<br>High E_ion (high V_bias):
+<br>• Atomic peening → dense films
+<br>• Compressive stress
+<br>• Smoother surface
+<br>
+<br>Low E_ion:
+<br>• Columnar growth → porous films
+<br>• Tensile stress
+<br>• Rough surface
+<br>
+<br>Refractive index (SiO₂):
+<br>n = 1.46 (bulk) vs 1.42-1.45 (sputtered)
+<br>Depends on density and stoichiometry
+<br>
+<br>Stress control:
+<br>σ ∝ (E_ion - E_threshold) / (kT_substrate)
+<br>Optimize T_substrate and V_bias
+            </div>
+
+            <h3>Advanced RF Matching Techniques</h3>
+            <p>Impedance matching in RF sputtering requires sophisticated network design to minimize reflected power and maximize coupling efficiency. Modern matching networks employ variable capacitors and inductors with automatic tuning capabilities.</p>
+            <div class="equation">
+Complex impedance:
+<br>Z = R + jX = |Z| × e^(jφ)
+<br>|Z| = √(R² + X²)
+<br>φ = arctan(X / R)
+<br>
+<br>Reflection coefficient:
+<br>Γ = (Z_load - Z₀) / (Z_load + Z₀)
+<br>Z₀ = 50 Ω (characteristic impedance)
+<br>
+<br>VSWR (Voltage Standing Wave Ratio):
+<br>VSWR = (1 + |Γ|) / (1 - |Γ|)
+<br>
+<br>Target: VSWR < 1.2 (|Γ| < 0.1)
+<br>Acceptable: VSWR < 2.0 (|Γ| < 0.33)
+<br>
+<br>Return loss:
+<br>RL = -20 × log₁₀(|Γ|) [dB]
+<br>
+<br>Matching bandwidth:
+<br>BW = f₀ / Q
+<br>Q = X / R (quality factor)
+<br>
+<br>For 13.56 MHz:
+<br>Q ≈ 10 → BW ≈ 1.4 MHz
+<br>Need auto-tuning for process changes
+            </div>
+
+            <h3>Substrate Heating and Thermal Management</h3>
+            <p>RF power deposition causes significant substrate heating, affecting film properties and process stability. Understanding heat transfer mechanisms is critical for temperature control.</p>
+            <div class="equation">
+Heat balance equation:
+<br>P_in = P_radiation + P_conduction + P_convection
+<br>
+<br>Ion bombardment heating:
+<br>P_ion = Γ_ion × E_ion × A_substrate
+<br>
+<br>Radiation (Stefan-Boltzmann):
+<br>P_rad = ε × σ_SB × A × (T⁴ - T_chamber⁴)
+<br>ε: emissivity (0.1-0.9)
+<br>σ_SB = 5.67×10⁻⁸ W/(m²·K⁴)
+<br>
+<br>Backside gas conduction:
+<br>P_cond = h × A × (T_wafer - T_chuck)
+<br>h = thermal conductance (W/m²/K)
+<br>h ∝ P_He (helium pressure)
+<br>
+<br>Typical values:
+<br>P_ion ≈ 10-100 W
+<br>P_rad ≈ 5-50 W
+<br>P_cond ≈ 20-200 W (with He)
+<br>
+<br>Steady-state temperature:
+<br>T_substrate = f(P_RF, P_He, T_chuck)
+<br>
+<br>Time constant:
+<br>τ_thermal = (m × C_p) / (h × A)
+<br>τ ≈ 10-60 s (typical)
+            </div>
+
+            <h3>Plasma Diagnostics and Monitoring</h3>
+            <p>In-situ diagnostics enable real-time process control and fault detection. Common techniques include optical emission spectroscopy (OES), Langmuir probes, and RF voltage/current monitoring.</p>
+            <div class="equation">
+Optical Emission Spectroscopy:
+<br>I_emission ∝ n_excited × A_ji
+<br>n_excited: excited state density
+<br>A_ji: transition probability
+<br>
+<br>Corona model (low pressure):
+<br>n_excited / n_ground ≈ (k_excitation × n_e) / A_ji
+<br>k_excitation: rate coefficient
+<br>
+<br>Useful transitions:
+<br>Ar I (750 nm): plasma density
+<br>Ar II (488 nm): ionization degree
+<br>Metal lines: sputter rate
+<br>O I (777 nm): reactive species
+<br>
+<br>Langmuir probe:
+<br>I(V) = I_sat × [1 - exp((V - V_plasma)/(kT_e))]
+<br>
+<br>Electron temperature:
+<br>T_e = e / (d ln(I) / dV)
+<br>
+<br>Plasma density:
+<br>n_e = I_sat / (0.6 × e × A_probe × √(kT_e / M_i))
+<br>
+<br>RF compensation:
+<br>Need filtered probes for RF plasmas
+<br>Minimize probe perturbation
+            </div>
+
+            <h3>Multi-Frequency RF Sputtering</h3>
+            <p>Dual-frequency systems combine low-frequency (LF) and high-frequency (HF) power to independently control ion bombardment and plasma density.</p>
+            <div class="equation">
+Dual-frequency configuration:
+<br>f_LF = 400 kHz - 2 MHz (ion control)
+<br>f_HF = 13.56 - 40.68 MHz (density control)
+<br>
+<br>Ion energy at LF:
+<br>E_ion(LF) = e × V_LF × √(ω_LF / ν_i)
+<br>Higher energy, narrow IEDF
+<br>
+<br>Plasma density at HF:
+<br>n_e(HF) ∝ P_HF^α
+<br>α ≈ 0.5-0.7
+<br>
+<br>Advantages:
+<br>• Independent E_ion and n_e control
+<br>• Wider process window
+<br>• Better uniformity
+<br>• Reduced charging damage
+<br>
+<br>Challenges:
+<br>• Complex matching networks
+<br>• Frequency coupling effects
+<br>• Harmonic generation
+<br>• Cost increase
+<br>
+<br>Applications:
+<br>• Dielectric etching
+<br>• Oxide deposition
+<br>• Charge-sensitive devices
+            </div>
+
+            <h3>Pulsed RF Sputtering</h3>
+            <p>Pulsed power delivery enables time-averaged control of ion energy and flux, beneficial for reducing defects and improving film quality.</p>
+            <div class="equation">
+Pulse parameters:
+<br>f_pulse = 10 Hz - 100 kHz
+<br>Duty cycle: D = t_on / (t_on + t_off)
+<br>
+<br>Time-averaged quantities:
+<br>P_avg = P_peak × D
+<br>Γ_avg = Γ_peak × D
+<br>
+<br>Benefits of pulsing:
+<br>• Reduced arcing (insulators)
+<br>• Lower substrate heating
+<br>• Better stoichiometry control
+<br>• Defect reduction
+<br>
+<br>Synchronous pulsing:
+<br>RF and bias pulsed together
+<br>or with phase offset
+<br>
+<br>Optimal parameters:
+<br>f_pulse = 100-1000 Hz
+<br>D = 20-80%
+<br>
+<br>Transient effects:
+<br>Plasma decay time: τ_plasma ≈ 1-100 μs
+<br>Ion transit time: τ_ion ≈ 1-10 μs
+<br>
+<br>Require: T_pulse >> τ_plasma
+<br>for stable operation
+            </div>
+
+            <h3>Contamination Control and Particle Generation</h3>
+            <p>Particle contamination degatively impacts yield. Understanding sources and mitigation strategies is essential for production environments.</p>
+            <div class="equation">
+Particle sources:
+<br>1. Target flaking (stress buildup)
+<br>2. Chamber wall deposits
+<br>3. Shield spalling
+<br>4. Arcing events
+<br>5. Pump backstreaming
+<br>
+<br>Flake detachment criterion:
+<br>σ_film > σ_adhesion + σ_stress
+<br>
+<br>Typical values:
+<br>σ_adhesion ≈ 10-100 MPa
+<br>σ_stress ≈ 100-1000 MPa (thick films)
+<br>
+<br>Mitigation strategies:
+<br>• Periodic chamber cleaning
+<br>• Stress-optimized shields
+<br>• Target conditioning
+<br>• Pressure optimization
+<br>• Magnetic field tuning
+<br>
+<br>Particle detection:
+<br>• In-situ OES monitoring
+<br>• Wafer inspection (post-process)
+<br>• Chamber pressure spikes
+<br>
+<br>Cleanliness metrics:
+<br>Defect density: < 0.01 cm⁻²
+<br>Critical size: > 50 nm
+<br>Kill ratio: < 1% yield loss
+            </div>
+
+            <h3>Scale-Up and Manufacturing Considerations</h3>
+            <p>Transitioning from R&D to production requires addressing uniformity, throughput, and reliability at scale.</p>
+            <div class="equation">
+Uniformity requirements:
+<br>σ/μ < 2% (thickness)
+<br>σ/μ < 3% (composition)
+<br>across 300 mm wafer
+<br>
+<br>Magnetron design:
+<br>• Rotating magnet arrays
+<br>• Optimized racetrack
+<br>• Uniform erosion pattern
+<br>
+<br>Target utilization:
+<br>U = Volume_eroded / Volume_total
+<br>Standard: U ≈ 20-30%
+<br>Advanced: U ≈ 40-50%
+<br>
+<br>Throughput calculation:
+<br>WPH = (3600 / t_cycle) × η_uptime
+<br>t_cycle = t_load + t_pump + t_process + t_unload
+<br>
+<br>Typical cycle:
+<br>t_load = 30 s
+<br>t_pump = 60 s
+<br>t_process = 120 s
+<br>t_unload = 20 s
+<br>→ WPH ≈ 15-16 (at 90% uptime)
+<br>
+<br>Cost of ownership:
+<br>CoO = (Equipment + Consumables + Utilities + Labor) / WPH
+<br>
+<br>Key drivers:
+<br>• Target life and cost
+<br>• Chamber cleaning frequency
+<br>• Process gas efficiency
+<br>• Yield impact
+            
+            <h3>Frequency Selection and ISM Bands</h3>
+            <p>The choice of 13.56 MHz for RF sputtering is driven by regulatory and physical considerations. This frequency belongs to the ISM (Industrial, Scientific, Medical) band, allowing unlicensed use for industrial processes.</p>
+            <div class="equation">
+ISM frequencies for plasma processing:
+<br>13.56 MHz ± 0.007 MHz (primary)
+<br>27.12 MHz ± 0.163 MHz (secondary)
+<br>40.68 MHz ± 0.020 MHz (tertiary)
+<br>
+<br>Why 13.56 MHz dominates:
+<br>• Electrons respond (ω > ω_pe typically)
+<br>• Ions don't respond (ω << ω_pi)
+<br>• Commercial RF generators available
+<br>• Historical momentum
+<br>
+<br>Electron plasma frequency:
+<br>ω_pe = √(n_e e² / (ε₀ m_e))
+<br>f_pe = 9 × √(n_e) Hz (n_e in cm⁻³)
+<br>
+<br>For n_e = 10¹¹ cm⁻³:
+<br>f_pe ≈ 2.8 GHz >> 13.56 MHz ✓
+<br>
+<br>Ion plasma frequency:
+<br>f_pi = √(M_e/M_i) × f_pe
+<br>f_pi ≈ 65 MHz << 13.56 MHz (for Ar)
+<br>
+<br>Skin depth considerations:
+<br>δ = c / ω_pe
+<br>At 10¹¹ cm⁻³: δ ≈ 1-5 cm
+<br>Permits field penetration
+            </div>
+
+            <h3>Chamber Design and Gas Flow Patterns</h3>
+            <p>Reactor geometry significantly affects process uniformity and efficiency. CFD simulations guide optimal injector placement and pumping configuration.</p>
+            <div class="equation">
+Gas residence time:
+<br>τ_res = V_chamber / Q_pump
+<br>V_chamber: chamber volume (L)
+<br>Q_pump: pumping speed (L/s)
+<br>
+<br>For P = 5 mTorr, V = 100 L:
+<br>Q = 1000 L/s (typical)
+<br>τ_res ≈ 0.1 s
+<br>
+<br>Precursor utilization:
+<br>U = (atoms deposited) / (atoms injected)
+<br>U ∝ τ_res × k_reaction × A_substrate
+<br>
+<br>Typical U ≈ 5-20% (sputtering)
+<br>Most gas pumped away
+<br>
+<br>Flow patterns:
+<br>• Radial injection → azimuthal uniformity
+<br>• Showerhead → axial uniformity
+<br>• Baffles → reduce channeling
+<br>
+<br>Reynolds number:
+<br>Re = ρ v D / μ
+<br>Re << 1: laminar flow (typical)
+<br>Re >> 1: turbulent (rare in PVD)
+<br>
+<br>Knudsen number:
+<br>Kn = λ_mfp / D
+<br>Kn > 1: molecular flow
+<br>Kn < 0.01: viscous flow
+<br>Kn ~ 0.1-1: transition
+            </div>
+
+            <h3>Target Cooling and Heat Management</h3>
+            <p>High-power operation generates significant heat in the target, requiring active cooling to prevent melting and maintain stable operation.</p>
+            <div class="equation">
+Power dissipation at target:
+<br>P_target = V_target × I_discharge × η
+<br>η ≈ 0.5-0.8 (fraction absorbed)
+<br>
+<br>For 5 kW at 500 V:
+<br>I = 10 A
+<br>P_target ≈ 2.5-4 kW
+<br>
+<br>Cooling requirements:
+<br>Q_cool = P_target / (ρ_water × C_p × ΔT × flow)
+<br>
+<br>For ΔT = 10°C:
+<br>flow ≈ 6-10 L/min (water)
+<br>
+<br>Target temperature rise:
+<br>ΔT = P_target / (k × A / thickness)
+<br>k: thermal conductivity
+<br>
+<br>Bonding requirements:
+<br>• Indium solder: T_melt = 156°C
+<br>• Epoxy bonding: T_max = 150-200°C
+<br>• Elastomer sealing: T_max = 200°C
+<br>
+<br>Cooling channels:
+<br>• Serpentine pattern
+<br>• High flow rate (turbulent)
+<br>• Close to racetrack
+<br>
+<br>Temperature monitoring:
+<br>• Thermocouples in backing plate
+<br>• IR pyrometry (if accessible)
+<br>• Interlock at T_max
+            </div>
+
+            <h3>Process Repeatability and Drift</h3>
+            <p>Long-term stability requires understanding and mitigating sources of drift including target conditioning, chamber seasoning, and component aging.</p>
+            <div class="equation">
+Sources of drift:
+<br>1. Target erosion → geometry change
+<br>2. Wall coating buildup → impedance change
+<br>3. Anode shield sputtering → contamination
+<br>4. Gas delivery drift → flow variation
+<br>5. RF matchbox aging → reflection increase
+<br>
+<br>Target conditioning:
+<br>Pre-sputter before production
+<br>t_condition ≈ 30-60 min
+<br>Remove oxide, contaminants
+<br>
+<br>Chamber seasoning:
+<br>Deposit on walls until stable
+<br>n_seasoning ≈ 50-100 wafers
+<br>
+<br>Process control strategy:
+<br>• Monitor I_discharge, V_target
+<br>• Track RF forward/reflected power
+<br>• In-situ film thickness (OES, QCM)
+<br>• Statistical process control (SPC)
+<br>
+<br>Preventive maintenance:
+<br>• Target replacement: every 500-2000 wafers
+<br>• Chamber cleaning: every 1000-5000 wafers
+<br>• O-ring replacement: annually
+<br>• RF cable check: quarterly
+<br>
+<br>Acceptance criteria:
+<br>• Thickness uniformity: σ/μ < 2%
+<br>• Deposition rate: ±5% of target
+<br>• Particle level: < spec limit
+<br>• Repeatability: Cpk > 1.33
+            </div>
+
         </div>
 
         <div class="visualization-grid">
@@ -102,22 +698,8 @@
     </div>
 
     <script>
-        let isRunning = true;
-        let simulationTime = 0;
-        let filmThickness = 0;
-
-        // Physics parameters
-        let params = {
-            rfPower: 600,
-            frequency: 13.56,
-            arPressure: 8,
-            magneticField: 500,
-            targetDistance: 12,
-            speed: 1.0,
-            targetMaterial: 0,
-            matchingNetwork: 95
-        };
-
+        let isRunning = true, simulationTime = 0;
+        let params = { rfPower: 600, frequency: 13.56, arPressure: 8, magneticField: 500, targetDistance: 12, speed: 1.0, targetMaterial: 0, matchingNetwork: 95 };
         const materials = ['SiO₂', 'Al₂O₃', 'Si₃N₄', 'ITO'];
         const yieldFactors = [0.5, 0.4, 0.6, 0.75];
 
@@ -170,7 +752,7 @@
 
             const particleGeometry = new THREE.BufferGeometry();
             const particlePositions = [], particleColors = [];
-            for (let i = 0; i < 100; i++) {
+            for (let i = 0; i < 600; i++) {
                 const theta = Math.random() * Math.PI * 2;
                 const r = Math.random() * 4.5;
                 particlePositions.push(r * Math.cos(theta), 8, r * Math.sin(theta));
@@ -178,7 +760,7 @@
             }
             particleGeometry.setAttribute('position', new THREE.Float32BufferAttribute(particlePositions, 3));
             particleGeometry.setAttribute('color', new THREE.Float32BufferAttribute(particleColors, 3));
-            const particleMaterial = new THREE.PointsMaterial({ size: 0.15, vertexColors: true, transparent: true, opacity: 0.9 });
+            const particleMaterial = new THREE.PointsMaterial({ size: 0.12, vertexColors: true, transparent: true, opacity: 0.9 });
             const particles = new THREE.Points(particleGeometry, particleMaterial);
             scene.add(particles);
             sputterParticles.push(particles);
@@ -225,12 +807,10 @@
 
             sputterParticles.forEach(particles => {
                 const pos = particles.geometry.attributes.position.array;
-                const results = calculateRFSputtering();
-                const ionSpeed = 0.05 + (results.E_ion / 500) * 0.1;
                 for (let i = 0; i < pos.length; i += 3) {
-                    pos[i+1] -= ionSpeed * params.speed;
-                    pos[i] += (Math.random() - 0.5) * 0.02;
-                    pos[i+2] += (Math.random() - 0.5) * 0.02;
+                    pos[i+1] -= 0.08 * params.speed;
+                    pos[i] += (Math.random() - 0.5) * 0.015;
+                    pos[i+2] += (Math.random() - 0.5) * 0.015;
                     if (pos[i+1] < -2) {
                         pos[i+1] = 8;
                         const theta = Math.random() * Math.PI * 2;
@@ -250,10 +830,11 @@
             const V_RF = Math.sqrt(params.rfPower * 50) * 0.5;
             const V_bias = -V_RF * Math.pow(areaRatio, 2.5);
             const E_ion = Math.abs(V_bias) * 0.8;
-            const n_e = (params.rfPower / 300) * Math.sqrt(params.arPressure / 5) * Math.pow(params.magneticField / 400, 0.3);
+            const n_e = params.rfPower / 300 * Math.pow(params.arPressure / 5, 0.5) * Math.pow(params.magneticField / 400, 0.3);
             const depositionRate = yieldFactors[params.targetMaterial] * n_e * 0.15 / (params.targetDistance * params.targetDistance);
+            const filmThickness = simulationTime * depositionRate * 10;
             const reflectedPower = (100 - params.matchingNetwork) * 0.8;
-            return { V_bias: Math.round(V_bias), n_e, depositionRate, E_ion: Math.round(E_ion), reflectedPower };
+            return { V_bias: Math.round(V_bias), n_e, depositionRate, E_ion: Math.round(E_ion), filmThickness, reflectedPower };
         }
 
         function updateStats() {
@@ -262,13 +843,11 @@
             document.getElementById('plasmaDensity').innerHTML = `${results.n_e.toFixed(1)}<span class="unit">×10¹¹ cm⁻³</span>`;
             document.getElementById('depositionRate').innerHTML = `${results.depositionRate.toFixed(2)}<span class="unit">Å/s</span>`;
             document.getElementById('ionEnergy').innerHTML = `${results.E_ion}<span class="unit">eV</span>`;
-            document.getElementById('filmThickness').innerHTML = `${Math.floor(filmThickness)}<span class="unit">nm</span>`;
+            document.getElementById('filmThickness').innerHTML = `${Math.floor(results.filmThickness)}<span class="unit">nm</span>`;
             document.getElementById('reflectedPower').innerHTML = `${results.reflectedPower.toFixed(1)}<span class="unit">%</span>`;
         }
 
         function updateCharts() {
-            const results = calculateRFSputtering();
-
             const time = Array.from({length: 100}, (_, i) => i * 0.01);
             const rfWave = time.map(t => Math.sin(2 * Math.PI * params.frequency * t));
             const biasWave = time.map(t => -0.5 + Math.sin(2 * Math.PI * params.frequency * t) * 0.5);
@@ -276,22 +855,23 @@
                 { x: time, y: rfWave, name: 'RF Voltage', type: 'scatter', mode: 'lines', line: { color: '#667eea', width: 2 }},
                 { x: time, y: biasWave, name: 'DC Bias', type: 'scatter', mode: 'lines', line: { color: '#f39c12', width: 2 }}
             ], {
-                title: 'Voltage vs Time', xaxis: { title: 'Time (μs)' }, yaxis: { title: 'Voltage (a.u.)' },
-                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', margin: { t: 40 }
+                title: 'Voltage vs Time (normalized)', xaxis: { title: 'Time (μs)' }, yaxis: { title: 'Voltage (a.u.)' },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
             });
 
             const areaRatios = Array.from({length: 50}, (_, i) => 1 + i * 0.2);
             const biasVoltages = areaRatios.map(ar => -100 * Math.pow(ar, 2.5));
             Plotly.newPlot('chart2', [{ x: areaRatios, y: biasVoltages, type: 'scatter', mode: 'lines', line: { color: '#764ba2', width: 3 }}], {
-                title: 'Self-Bias Development', xaxis: { title: 'Area Ratio' }, yaxis: { title: 'V_bias (V)' },
-                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', margin: { t: 40 }
+                title: 'Self-Bias Development', xaxis: { title: 'Area Ratio (A_ground/A_target)' }, yaxis: { title: 'V_bias (V)' },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
             });
 
             const energies = Array.from({length: 100}, (_, i) => i * 5);
+            const results = calculateRFSputtering();
             const iedf = energies.map(E => Math.exp(-Math.pow(E - results.E_ion, 2) / 400));
             Plotly.newPlot('chart3', [{ x: energies, y: iedf, type: 'scatter', mode: 'lines', fill: 'tozeroy', line: { color: '#667eea', width: 3 }}], {
-                title: 'Ion Energy Distribution', xaxis: { title: 'Energy (eV)' }, yaxis: { title: 'Probability' },
-                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', margin: { t: 40 }
+                title: 'Ion Energy Distribution Function', xaxis: { title: 'Energy (eV)' }, yaxis: { title: 'Probability Density' },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
             });
 
             const positions = Array.from({length: 40}, (_, i) => -10 + i * 0.5);
@@ -302,14 +882,14 @@
             });
             Plotly.newPlot('chart4', [{ x: positions, y: density, type: 'scatter', mode: 'lines', fill: 'tozeroy', line: { color: '#f39c12', width: 3 }}], {
                 title: 'Axial Plasma Density', xaxis: { title: 'Position (cm)' }, yaxis: { title: 'n_e (a.u.)' },
-                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', margin: { t: 40 }
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
             });
 
             const frequencies = Array.from({length: 100}, (_, i) => 10 + i * 0.3);
             const s11 = frequencies.map(f => -10 * Math.exp(-Math.pow(f - params.frequency, 2) / 4) - 20);
             Plotly.newPlot('chart5', [{ x: frequencies, y: s11, type: 'scatter', mode: 'lines', line: { color: '#764ba2', width: 3 }}], {
-                title: 'Reflection Coefficient', xaxis: { title: 'Frequency (MHz)' }, yaxis: { title: 'S11 (dB)' },
-                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', margin: { t: 40 }
+                title: 'Reflection Coefficient (S11)', xaxis: { title: 'Frequency (MHz)' }, yaxis: { title: 'S11 (dB)' },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
             });
 
             const ionEnergies = Array.from({length: 50}, (_, i) => 100 + i * 20);
@@ -321,37 +901,17 @@
                 mode: 'lines'
             }));
             Plotly.newPlot('chart6', yields, {
-                title: 'Sputter Yield Comparison', xaxis: { title: 'Ion Energy (eV)' }, yaxis: { title: 'Yield (atoms/ion)' },
-                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', margin: { t: 40 }
+                title: 'Sputter Yield Comparison', xaxis: { title: 'Ion Energy (eV)' }, yaxis: { title: 'Yield (molecules/ion)' },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
             });
 
             const o2Flow = Array.from({length: 100}, (_, i) => i * 0.5);
             const depRate = o2Flow.map(flow => flow < 10 ? 5 : flow < 25 ? 5 - (flow - 10) * 0.15 : 2.5 - (flow - 25) * 0.02);
             Plotly.newPlot('chart7', [{ x: o2Flow, y: depRate, type: 'scatter', mode: 'lines', line: { color: '#667eea', width: 3 }}], {
-                title: 'Reactive Sputtering Hysteresis', xaxis: { title: 'O₂ Flow (sccm)' }, yaxis: { title: 'Rate (Å/s)' },
-                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', margin: { t: 40 }
+                title: 'Reactive Sputtering Hysteresis', xaxis: { title: 'O₂ Flow (sccm)' }, yaxis: { title: 'Deposition Rate (Å/s)' },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                annotations: [{ x: 10, y: 4.5, text: 'Transition', showarrow: true }]
             });
-        }
-
-        function updateDisplay(param, value) {
-            params[param] = parseFloat(value);
-            let displayText = value;
-
-            if (param === 'rfPower') displayText = `${value} W`;
-            else if (param === 'frequency') displayText = `${parseFloat(value).toFixed(2)} MHz`;
-            else if (param === 'arPressure') displayText = `${value} mTorr`;
-            else if (param === 'magneticField') displayText = `${value} G`;
-            else if (param === 'targetDistance') displayText = `${value} cm`;
-            else if (param === 'speed') displayText = `${parseFloat(value).toFixed(1)}×`;
-            else if (param === 'targetMaterial') {
-                params[param] = parseInt(value);
-                displayText = materials[parseInt(value)];
-            }
-            else if (param === 'matchingNetwork') displayText = `${value} %`;
-
-            document.getElementById(param + 'Value').textContent = displayText;
-            updateStats();
-            updateCharts();
         }
 
         document.getElementById('playPauseBtn').addEventListener('click', () => {
@@ -360,44 +920,29 @@
             if (isRunning) animate();
         });
 
-        document.getElementById('resetBtn').addEventListener('click', () => {
-            simulationTime = 0;
-            filmThickness = 0;
-            params = { rfPower: 600, frequency: 13.56, arPressure: 8, magneticField: 500, targetDistance: 12, speed: 1.0, targetMaterial: 0, matchingNetwork: 95 };
-
-            document.getElementById('rfPower').value = 600;
-            document.getElementById('frequency').value = 13.56;
-            document.getElementById('arPressure').value = 8;
-            document.getElementById('magneticField').value = 500;
-            document.getElementById('targetDistance').value = 12;
-            document.getElementById('speed').value = 1;
-            document.getElementById('targetMaterial').value = 0;
-            document.getElementById('matchingNetwork').value = 95;
-
-            document.getElementById('rfPowerValue').textContent = '600 W';
-            document.getElementById('frequencyValue').textContent = '13.56 MHz';
-            document.getElementById('arPressureValue').textContent = '8 mTorr';
-            document.getElementById('magneticFieldValue').textContent = '500 G';
-            document.getElementById('targetDistanceValue').textContent = '12 cm';
-            document.getElementById('speedValue').textContent = '1.0×';
-            document.getElementById('targetMaterialValue').textContent = 'SiO₂';
-            document.getElementById('matchingNetworkValue').textContent = '95 %';
-
-            updateStats();
-            updateCharts();
-        });
+        document.getElementById('resetBtn').addEventListener('click', () => { simulationTime = 0; updateStats(); updateCharts(); });
 
         ['rfPower', 'frequency', 'arPressure', 'magneticField', 'targetDistance', 'speed', 'targetMaterial', 'matchingNetwork'].forEach(param => {
             document.getElementById(param).addEventListener('input', (e) => {
-                updateDisplay(param, e.target.value);
+                params[param] = parseFloat(e.target.value);
+                let valueText = e.target.value;
+                if (param === 'rfPower') valueText += ' W';
+                else if (param === 'frequency') valueText = parseFloat(e.target.value).toFixed(2) + ' MHz';
+                else if (param === 'arPressure') valueText += ' mTorr';
+                else if (param === 'magneticField') valueText += ' G';
+                else if (param === 'targetDistance') valueText += ' cm';
+                else if (param === 'speed') valueText = parseFloat(e.target.value).toFixed(1) + '×';
+                else if (param === 'targetMaterial') valueText = materials[parseInt(e.target.value)];
+                else if (param === 'matchingNetwork') valueText += ' %';
+                document.getElementById(param + 'Value').textContent = valueText;
+                updateStats();
+                updateCharts();
             });
         });
 
         function animate() {
             if (!isRunning) return;
             simulationTime += 0.016 * params.speed;
-            const results = calculateRFSputtering();
-            filmThickness += results.depositionRate * 0.016 * params.speed * 0.1;
             animateThreeJS();
             if (Math.floor(simulationTime * 60) % 30 === 0) updateStats();
             requestAnimationFrame(animate);
