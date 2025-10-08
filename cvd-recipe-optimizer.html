@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CVD Recipe Optimizer - Multi-Objective PSO</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #0a0a0a; color: #e0e0e0; line-height: 1.6; overflow-x: hidden; }
+        .navbar { background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(10px); padding: 1rem 2rem; border-bottom: 1px solid rgba(102, 126, 234, 0.3); position: sticky; top: 0; z-index: 100; display: flex; justify-content: space-between; align-items: center; }
+        .nav-title { color: #667eea; font-size: 1.5rem; font-weight: 600; }
+        .nav-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; transition: all 0.3s ease; border: none; cursor: pointer; }
+        .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .container { max-width: 1600px; margin: 0 auto; padding: 2rem; }
+        .hero { text-align: center; padding: 3rem 2rem 2rem 2rem; position: relative; overflow: hidden; }
+        .hero h1 { font-size: 3rem; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 1rem; font-weight: 800; }
+        .hero-subtitle { font-size: 1.2rem; color: #a0a0a0; max-width: 900px; margin: 0 auto 1rem; }
+        .section { margin: 3rem 0; }
+        .section-title { font-size: 2rem; color: #667eea; margin-bottom: 1.5rem; border-left: 4px solid #667eea; padding-left: 1rem; }
+        .section-subtitle { font-size: 1.5rem; color: #f39c12; margin-bottom: 1rem; margin-top: 2rem; }
+        .card { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(102, 126, 234, 0.2); padding: 2rem; border-radius: 15px; margin-bottom: 2rem; }
+        .card:hover { border-color: rgba(102, 126, 234, 0.4); }
+        .info-box { background: rgba(102, 126, 234, 0.1); border-left: 4px solid #667eea; padding: 1rem; margin: 1rem 0; border-radius: 5px; }
+        .warning-box { background: rgba(243, 156, 18, 0.1); border-left: 4px solid #f39c12; padding: 1rem; margin: 1rem 0; border-radius: 5px; }
+        .controls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
+        .control-group { margin: 1.5rem 0; }
+        .control-label { display: block; color: #667eea; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.95rem; }
+        .control-input { width: 100%; padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 8px; color: #e0e0e0; font-size: 1rem; transition: all 0.3s ease; }
+        .control-input:focus { outline: none; border-color: #667eea; background: rgba(255, 255, 255, 0.08); }
+        .control-input:hover { border-color: rgba(102, 126, 234, 0.5); }
+        select.control-input { cursor: pointer; }
+        .slider-container { margin: 1rem 0; }
+        .slider-value { display: inline-block; background: rgba(102, 126, 234, 0.2); padding: 0.25rem 0.75rem; border-radius: 5px; margin-left: 1rem; font-weight: 600; color: #667eea; }
+        .range-slider { width: 100%; height: 8px; border-radius: 5px; background: rgba(102, 126, 234, 0.2); outline: none; -webkit-appearance: none; }
+        .range-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); cursor: pointer; }
+        .range-slider::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); cursor: pointer; border: none; }
+        .btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.75rem 2rem; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; transition: all 0.3s ease; margin: 0.5rem; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .btn-secondary { background: linear-gradient(135deg, #f39c12, #e67e22); }
+        .btn-success { background: linear-gradient(135deg, #27ae60, #229954); }
+        .chart-container { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 1.5rem; margin: 1.5rem 0; }
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
+        .metric-card { background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.3); padding: 1.5rem; border-radius: 12px; text-align: center; transition: all 0.3s ease; }
+        .metric-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3); }
+        .metric-value { font-size: 2rem; font-weight: bold; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem; }
+        .metric-label { color: #a0a0a0; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; }
+        .progress-bar { width: 100%; height: 30px; background: rgba(255, 255, 255, 0.05); border-radius: 15px; overflow: hidden; margin: 1rem 0; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #667eea, #f39c12); transition: width 0.3s ease; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; }
+        .param-table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+        .param-table th { background: rgba(102, 126, 234, 0.2); color: #667eea; padding: 1rem; text-align: left; border-bottom: 2px solid rgba(102, 126, 234, 0.3); }
+        .param-table td { padding: 0.75rem 1rem; border-bottom: 1px solid rgba(102, 126, 234, 0.1); }
+        .param-table tr:hover { background: rgba(102, 126, 234, 0.05); }
+        .checkbox-group { display: flex; align-items: center; gap: 0.5rem; margin: 0.5rem 0; }
+        .checkbox-group input[type="checkbox"] { width: 20px; height: 20px; cursor: pointer; }
+        .objective-config { background: rgba(243, 156, 18, 0.05); border: 1px solid rgba(243, 156, 18, 0.2); padding: 1rem; border-radius: 10px; margin: 1rem 0; }
+        .tag { display: inline-block; background: rgba(102, 126, 234, 0.2); color: #667eea; padding: 0.25rem 0.75rem; border-radius: 15px; font-size: 0.85rem; margin: 0.25rem; }
+        .tag-orange { background: rgba(243, 156, 18, 0.2); color: #f39c12; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-title"><i class="fas fa-tools"></i> CVD Recipe Optimizer</div>
+        <a href="cvd-pvd-complete-project.html" class="nav-btn"><i class="fas fa-arrow-left"></i> Back to CVD/PVD Suite</a>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h1><i class="fas fa-tools"></i> Multi-Objective Recipe Optimizer</h1>
+            <p class="hero-subtitle">Particle Swarm Optimization (PSO) algorithm for simultaneous optimization of thickness, uniformity, stress, and composition by tuning temperature, pressure, gas flows, RF power, and deposition time</p>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title"><i class="fas fa-info-circle"></i> Overview</h2>
+            <div class="card">
+                <div class="info-box">
+                    <h3 style="color: #667eea; margin-bottom: 0.5rem;"><i class="fas fa-lightbulb"></i> What This Tool Does</h3>
+                    <p>This advanced optimizer uses Particle Swarm Optimization (PSO) to find optimal CVD/PVD process recipes that simultaneously satisfy multiple objectives. The algorithm simulates a swarm of particles exploring the parameter space, each representing a potential recipe. Particles communicate and converge toward optimal solutions using cognitive and social learning.</p>
+                </div>
+
+                <h3 class="section-subtitle"><i class="fas fa-cogs"></i> Key Features</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                    <div style="background: rgba(102, 126, 234, 0.05); padding: 1rem; border-radius: 8px;">
+                        <h4 style="color: #667eea; margin-bottom: 0.5rem;"><i class="fas fa-sliders-h"></i> 5 Process Variables</h4>
+                        <p style="font-size: 0.9rem;">Temperature (300-1200°C), Pressure (0.1-760 Torr), Gas flows (0-5000 sccm), RF Power (0-2000W), Deposition time (1-300 min)</p>
+                    </div>
+                    <div style="background: rgba(243, 156, 18, 0.05); padding: 1rem; border-radius: 8px;">
+                        <h4 style="color: #f39c12; margin-bottom: 0.5rem;"><i class="fas fa-bullseye"></i> 4 Objectives</h4>
+                        <p style="font-size: 0.9rem;">Target thickness, Minimize non-uniformity, Control film stress, Achieve composition targets</p>
+                    </div>
+                    <div style="background: rgba(102, 126, 234, 0.05); padding: 1rem; border-radius: 8px;">
+                        <h4 style="color: #667eea; margin-bottom: 0.5rem;"><i class="fas fa-chart-line"></i> Pareto Optimization</h4>
+                        <p style="font-size: 0.9rem;">Multi-objective trade-off analysis, 3D Pareto front visualization, Non-dominated solution ranking</p>
+                    </div>
+                    <div style="background: rgba(243, 156, 18, 0.05); padding: 1rem; border-radius: 8px;">
+                        <h4 style="color: #f39c12; margin-bottom: 0.5rem;"><i class="fas fa-brain"></i> PSO Algorithm</h4>
+                        <p style="font-size: 0.9rem;">Swarm size: 30-100 particles, Iterations: 50-500, Adaptive inertia weight, Convergence tracking</p>
+                    </div>
+                </div>
+
+                <div class="warning-box" style="margin-top: 1.5rem;">
+                    <h4 style="color: #f39c12; margin-bottom: 0.5rem;"><i class="fas fa-exclamation-triangle"></i> Important Notes</h4>
+                    <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                        <li>Optimization typically requires 100-300 iterations for convergence</li>
+                        <li>Physical models are semi-empirical approximations - validate experimentally</li>
+                        <li>Pareto front shows trade-offs between conflicting objectives</li>
+                        <li>Multiple optimal solutions exist - select based on process constraints</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title"><i class="fas fa-bullseye"></i> Target Specifications</h2>
+            <div class="card">
+                <div class="controls-grid">
+                    <div class="control-group">
+                        <label class="control-label"><i class="fas fa-ruler-vertical"></i> Target Thickness (nm)</label>
+                        <input type="number" id="targetThickness" class="control-input" value="500" min="10" max="10000" step="10">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label"><i class="fas fa-circle-notch"></i> Max Non-Uniformity (%)</label>
+                        <input type="number" id="targetUniformity" class="control-input" value="2.0" min="0.1" max="10" step="0.1">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label"><i class="fas fa-compress"></i> Target Stress (MPa)</label>
+                        <input type="number" id="targetStress" class="control-input" value="200" min="-1000" max="1000" step="10">
+                        <small style="color: #a0a0a0; font-size: 0.85rem;">Negative = compressive, Positive = tensile</small>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label"><i class="fas fa-atom"></i> Target Composition (%)</label>
+                        <input type="number" id="targetComposition" class="control-input" value="50" min="0" max="100" step="1">
+                        <small style="color: #a0a0a0; font-size: 0.85rem;">For binary films (e.g., SiN₄: N content)</small>
+                    </div>
+                </div>
+
+                <h3 class="section-subtitle"><i class="fas fa-balance-scale"></i> Objective Weights</h3>
+                <p style="color: #a0a0a0; margin-bottom: 1rem;">Adjust importance of each objective (higher weight = higher priority)</p>
+                <div class="controls-grid">
+                    <div class="slider-container">
+                        <label class="control-label">Thickness Weight</label>
+                        <input type="range" id="weightThickness" class="range-slider" min="0" max="10" step="0.1" value="5">
+                        <span class="slider-value" id="weightThicknessVal">5.0</span>
+                    </div>
+                    <div class="slider-container">
+                        <label class="control-label">Uniformity Weight</label>
+                        <input type="range" id="weightUniformity" class="range-slider" min="0" max="10" step="0.1" value="8">
+                        <span class="slider-value" id="weightUniformityVal">8.0</span>
+                    </div>
+                    <div class="slider-container">
+                        <label class="control-label">Stress Weight</label>
+                        <input type="range" id="weightStress" class="range-slider" min="0" max="10" step="0.1" value="6">
+                        <span class="slider-value" id="weightStressVal">6.0</span>
+                    </div>
+                    <div class="slider-container">
+                        <label class="control-label">Composition Weight</label>
+                        <input type="range" id="weightComposition" class="range-slider" min="0" max="10" step="0.1" value="4">
+                        <span class="slider-value" id="weightCompositionVal">4.0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title"><i class="fas fa-sliders-h"></i> Process Parameter Bounds</h2>
+            <div class="card">
+                <div class="controls-grid">
+                    <div class="control-group">
+                        <label class="control-label"><i class="fas fa-thermometer-half"></i> Temperature Range (°C)</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                            <input type="number" id="tempMin" class="control-input" value="400" placeholder="Min">
+                            <input type="number" id="tempMax" class="control-input" value="800" placeholder="Max">
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label"><i class="fas fa-tachometer-alt"></i> Pressure Range (Torr)</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                            <input type="number" id="pressureMin" class="control-input" value="0.5" step="0.1" placeholder="Min">
+                            <input type="number" id="pressureMax" class="control-input" value="10" step="0.1" placeholder="Max">
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label"><i class="fas fa-wind"></i> Main Gas Flow Range (sccm)</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                            <input type="number" id="gas1Min" class="control-input" value="100" placeholder="Min">
+                            <input type="number" id="gas1Max" class="control-input" value="1000" placeholder="Max">
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label"><i class="fas fa-wind"></i> Reactant Gas Flow Range (sccm)</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                            <input type="number" id="gas2Min" class="control-input" value="50" placeholder="Min">
+                            <input type="number" id="gas2Max" class="control-input" value="500" placeholder="Max">
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label"><i class="fas fa-bolt"></i> RF Power Range (W)</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                            <input type="number" id="powerMin" class="control-input" value="50" placeholder="Min">
+                            <input type="number" id="powerMax" class="control-input" value="500" placeholder="Max">
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label"><i class="fas fa-clock"></i> Deposition Time Range (min)</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                            <input type="number" id="timeMin" class="control-input" value="5" placeholder="Min">
+                            <input type="number" id="timeMax" class="control-input" value="60" placeholder="Max">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title"><i class="fas fa-brain"></i> PSO Algorithm Settings</h2>
+            <div class="card">
+                <div class="controls-grid">
+                    <div class="control-group">
+                        <label class="control-label"><i class="fas fa-users"></i> Swarm Size (particles)</label>
+                        <input type="number" id="swarmSize" class="control-input" value="50" min="20" max="200" step="5">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label"><i class="fas fa-redo"></i> Max Iterations</label>
+                        <input type="number" id="maxIterations" class="control-input" value="200" min="50" max="1000" step="10">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label"><i class="fas fa-weight"></i> Inertia Weight (w)</label>
+                        <input type="number" id="inertiaWeight" class="control-input" value="0.7" min="0.1" max="1.5" step="0.05">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label"><i class="fas fa-brain"></i> Cognitive Coeff (c1)</label>
+                        <input type="number" id="cognitiveCoeff" class="control-input" value="1.5" min="0" max="3" step="0.1">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label"><i class="fas fa-users"></i> Social Coeff (c2)</label>
+                        <input type="number" id="socialCoeff" class="control-input" value="1.5" min="0" max="3" step="0.1">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label"><i class="fas fa-percentage"></i> Convergence Threshold</label>
+                        <input type="number" id="convergenceThreshold" class="control-input" value="0.001" min="0.0001" max="0.1" step="0.0001">
+                    </div>
+                </div>
+
+                <div class="info-box" style="margin-top: 1.5rem;">
+                    <h4 style="color: #667eea; margin-bottom: 0.5rem;"><i class="fas fa-info-circle"></i> Algorithm Tuning Tips</h4>
+                    <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                        <li><strong>Swarm Size:</strong> Larger swarms explore more thoroughly but run slower (50-100 typical)</li>
+                        <li><strong>Inertia Weight:</strong> Higher values favor exploration, lower values favor exploitation (0.4-0.9 typical)</li>
+                        <li><strong>Cognitive Coeff:</strong> Particle's tendency to return to its personal best (1.5-2.0 typical)</li>
+                        <li><strong>Social Coeff:</strong> Particle's tendency to move toward swarm's global best (1.5-2.0 typical)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title"><i class="fas fa-play"></i> Run Optimization</h2>
+            <div class="card">
+                <div style="text-align: center;">
+                    <button class="btn" onclick="runOptimization()"><i class="fas fa-play"></i> Start Optimization</button>
+                    <button class="btn btn-secondary" onclick="stopOptimization()"><i class="fas fa-stop"></i> Stop</button>
+                    <button class="btn btn-success" onclick="exportResults()"><i class="fas fa-download"></i> Export Results</button>
+                </div>
+
+                <div id="progressContainer" style="display: none; margin-top: 2rem;">
+                    <h3 style="color: #667eea; margin-bottom: 1rem;">Optimization Progress</h3>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill" style="width: 0%;">0%</div>
+                    </div>
+                    <p style="text-align: center; color: #a0a0a0; margin-top: 0.5rem;" id="progressText">Initializing swarm...</p>
+                </div>
+
+                <div class="metrics-grid" id="optimMetrics" style="display: none; margin-top: 2rem;">
+                    <div class="metric-card">
+                        <div class="metric-value" id="bestFitness">--</div>
+                        <div class="metric-label">Best Fitness</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="currentIteration">0</div>
+                        <div class="metric-label">Iteration</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="convergenceRate">--</div>
+                        <div class="metric-label">Convergence</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="paretoCount">0</div>
+                        <div class="metric-label">Pareto Solutions</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section" id="resultsSection" style="display: none;">
+            <h2 class="section-title"><i class="fas fa-trophy"></i> Optimal Recipe</h2>
+            <div class="card">
+                <table class="param-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Optimal Value</th>
+                            <th>Search Range</th>
+                            <th>Impact</th>
+                        </tr>
+                    </thead>
+                    <tbody id="optimalParamsTable">
+                    </tbody>
+                </table>
+
+                <h3 class="section-subtitle"><i class="fas fa-check-circle"></i> Predicted Film Properties</h3>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value" id="optimalThickness">--</div>
+                        <div class="metric-label">Thickness (nm)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="optimalUniformity">--</div>
+                        <div class="metric-label">Non-Uniformity (%)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="optimalStress">--</div>
+                        <div class="metric-label">Stress (MPa)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="optimalComposition">--</div>
+                        <div class="metric-label">Composition (%)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title"><i class="fas fa-chart-line"></i> Optimization Visualizations</h2>
+
+            <div class="chart-container">
+                <h3 style="color: #667eea; margin-bottom: 1rem;"><i class="fas fa-chart-line"></i> Convergence History</h3>
+                <div id="convergenceChart"></div>
+            </div>
+
+            <div class="chart-container">
+                <h3 style="color: #667eea; margin-bottom: 1rem;"><i class="fas fa-cube"></i> 3D Pareto Front</h3>
+                <p style="color: #a0a0a0; margin-bottom: 1rem;">Trade-off surface between thickness error, non-uniformity, and stress deviation</p>
+                <div id="paretoChart"></div>
+            </div>
+
+            <div class="chart-container">
+                <h3 style="color: #667eea; margin-bottom: 1rem;"><i class="fas fa-users"></i> Swarm Evolution</h3>
+                <p style="color: #a0a0a0; margin-bottom: 1rem;">Particle positions in parameter space over iterations</p>
+                <div id="swarmEvolutionChart"></div>
+            </div>
+
+            <div class="chart-container">
+                <h3 style="color: #667eea; margin-bottom: 1rem;"><i class="fas fa-balance-scale"></i> Multi-Objective Fitness</h3>
+                <div id="multiObjectiveChart"></div>
+            </div>
+
+            <div class="chart-container">
+                <h3 style="color: #667eea; margin-bottom: 1rem;"><i class="fas fa-chart-bar"></i> Parameter Sensitivity Analysis</h3>
+                <p style="color: #a0a0a0; margin-bottom: 1rem;">Impact of each parameter on overall fitness</p>
+                <div id="sensitivityChart"></div>
+            </div>
+
+            <div class="chart-container">
+                <h3 style="color: #667eea; margin-bottom: 1rem;"><i class="fas fa-tachometer-alt"></i> Fitness Distribution</h3>
+                <div id="fitnessDistChart"></div>
+            </div>
+
+            <div class="chart-container">
+                <h3 style="color: #667eea; margin-bottom: 1rem;"><i class="fas fa-project-diagram"></i> Parameter Correlation Heatmap</h3>
+                <div id="correlationChart"></div>
+            </div>
+
+            <div class="chart-container">
+                <h3 style="color: #667eea; margin-bottom: 1rem;"><i class="fas fa-chart-scatter"></i> Objective Trade-offs (2D Projections)</h3>
+                <div id="tradeoffChart"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global optimization state
+        let optimizationRunning = false;
+        let optimizationResults = null;
+        let currentIteration = 0;
+        let swarm = [];
+        let globalBest = null;
+        let paretoFront = [];
+        let convergenceHistory = [];
+
+        // Update slider displays
+        document.querySelectorAll('.range-slider').forEach(slider => {
+            slider.addEventListener('input', function() {
+                const valueDisplay = document.getElementById(this.id + 'Val');
+                if (valueDisplay) {
+                    valueDisplay.textContent = parseFloat(this.value).toFixed(1);
+                }
+            });
+        });
+
+        // Process models (semi-empirical)
+        function calculateThickness(T, P, gas1, gas2, power, time) {
+            // Arrhenius-based growth rate model
+            const Ea = 0.8; // eV
+            const k = 8.617e-5; // eV/K
+            const rateBase = 5.0; // nm/min base rate
+            const rate = rateBase * Math.exp(-Ea / (k * (T + 273.15))) *
+                         Math.pow(P, 0.3) * Math.pow(gas1/500, 0.4) *
+                         Math.pow(gas2/200, 0.3) * Math.pow(power/200, 0.2);
+            return rate * time;
+        }
+
+        function calculateUniformity(T, P, gas1, gas2, power) {
+            // Non-uniformity increases with higher power and pressure gradients
+            const baseNU = 0.5; // %
+            const tempEffect = Math.abs(T - 650) / 1000;
+            const pressureEffect = Math.abs(P - 5) / 20;
+            const powerEffect = Math.pow(power / 500, 0.5) * 0.3;
+            const flowRatio = Math.abs(gas1 / (gas2 + 1) - 3) / 10;
+            return baseNU + tempEffect + pressureEffect + powerEffect + flowRatio;
+        }
+
+        function calculateStress(T, P, gas1, gas2, power) {
+            // Intrinsic stress model
+            const thermalStress = (T - 500) * 0.5; // MPa
+            const ionBombardment = (power / 300) * 150; // MPa tensile
+            const gasRatio = (gas2 / (gas1 + 1)) * 200 - 100; // MPa
+            const pressureStress = (P - 3) * 20;
+            return thermalStress + ionBombardment + gasRatio + pressureStress;
+        }
+
+        function calculateComposition(T, P, gas1, gas2, power) {
+            // Composition as function of gas ratio and power
+            const gasRatio = gas2 / (gas1 + gas2);
+            const tempEffect = 1 - Math.exp(-(T - 400) / 300);
+            const powerEffect = Math.pow(power / 500, 0.2);
+            return gasRatio * 100 * tempEffect * (0.8 + 0.4 * powerEffect);
+        }
+
+        // Particle Swarm Optimization
+        class Particle {
+            constructor(bounds) {
+                this.position = {
+                    T: bounds.T.min + Math.random() * (bounds.T.max - bounds.T.min),
+                    P: bounds.P.min + Math.random() * (bounds.P.max - bounds.P.min),
+                    gas1: bounds.gas1.min + Math.random() * (bounds.gas1.max - bounds.gas1.min),
+                    gas2: bounds.gas2.min + Math.random() * (bounds.gas2.max - bounds.gas2.min),
+                    power: bounds.power.min + Math.random() * (bounds.power.max - bounds.power.min),
+                    time: bounds.time.min + Math.random() * (bounds.time.max - bounds.time.min)
+                };
+                this.velocity = {
+                    T: 0, P: 0, gas1: 0, gas2: 0, power: 0, time: 0
+                };
+                this.personalBest = {...this.position};
+                this.personalBestFitness = Infinity;
+                this.fitness = Infinity;
+            }
+
+            evaluate(targets, weights) {
+                const T = this.position.T;
+                const P = this.position.P;
+                const gas1 = this.position.gas1;
+                const gas2 = this.position.gas2;
+                const power = this.position.power;
+                const time = this.position.time;
+
+                const thickness = calculateThickness(T, P, gas1, gas2, power, time);
+                const uniformity = calculateUniformity(T, P, gas1, gas2, power);
+                const stress = calculateStress(T, P, gas1, gas2, power);
+                const composition = calculateComposition(T, P, gas1, gas2, power);
+
+                // Multi-objective fitness
+                const thicknessError = Math.abs(thickness - targets.thickness) / targets.thickness;
+                const uniformityError = uniformity / targets.uniformity;
+                const stressError = Math.abs(stress - targets.stress) / Math.max(Math.abs(targets.stress), 100);
+                const compositionError = Math.abs(composition - targets.composition) / 100;
+
+                this.fitness = weights.thickness * thicknessError +
+                              weights.uniformity * uniformityError +
+                              weights.stress * stressError +
+                              weights.composition * compositionError;
+
+                this.objectives = {thickness, uniformity, stress, composition};
+                this.errors = {thicknessError, uniformityError, stressError, compositionError};
+
+                if (this.fitness < this.personalBestFitness) {
+                    this.personalBest = {...this.position};
+                    this.personalBestFitness = this.fitness;
+                }
+
+                return this.fitness;
+            }
+
+            updateVelocity(globalBest, w, c1, c2, bounds) {
+                const params = ['T', 'P', 'gas1', 'gas2', 'power', 'time'];
+                params.forEach(param => {
+                    const r1 = Math.random();
+                    const r2 = Math.random();
+                    const cognitive = c1 * r1 * (this.personalBest[param] - this.position[param]);
+                    const social = c2 * r2 * (globalBest[param] - this.position[param]);
+                    this.velocity[param] = w * this.velocity[param] + cognitive + social;
+
+                    // Velocity clamping
+                    const maxV = (bounds[param].max - bounds[param].min) * 0.2;
+                    this.velocity[param] = Math.max(-maxV, Math.min(maxV, this.velocity[param]));
+                });
+            }
+
+            updatePosition(bounds) {
+                const params = ['T', 'P', 'gas1', 'gas2', 'power', 'time'];
+                params.forEach(param => {
+                    this.position[param] += this.velocity[param];
+                    this.position[param] = Math.max(bounds[param].min,
+                                                    Math.min(bounds[param].max, this.position[param]));
+                });
+            }
+        }
+
+        function findParetoFront(particles) {
+            const front = [];
+            for (let i = 0; i < particles.length; i++) {
+                let dominated = false;
+                for (let j = 0; j < particles.length; j++) {
+                    if (i !== j && dominates(particles[j], particles[i])) {
+                        dominated = true;
+                        break;
+                    }
+                }
+                if (!dominated) {
+                    front.push(particles[i]);
+                }
+            }
+            return front;
+        }
+
+        function dominates(p1, p2) {
+            // Check if p1 dominates p2 in all objectives
+            const e1 = p1.errors;
+            const e2 = p2.errors;
+            return (e1.thicknessError <= e2.thicknessError &&
+                    e1.uniformityError <= e2.uniformityError &&
+                    e1.stressError <= e2.stressError &&
+                    e1.compositionError <= e2.compositionError) &&
+                   (e1.thicknessError < e2.thicknessError ||
+                    e1.uniformityError < e2.uniformityError ||
+                    e1.stressError < e2.stressError ||
+                    e1.compositionError < e2.compositionError);
+        }
+
+        async function runOptimization() {
+            if (optimizationRunning) return;
+
+            optimizationRunning = true;
+            document.getElementById('progressContainer').style.display = 'block';
+            document.getElementById('optimMetrics').style.display = 'grid';
+
+            // Get parameters
+            const targets = {
+                thickness: parseFloat(document.getElementById('targetThickness').value),
+                uniformity: parseFloat(document.getElementById('targetUniformity').value),
+                stress: parseFloat(document.getElementById('targetStress').value),
+                composition: parseFloat(document.getElementById('targetComposition').value)
+            };
+
+            const weights = {
+                thickness: parseFloat(document.getElementById('weightThickness').value),
+                uniformity: parseFloat(document.getElementById('weightUniformity').value),
+                stress: parseFloat(document.getElementById('weightStress').value),
+                composition: parseFloat(document.getElementById('weightComposition').value)
+            };
+
+            const bounds = {
+                T: {min: parseFloat(document.getElementById('tempMin').value),
+                    max: parseFloat(document.getElementById('tempMax').value)},
+                P: {min: parseFloat(document.getElementById('pressureMin').value),
+                    max: parseFloat(document.getElementById('pressureMax').value)},
+                gas1: {min: parseFloat(document.getElementById('gas1Min').value),
+                       max: parseFloat(document.getElementById('gas1Max').value)},
+                gas2: {min: parseFloat(document.getElementById('gas2Min').value),
+                       max: parseFloat(document.getElementById('gas2Max').value)},
+                power: {min: parseFloat(document.getElementById('powerMin').value),
+                        max: parseFloat(document.getElementById('powerMax').value)},
+                time: {min: parseFloat(document.getElementById('timeMin').value),
+                       max: parseFloat(document.getElementById('timeMax').value)}
+            };
+
+            const swarmSize = parseInt(document.getElementById('swarmSize').value);
+            const maxIter = parseInt(document.getElementById('maxIterations').value);
+            const w = parseFloat(document.getElementById('inertiaWeight').value);
+            const c1 = parseFloat(document.getElementById('cognitiveCoeff').value);
+            const c2 = parseFloat(document.getElementById('socialCoeff').value);
+
+            // Initialize swarm
+            swarm = [];
+            for (let i = 0; i < swarmSize; i++) {
+                swarm.push(new Particle(bounds));
+            }
+
+            globalBest = null;
+            let globalBestFitness = Infinity;
+            convergenceHistory = [];
+            paretoFront = [];
+
+            // Optimization loop
+            for (let iter = 0; iter < maxIter && optimizationRunning; iter++) {
+                currentIteration = iter;
+
+                // Evaluate all particles
+                for (let particle of swarm) {
+                    const fitness = particle.evaluate(targets, weights);
+                    if (fitness < globalBestFitness) {
+                        globalBestFitness = fitness;
+                        globalBest = {...particle.position};
+                        optimizationResults = {
+                            position: globalBest,
+                            objectives: particle.objectives,
+                            fitness: globalBestFitness
+                        };
+                    }
+                }
+
+                // Update Pareto front
+                paretoFront = findParetoFront(swarm);
+
+                // Update velocities and positions
+                for (let particle of swarm) {
+                    particle.updateVelocity(globalBest, w, c1, c2, bounds);
+                    particle.updatePosition(bounds);
+                }
+
+                // Track convergence
+                convergenceHistory.push({
+                    iteration: iter,
+                    bestFitness: globalBestFitness,
+                    avgFitness: swarm.reduce((sum, p) => sum + p.fitness, 0) / swarmSize,
+                    paretoSize: paretoFront.length
+                });
+
+                // Update UI
+                const progress = ((iter + 1) / maxIter) * 100;
+                document.getElementById('progressFill').style.width = progress + '%';
+                document.getElementById('progressFill').textContent = Math.round(progress) + '%';
+                document.getElementById('progressText').textContent = `Iteration ${iter + 1}/${maxIter} - Best Fitness: ${globalBestFitness.toFixed(4)}`;
+                document.getElementById('bestFitness').textContent = globalBestFitness.toFixed(4);
+                document.getElementById('currentIteration').textContent = iter + 1;
+                document.getElementById('paretoCount').textContent = paretoFront.length;
+
+                if (iter > 0) {
+                    const convRate = ((convergenceHistory[iter-1].bestFitness - globalBestFitness) /
+                                     convergenceHistory[iter-1].bestFitness * 100).toFixed(2);
+                    document.getElementById('convergenceRate').textContent = convRate + '%';
+                }
+
+                // Allow UI updates
+                await new Promise(resolve => setTimeout(resolve, 10));
+            }
+
+            optimizationRunning = false;
+            showResults();
+            updateCharts();
+        }
+
+        function stopOptimization() {
+            optimizationRunning = false;
+        }
+
+        function showResults() {
+            if (!optimizationResults) return;
+
+            document.getElementById('resultsSection').style.display = 'block';
+
+            const params = [
+                {name: 'Temperature', value: optimizationResults.position.T.toFixed(1) + ' °C',
+                 range: `${document.getElementById('tempMin').value}-${document.getElementById('tempMax').value} °C`,
+                 impact: 'High'},
+                {name: 'Pressure', value: optimizationResults.position.P.toFixed(2) + ' Torr',
+                 range: `${document.getElementById('pressureMin').value}-${document.getElementById('pressureMax').value} Torr`,
+                 impact: 'Medium'},
+                {name: 'Main Gas Flow', value: optimizationResults.position.gas1.toFixed(0) + ' sccm',
+                 range: `${document.getElementById('gas1Min').value}-${document.getElementById('gas1Max').value} sccm`,
+                 impact: 'Medium'},
+                {name: 'Reactant Gas Flow', value: optimizationResults.position.gas2.toFixed(0) + ' sccm',
+                 range: `${document.getElementById('gas2Min').value}-${document.getElementById('gas2Max').value} sccm`,
+                 impact: 'High'},
+                {name: 'RF Power', value: optimizationResults.position.power.toFixed(0) + ' W',
+                 range: `${document.getElementById('powerMin').value}-${document.getElementById('powerMax').value} W`,
+                 impact: 'High'},
+                {name: 'Deposition Time', value: optimizationResults.position.time.toFixed(1) + ' min',
+                 range: `${document.getElementById('timeMin').value}-${document.getElementById('timeMax').value} min`,
+                 impact: 'Medium'}
+            ];
+
+            let tableHTML = '';
+            params.forEach(param => {
+                tableHTML += `<tr>
+                    <td><strong>${param.name}</strong></td>
+                    <td><span class="tag">${param.value}</span></td>
+                    <td style="color: #a0a0a0;">${param.range}</td>
+                    <td><span class="tag tag-orange">${param.impact}</span></td>
+                </tr>`;
+            });
+            document.getElementById('optimalParamsTable').innerHTML = tableHTML;
+
+            document.getElementById('optimalThickness').textContent =
+                optimizationResults.objectives.thickness.toFixed(1);
+            document.getElementById('optimalUniformity').textContent =
+                optimizationResults.objectives.uniformity.toFixed(2) + '%';
+            document.getElementById('optimalStress').textContent =
+                optimizationResults.objectives.stress.toFixed(0);
+            document.getElementById('optimalComposition').textContent =
+                optimizationResults.objectives.composition.toFixed(1) + '%';
+
+            document.getElementById('resultsSection').scrollIntoView({behavior: 'smooth', block: 'start'});
+        }
+
+        function updateCharts() {
+            // 1. Convergence History
+            const convergenceTrace = {
+                x: convergenceHistory.map(h => h.iteration),
+                y: convergenceHistory.map(h => h.bestFitness),
+                mode: 'lines',
+                name: 'Best Fitness',
+                line: {color: '#667eea', width: 3}
+            };
+            const avgTrace = {
+                x: convergenceHistory.map(h => h.iteration),
+                y: convergenceHistory.map(h => h.avgFitness),
+                mode: 'lines',
+                name: 'Avg Fitness',
+                line: {color: '#f39c12', width: 2, dash: 'dash'}
+            };
+            Plotly.newPlot('convergenceChart', [convergenceTrace, avgTrace], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: {color: '#e0e0e0'},
+                xaxis: {title: 'Iteration', gridcolor: '#333'},
+                yaxis: {title: 'Fitness', gridcolor: '#333'},
+                showlegend: true
+            });
+
+            // 2. 3D Pareto Front
+            const paretoTrace = {
+                x: paretoFront.map(p => p.errors.thicknessError * 100),
+                y: paretoFront.map(p => p.errors.uniformityError * 100),
+                z: paretoFront.map(p => p.errors.stressError * 100),
+                mode: 'markers',
+                type: 'scatter3d',
+                marker: {
+                    size: 8,
+                    color: paretoFront.map(p => p.fitness),
+                    colorscale: 'Viridis',
+                    colorbar: {title: 'Fitness'},
+                    line: {color: '#667eea', width: 1}
+                },
+                text: paretoFront.map(p =>
+                    `T: ${p.position.T.toFixed(0)}°C<br>P: ${p.position.P.toFixed(2)} Torr<br>Fitness: ${p.fitness.toFixed(4)}`
+                ),
+                hovertemplate: '%{text}<extra></extra>'
+            };
+            Plotly.newPlot('paretoChart', [paretoTrace], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: {color: '#e0e0e0'},
+                scene: {
+                    xaxis: {title: 'Thickness Error (%)', gridcolor: '#333'},
+                    yaxis: {title: 'Uniformity Error (%)', gridcolor: '#333'},
+                    zaxis: {title: 'Stress Error (%)', gridcolor: '#333'}
+                }
+            });
+
+            // 3. Swarm Evolution (first 3 dimensions)
+            const swarmTrace = swarm.map((p, i) => ({
+                x: [p.position.T],
+                y: [p.position.P],
+                mode: 'markers',
+                marker: {
+                    size: 8,
+                    color: p.fitness,
+                    colorscale: 'Plasma',
+                    line: {color: '#fff', width: 0.5}
+                },
+                showlegend: false
+            }));
+            const bestTrace = {
+                x: [globalBest.T],
+                y: [globalBest.P],
+                mode: 'markers',
+                marker: {size: 15, color: '#64ffda', symbol: 'star', line: {color: '#fff', width: 2}},
+                name: 'Global Best'
+            };
+            Plotly.newPlot('swarmEvolutionChart', [...swarmTrace, bestTrace], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: {color: '#e0e0e0'},
+                xaxis: {title: 'Temperature (°C)', gridcolor: '#333'},
+                yaxis: {title: 'Pressure (Torr)', gridcolor: '#333'},
+                showlegend: true
+            });
+
+            // 4. Multi-Objective Fitness Components
+            const objNames = ['Thickness', 'Uniformity', 'Stress', 'Composition'];
+            const objErrors = [
+                optimizationResults.objectives.thickness - parseFloat(document.getElementById('targetThickness').value),
+                optimizationResults.objectives.uniformity,
+                optimizationResults.objectives.stress - parseFloat(document.getElementById('targetStress').value),
+                optimizationResults.objectives.composition - parseFloat(document.getElementById('targetComposition').value)
+            ];
+            const objTrace = {
+                x: objNames,
+                y: objErrors.map(Math.abs),
+                type: 'bar',
+                marker: {
+                    color: ['#667eea', '#f39c12', '#e74c3c', '#27ae60'],
+                    line: {color: '#fff', width: 1}
+                }
+            };
+            Plotly.newPlot('multiObjectiveChart', [objTrace], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: {color: '#e0e0e0'},
+                xaxis: {title: 'Objective', gridcolor: '#333'},
+                yaxis: {title: 'Absolute Error', gridcolor: '#333'}
+            });
+
+            // 5. Parameter Sensitivity (numerical derivatives)
+            const paramNames = ['Temp', 'Pressure', 'Gas1', 'Gas2', 'Power', 'Time'];
+            const sensitivities = calculateSensitivities();
+            const sensTrace = {
+                x: paramNames,
+                y: sensitivities,
+                type: 'bar',
+                marker: {
+                    color: sensitivities,
+                    colorscale: 'Viridis',
+                    line: {color: '#fff', width: 1}
+                }
+            };
+            Plotly.newPlot('sensitivityChart', [sensTrace], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: {color: '#e0e0e0'},
+                xaxis: {title: 'Parameter', gridcolor: '#333'},
+                yaxis: {title: 'Sensitivity (∂Fitness/∂Param)', gridcolor: '#333'}
+            });
+
+            // 6. Fitness Distribution
+            const fitnessValues = swarm.map(p => p.fitness);
+            const fitnessTrace = {
+                x: fitnessValues,
+                type: 'histogram',
+                nbinsx: 20,
+                marker: {color: '#667eea', line: {color: '#fff', width: 1}}
+            };
+            Plotly.newPlot('fitnessDistChart', [fitnessTrace], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: {color: '#e0e0e0'},
+                xaxis: {title: 'Fitness', gridcolor: '#333'},
+                yaxis: {title: 'Frequency', gridcolor: '#333'}
+            });
+
+            // 7. Parameter Correlation Heatmap
+            const corrMatrix = calculateCorrelationMatrix();
+            const corrTrace = {
+                z: corrMatrix,
+                x: paramNames,
+                y: paramNames,
+                type: 'heatmap',
+                colorscale: 'RdBu',
+                zmid: 0,
+                colorbar: {title: 'Correlation'}
+            };
+            Plotly.newPlot('correlationChart', [corrTrace], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: {color: '#e0e0e0'}
+            });
+
+            // 8. Objective Trade-offs (2D projections)
+            const tradeoffTraces = [
+                {
+                    x: paretoFront.map(p => p.errors.thicknessError * 100),
+                    y: paretoFront.map(p => p.errors.uniformityError * 100),
+                    mode: 'markers',
+                    name: 'Thickness vs Uniformity',
+                    marker: {size: 8, color: '#667eea'}
+                },
+                {
+                    x: paretoFront.map(p => p.errors.stressError * 100),
+                    y: paretoFront.map(p => p.errors.compositionError * 100),
+                    mode: 'markers',
+                    name: 'Stress vs Composition',
+                    marker: {size: 8, color: '#f39c12'},
+                    xaxis: 'x2',
+                    yaxis: 'y2'
+                }
+            ];
+            Plotly.newPlot('tradeoffChart', tradeoffTraces, {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: {color: '#e0e0e0'},
+                grid: {rows: 1, columns: 2, pattern: 'independent'},
+                xaxis: {title: 'Thickness Error (%)', gridcolor: '#333'},
+                yaxis: {title: 'Uniformity Error (%)', gridcolor: '#333'},
+                xaxis2: {title: 'Stress Error (%)', gridcolor: '#333'},
+                yaxis2: {title: 'Composition Error (%)', gridcolor: '#333'}
+            });
+        }
+
+        function calculateSensitivities() {
+            const delta = 0.01; // 1% perturbation
+            const params = ['T', 'P', 'gas1', 'gas2', 'power', 'time'];
+            const sensitivities = [];
+
+            const targets = {
+                thickness: parseFloat(document.getElementById('targetThickness').value),
+                uniformity: parseFloat(document.getElementById('targetUniformity').value),
+                stress: parseFloat(document.getElementById('targetStress').value),
+                composition: parseFloat(document.getElementById('targetComposition').value)
+            };
+            const weights = {
+                thickness: parseFloat(document.getElementById('weightThickness').value),
+                uniformity: parseFloat(document.getElementById('weightUniformity').value),
+                stress: parseFloat(document.getElementById('weightStress').value),
+                composition: parseFloat(document.getElementById('weightComposition').value)
+            };
+
+            params.forEach(param => {
+                const testParticle = new Particle({
+                    T: {min: globalBest.T, max: globalBest.T},
+                    P: {min: globalBest.P, max: globalBest.P},
+                    gas1: {min: globalBest.gas1, max: globalBest.gas1},
+                    gas2: {min: globalBest.gas2, max: globalBest.gas2},
+                    power: {min: globalBest.power, max: globalBest.power},
+                    time: {min: globalBest.time, max: globalBest.time}
+                });
+                testParticle.position = {...globalBest};
+
+                const f0 = testParticle.evaluate(targets, weights);
+                testParticle.position[param] *= (1 + delta);
+                const f1 = testParticle.evaluate(targets, weights);
+
+                const sensitivity = Math.abs((f1 - f0) / (globalBest[param] * delta));
+                sensitivities.push(sensitivity);
+            });
+
+            return sensitivities;
+        }
+
+        function calculateCorrelationMatrix() {
+            const params = ['T', 'P', 'gas1', 'gas2', 'power', 'time'];
+            const n = params.length;
+            const matrix = Array(n).fill().map(() => Array(n).fill(0));
+
+            for (let i = 0; i < n; i++) {
+                for (let j = 0; j < n; j++) {
+                    if (i === j) {
+                        matrix[i][j] = 1.0;
+                    } else {
+                        const xi = swarm.map(p => p.position[params[i]]);
+                        const xj = swarm.map(p => p.position[params[j]]);
+                        matrix[i][j] = correlation(xi, xj);
+                    }
+                }
+            }
+
+            return matrix;
+        }
+
+        function correlation(x, y) {
+            const n = x.length;
+            const meanX = x.reduce((a, b) => a + b, 0) / n;
+            const meanY = y.reduce((a, b) => a + b, 0) / n;
+
+            let num = 0, denX = 0, denY = 0;
+            for (let i = 0; i < n; i++) {
+                const dx = x[i] - meanX;
+                const dy = y[i] - meanY;
+                num += dx * dy;
+                denX += dx * dx;
+                denY += dy * dy;
+            }
+
+            return num / Math.sqrt(denX * denY);
+        }
+
+        function exportResults() {
+            if (!optimizationResults) {
+                alert('No optimization results to export. Please run optimization first.');
+                return;
+            }
+
+            const exportData = {
+                timestamp: new Date().toISOString(),
+                optimalRecipe: optimizationResults.position,
+                predictedProperties: optimizationResults.objectives,
+                fitness: optimizationResults.fitness,
+                paretoFront: paretoFront.map(p => ({
+                    position: p.position,
+                    objectives: p.objectives,
+                    fitness: p.fitness
+                })),
+                convergenceHistory: convergenceHistory,
+                algorithmSettings: {
+                    swarmSize: parseInt(document.getElementById('swarmSize').value),
+                    maxIterations: parseInt(document.getElementById('maxIterations').value),
+                    inertiaWeight: parseFloat(document.getElementById('inertiaWeight').value),
+                    cognitiveCoeff: parseFloat(document.getElementById('cognitiveCoeff').value),
+                    socialCoeff: parseFloat(document.getElementById('socialCoeff').value)
+                }
+            };
+
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `cvd_recipe_optimization_${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Initialize empty charts on load
+        window.addEventListener('load', () => {
+            const emptyLayout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: {color: '#e0e0e0'},
+                xaxis: {gridcolor: '#333'},
+                yaxis: {gridcolor: '#333'}
+            };
+
+            Plotly.newPlot('convergenceChart', [], emptyLayout);
+            Plotly.newPlot('paretoChart', [], emptyLayout);
+            Plotly.newPlot('swarmEvolutionChart', [], emptyLayout);
+            Plotly.newPlot('multiObjectiveChart', [], emptyLayout);
+            Plotly.newPlot('sensitivityChart', [], emptyLayout);
+            Plotly.newPlot('fitnessDistChart', [], emptyLayout);
+            Plotly.newPlot('correlationChart', [], emptyLayout);
+            Plotly.newPlot('tradeoffChart', [], emptyLayout);
+        });
+    </script>
+</body>
+</html>

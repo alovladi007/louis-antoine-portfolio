@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CVD Thermal Decomposition - CVD/PVD Research</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.6;
+        }
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .navbar a { color: #764ba2; text-decoration: none; font-weight: 600; transition: color 0.3s; }
+        .navbar a:hover { color: #f39c12; }
+        .container { max-width: 1400px; margin: 2rem auto; padding: 0 2rem; }
+        .header {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        .header h1 { color: #764ba2; margin-bottom: 0.5rem; }
+        .header p { color: #666; font-size: 1.1rem; }
+        .controls-panel {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        .control-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .control-item { display: flex; flex-direction: column; }
+        .control-item label { color: #764ba2; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem; }
+        .control-item input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: linear-gradient(to right, #667eea, #764ba2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        .control-item input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #f39c12;
+            cursor: pointer;
+        }
+        .control-item input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #f39c12;
+            cursor: pointer;
+            border: none;
+        }
+        .control-item .value-display { color: #f39c12; font-weight: bold; margin-top: 0.25rem; }
+        .button-group { display: flex; gap: 1rem; flex-wrap: wrap; }
+        .btn {
+            padding: 0.75rem 2rem;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .btn-secondary { background: #f39c12; color: white; }
+        .btn-secondary:hover { background: #e67e22; transform: translateY(-2px); }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            border-left: 4px solid #667eea;
+        }
+        .stat-card h3 {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .stat-card .value { font-size: 1.8rem; font-weight: bold; color: #764ba2; }
+        .stat-card .unit { font-size: 0.9rem; color: #999; margin-left: 0.25rem; }
+        .visualization-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        .viz-panel {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        .viz-panel h2 { color: #764ba2; margin-bottom: 1rem; font-size: 1.3rem; }
+        #threejs-container {
+            width: 100%;
+            height: 500px;
+            border-radius: 10px;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #1a0a00, #000);
+        }
+        .theory-section {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        .theory-section h2 { color: #764ba2; margin-bottom: 1rem; }
+        .equation {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 5px;
+            margin: 1rem 0;
+            font-family: 'Courier New', monospace;
+            border-left: 4px solid #f39c12;
+        }
+        .chart-container { width: 100%; height: 400px; margin-top: 1rem; }
+        @media (max-width: 768px) {
+            .container { padding: 0 1rem; }
+            .visualization-grid { grid-template-columns: 1fr; }
+            .control-group { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="cvd-pvd-complete-project.html">&larr; Back to CVD/PVD Project</a>
+    </nav>
+
+    <div class="container">
+        <div class="header">
+            <h1>Thermal Decomposition CVD</h1>
+            <p>Pyrolysis reactions, homogeneous vs heterogeneous nucleation, and gas-phase chemistry</p>
+        </div>
+
+        <div class="controls-panel">
+            <div class="button-group">
+                <button class="btn btn-primary" id="playPauseBtn">Pause</button>
+                <button class="btn btn-secondary" id="resetBtn">Reset</button>
+            </div>
+
+            <div class="control-group" style="margin-top: 1.5rem;">
+                <div class="control-item">
+                    <label for="temperature">Substrate Temp (°C)</label>
+                    <input type="range" id="temperature" min="600" max="1200" value="850" step="10">
+                    <span class="value-display" id="temperatureValue">850 °C</span>
+                </div>
+                <div class="control-item">
+                    <label for="pressure">Pressure (Torr)</label>
+                    <input type="range" id="pressure" min="0.1" max="10" value="1" step="0.1">
+                    <span class="value-display" id="pressureValue">1.0 Torr</span>
+                </div>
+                <div class="control-item">
+                    <label for="gasFlow">SiH₄ Flow (sccm)</label>
+                    <input type="range" id="gasFlow" min="10" max="200" value="50" step="5">
+                    <span class="value-display" id="gasFlowValue">50 sccm</span>
+                </div>
+                <div class="control-item">
+                    <label for="gradientHeight">Temp Gradient (°C/cm)</label>
+                    <input type="range" id="gradientHeight" min="0" max="100" value="30" step="5">
+                    <span class="value-display" id="gradientHeightValue">30 °C/cm</span>
+                </div>
+                <div class="control-item">
+                    <label for="activationEnergy">Ea_decomp (kcal/mol)</label>
+                    <input type="range" id="activationEnergy" min="20" max="80" value="50" step="2">
+                    <span class="value-display" id="activationEnergyValue">50 kcal/mol</span>
+                </div>
+                <div class="control-item">
+                    <label for="speed">Simulation Speed</label>
+                    <input type="range" id="speed" min="0.5" max="5" value="1" step="0.5">
+                    <span class="value-display" id="speedValue">1.0×</span>
+                </div>
+                <div class="control-item">
+                    <label for="carrierGas">Carrier (H₂ %)</label>
+                    <input type="range" id="carrierGas" min="0" max="100" value="90" step="5">
+                    <span class="value-display" id="carrierGasValue">90 %</span>
+                </div>
+                <div class="control-item">
+                    <label for="showerheadDist">Showerhead Distance (cm)</label>
+                    <input type="range" id="showerheadDist" min="2" max="20" value="10" step="1">
+                    <span class="value-display" id="showerheadDistValue">10 cm</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Decomp Rate</h3>
+                <div class="value" id="decompRate">0.00<span class="unit">s⁻¹</span></div>
+            </div>
+            <div class="stat-card">
+                <h3>Homogeneous %</h3>
+                <div class="value" id="homogeneousFraction">0.0<span class="unit">%</span></div>
+            </div>
+            <div class="stat-card">
+                <h3>Nucleation Rate</h3>
+                <div class="value" id="nucleationRate">0.00<span class="unit">cm⁻³s⁻¹</span></div>
+            </div>
+            <div class="stat-card">
+                <h3>Particle Size</h3>
+                <div class="value" id="particleSize">0<span class="unit">nm</span></div>
+            </div>
+            <div class="stat-card">
+                <h3>Growth Rate</h3>
+                <div class="value" id="growthRate">0.00<span class="unit">μm/min</span></div>
+            </div>
+            <div class="stat-card">
+                <h3>Purity</h3>
+                <div class="value" id="purity">99.0<span class="unit">%</span></div>
+            </div>
+        </div>
+
+        <div class="viz-panel" style="margin-bottom: 2rem;">
+            <h2>3D Thermal CVD with Temperature Gradient</h2>
+            <div id="threejs-container"></div>
+        </div>
+
+        <div class="theory-section">
+            <h2>Thermal Decomposition Chemistry</h2>
+            <p>Thermal CVD relies on heat-induced pyrolysis to decompose precursor molecules. The balance between gas-phase and surface reactions determines film quality and deposition rate.</p>
+
+            <h3>Pyrolysis Reaction - Silane</h3>
+            <div class="equation">
+                SiH₄ → Si + 2H₂  (overall reaction)
+                <br>
+                <br>Decomposition pathway:
+                <br>SiH₄ → SiH₂ + H₂  (primary step)
+                <br>SiH₂ → Si + H₂   (surface or gas-phase)
+                <br>
+                <br>Ea_decomp ≈ 50-60 kcal/mol
+            </div>
+
+            <h3>Homogeneous vs Heterogeneous Nucleation</h3>
+            <div class="equation">
+                Homogeneous (gas-phase):
+                <br>J_homo = A × exp(-ΔG*/kT)
+                <br>ΔG* = (16πσ³)/(3(Δμ)²)
+                <br>σ: surface energy, Δμ: supersaturation
+                <br>
+                <br>Heterogeneous (surface):
+                <br>J_hetero = n_sites × ν × exp(-Ea_ads/kT)
+                <br>n_sites: adsorption site density
+                <br>
+                <br>Ratio: J_homo/J_hetero ∝ exp(ΔG*/kT)
+            </div>
+
+            <h3>Gas-Phase Nucleation - CNT</h3>
+            <div class="equation">
+                Critical nucleus radius:
+                <br>r* = 2σV_m/(RT ln(S))
+                <br>S: supersaturation ratio = P/P_eq
+                <br>
+                <br>Nucleation barrier:
+                <br>ΔG* = (16πσ³V_m²)/(3(RT ln(S))²)
+                <br>
+                <br>Higher T → lower S → higher barrier
+            </div>
+
+            <h3>Temperature Gradient Effect</h3>
+            <div class="equation">
+                Vertical temperature profile:
+                <br>T(z) = T_substrate - ∇T × z
+                <br>∇T: temperature gradient (°C/cm)
+                <br>
+                <br>Decomposition occurs at:
+                <br>z_decomp ≈ (T_substrate - T_decomp) / ∇T
+                <br>
+                <br>High ∇T → gas-phase decomposition
+                <br>Low ∇T → surface-dominated
+            </div>
+
+            <h3>Particle Formation</h3>
+            <div class="equation">
+                Particle growth:
+                <br>d(r_p)/dt = D × n_Si / r_p
+                <br>D: diffusion coefficient
+                <br>n_Si: Si atom concentration
+                <br>
+                <br>Final size: r_p = √(2Dt × n_Si)
+                <br>
+                <br>Larger particles at high T, high P
+            </div>
+
+            <h3>Deposition Rate</h3>
+            <div class="equation">
+                R_dep = k_surface × [SiH₄]_surface + k_condensation × Φ_particles
+                <br>
+                <br>k_surface = k₀ × exp(-Ea/RT)
+                <br>Φ_particles: particle flux to substrate
+                <br>
+                <br>High T: more homogeneous, particulates
+                <br>Low T: heterogeneous, smooth films
+            </div>
+
+            <h3>Impurity Incorporation</h3>
+            <div class="equation">
+                Sources of contamination:
+                <br>1. Incomplete decomposition → SiH_x
+                <br>2. Carrier gas reactions → Si-H bonds
+                <br>3. Residual O₂/H₂O → SiO₂ inclusions
+                <br>
+                <br>[H] (at.%) ∝ 1/T_substrate
+                <br>[O] (ppm) ∝ P_O₂ × 10⁶
+            </div>
+
+            <h3>Decomposition Pathways</h3>
+            <div class="equation">
+                Primary pathway (T < 800°C):
+                <br>SiH₄ → SiH₂ + H₂ → Si_film + H₂
+                <br>
+                <br>Secondary pathway (T > 800°C):
+                <br>SiH₄ → SiH₃• + H• (radical)
+                <br>2SiH₃• → Si₂H₆ (disilane)
+                <br>Si₂H₆ → 2Si + 3H₂ (gas-phase)
+                <br>
+                <br>Byproducts affect film morphology
+            </div>
+        </div>
+
+        <div class="visualization-grid">
+            <div class="viz-panel">
+                <h2>Decomposition Rate vs T</h2>
+                <div id="chart1" class="chart-container"></div>
+            </div>
+            <div class="viz-panel">
+                <h2>Homogeneous Fraction</h2>
+                <div id="chart2" class="chart-container"></div>
+            </div>
+            <div class="viz-panel">
+                <h2>Nucleation Rate</h2>
+                <div id="chart3" class="chart-container"></div>
+            </div>
+            <div class="viz-panel">
+                <h2>Particle Size Distribution</h2>
+                <div id="chart4" class="chart-container"></div>
+            </div>
+            <div class="viz-panel">
+                <h2>Film Microstructure</h2>
+                <div id="chart5" class="chart-container"></div>
+            </div>
+            <div class="viz-panel">
+                <h2>Impurity Incorporation</h2>
+                <div id="chart6" class="chart-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isRunning = true;
+        let simulationTime = 0;
+        let params = {
+            temperature: 850,
+            pressure: 1.0,
+            gasFlow: 50,
+            gradientHeight: 30,
+            activationEnergy: 50,
+            speed: 1.0,
+            carrierGas: 90,
+            showerheadDist: 10
+        };
+
+        let scene, camera, renderer, gasParticles = [], filmParticles = [];
+
+        function initThreeJS() {
+            const container = document.getElementById('threejs-container');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0000);
+
+            camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer.domElement);
+
+            // Heated substrate
+            const substrateGeometry = new THREE.CylinderGeometry(6, 6, 0.3, 32);
+            const substrateMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xff4400,
+                emissive: 0x661100,
+                emissiveIntensity: 0.5
+            });
+            const substrate = new THREE.Mesh(substrateGeometry, substrateMaterial);
+            substrate.position.y = -5;
+            scene.add(substrate);
+
+            // Showerhead
+            const showerheadGeometry = new THREE.CylinderGeometry(5, 5, 0.5, 32);
+            const showerheadMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 });
+            const showerhead = new THREE.Mesh(showerheadGeometry, showerheadMaterial);
+            showerhead.position.y = 5;
+            scene.add(showerhead);
+
+            // Gas molecules
+            const gasGeometry = new THREE.BufferGeometry();
+            const gasPositions = [];
+            const gasColors = [];
+
+            for (let i = 0; i < 1000; i++) {
+                const theta = Math.random() * Math.PI * 2;
+                const r = Math.random() * 4;
+                const x = r * Math.cos(theta);
+                const z = r * Math.sin(theta);
+                const y = -4 + Math.random() * 8;
+
+                gasPositions.push(x, y, z);
+
+                const temp = 1 - (y + 5) / 10;
+                gasColors.push(1, temp * 0.5, temp * 0.2);
+            }
+
+            gasGeometry.setAttribute('position', new THREE.Float32BufferAttribute(gasPositions, 3));
+            gasGeometry.setAttribute('color', new THREE.Float32BufferAttribute(gasColors, 3));
+
+            const gasMaterial = new THREE.PointsMaterial({
+                size: 0.15,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.7
+            });
+
+            const gas = new THREE.Points(gasGeometry, gasMaterial);
+            scene.add(gas);
+            gasParticles.push(gas);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+            scene.add(ambientLight);
+
+            const heatLight = new THREE.PointLight(0xff4400, 2, 50);
+            heatLight.position.set(0, -5, 0);
+            scene.add(heatLight);
+
+            camera.position.set(10, 2, 15);
+            camera.lookAt(0, 0, 0);
+        }
+
+        function animateThreeJS() {
+            gasParticles.forEach(particles => {
+                const positions = particles.geometry.attributes.position.array;
+                const colors = particles.geometry.attributes.color.array;
+
+                for (let i = 0; i < positions.length; i += 3) {
+                    const y = positions[i + 1];
+                    const temp_local = params.temperature - Math.abs(y + 5) * params.gradientHeight;
+                    const decomp_prob = temp_local > 700 ? 0.02 : 0;
+
+                    if (Math.random() < decomp_prob * params.speed * 0.01) {
+                        positions[i] += (Math.random() - 0.5) * 0.5;
+                        positions[i + 2] += (Math.random() - 0.5) * 0.5;
+                        colors[i] = 0.8;
+                        colors[i + 1] = 0.8;
+                        colors[i + 2] = 0.8;
+                    }
+
+                    positions[i + 1] -= 0.03 * params.speed;
+                    positions[i] += (Math.random() - 0.5) * 0.02;
+                    positions[i + 2] += (Math.random() - 0.5) * 0.02;
+
+                    if (positions[i + 1] < -5) {
+                        positions[i + 1] = 5;
+                        const theta = Math.random() * Math.PI * 2;
+                        const r = Math.random() * 4;
+                        positions[i] = r * Math.cos(theta);
+                        positions[i + 2] = r * Math.sin(theta);
+
+                        colors[i] = 1;
+                        colors[i + 1] = 0.3;
+                        colors[i + 2] = 0.1;
+                    }
+                }
+
+                particles.geometry.attributes.position.needsUpdate = true;
+                particles.geometry.attributes.color.needsUpdate = true;
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        function calculateDecomposition() {
+            const T_K = params.temperature + 273.15;
+            const R = 1.987;
+            const Ea = params.activationEnergy;
+
+            const k_decomp = 1e13 * Math.exp(-Ea * 1000 / (R * T_K));
+            
+            const z_decomp = Math.max(0, (params.temperature - 700) / params.gradientHeight);
+            const homo_fraction = 100 * Math.min(1, z_decomp / params.showerheadDist);
+
+            const supersaturation = params.pressure * Math.exp((params.temperature - 600) / 100);
+            const J_nucleation = 1e20 * Math.exp(-5000 / T_K) * Math.pow(supersaturation, 3);
+
+            const particle_size = Math.floor(10 + homo_fraction * 0.5);
+
+            const growth_rate = k_decomp * params.gasFlow * 0.001 * (1 - homo_fraction / 200);
+
+            const purity = 99.5 - params.temperature / 100 - homo_fraction * 0.1;
+
+            return { k_decomp, homo_fraction, J_nucleation, particle_size, growth_rate, purity };
+        }
+
+        function updateStats() {
+            const results = calculateDecomposition();
+
+            document.getElementById('decompRate').innerHTML = `${results.k_decomp.toExponential(2)}<span class="unit">s⁻¹</span>`;
+            document.getElementById('homogeneousFraction').innerHTML = `${results.homo_fraction.toFixed(1)}<span class="unit">%</span>`;
+            document.getElementById('nucleationRate').innerHTML = `${results.J_nucleation.toExponential(2)}<span class="unit">cm⁻³s⁻¹</span>`;
+            document.getElementById('particleSize').innerHTML = `${results.particle_size}<span class="unit">nm</span>`;
+            document.getElementById('growthRate').innerHTML = `${results.growth_rate.toFixed(2)}<span class="unit">μm/min</span>`;
+            document.getElementById('purity').innerHTML = `${results.purity.toFixed(1)}<span class="unit">%</span>`;
+        }
+
+        function updateCharts() {
+            const temps = Array.from({length: 40}, (_, i) => 600 + i * 15);
+            const R = 1.987;
+            const Ea = params.activationEnergy;
+
+            // Chart 1
+            const decomp_rates = temps.map(T => {
+                const T_K = T + 273.15;
+                return Math.log10(1e13 * Math.exp(-Ea * 1000 / (R * T_K)));
+            });
+
+            Plotly.newPlot('chart1', [{
+                x: temps,
+                y: decomp_rates,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#667eea', width: 3 }
+            }], {
+                title: 'Arrhenius: Decomposition Rate',
+                xaxis: { title: 'Temperature (°C)' },
+                yaxis: { title: 'log₁₀(k) (s⁻¹)' },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)'
+            });
+
+            // Chart 2
+            const homo_fractions = temps.map(T => {
+                const z = Math.max(0, (T - 700) / params.gradientHeight);
+                return 100 * Math.min(1, z / params.showerheadDist);
+            });
+
+            Plotly.newPlot('chart2', [{
+                x: temps,
+                y: homo_fractions,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#f39c12', width: 3 },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(243, 156, 18, 0.3)'
+            }], {
+                title: 'Gas-Phase Decomposition vs T',
+                xaxis: { title: 'Temperature (°C)' },
+                yaxis: { title: 'Homogeneous Fraction (%)' },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)'
+            });
+
+            // Chart 3
+            const nucleation = temps.map(T => {
+                const T_K = T + 273.15;
+                const S = params.pressure * Math.exp((T - 600) / 100);
+                return Math.log10(1e20 * Math.exp(-5000 / T_K) * Math.pow(S, 3));
+            });
+
+            Plotly.newPlot('chart3', [{
+                x: temps,
+                y: nucleation,
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: { color: '#764ba2', width: 3 },
+                marker: { size: 6 }
+            }], {
+                title: 'Gas-Phase Nucleation Rate',
+                xaxis: { title: 'Temperature (°C)' },
+                yaxis: { title: 'log₁₀(J) (cm⁻³s⁻¹)' },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)'
+            });
+
+            // Chart 4
+            const sizes = Array.from({length: 50}, (_, i) => 5 + i * 2);
+            const distribution = sizes.map(s => {
+                const mean = 50;
+                const sigma = 20;
+                return Math.exp(-Math.pow(s - mean, 2) / (2 * sigma * sigma));
+            });
+
+            Plotly.newPlot('chart4', [{
+                x: sizes,
+                y: distribution,
+                type: 'bar',
+                marker: { color: '#667eea' }
+            }], {
+                title: 'Particle Size Distribution',
+                xaxis: { title: 'Particle Diameter (nm)' },
+                yaxis: { title: 'Frequency' },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)'
+            });
+
+            // Chart 5
+            const microstructures = ['Columnar', 'Equiaxed', 'Amorphous', 'Particulate'];
+            const fractions = [40, 30, 20, 10];
+
+            Plotly.newPlot('chart5', [{
+                x: microstructures,
+                y: fractions,
+                type: 'bar',
+                marker: { 
+                    color: ['#667eea', '#764ba2', '#f39c12', '#e74c3c']
+                }
+            }], {
+                title: 'Film Microstructure Distribution',
+                xaxis: { title: 'Grain Type' },
+                yaxis: { title: 'Fraction (%)' },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)'
+            });
+
+            // Chart 6
+            const impurities = ['H', 'O', 'C', 'Cl'];
+            const concentrations = [
+                1000 / (params.temperature - 500),
+                50 * params.pressure,
+                20,
+                10
+            ];
+
+            Plotly.newPlot('chart6', [{
+                x: impurities,
+                y: concentrations,
+                type: 'bar',
+                marker: { color: '#f39c12' }
+            }], {
+                title: 'Impurity Levels',
+                xaxis: { title: 'Element' },
+                yaxis: { title: 'Concentration (ppm)', type: 'log' },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)'
+            });
+        }
+
+        document.getElementById('playPauseBtn').addEventListener('click', () => {
+            isRunning = !isRunning;
+            document.getElementById('playPauseBtn').textContent = isRunning ? 'Pause' : 'Play';
+            if (isRunning) animate();
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            simulationTime = 0;
+            updateStats();
+            updateCharts();
+        });
+
+        ['temperature', 'pressure', 'gasFlow', 'gradientHeight', 'activationEnergy', 'speed', 'carrierGas', 'showerheadDist'].forEach(param => {
+            document.getElementById(param).addEventListener('input', (e) => {
+                params[param] = parseFloat(e.target.value);
+                let valueText = e.target.value;
+                if (param === 'temperature') valueText += ' °C';
+                else if (param === 'pressure') valueText += ' Torr';
+                else if (param === 'gasFlow') valueText += ' sccm';
+                else if (param === 'gradientHeight') valueText += ' °C/cm';
+                else if (param === 'activationEnergy') valueText += ' kcal/mol';
+                else if (param === 'speed') valueText = parseFloat(e.target.value).toFixed(1) + '×';
+                else if (param === 'carrierGas') valueText += ' %';
+                else if (param === 'showerheadDist') valueText += ' cm';
+
+                document.getElementById(param + 'Value').textContent = valueText;
+                updateStats();
+                updateCharts();
+            });
+        });
+
+        function animate() {
+            if (!isRunning) return;
+            simulationTime += 0.016 * params.speed;
+            animateThreeJS();
+            requestAnimationFrame(animate);
+        }
+
+        initThreeJS();
+        updateStats();
+        updateCharts();
+        animate();
+
+        window.addEventListener('resize', () => {
+            const container = document.getElementById('threejs-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+    </script>
+</body>
+</html>

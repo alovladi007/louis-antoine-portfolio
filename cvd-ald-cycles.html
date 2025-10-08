@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALD Cycle Simulation - CVD/PVD Research</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.6;
+        }
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .navbar a { color: #764ba2; text-decoration: none; font-weight: 600; transition: color 0.3s; }
+        .navbar a:hover { color: #f39c12; }
+        .container { max-width: 1400px; margin: 2rem auto; padding: 0 2rem; }
+        .header {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        .header h1 { color: #764ba2; margin-bottom: 0.5rem; }
+        .header p { color: #666; font-size: 1.1rem; }
+        .controls-panel {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        .control-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .control-item { display: flex; flex-direction: column; }
+        .control-item label { color: #764ba2; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem; }
+        .control-item input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: linear-gradient(to right, #667eea, #764ba2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        .control-item input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #f39c12;
+            cursor: pointer;
+        }
+        .control-item input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #f39c12;
+            cursor: pointer;
+            border: none;
+        }
+        .control-item .value-display { color: #f39c12; font-weight: bold; margin-top: 0.25rem; }
+        .button-group { display: flex; gap: 1rem; flex-wrap: wrap; }
+        .btn {
+            padding: 0.75rem 2rem;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .btn-secondary { background: #f39c12; color: white; }
+        .btn-secondary:hover { background: #e67e22; transform: translateY(-2px); }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            border-left: 4px solid #667eea;
+        }
+        .stat-card h3 {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .stat-card .value { font-size: 1.8rem; font-weight: bold; color: #764ba2; }
+        .stat-card .unit { font-size: 0.9rem; color: #999; margin-left: 0.25rem; }
+        .visualization-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        .viz-panel {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        .viz-panel h2 { color: #764ba2; margin-bottom: 1rem; font-size: 1.3rem; }
+        #threejs-container {
+            width: 100%;
+            height: 500px;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #000;
+        }
+        .theory-section {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        .theory-section h2 { color: #764ba2; margin-bottom: 1rem; }
+        .equation {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 5px;
+            margin: 1rem 0;
+            font-family: 'Courier New', monospace;
+            border-left: 4px solid #f39c12;
+        }
+        .chart-container { width: 100%; height: 400px; margin-top: 1rem; }
+        @media (max-width: 768px) {
+            .container { padding: 0 1rem; }
+            .visualization-grid { grid-template-columns: 1fr; }
+            .control-group { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="cvd-pvd-complete-project.html">&larr; Back to CVD/PVD Project</a>
+    </nav>
+
+    <div class="container">
+        <div class="header">
+            <h1>ALD Cycle Simulation</h1>
+            <p>Atomic Layer Deposition: Self-limiting chemistry, growth per cycle, and conformality control</p>
+        </div>
+
+        <div class="controls-panel">
+            <div class="button-group">
+                <button class="btn btn-primary" id="playPauseBtn">Pause</button>
+                <button class="btn btn-secondary" id="resetBtn">Reset</button>
+            </div>
+
+            <div class="control-group" style="margin-top: 1.5rem;">
+                <div class="control-item">
+                    <label for="pulseTime">Precursor Pulse (s)</label>
+                    <input type="range" id="pulseTime" min="0.1" max="5" value="1" step="0.1">
+                    <span class="value-display" id="pulseTimeValue">1.0 s</span>
+                </div>
+                <div class="control-item">
+                    <label for="purgeTime">Purge Time (s)</label>
+                    <input type="range" id="purgeTime" min="1" max="10" value="3" step="0.5">
+                    <span class="value-display" id="purgeTimeValue">3.0 s</span>
+                </div>
+                <div class="control-item">
+                    <label for="temperature">Temperature (°C)</label>
+                    <input type="range" id="temperature" min="100" max="400" value="250" step="10">
+                    <span class="value-display" id="temperatureValue">250 °C</span>
+                </div>
+                <div class="control-item">
+                    <label for="pressure">Chamber Pressure (Torr)</label>
+                    <input type="range" id="pressure" min="0.1" max="10" value="1" step="0.1">
+                    <span class="value-display" id="pressureValue">1.0 Torr</span>
+                </div>
+                <div class="control-item">
+                    <label for="cycles">Total Cycles</label>
+                    <input type="range" id="cycles" min="10" max="500" value="100" step="10">
+                    <span class="value-display" id="cyclesValue">100 cycles</span>
+                </div>
+                <div class="control-item">
+                    <label for="speed">Simulation Speed</label>
+                    <input type="range" id="speed" min="0.5" max="5" value="1" step="0.5">
+                    <span class="value-display" id="speedValue">1.0×</span>
+                </div>
+                <div class="control-item">
+                    <label for="aspectRatio">Feature Aspect Ratio</label>
+                    <input type="range" id="aspectRatio" min="1" max="50" value="10" step="1">
+                    <span class="value-display" id="aspectRatioValue">10:1</span>
+                </div>
+                <div class="control-item">
+                    <label for="sticking">Sticking Probability</label>
+                    <input type="range" id="sticking" min="0.1" max="1" value="0.3" step="0.05">
+                    <span class="value-display" id="stickingValue">0.30</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>GPC (Growth/Cycle)</h3>
+                <div class="value" id="gpc">0.00<span class="unit">Å/cycle</span></div>
+            </div>
+            <div class="stat-card">
+                <h3>Film Thickness</h3>
+                <div class="value" id="thickness">0.0<span class="unit">nm</span></div>
+            </div>
+            <div class="stat-card">
+                <h3>Coverage θ</h3>
+                <div class="value" id="coverage">0.00<span class="unit">ML</span></div>
+            </div>
+            <div class="stat-card">
+                <h3>Conformality</h3>
+                <div class="value" id="conformality">100<span class="unit">%</span></div>
+            </div>
+            <div class="stat-card">
+                <h3>Cycle Count</h3>
+                <div class="value" id="cycleCount">0<span class="unit"></span></div>
+            </div>
+            <div class="stat-card">
+                <h3>Phase</h3>
+                <div class="value" id="phase" style="font-size: 1.2rem;">Idle<span class="unit"></span></div>
+            </div>
+        </div>
+
+        <div class="viz-panel" style="margin-bottom: 2rem;">
+            <h2>3D Atomic Layer Growth Animation</h2>
+            <div id="threejs-container"></div>
+        </div>
+
+        <div class="theory-section">
+            <h2>ALD Fundamental Chemistry</h2>
+            <p>Atomic Layer Deposition uses sequential, self-limiting surface reactions to grow films one atomic layer at a time with precise thickness control and excellent conformality.</p>
+
+            <h3>Langmuir Adsorption - Self-Limiting</h3>
+            <div class="equation">
+                θ = (K × P) / (1 + K × P)
+                <br>θ: surface coverage (monolayers)
+                <br>K: adsorption equilibrium constant
+                <br>P: precursor partial pressure (Torr)
+                <br>
+                <br>At high P: θ → 1 (saturation, self-limiting)
+            </div>
+
+            <h3>Growth Per Cycle (GPC)</h3>
+            <div class="equation">
+                GPC = (θ_max × d_ML × ρ_sites) / M_precursor
+                <br>
+                <br>Typical values:
+                <br>Al₂O₃ (TMA/H₂O): 1.0-1.2 Å/cycle
+                <br>HfO₂ (HfCl₄/H₂O): 0.8-1.0 Å/cycle
+                <br>TiN (TiCl₄/NH₃): 0.4-0.6 Å/cycle
+            </div>
+
+            <h3>ALD Reaction Sequences</h3>
+            <div class="equation">
+                Al₂O₃ ALD:
+                <br>Step 1: Surface-OH + Al(CH₃)₃ → Surface-O-Al(CH₃)₂ + CH₄
+                <br>Step 2: Purge unreacted TMA
+                <br>Step 3: Surface-Al-CH₃ + H₂O → Surface-Al-OH + CH₄
+                <br>Step 4: Purge unreacted H₂O
+                <br>
+                <br>HfO₂ ALD:
+                <br>Step 1: Surface-OH + HfCl₄ → Surface-O-HfCl₃ + HCl
+                <br>Step 2: Purge
+                <br>Step 3: Surface-HfCl + H₂O → Surface-Hf-OH + HCl
+                <br>Step 4: Purge
+            </div>
+
+            <h3>Temperature Window</h3>
+            <div class="equation">
+                T_low: Insufficient thermal energy, precursor condensation
+                <br>T_optimal: Self-limiting, maximum GPC
+                <br>T_high: Precursor decomposition, loss of ALD behavior
+                <br>
+                <br>Typical windows:
+                <br>Al₂O₃: 150-350°C
+                <br>HfO₂: 200-400°C
+                <br>TiN: 350-450°C
+            </div>
+
+            <h3>Pulse Time Optimization</h3>
+            <div class="equation">
+                t_pulse,min = (L × AR) / (v̄ × α)
+                <br>L: feature depth (cm)
+                <br>AR: aspect ratio
+                <br>v̄: mean molecular velocity = √(8kT/πm)
+                <br>α: sticking probability
+                <br>
+                <br>For AR=20:1, typical t_pulse = 1-5 seconds
+            </div>
+
+            <h3>Conformality</h3>
+            <div class="equation">
+                Conformality (%) = (t_bottom / t_top) × 100
+                <br>
+                <br>ALD achieves >95% even at AR > 50:1
+                <br>CVD typically <80% at AR > 10:1
+            </div>
+
+            <h3>Film Composition Control</h3>
+            <div class="equation">
+                [M]/[O] ratio controlled by:
+                <br>- Pulse ratio adjustments
+                <br>- Temperature (affects reaction completeness)
+                <br>- Purge efficiency (prevents CVD-like reactions)
+                <br>
+                <br>Typical purity: >99% for optimized processes
+            </div>
+
+            <h3>Nucleation Delay</h3>
+            <div class="equation">
+                N_delay = number of cycles before linear growth
+                <br>
+                <br>Caused by:
+                <br>- Low initial site density
+                <br>- Substrate-film lattice mismatch
+                <br>- Island coalescence
+                <br>
+                <br>Typical: 5-20 cycles depending on substrate
+            </div>
+        </div>
+
+        <div class="visualization-grid">
+            <div class="viz-panel">
+                <h2>Saturation Curves</h2>
+                <div id="chart1" class="chart-container"></div>
+            </div>
+            <div class="viz-panel">
+                <h2>GPC vs Temperature</h2>
+                <div id="chart2" class="chart-container"></div>
+            </div>
+            <div class="viz-panel">
+                <h2>Pulse Time Optimization</h2>
+                <div id="chart3" class="chart-container"></div>
+            </div>
+            <div class="viz-panel">
+                <h2>Thickness vs Cycles</h2>
+                <div id="chart4" class="chart-container"></div>
+            </div>
+            <div class="viz-panel">
+                <h2>Conformality Analysis</h2>
+                <div id="chart5" class="chart-container"></div>
+            </div>
+            <div class="viz-panel">
+                <h2>Thickness Uniformity</h2>
+                <div id="chart6" class="chart-container"></div>
+            </div>
+            <div class="viz-panel">
+                <h2>Film Composition</h2>
+                <div id="chart7" class="chart-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isRunning = true;
+        let simulationTime = 0;
+        let currentCycle = 0;
+        let currentPhase = 0; // 0: pulse1, 1: purge1, 2: pulse2, 3: purge2
+        let phaseTime = 0;
+        let layers = [];
+
+        let params = {
+            pulseTime: 1.0,
+            purgeTime: 3.0,
+            temperature: 250,
+            pressure: 1.0,
+            cycles: 100,
+            speed: 1.0,
+            aspectRatio: 10,
+            sticking: 0.3
+        };
+
+        let scene, camera, renderer, substrate, atomGroups = [];
+
+        function initThreeJS() {
+            const container = document.getElementById('threejs-container');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a0a);
+
+            camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer.domElement);
+
+            // Substrate
+            const substrateGeometry = new THREE.BoxGeometry(10, 0.2, 10);
+            const substrateMaterial = new THREE.MeshPhongMaterial({ color: 0x444444 });
+            substrate = new THREE.Mesh(substrateGeometry, substrateMaterial);
+            substrate.position.y = -5;
+            scene.add(substrate);
+
+            // Trench structure for conformality demo
+            const trenchGeometry = new THREE.BoxGeometry(2, 3, 2);
+            const trenchMaterial = new THREE.MeshPhongMaterial({ color: 0x222222 });
+            const trench = new THREE.Mesh(trenchGeometry, trenchMaterial);
+            trench.position.set(0, -3.4, 0);
+            scene.add(trench);
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.8);
+            scene.add(ambientLight);
+
+            const pointLight1 = new THREE.PointLight(0x667eea, 1, 100);
+            pointLight1.position.set(10, 10, 10);
+            scene.add(pointLight1);
+
+            const pointLight2 = new THREE.PointLight(0xf39c12, 0.8, 100);
+            pointLight2.position.set(-10, 10, -10);
+            scene.add(pointLight2);
+
+            camera.position.set(8, 3, 12);
+            camera.lookAt(0, -2, 0);
+        }
+
+        function addAtomLayer(layerNum) {
+            const atomGroup = new THREE.Group();
+            const atomGeometry = new THREE.SphereGeometry(0.08, 16, 16);
+            const colors = [0x667eea, 0xf39c12, 0x764ba2];
+            const atomMaterial = new THREE.MeshPhongMaterial({
+                color: colors[layerNum % 3],
+                shininess: 100
+            });
+
+            // Substrate top surface
+            for (let i = -4; i <= 4; i += 0.4) {
+                for (let j = -4; j <= 4; j += 0.4) {
+                    if (Math.abs(i) > 1.1 || Math.abs(j) > 1.1) {
+                        const atom = new THREE.Mesh(atomGeometry, atomMaterial);
+                        atom.position.set(i, -4.9 + layerNum * 0.15, j);
+                        atomGroup.add(atom);
+                    }
+                }
+            }
+
+            // Trench walls (conformal)
+            const depth = params.aspectRatio * 0.15;
+            for (let y = -4.9; y > -4.9 - depth; y -= 0.2) {
+                // Left wall
+                for (let z = -1; z <= 1; z += 0.3) {
+                    const atom1 = new THREE.Mesh(atomGeometry, atomMaterial);
+                    atom1.position.set(-1.1, y + layerNum * 0.02, z);
+                    atomGroup.add(atom1);
+                }
+                // Right wall
+                for (let z = -1; z <= 1; z += 0.3) {
+                    const atom2 = new THREE.Mesh(atomGeometry, atomMaterial);
+                    atom2.position.set(1.1, y + layerNum * 0.02, z);
+                    atomGroup.add(atom2);
+                }
+            }
+
+            // Trench bottom
+            for (let i = -0.9; i <= 0.9; i += 0.3) {
+                for (let j = -0.9; j <= 0.9; j += 0.3) {
+                    const atom = new THREE.Mesh(atomGeometry, atomMaterial);
+                    atom.position.set(i, -4.9 - depth + layerNum * 0.15, j);
+                    atomGroup.add(atom);
+                }
+            }
+
+            scene.add(atomGroup);
+            atomGroups.push(atomGroup);
+        }
+
+        function animateThreeJS() {
+            // Rotate view slowly
+            camera.position.x = 12 * Math.cos(simulationTime * 0.1);
+            camera.position.z = 12 * Math.sin(simulationTime * 0.1);
+            camera.lookAt(0, -2, 0);
+
+            // Pulse animation
+            if (currentPhase === 0 || currentPhase === 2) {
+                const glowIntensity = Math.sin(phaseTime * 5);
+                scene.children.forEach(child => {
+                    if (child instanceof THREE.PointLight) {
+                        child.intensity = 1 + 0.3 * glowIntensity;
+                    }
+                });
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function calculateALD() {
+            const T_K = params.temperature + 273.15;
+
+            // Langmuir saturation
+            const K = 10 * Math.exp(-2000 / T_K);
+            const theta = (K * params.pressure) / (1 + K * params.pressure);
+
+            // GPC calculation
+            let gpc = 1.1 * theta; // Å/cycle
+
+            // Temperature window effect
+            if (params.temperature < 150) gpc *= 0.3; // condensation
+            if (params.temperature > 350) gpc *= 0.6; // decomposition
+
+            // Pulse time effect
+            const minPulseTime = (params.aspectRatio * 0.5) / (params.sticking * 100);
+            if (params.pulseTime < minPulseTime) {
+                gpc *= params.pulseTime / minPulseTime;
+            }
+
+            const thickness = currentCycle * gpc / 10; // nm
+
+            // Conformality
+            const pulseSufficiency = Math.min(1, params.pulseTime / minPulseTime);
+            const conformality = 100 * (0.85 + 0.15 * pulseSufficiency);
+
+            return { theta, gpc, thickness, conformality };
+        }
+
+        function updateStats() {
+            const results = calculateALD();
+            const phases = ['Precursor A Pulse', 'Purge', 'Precursor B Pulse', 'Purge'];
+
+            document.getElementById('gpc').innerHTML = `${results.gpc.toFixed(2)}<span class="unit">Å/cycle</span>`;
+            document.getElementById('thickness').innerHTML = `${results.thickness.toFixed(1)}<span class="unit">nm</span>`;
+            document.getElementById('coverage').innerHTML = `${results.theta.toFixed(2)}<span class="unit">ML</span>`;
+            document.getElementById('conformality').innerHTML = `${Math.floor(results.conformality)}<span class="unit">%</span>`;
+            document.getElementById('cycleCount').innerHTML = `${currentCycle}<span class="unit"></span>`;
+            document.getElementById('phase').innerHTML = `${phases[currentPhase]}<span class="unit"></span>`;
+        }
+
+        function updateCharts() {
+            // Chart 1: Saturation Curves
+            const pressures = Array.from({length: 50}, (_, i) => 0.1 + i * 0.2);
+            const T_K = params.temperature + 273.15;
+            const K = 10 * Math.exp(-2000 / T_K);
+            const coverages = pressures.map(p => (K * p) / (1 + K * p));
+
+            Plotly.newPlot('chart1', [{
+                x: pressures,
+                y: coverages,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#667eea', width: 3 },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(102, 126, 234, 0.3)'
+            }], {
+                title: 'Langmuir Saturation (Self-Limiting)',
+                xaxis: { title: 'Pressure (Torr)' },
+                yaxis: { title: 'Surface Coverage θ (ML)' },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                annotations: [{
+                    text: 'Saturation → Self-Limiting',
+                    x: 5,
+                    y: 0.9,
+                    showarrow: true,
+                    arrowhead: 2,
+                    ax: -40,
+                    ay: -40
+                }]
+            });
+
+            // Chart 2: GPC vs Temperature
+            const temps = Array.from({length: 40}, (_, i) => 100 + i * 10);
+            const gpcs = temps.map(T => {
+                const T_K = T + 273.15;
+                const K = 10 * Math.exp(-2000 / T_K);
+                const theta = (K * params.pressure) / (1 + K * params.pressure);
+                let gpc = 1.1 * theta;
+                if (T < 150) gpc *= 0.3;
+                if (T > 350) gpc *= 0.6;
+                return gpc;
+            });
+
+            Plotly.newPlot('chart2', [{
+                x: temps,
+                y: gpcs,
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: { color: '#764ba2', width: 3 },
+                marker: { size: 6, color: '#f39c12' }
+            }], {
+                title: 'ALD Temperature Window',
+                xaxis: { title: 'Temperature (°C)' },
+                yaxis: { title: 'GPC (Å/cycle)' },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                shapes: [{
+                    type: 'rect',
+                    x0: 150, x1: 350,
+                    y0: 0, y1: Math.max(...gpcs),
+                    fillcolor: 'rgba(102, 126, 234, 0.2)',
+                    line: { width: 0 }
+                }],
+                annotations: [{
+                    text: 'ALD Window',
+                    x: 250, y: 1.0,
+                    showarrow: false,
+                    bgcolor: 'rgba(255,255,255,0.8)'
+                }]
+            });
+
+            // Chart 3: Pulse Time Optimization
+            const pulseTimes = Array.from({length: 50}, (_, i) => 0.1 + i * 0.1);
+            const minTime = (params.aspectRatio * 0.5) / (params.sticking * 100);
+            const gpcs_pulse = pulseTimes.map(t => {
+                const base = 1.1;
+                return t < minTime ? base * (t / minTime) : base;
+            });
+
+            Plotly.newPlot('chart3', [{
+                x: pulseTimes,
+                y: gpcs_pulse,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#f39c12', width: 3 }
+            }], {
+                title: `Pulse Time for AR=${params.aspectRatio}:1`,
+                xaxis: { title: 'Pulse Time (s)' },
+                yaxis: { title: 'Effective GPC (Å/cycle)' },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                shapes: [{
+                    type: 'line',
+                    x0: minTime, x1: minTime,
+                    y0: 0, y1: 1.1,
+                    line: { color: '#764ba2', width: 2, dash: 'dash' }
+                }],
+                annotations: [{
+                    text: 'Saturation',
+                    x: minTime,
+                    y: 0.5,
+                    showarrow: true,
+                    ax: 40
+                }]
+            });
+
+            // Chart 4: Thickness vs Cycles
+            const cycleRange = Array.from({length: params.cycles}, (_, i) => i + 1);
+            const T_K2 = params.temperature + 273.15;
+            const K2 = 10 * Math.exp(-2000 / T_K2);
+            const theta2 = (K2 * params.pressure) / (1 + K2 * params.pressure);
+            let gpc_base = 1.1 * theta2;
+            if (params.temperature < 150) gpc_base *= 0.3;
+            if (params.temperature > 350) gpc_base *= 0.6;
+
+            const thicknesses = cycleRange.map(c => {
+                let nucleationFactor = 1;
+                if (c < 10) nucleationFactor = c / 10;
+                return c * gpc_base * nucleationFactor / 10;
+            });
+
+            Plotly.newPlot('chart4', [{
+                x: cycleRange,
+                y: thicknesses,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#667eea', width: 3 }
+            }], {
+                title: 'Film Growth (with nucleation delay)',
+                xaxis: { title: 'Cycle Number' },
+                yaxis: { title: 'Thickness (nm)' },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)'
+            });
+
+            // Chart 5: Conformality vs AR
+            const ARs = Array.from({length: 30}, (_, i) => 1 + i * 2);
+            const conformalities = ARs.map(AR => {
+                const minT = (AR * 0.5) / (params.sticking * 100);
+                const suff = Math.min(1, params.pulseTime / minT);
+                return 100 * (0.85 + 0.15 * suff);
+            });
+
+            Plotly.newPlot('chart5', [{
+                x: ARs,
+                y: conformalities,
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: { color: '#764ba2', width: 3 },
+                marker: { size: 6 }
+            }], {
+                title: 'Conformality vs Aspect Ratio',
+                xaxis: { title: 'Aspect Ratio' },
+                yaxis: { title: 'Conformality (%)', range: [80, 100] },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)'
+            });
+
+            // Chart 6: Wafer uniformity
+            const size = 30;
+            const uniformityData = [];
+            for (let i = 0; i < size; i++) {
+                const row = [];
+                for (let j = 0; j < size; j++) {
+                    const x = (i - size/2) / (size/2);
+                    const y = (j - size/2) / (size/2);
+                    const r = Math.sqrt(x*x + y*y);
+                    const thick = 100 * (1 - 0.02 * r*r);
+                    row.push(r <= 1 ? thick : null);
+                }
+                uniformityData.push(row);
+            }
+
+            Plotly.newPlot('chart6', [{
+                z: uniformityData,
+                type: 'heatmap',
+                colorscale: [
+                    [0, '#667eea'],
+                    [0.5, '#f39c12'],
+                    [1, '#764ba2']
+                ]
+            }], {
+                title: 'Wafer Thickness Uniformity (σ/μ < 2%)',
+                xaxis: { showticklabels: false },
+                yaxis: { showticklabels: false },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)'
+            });
+
+            // Chart 7: Film Composition
+            const Al_percent = 40;
+            const O_percent = 60;
+
+            Plotly.newPlot('chart7', [{
+                values: [Al_percent, O_percent],
+                labels: ['Al', 'O'],
+                type: 'pie',
+                marker: {
+                    colors: ['#667eea', '#f39c12']
+                },
+                textinfo: 'label+percent'
+            }], {
+                title: 'Al₂O₃ Film Stoichiometry',
+                paper_bgcolor: 'rgba(0,0,0,0)'
+            });
+        }
+
+        // Event listeners
+        document.getElementById('playPauseBtn').addEventListener('click', () => {
+            isRunning = !isRunning;
+            document.getElementById('playPauseBtn').textContent = isRunning ? 'Pause' : 'Play';
+            if (isRunning) animate();
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            simulationTime = 0;
+            currentCycle = 0;
+            currentPhase = 0;
+            phaseTime = 0;
+            atomGroups.forEach(g => scene.remove(g));
+            atomGroups = [];
+            updateStats();
+            updateCharts();
+        });
+
+        ['pulseTime', 'purgeTime', 'temperature', 'pressure', 'cycles', 'speed', 'aspectRatio', 'sticking'].forEach(param => {
+            document.getElementById(param).addEventListener('input', (e) => {
+                params[param] = parseFloat(e.target.value);
+                let valueText = e.target.value;
+                if (param === 'pulseTime') valueText += ' s';
+                else if (param === 'purgeTime') valueText += ' s';
+                else if (param === 'temperature') valueText += ' °C';
+                else if (param === 'pressure') valueText += ' Torr';
+                else if (param === 'cycles') valueText += ' cycles';
+                else if (param === 'speed') valueText = parseFloat(e.target.value).toFixed(1) + '×';
+                else if (param === 'aspectRatio') valueText += ':1';
+
+                document.getElementById(param + 'Value').textContent = valueText;
+                updateStats();
+                updateCharts();
+            });
+        });
+
+        function animate() {
+            if (!isRunning) return;
+
+            simulationTime += 0.016 * params.speed;
+            phaseTime += 0.016 * params.speed;
+
+            const phaseTimes = [params.pulseTime, params.purgeTime, params.pulseTime, params.purgeTime];
+
+            if (phaseTime >= phaseTimes[currentPhase]) {
+                phaseTime = 0;
+                currentPhase = (currentPhase + 1) % 4;
+
+                if (currentPhase === 0) {
+                    currentCycle++;
+                    if (currentCycle % 10 === 0 && currentCycle <= params.cycles) {
+                        addAtomLayer(Math.floor(currentCycle / 10));
+                    }
+                }
+            }
+
+            if (currentCycle <= params.cycles) {
+                updateStats();
+            }
+
+            animateThreeJS();
+            requestAnimationFrame(animate);
+        }
+
+        initThreeJS();
+        updateStats();
+        updateCharts();
+        animate();
+
+        window.addEventListener('resize', () => {
+            const container = document.getElementById('threejs-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+    </script>
+</body>
+</html>

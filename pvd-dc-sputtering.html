@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DC Sputtering Simulation - CVD/PVD Research</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333; line-height: 1.6;
+        }
+        .navbar {
+            background: rgba(255, 255, 255, 0.95); padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100;
+        }
+        .navbar a { color: #764ba2; text-decoration: none; font-weight: 600; transition: color 0.3s; }
+        .navbar a:hover { color: #f39c12; }
+        .container { max-width: 1400px; margin: 2rem auto; padding: 0 2rem; }
+        .header { background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); margin-bottom: 2rem; }
+        .header h1 { color: #764ba2; margin-bottom: 0.5rem; }
+        .header p { color: #666; font-size: 1.1rem; }
+        .controls-panel { background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); margin-bottom: 2rem; }
+        .control-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem; }
+        .control-item { display: flex; flex-direction: column; }
+        .control-item label { color: #764ba2; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem; }
+        .control-item input[type="range"] { width: 100%; height: 6px; border-radius: 3px; background: linear-gradient(to right, #667eea, #764ba2); outline: none; -webkit-appearance: none; }
+        .control-item input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #f39c12; cursor: pointer; }
+        .control-item input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #f39c12; cursor: pointer; border: none; }
+        .control-item .value-display { color: #f39c12; font-weight: bold; margin-top: 0.25rem; }
+        .button-group { display: flex; gap: 1rem; flex-wrap: wrap; }
+        .btn { padding: 0.75rem 2rem; border: none; border-radius: 5px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s; text-transform: uppercase; letter-spacing: 1px; }
+        .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .btn-secondary { background: #f39c12; color: white; }
+        .btn-secondary:hover { background: #e67e22; transform: translateY(-2px); }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .stat-card { background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); border-left: 4px solid #667eea; }
+        .stat-card h3 { font-size: 0.9rem; color: #666; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 1px; }
+        .stat-card .value { font-size: 1.8rem; font-weight: bold; color: #764ba2; }
+        .stat-card .unit { font-size: 0.9rem; color: #999; margin-left: 0.25rem; }
+        .visualization-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 2rem; margin-bottom: 2rem; }
+        .viz-panel { background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+        .viz-panel h2 { color: #764ba2; margin-bottom: 1rem; font-size: 1.3rem; }
+        #threejs-container { width: 100%; height: 500px; border-radius: 10px; overflow: hidden; background: #000; }
+        .theory-section { background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); margin-bottom: 2rem; }
+        .theory-section h2 { color: #764ba2; margin-bottom: 1rem; }
+        .equation { background: #f8f9fa; padding: 1rem; border-radius: 5px; margin: 1rem 0; font-family: 'Courier New', monospace; border-left: 4px solid #f39c12; }
+        .chart-container { width: 100%; height: 400px; margin-top: 1rem; }
+        @media (max-width: 768px) { .container { padding: 0 1rem; } .visualization-grid { grid-template-columns: 1fr; } .control-group { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <nav class="navbar"><a href="cvd-pvd-complete-project.html">&larr; Back to CVD/PVD Project</a></nav>
+
+    <div class="container">
+        <div class="header">
+            <h1>DC Magnetron Sputtering Simulation</h1>
+            <p>Physical Vapor Deposition: Sputter yield, target erosion, magnetron confinement, and film deposition</p>
+        </div>
+
+        <div class="controls-panel">
+            <div class="button-group">
+                <button class="btn btn-primary" id="playPauseBtn">Pause</button>
+                <button class="btn btn-secondary" id="resetBtn">Reset</button>
+            </div>
+            <div class="control-group" style="margin-top: 1.5rem;">
+                <div class="control-item"><label for="dcPower">DC Power (W)</label><input type="range" id="dcPower" min="100" max="2000" value="500" step="50"><span class="value-display" id="dcPowerValue">500 W</span></div>
+                <div class="control-item"><label for="arPressure">Ar Pressure (mTorr)</label><input type="range" id="arPressure" min="1" max="50" value="5" step="1"><span class="value-display" id="arPressureValue">5 mTorr</span></div>
+                <div class="control-item"><label for="targetVoltage">Target Voltage (V)</label><input type="range" id="targetVoltage" min="-800" max="-200" value="-500" step="10"><span class="value-display" id="targetVoltageValue">-500 V</span></div>
+                <div class="control-item"><label for="magneticField">B-Field (Gauss)</label><input type="range" id="magneticField" min="100" max="1000" value="400" step="50"><span class="value-display" id="magneticFieldValue">400 G</span></div>
+                <div class="control-item"><label for="targetDistance">Target-Substrate (cm)</label><input type="range" id="targetDistance" min="5" max="20" value="10" step="1"><span class="value-display" id="targetDistanceValue">10 cm</span></div>
+                <div class="control-item"><label for="speed">Simulation Speed</label><input type="range" id="speed" min="0.5" max="5" value="1" step="0.5"><span class="value-display" id="speedValue">1.0×</span></div>
+                <div class="control-item"><label for="targetMaterial">Target Material</label><input type="range" id="targetMaterial" min="0" max="3" value="0" step="1"><span class="value-display" id="targetMaterialValue">Cu</span></div>
+                <div class="control-item"><label for="substrateTemp">Substrate Temp (°C)</label><input type="range" id="substrateTemp" min="20" max="500" value="100" step="10"><span class="value-display" id="substrateTempValue">100 °C</span></div>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card"><h3>Sputter Yield</h3><div class="value" id="sputterYield">0.00<span class="unit">atoms/ion</span></div></div>
+            <div class="stat-card"><h3>Deposition Rate</h3><div class="value" id="depositionRate">0.00<span class="unit">Å/s</span></div></div>
+            <div class="stat-card"><h3>Ion Current</h3><div class="value" id="ionCurrent">0.00<span class="unit">A/cm²</span></div></div>
+            <div class="stat-card"><h3>Erosion Depth</h3><div class="value" id="erosionDepth">0.0<span class="unit">mm</span></div></div>
+            <div class="stat-card"><h3>Film Thickness</h3><div class="value" id="filmThickness">0<span class="unit">nm</span></div></div>
+            <div class="stat-card"><h3>Uniformity</h3><div class="value" id="uniformity">0.0<span class="unit">%</span></div></div>
+        </div>
+
+        <div class="viz-panel" style="margin-bottom: 2rem;">
+            <h2>3D DC Magnetron Sputtering with Racetrack Erosion</h2>
+            <div id="threejs-container"></div>
+        </div>
+
+        <div class="theory-section">
+            <h2>DC Sputtering Physics</h2>
+            <p>DC magnetron sputtering uses a DC electric field to accelerate Ar⁺ ions toward a target, physically ejecting atoms that deposit on a substrate. Magnetic fields confine plasma to increase efficiency.</p>
+
+            <h3>Sputter Yield - Sigmund Theory</h3>
+            <div class="equation">
+                Y(E) = Y₀ × (E - E_th)^n / E^m
+                <br>Y: sputter yield (atoms/ion)
+                <br>E: ion energy (eV)
+                <br>E_th: threshold energy (10-30 eV)
+                <br>n ≈ 1-2, m ≈ 1 (material dependent)
+                <br>
+                <br>For Cu + Ar⁺ at 500 eV: Y ≈ 1.5-2.0
+                <br>For Ti + Ar⁺ at 500 eV: Y ≈ 0.5-0.8
+                <br>For Al + Ar⁺ at 500 eV: Y ≈ 1.0-1.3
+            </div>
+
+            <h3>Ion Current Density</h3>
+            <div class="equation">
+                J_ion = e × n_i × v_Bohm
+                <br>v_Bohm = √(kT_e / M_i) ≈ ion sound speed
+                <br>n_i: ion density in sheath (cm⁻³)
+                <br>
+                <br>J_ion ∝ P^α × B^β (magnetron effect)
+                <br>α ≈ 0.5-0.7, β ≈ 0.3-0.5
+            </div>
+
+            <h3>Target Erosion - Racetrack Formation</h3>
+            <div class="equation">
+                Erosion profile:
+                <br>E(r) = E_max × exp(-(r - r_peak)² / (2σ_race²))
+                <br>r_peak: racetrack radius (typically 0.6-0.8 × R_target)
+                <br>σ_race: racetrack width
+                <br>
+                <br>Caused by E × B drift confining plasma
+                <br>Limits target utilization to 20-40%
+            </div>
+
+            <h3>Magnetron Plasma Confinement</h3>
+            <div class="equation">
+                Electron gyroradius: r_ce = m_e × v_e / (e × B)
+                <br>For B = 400 G, r_ce ≈ 0.1 mm
+                <br>
+                <br>E × B drift: v_drift = E × B / B²
+                <br>Electrons spiral in magnetic field
+                <br>Ions unmagnetized (r_ci >> system size)
+                <br>
+                <br>Plasma density increase: n_e ∝ B^0.5
+            </div>
+
+            <h3>Angular Distribution - Cosine Law</h3>
+            <div class="equation">
+                Flux(θ) = Φ₀ × cos^n(θ)
+                <br>θ: angle from target normal
+                <br>n ≈ 1 for sputtering (true cosine)
+                <br>n > 1 for evaporation (over-cosine)
+                <br>
+                <br>Affects step coverage and uniformity
+            </div>
+
+            <h3>Film Composition vs Pressure</h3>
+            <div class="equation">
+                Thermalization of sputtered atoms:
+                <br>λ_mfp = kT / (√2 × π × d² × P)
+                <br>
+                <br>Low P (< 5 mTorr): Ballistic transport
+                <br>  → Energy retention, dense films
+                <br>High P (> 20 mTorr): Diffusive transport
+                <br>  → Thermalized, porous films
+            </div>
+
+            <h3>Deposition Rate</h3>
+            <div class="equation">
+                R_dep = (Y × J_ion × M_target × A_target) / (ρ × e × A_substrate × d²)
+                <br>M_target: atomic mass
+                <br>ρ: film density
+                <br>d: target-substrate distance
+                <br>
+                <br>Typical rates: 1-10 Å/s at 500 W
+            </div>
+
+            <h3>Film Properties</h3>
+            <div class="equation">
+                Resistivity: ρ(d) = ρ_bulk [1 + 3λ/(8d)]
+                <br>λ: electron mean free path
+                <br>d: film thickness
+                <br>
+                <br>Grain size: D_grain ∝ T_substrate^α × R_dep^(-β)
+                <br>α ≈ 0.3-0.5, β ≈ 0.2-0.3
+                <br>
+                <br>Stress: σ ∝ E_ion / (M_target × v_thermal)
+            </div>
+        </div>
+
+        <div class="visualization-grid">
+            <div class="viz-panel"><h2>Sputter Yield vs Energy</h2><div id="chart1" class="chart-container"></div></div>
+            <div class="viz-panel"><h2>Target Erosion Profile</h2><div id="chart2" class="chart-container"></div></div>
+            <div class="viz-panel"><h2>Magnetron Plasma Density</h2><div id="chart3" class="chart-container"></div></div>
+            <div class="viz-panel"><h2>Film Thickness Distribution</h2><div id="chart4" class="chart-container"></div></div>
+            <div class="viz-panel"><h2>Composition vs Pressure</h2><div id="chart5" class="chart-container"></div></div>
+            <div class="viz-panel"><h2>Resistivity vs Thickness</h2><div id="chart6" class="chart-container"></div></div>
+            <div class="viz-panel"><h2>Grain Size Map</h2><div id="chart7" class="chart-container"></div></div>
+        </div>
+    </div>
+
+    <script>
+        let isRunning = true, simulationTime = 0;
+        let params = { dcPower: 500, arPressure: 5, targetVoltage: -500, magneticField: 400, targetDistance: 10, speed: 1.0, targetMaterial: 0, substrateTemp: 100 };
+        const materials = ['Cu', 'Ti', 'Al', 'W'];
+        const yieldFactors = [1.8, 0.7, 1.2, 0.6];
+
+        let scene, camera, renderer, target, plasma, sputterParticles = [];
+
+        function initThreeJS() {
+            const container = document.getElementById('threejs-container');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000);
+            camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer.domElement);
+
+            const targetGeometry = new THREE.CylinderGeometry(5, 5, 0.5, 64);
+            const targetMaterial = new THREE.MeshPhongMaterial({ color: 0xff6600, metalness: 0.8, roughness: 0.2 });
+            target = new THREE.Mesh(targetGeometry, targetMaterial);
+            target.position.y = 8;
+            scene.add(target);
+
+            const substrateGeometry = new THREE.CylinderGeometry(4, 4, 0.3, 32);
+            const substrateMaterial = new THREE.MeshPhongMaterial({ color: 0x444444 });
+            const substrate = new THREE.Mesh(substrateGeometry, substrateMaterial);
+            substrate.position.y = -2;
+            scene.add(substrate);
+
+            const plasmaGeometry = new THREE.BufferGeometry();
+            const plasmaPositions = [], plasmaColors = [];
+            for (let i = 0; i < 1500; i++) {
+                const theta = Math.random() * Math.PI * 2;
+                const r = 2 + Math.random() * 2;
+                const x = r * Math.cos(theta);
+                const z = r * Math.sin(theta);
+                const y = 7 + (Math.random() - 0.5) * 2;
+                plasmaPositions.push(x, y, z);
+                const intensity = 0.5 + Math.random() * 0.5;
+                plasmaColors.push(0.7 * intensity, 0.4 * intensity, 1.0 * intensity);
+            }
+            plasmaGeometry.setAttribute('position', new THREE.Float32BufferAttribute(plasmaPositions, 3));
+            plasmaGeometry.setAttribute('color', new THREE.Float32BufferAttribute(plasmaColors, 3));
+            const plasmaMaterial = new THREE.PointsMaterial({ size: 0.12, vertexColors: true, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending });
+            plasma = new THREE.Points(plasmaGeometry, plasmaMaterial);
+            scene.add(plasma);
+
+            const particleGeometry = new THREE.BufferGeometry();
+            const particlePositions = [], particleColors = [];
+            for (let i = 0; i < 500; i++) {
+                const theta = Math.random() * Math.PI * 2;
+                const r = Math.random() * 4;
+                particlePositions.push(r * Math.cos(theta), 8, r * Math.sin(theta));
+                particleColors.push(1, 0.6, 0.2);
+            }
+            particleGeometry.setAttribute('position', new THREE.Float32BufferAttribute(particlePositions, 3));
+            particleGeometry.setAttribute('color', new THREE.Float32BufferAttribute(particleColors, 3));
+            const particleMaterial = new THREE.PointsMaterial({ size: 0.15, vertexColors: true, transparent: true, opacity: 0.9 });
+            const particles = new THREE.Points(particleGeometry, particleMaterial);
+            scene.add(particles);
+            sputterParticles.push(particles);
+
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+            const pointLight = new THREE.PointLight(0x8866ff, 2, 100);
+            pointLight.position.set(0, 7, 0);
+            scene.add(pointLight);
+
+            camera.position.set(10, 5, 15);
+            camera.lookAt(0, 3, 0);
+        }
+
+        function animateThreeJS() {
+            const positions = plasma.geometry.attributes.position.array;
+            const colors = plasma.geometry.attributes.color.array;
+            for (let i = 0; i < positions.length; i += 3) {
+                const r = Math.sqrt(positions[i]**2 + positions[i+2]**2);
+                const targetR = 3 + 0.5 * Math.sin(simulationTime * 2 + i * 0.1);
+                if (r < targetR) {
+                    positions[i] *= 1.02;
+                    positions[i+2] *= 1.02;
+                } else {
+                    positions[i] *= 0.98;
+                    positions[i+2] *= 0.98;
+                }
+                positions[i+1] += (Math.random() - 0.5) * 0.05 * params.speed;
+                const glow = 0.5 + 0.5 * Math.sin(simulationTime * 5 + i);
+                colors[i] = 0.7 * glow;
+                colors[i+1] = 0.4 * glow;
+                colors[i+2] = 1.0 * glow;
+            }
+            plasma.geometry.attributes.position.needsUpdate = true;
+            plasma.geometry.attributes.color.needsUpdate = true;
+
+            sputterParticles.forEach(particles => {
+                const pos = particles.geometry.attributes.position.array;
+                for (let i = 0; i < pos.length; i += 3) {
+                    pos[i+1] -= 0.1 * params.speed;
+                    pos[i] += (Math.random() - 0.5) * 0.02;
+                    pos[i+2] += (Math.random() - 0.5) * 0.02;
+                    if (pos[i+1] < -2) {
+                        pos[i+1] = 8;
+                        const theta = Math.random() * Math.PI * 2;
+                        const r = Math.random() * 4;
+                        pos[i] = r * Math.cos(theta);
+                        pos[i+2] = r * Math.sin(theta);
+                    }
+                }
+                particles.geometry.attributes.position.needsUpdate = true;
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        function calculateSputtering() {
+            const E_ion = Math.abs(params.targetVoltage);
+            const E_th = 25;
+            const Y = yieldFactors[params.targetMaterial] * Math.pow((E_ion - E_th) / E_ion, 1.5);
+            const J_ion = params.dcPower / (100 * Math.abs(params.targetVoltage)) * Math.pow(params.arPressure / 5, 0.6) * Math.pow(params.magneticField / 400, 0.4);
+            const depositionRate = Y * J_ion * 50 / (params.targetDistance * params.targetDistance);
+            const erosionDepth = simulationTime * depositionRate * 0.001;
+            const filmThickness = simulationTime * depositionRate * 10;
+            const uniformity = 90 - (params.targetDistance - 10) * 2;
+            return { Y, J_ion, depositionRate, erosionDepth, filmThickness, uniformity };
+        }
+
+        function updateStats() {
+            const results = calculateSputtering();
+            document.getElementById('sputterYield').innerHTML = `${results.Y.toFixed(2)}<span class="unit">atoms/ion</span>`;
+            document.getElementById('depositionRate').innerHTML = `${results.depositionRate.toFixed(2)}<span class="unit">Å/s</span>`;
+            document.getElementById('ionCurrent').innerHTML = `${results.J_ion.toFixed(2)}<span class="unit">A/cm²</span>`;
+            document.getElementById('erosionDepth').innerHTML = `${results.erosionDepth.toFixed(1)}<span class="unit">mm</span>`;
+            document.getElementById('filmThickness').innerHTML = `${Math.floor(results.filmThickness)}<span class="unit">nm</span>`;
+            document.getElementById('uniformity').innerHTML = `${results.uniformity.toFixed(1)}<span class="unit">%</span>`;
+        }
+
+        function updateCharts() {
+            const energies = Array.from({length: 50}, (_, i) => 50 + i * 20);
+            const E_th = 25;
+            const yields = energies.map(E => yieldFactors[params.targetMaterial] * Math.pow((E - E_th) / E, 1.5));
+            Plotly.newPlot('chart1', [{ x: energies, y: yields, type: 'scatter', mode: 'lines', line: { color: '#667eea', width: 3 }}], {
+                title: `Sputter Yield (${materials[params.targetMaterial]})`, xaxis: { title: 'Ion Energy (eV)' }, yaxis: { title: 'Yield (atoms/ion)' },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
+            });
+
+            const radii = Array.from({length: 50}, (_, i) => i * 0.1);
+            const erosion = radii.map(r => Math.exp(-Math.pow(r - 3.5, 2) / 2));
+            Plotly.newPlot('chart2', [{ x: radii, y: erosion, type: 'scatter', mode: 'lines', fill: 'tozeroy', line: { color: '#f39c12', width: 3 }}], {
+                title: 'Racetrack Erosion Profile', xaxis: { title: 'Radius (cm)' }, yaxis: { title: 'Erosion Rate (a.u.)' },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
+            });
+
+            const xGrid = Array.from({length: 30}, (_, i) => i - 15);
+            const densityData = xGrid.map(x => xGrid.map(y => {
+                const r = Math.sqrt(x*x + y*y);
+                return r < 5 ? Math.exp(-Math.pow(r - 3.5, 2) / 4) * params.magneticField / 400 : 0;
+            }));
+            Plotly.newPlot('chart3', [{ z: densityData, type: 'heatmap', colorscale: 'Viridis' }], {
+                title: 'Plasma Density Distribution', xaxis: { showticklabels: false }, yaxis: { showticklabels: false },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
+            });
+
+            const angles = Array.from({length: 50}, (_, i) => -45 + i * 2);
+            const thickness = angles.map(a => Math.cos(a * Math.PI / 180));
+            Plotly.newPlot('chart4', [{ x: angles, y: thickness, type: 'scatter', mode: 'lines', line: { color: '#764ba2', width: 3 }}], {
+                title: 'Angular Distribution (Cosine Law)', xaxis: { title: 'Angle (deg)' }, yaxis: { title: 'Relative Thickness' },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
+            });
+
+            const pressures = Array.from({length: 30}, (_, i) => 1 + i);
+            const densities = pressures.map(p => 8.9 / (1 + 0.1 * p));
+            Plotly.newPlot('chart5', [{ x: pressures, y: densities, type: 'scatter', mode: 'lines+markers', line: { color: '#667eea', width: 3 }}], {
+                title: 'Film Density vs Pressure', xaxis: { title: 'Ar Pressure (mTorr)' }, yaxis: { title: 'Density (g/cm³)' },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
+            });
+
+            const thicknesses = Array.from({length: 50}, (_, i) => 10 + i * 10);
+            const resistivity = thicknesses.map(t => 1.7 * (1 + 40 / (8 * t)));
+            Plotly.newPlot('chart6', [{ x: thicknesses, y: resistivity, type: 'scatter', mode: 'lines', line: { color: '#f39c12', width: 3 }}], {
+                title: 'Resistivity vs Thickness', xaxis: { title: 'Thickness (nm)' }, yaxis: { title: 'Resistivity (μΩ·cm)' },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
+            });
+
+            const grainData = Array.from({length: 30}, (_, i) => Array.from({length: 30}, (_, j) => 20 + 10 * Math.sin(i * 0.3) * Math.cos(j * 0.3)));
+            Plotly.newPlot('chart7', [{ z: grainData, type: 'heatmap', colorscale: [[0, '#667eea'], [1, '#f39c12']] }], {
+                title: 'Grain Size Distribution (nm)', xaxis: { showticklabels: false }, yaxis: { showticklabels: false },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
+            });
+        }
+
+        document.getElementById('playPauseBtn').addEventListener('click', () => {
+            isRunning = !isRunning;
+            document.getElementById('playPauseBtn').textContent = isRunning ? 'Pause' : 'Play';
+            if (isRunning) animate();
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => { simulationTime = 0; updateStats(); updateCharts(); });
+
+        ['dcPower', 'arPressure', 'targetVoltage', 'magneticField', 'targetDistance', 'speed', 'targetMaterial', 'substrateTemp'].forEach(param => {
+            document.getElementById(param).addEventListener('input', (e) => {
+                params[param] = parseFloat(e.target.value);
+                let valueText = e.target.value;
+                if (param === 'dcPower') valueText += ' W';
+                else if (param === 'arPressure') valueText += ' mTorr';
+                else if (param === 'targetVoltage') valueText += ' V';
+                else if (param === 'magneticField') valueText += ' G';
+                else if (param === 'targetDistance') valueText += ' cm';
+                else if (param === 'speed') valueText = parseFloat(e.target.value).toFixed(1) + '×';
+                else if (param === 'targetMaterial') valueText = materials[parseInt(e.target.value)];
+                else if (param === 'substrateTemp') valueText += ' °C';
+                document.getElementById(param + 'Value').textContent = valueText;
+                updateStats();
+                updateCharts();
+            });
+        });
+
+        function animate() {
+            if (!isRunning) return;
+            simulationTime += 0.016 * params.speed;
+            animateThreeJS();
+            requestAnimationFrame(animate);
+        }
+
+        initThreeJS();
+        updateStats();
+        updateCharts();
+        animate();
+
+        window.addEventListener('resize', () => {
+            const container = document.getElementById('threejs-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+    </script>
+</body>
+</html>
