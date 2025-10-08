@@ -2,58 +2,215 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Lithography Demo</title>
+    <title>Pellicle Analysis - Lithography Demo</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.26.0/plotly.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #e0e0e0; }
-        .navbar { background: rgba(10, 10, 10, 0.95); padding: 1rem 2rem; border-bottom: 1px solid rgba(102, 126, 234, 0.3); }
+        .navbar { background: rgba(10, 10, 10, 0.95); padding: 1rem 2rem; border-bottom: 1px solid rgba(102, 126, 234, 0.3); position: sticky; top: 0; z-index: 100; }
         .nav-content { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
         .nav-title { color: #667eea; font-size: 1.3rem; font-weight: 600; }
         .nav-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; }
         .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
-        .header h1 { font-size: 2.8rem; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin: 3rem 0; }
+        .header h1 { font-size: 2.8rem; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; margin-bottom: 1rem; }
+        .subtitle { text-align: center; color: #a0a0a0; font-size: 1.1rem; margin-bottom: 2rem; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
         .stat-card { background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.3); padding: 1.5rem; border-radius: 12px; text-align: center; }
         .stat-value { font-size: 2rem; font-weight: bold; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .stat-label { color: #a0a0a0; font-size: 0.9rem; }
+        .stat-label { color: #a0a0a0; font-size: 0.9rem; margin-top: 0.5rem; }
+        .controls-section { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; margin-bottom: 2rem; }
+        .controls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+        .control-group { margin-bottom: 1rem; }
+        .control-label { display: flex; justify-content: space-between; margin-bottom: 0.5rem; color: #667eea; font-weight: 500; }
+        .control-value { color: #f39c12; }
+        .slider { width: 100%; height: 6px; border-radius: 3px; background: rgba(102, 126, 234, 0.3); outline: none; -webkit-appearance: none; }
+        .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #f39c12); cursor: pointer; }
+        .slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #f39c12); cursor: pointer; border: none; }
         .visualization { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; margin-bottom: 2rem; }
         .section-title { color: #667eea; font-size: 1.5rem; margin-bottom: 1.5rem; }
-        .chart-container { background: rgba(0, 0, 0, 0.3); border-radius: 10px; padding: 1rem; }
+        .chart-container { background: rgba(0, 0, 0, 0.3); border-radius: 10px; padding: 1rem; min-height: 400px; }
+        #canvas3d { width: 100%; height: 500px; border-radius: 10px; background: rgba(0, 0, 0, 0.5); }
+        .equation-box { background: rgba(102, 126, 234, 0.1); border-left: 3px solid #667eea; padding: 1rem; margin: 1rem 0; border-radius: 5px; font-family: 'Courier New', monospace; color: #e0e0e0; }
     </style>
 </head>
 <body>
-    <nav class="navbar"><div class="nav-content"><div class="nav-title"><i class="fas fa-microscope"></i> Lithography Analysis</div><a href="lithography-research.html" class="nav-btn">Back</a></div></nav>
-    <div class="container">
-        <div class="header"><h1>Advanced Lithography Analysis</h1></div>
-        <div class="stats-grid">
-            <div class="stat-card"><div class="stat-value">5.2 nm</div><div class="stat-label">Resolution</div></div>
-            <div class="stat-card"><div class="stat-value">95%</div><div class="stat-label">Process Window</div></div>
-            <div class="stat-card"><div class="stat-value">2.8</div><div class="stat-label">NILS</div></div>
-            <div class="stat-card"><div class="stat-value">0.8 nm</div><div class="stat-label">Overlay</div></div>
+    <nav class="navbar">
+        <div class="nav-content">
+            <div class="nav-title"><i class="fas fa-shield-alt"></i> Pellicle Analysis</div>
+            <a href="lithography-research.html" class="nav-btn"><i class="fas fa-arrow-left"></i> Back</a>
         </div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 1</h2><div class="chart-container"><div id="chart1"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 2</h2><div class="chart-container"><div id="chart2"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 3</h2><div class="chart-container"><div id="chart3"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 4</h2><div class="chart-container"><div id="chart4"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 5</h2><div class="chart-container"><div id="chart5"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 6</h2><div class="chart-container"><div id="chart6"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 7</h2><div class="chart-container"><div id="chart7"></div></div></div>
+    </nav>
+    <div class="container">
+        <div class="header">
+            <h1>Reticle Pellicle Analysis</h1>
+            <p class="subtitle">Particle Protection & Thermal Effects</p>
+        </div>
+        <div class="stats-grid">
+            <div class="stat-card"><div class="stat-value" id="stat-transmission">96%</div><div class="stat-label">Transmission</div></div>
+            <div class="stat-card"><div class="stat-value" id="stat-blur">85 μm</div><div class="stat-label">Particle Blur</div></div>
+            <div class="stat-card"><div class="stat-value" id="stat-contrast">98%</div><div class="stat-label">Contrast Ratio</div></div>
+            <div class="stat-card"><div class="stat-value" id="stat-sag">45 nm</div><div class="stat-label">Pellicle Sag</div></div>
+        </div>
+        <div class="equation-box">
+            <strong>Key Physics Equations:</strong><br>
+            Particle Blur: blur_wafer = M × blur_pellicle × (1 + h/f)<br>
+            Transmission: T × exp(-α·d)<br>
+            Contrast Loss: C_pellicle / C_no_pellicle<br>
+            Sag: w = (qL⁴)/(384D)<br>
+            Phase Shift: Δφ = 2πΔn·d/λ
+        </div>
+        <div class="controls-section">
+            <h2 class="section-title">Pellicle Parameters</h2>
+            <div class="controls-grid">
+                <div class="control-group"><div class="control-label"><span>Pellicle Height (mm)</span><span class="control-value" id="val-height">8</span></div><input type="range" class="slider" id="slider-height" min="6" max="10" step="0.5" value="8"></div>
+                <div class="control-group"><div class="control-label"><span>Particle Size (μm)</span><span class="control-value" id="val-particle">10</span></div><input type="range" class="slider" id="slider-particle" min="1" max="50" step="1" value="10"></div>
+                <div class="control-group"><div class="control-label"><span>Transmission (%)</span><span class="control-value" id="val-trans">96</span></div><input type="range" class="slider" id="slider-trans" min="92" max="99" step="0.5" value="96"></div>
+                <div class="control-group"><div class="control-label"><span>Thermal Load (W/cm²)</span><span class="control-value" id="val-thermal">5</span></div><input type="range" class="slider" id="slider-thermal" min="0" max="10" step="0.5" value="5"></div>
+                <div class="control-group"><div class="control-label"><span>Pressure Diff (Pa)</span><span class="control-value" id="val-pressure">5</span></div><input type="range" class="slider" id="slider-pressure" min="0" max="10" step="0.5" value="5"></div>
+                <div class="control-group"><div class="control-label"><span>Birefringence (nm)</span><span class="control-value" id="val-biref">5</span></div><input type="range" class="slider" id="slider-biref" min="0" max="10" step="0.5" value="5"></div>
+                <div class="control-group"><div class="control-label"><span>Defocus from Sag (nm)</span><span class="control-value" id="val-defocus">50</span></div><input type="range" class="slider" id="slider-defocus" min="0" max="100" step="5" value="50"></div>
+                <div class="control-group"><div class="control-label"><span>NA</span><span class="control-value" id="val-na">0.40</span></div><input type="range" class="slider" id="slider-na" min="0.25" max="0.55" step="0.01" value="0.40"></div>
+            </div>
+        </div>
+        <div class="visualization"><h2 class="section-title">1. Particle Image Blur vs Height</h2><div class="chart-container"><div id="chart1"></div></div></div>
+        <div class="visualization"><h2 class="section-title">2. Transmission Spectrum</h2><div class="chart-container"><div id="chart2"></div></div></div>
+        <div class="visualization"><h2 class="section-title">3. Thermal Gradient Map</h2><div class="chart-container"><div id="chart3"></div></div></div>
+        <div class="visualization"><h2 class="section-title">4. Pellicle Sag Profile</h2><div class="chart-container"><div id="chart4"></div></div></div>
+        <div class="visualization"><h2 class="section-title">5. Contrast Loss vs Particle Size</h2><div class="chart-container"><div id="chart5"></div></div></div>
+        <div class="visualization"><h2 class="section-title">6. Particle Detection POD</h2><div class="chart-container"><div id="chart6"></div></div></div>
+        <div class="visualization"><h2 class="section-title">7. Birefringence Phase Error</h2><div class="chart-container"><div id="chart7"></div></div></div>
+        <div class="visualization"><h2 class="section-title">3D Pellicle & Particle Projection</h2><div id="canvas3d"></div></div>
     </div>
     <script>
-        const x = Array.from({length:100},(_,i)=>i);
-        const y1 = x.map(v => Math.sin(v/10)*50+50);
-        const y2 = x.map(v => Math.cos(v/10)*50+50);
-        const layout = {paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{color:'#e0e0e0'},xaxis:{gridcolor:'rgba(102,126,234,0.2)'},yaxis:{gridcolor:'rgba(102,126,234,0.2)'},margin:{t:20,r:20,b:50,l:60}};
-        Plotly.newPlot('chart1', [{x,y:y1,type:'scatter',mode:'lines',line:{color:'#667eea',width:3}}], layout, {responsive:true});
-        Plotly.newPlot('chart2', [{x,y:y2,type:'scatter',mode:'lines',line:{color:'#f39c12',width:3}}], layout, {responsive:true});
-        Plotly.newPlot('chart3', [{x,y:y1,type:'bar',marker:{color:'#764ba2'}}], layout, {responsive:true});
-        const z = Array.from({length:20},(_,i)=>Array.from({length:20},(_,j)=>Math.sin(i/5)*Math.cos(j/5)));
-        Plotly.newPlot('chart4', [{z,type:'heatmap',colorscale:[[0,'#0a0a0a'],[0.5,'#667eea'],[1,'#f39c12']]}], layout, {responsive:true});
-        Plotly.newPlot('chart5', [{x,y:y1,type:'scatter',mode:'lines+markers',line:{color:'#667eea'},marker:{size:8}}], layout, {responsive:true});
-        Plotly.newPlot('chart6', [{x,y:y2,type:'scatter',mode:'lines',line:{color:'#f39c12',width:3},fill:'tozeroy',fillcolor:'rgba(243,156,18,0.3)'}], layout, {responsive:true});
-        Plotly.newPlot('chart7', [{values:[30,40,20,10],labels:['A','B','C','D'],type:'pie',marker:{colors:['#667eea','#f39c12','#764ba2','#e67e22']}}], layout, {responsive:true});
+    window.addEventListener('load', function() {
+        let params = { height: 8, particle: 10, trans: 96, thermal: 5, pressure: 5, biref: 5, defocus: 50, na: 0.40 };
+
+        document.getElementById('slider-height').oninput = function(e) { params.height = parseFloat(e.target.value); document.getElementById('val-height').textContent = params.height.toFixed(1); updateAll(); };
+        document.getElementById('slider-particle').oninput = function(e) { params.particle = parseFloat(e.target.value); document.getElementById('val-particle').textContent = params.particle; updateAll(); };
+        document.getElementById('slider-trans').oninput = function(e) { params.trans = parseFloat(e.target.value); document.getElementById('val-trans').textContent = params.trans.toFixed(1); updateAll(); };
+        document.getElementById('slider-thermal').oninput = function(e) { params.thermal = parseFloat(e.target.value); document.getElementById('val-thermal').textContent = params.thermal.toFixed(1); updateAll(); };
+        document.getElementById('slider-pressure').oninput = function(e) { params.pressure = parseFloat(e.target.value); document.getElementById('val-pressure').textContent = params.pressure.toFixed(1); updateAll(); };
+        document.getElementById('slider-biref').oninput = function(e) { params.biref = parseFloat(e.target.value); document.getElementById('val-biref').textContent = params.biref.toFixed(1); updateAll(); };
+        document.getElementById('slider-defocus').oninput = function(e) { params.defocus = parseFloat(e.target.value); document.getElementById('val-defocus').textContent = params.defocus; updateAll(); };
+        document.getElementById('slider-na').oninput = function(e) { params.na = parseFloat(e.target.value); document.getElementById('val-na').textContent = params.na.toFixed(2); updateAll(); };
+
+        function calcBlur() { const M = 4; const f = 50; return M * params.particle * (1 + params.height / f); }
+        function calcContrast() { return params.trans / 100 * Math.exp(-0.01 * params.thermal); }
+        function calcSag() { return params.pressure * 10 + params.defocus * 0.3; }
+
+        function updateStats() {
+            document.getElementById('stat-transmission').textContent = params.trans.toFixed(0) + '%';
+            document.getElementById('stat-blur').textContent = calcBlur().toFixed(0) + ' μm';
+            document.getElementById('stat-contrast').textContent = (calcContrast() * 100).toFixed(0) + '%';
+            document.getElementById('stat-sag').textContent = calcSag().toFixed(0) + ' nm';
+        }
+
+        function updateChart1() {
+            const heights = Array.from({length: 50}, function(_, i) { return 6 + i * 0.08; });
+            const blurs = heights.map(function(h) { const M = 4; const f = 50; return M * params.particle * (1 + h / f); });
+            Plotly.newPlot('chart1', [{x: heights, y: blurs, type: 'scatter', mode: 'lines', line: {color: '#667eea', width: 3}}], {paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: '#e0e0e0'}, xaxis: {title: 'Pellicle Height (mm)', gridcolor: 'rgba(102,126,234,0.2)'}, yaxis: {title: 'Particle Blur (μm)', gridcolor: 'rgba(102,126,234,0.2)'}, margin: {t: 20, r: 20, b: 50, l: 60}}, {responsive: true});
+        }
+
+        function updateChart2() {
+            const wavelengths = Array.from({length: 100}, function(_, i) { return 180 + i * 5; });
+            const trans = wavelengths.map(function(w) { return params.trans / 100 * (1 - 0.15 * Math.exp(-Math.pow((w - 193.4) / 50, 2))); });
+            Plotly.newPlot('chart2', [{x: wavelengths, y: trans.map(function(t) { return t * 100; }), type: 'scatter', mode: 'lines', line: {color: '#f39c12', width: 3}, fill: 'tozeroy', fillcolor: 'rgba(243,156,18,0.3)'}], {paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: '#e0e0e0'}, xaxis: {title: 'Wavelength (nm)', gridcolor: 'rgba(102,126,234,0.2)'}, yaxis: {title: 'Transmission (%)', gridcolor: 'rgba(102,126,234,0.2)'}, margin: {t: 20, r: 20, b: 50, l: 60}}, {responsive: true});
+        }
+
+        function updateChart3() {
+            const size = 20;
+            const z = [];
+            for (let i = 0; i < size; i++) {
+                const row = [];
+                for (let j = 0; j < size; j++) {
+                    const r = Math.sqrt(Math.pow(i - size / 2, 2) + Math.pow(j - size / 2, 2));
+                    row.push(params.thermal * (1 - r / (size / 2)));
+                }
+                z.push(row);
+            }
+            Plotly.newPlot('chart3', [{z: z, type: 'heatmap', colorscale: [[0, '#0a0a0a'], [0.5, '#764ba2'], [1, '#f39c12']], colorbar: {title: 'Temp (°C)'}}], {paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: '#e0e0e0'}, xaxis: {title: 'X', gridcolor: 'rgba(102,126,234,0.2)'}, yaxis: {title: 'Y', gridcolor: 'rgba(102,126,234,0.2)'}, margin: {t: 20, r: 20, b: 50, l: 60}}, {responsive: true});
+        }
+
+        function updateChart4() {
+            const x = Array.from({length: 100}, function(_, i) { return -50 + i; });
+            const sag = x.map(function(xi) { const L = 100; const a = xi / L; return calcSag() * (1 - 4 * a * a); });
+            Plotly.newPlot('chart4', [{x: x, y: sag, type: 'scatter', mode: 'lines', line: {color: '#764ba2', width: 3}, fill: 'tozeroy', fillcolor: 'rgba(118,75,162,0.3)'}], {paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: '#e0e0e0'}, xaxis: {title: 'Position (mm)', gridcolor: 'rgba(102,126,234,0.2)'}, yaxis: {title: 'Sag (nm)', gridcolor: 'rgba(102,126,234,0.2)'}, margin: {t: 20, r: 20, b: 50, l: 60}}, {responsive: true});
+        }
+
+        function updateChart5() {
+            const sizes = Array.from({length: 50}, function(_, i) { return i + 1; });
+            const contrast = sizes.map(function(s) { return calcContrast() * Math.exp(-s / 40); });
+            Plotly.newPlot('chart5', [{x: sizes, y: contrast.map(function(c) { return c * 100; }), type: 'scatter', mode: 'lines', line: {color: '#16a085', width: 3}}], {paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: '#e0e0e0'}, xaxis: {title: 'Particle Size (μm)', gridcolor: 'rgba(102,126,234,0.2)'}, yaxis: {title: 'Contrast (%)', gridcolor: 'rgba(102,126,234,0.2)'}, margin: {t: 20, r: 20, b: 50, l: 60}}, {responsive: true});
+        }
+
+        function updateChart6() {
+            const sizes = Array.from({length: 50}, function(_, i) { return i * 2; });
+            const pod = sizes.map(function(s) { const blur = 4 * s * (1 + params.height / 50); return 1 - Math.exp(-Math.pow(blur / 100, 2)) * 100; });
+            Plotly.newPlot('chart6', [{x: sizes, y: pod, type: 'scatter', mode: 'lines', line: {color: '#e67e22', width: 4}}], {paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: '#e0e0e0'}, xaxis: {title: 'Particle Size (μm)', gridcolor: 'rgba(102,126,234,0.2)'}, yaxis: {title: 'POD (%)', gridcolor: 'rgba(102,126,234,0.2)'}, margin: {t: 20, r: 20, b: 50, l: 60}}, {responsive: true});
+        }
+
+        function updateChart7() {
+            const positions = Array.from({length: 50}, function(_, i) { return -50 + i * 2; });
+            const phaseError = positions.map(function(p) { return params.biref * Math.sin(Math.PI * p / 100); });
+            Plotly.newPlot('chart7', [{x: positions, y: phaseError, type: 'scatter', mode: 'lines', line: {color: '#667eea', width: 3}}], {paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: '#e0e0e0'}, xaxis: {title: 'Position (mm)', gridcolor: 'rgba(102,126,234,0.2)'}, yaxis: {title: 'Phase Error (nm)', gridcolor: 'rgba(102,126,234,0.2)'}, margin: {t: 20, r: 20, b: 50, l: 60}}, {responsive: true});
+        }
+
+        let scene, camera, renderer, pellicle, particle;
+        function init3D() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
+            const container = document.getElementById('canvas3d');
+            renderer.setSize(container.clientWidth, 500);
+            container.appendChild(renderer.domElement);
+            camera.position.set(5, 3, 5);
+            camera.lookAt(0, 0, 0);
+            const light = new THREE.DirectionalLight(0x667eea, 1);
+            light.position.set(1, 1, 1);
+            scene.add(light);
+            const pellicleGeom = new THREE.PlaneGeometry(4, 4);
+            const pellicleMatl = new THREE.MeshBasicMaterial({color: 0x667eea, transparent: true, opacity: 0.3, side: THREE.DoubleSide});
+            pellicle = new THREE.Mesh(pellicleGeom, pellicleMatl);
+            pellicle.rotation.x = -Math.PI / 2;
+            pellicle.position.y = 1;
+            scene.add(pellicle);
+            const particleGeom = new THREE.SphereGeometry(0.1, 16, 16);
+            const particleMatl = new THREE.MeshBasicMaterial({color: 0xf39c12});
+            particle = new THREE.Mesh(particleGeom, particleMatl);
+            particle.position.set(0.5, 1, 0.5);
+            scene.add(particle);
+            update3D();
+            animate3D();
+        }
+
+        function update3D() {
+            if (pellicle) pellicle.position.y = params.height / 10;
+            if (particle) particle.position.y = params.height / 10;
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+            if (pellicle) pellicle.rotation.z += 0.002;
+            renderer.render(scene, camera);
+        }
+
+        function updateAll() {
+            updateStats();
+            updateChart1();
+            updateChart2();
+            updateChart3();
+            updateChart4();
+            updateChart5();
+            updateChart6();
+            updateChart7();
+            update3D();
+        }
+
+        updateAll();
+        init3D();
+    });
     </script>
 </body>
 </html>

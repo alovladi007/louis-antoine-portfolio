@@ -2,58 +2,241 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Lithography Demo</title>
+    <title>Overlay Metrology - Lithography Demo</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.26.0/plotly.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #e0e0e0; }
-        .navbar { background: rgba(10, 10, 10, 0.95); padding: 1rem 2rem; border-bottom: 1px solid rgba(102, 126, 234, 0.3); }
+        .navbar { background: rgba(10, 10, 10, 0.95); padding: 1rem 2rem; border-bottom: 1px solid rgba(102, 126, 234, 0.3); position: sticky; top: 0; z-index: 100; }
         .nav-content { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
         .nav-title { color: #667eea; font-size: 1.3rem; font-weight: 600; }
         .nav-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; }
         .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
-        .header h1 { font-size: 2.8rem; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin: 3rem 0; }
+        .header h1 { font-size: 2.8rem; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; margin-bottom: 1rem; }
+        .subtitle { text-align: center; color: #a0a0a0; font-size: 1.1rem; margin-bottom: 2rem; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
         .stat-card { background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.3); padding: 1.5rem; border-radius: 12px; text-align: center; }
         .stat-value { font-size: 2rem; font-weight: bold; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .stat-label { color: #a0a0a0; font-size: 0.9rem; }
+        .stat-label { color: #a0a0a0; font-size: 0.9rem; margin-top: 0.5rem; }
+        .controls-section { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; margin-bottom: 2rem; }
+        .controls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+        .control-group { margin-bottom: 1rem; }
+        .control-label { display: flex; justify-content: space-between; margin-bottom: 0.5rem; color: #667eea; font-weight: 500; }
+        .control-value { color: #f39c12; }
+        .slider { width: 100%; height: 6px; border-radius: 3px; background: rgba(102, 126, 234, 0.3); outline: none; -webkit-appearance: none; }
+        .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #f39c12); cursor: pointer; }
+        .slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #f39c12); cursor: pointer; border: none; }
         .visualization { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; margin-bottom: 2rem; }
         .section-title { color: #667eea; font-size: 1.5rem; margin-bottom: 1.5rem; }
-        .chart-container { background: rgba(0, 0, 0, 0.3); border-radius: 10px; padding: 1rem; }
+        .chart-container { background: rgba(0, 0, 0, 0.3); border-radius: 10px; padding: 1rem; min-height: 400px; }
+        #canvas3d { width: 100%; height: 500px; border-radius: 10px; background: rgba(0, 0, 0, 0.5); }
+        .equation-box { background: rgba(102, 126, 234, 0.1); border-left: 3px solid #667eea; padding: 1rem; margin: 1rem 0; border-radius: 5px; font-family: 'Courier New', monospace; color: #e0e0e0; }
     </style>
 </head>
 <body>
-    <nav class="navbar"><div class="nav-content"><div class="nav-title"><i class="fas fa-microscope"></i> Lithography Analysis</div><a href="lithography-research.html" class="nav-btn">Back</a></div></nav>
-    <div class="container">
-        <div class="header"><h1>Advanced Lithography Analysis</h1></div>
-        <div class="stats-grid">
-            <div class="stat-card"><div class="stat-value">5.2 nm</div><div class="stat-label">Resolution</div></div>
-            <div class="stat-card"><div class="stat-value">95%</div><div class="stat-label">Process Window</div></div>
-            <div class="stat-card"><div class="stat-value">2.8</div><div class="stat-label">NILS</div></div>
-            <div class="stat-card"><div class="stat-value">0.8 nm</div><div class="stat-label">Overlay</div></div>
+    <nav class="navbar">
+        <div class="nav-content">
+            <div class="nav-title"><i class="fas fa-crosshairs"></i> Overlay Metrology</div>
+            <a href="lithography-research.html" class="nav-btn"><i class="fas fa-arrow-left"></i> Back</a>
         </div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 1</h2><div class="chart-container"><div id="chart1"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 2</h2><div class="chart-container"><div id="chart2"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 3</h2><div class="chart-container"><div id="chart3"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 4</h2><div class="chart-container"><div id="chart4"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 5</h2><div class="chart-container"><div id="chart5"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 6</h2><div class="chart-container"><div id="chart6"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 7</h2><div class="chart-container"><div id="chart7"></div></div></div>
+    </nav>
+    <div class="container">
+        <div class="header">
+            <h1>Overlay Metrology & APC</h1>
+            <p class="subtitle">Layer Alignment & Process Control</p>
+        </div>
+        <div class="stats-grid">
+            <div class="stat-card"><div class="stat-value" id="stat-overlay">1.5 nm</div><div class="stat-label">RMS Overlay</div></div>
+            <div class="stat-card"><div class="stat-value" id="stat-translation">2.0 nm</div><div class="stat-label">Translation Error</div></div>
+            <div class="stat-card"><div class="stat-value" id="stat-mag">0.5 ppm</div><div class="stat-label">Magnification</div></div>
+            <div class="stat-card"><div class="stat-value" id="stat-rotation">5 μrad</div><div class="stat-label">Rotation</div></div>
+        </div>
+        <div class="equation-box">
+            <strong>Key Physics Equations:</strong><br>
+            Overlay: Δx = x_measured - x_designed<br>
+            Model: Δx = T_x + S_x·x + S_y·y + R·y + M_x·x²<br>
+            Zernike: Δ(ρ,θ) = Σ c_nm Z_nm(ρ,θ)<br>
+            Wafer Grid: minimize RMS(Δx² + Δy²)<br>
+            APC Correction: x_new = x_old - K × error
+        </div>
+        <div class="controls-section">
+            <h2 class="section-title">Overlay Parameters</h2>
+            <div class="controls-grid">
+                <div class="control-group"><div class="control-label"><span>Translation X (nm)</span><span class="control-value" id="val-tx">5</span></div><input type="range" class="slider" id="slider-tx" min="0" max="20" step="1" value="5"></div>
+                <div class="control-group"><div class="control-label"><span>Translation Y (nm)</span><span class="control-value" id="val-ty">3</span></div><input type="range" class="slider" id="slider-ty" min="0" max="20" step="1" value="3"></div>
+                <div class="control-group"><div class="control-label"><span>Magnification (ppm)</span><span class="control-value" id="val-mag">2</span></div><input type="range" class="slider" id="slider-mag" min="0" max="5" step="0.1" value="2"></div>
+                <div class="control-group"><div class="control-label"><span>Rotation (μrad)</span><span class="control-value" id="val-rot">8</span></div><input type="range" class="slider" id="slider-rot" min="0" max="10" step="0.5" value="8"></div>
+                <div class="control-group"><div class="control-label"><span>Orthogonality (nm/mm)</span><span class="control-value" id="val-ortho">2</span></div><input type="range" class="slider" id="slider-ortho" min="0" max="5" step="0.5" value="2"></div>
+                <div class="control-group"><div class="control-label"><span>Asymmetric Mag (ppm)</span><span class="control-value" id="val-asym">1.5</span></div><input type="range" class="slider" id="slider-asym" min="0" max="3" step="0.1" value="1.5"></div>
+                <div class="control-group"><div class="control-label"><span>Higher Order (nm)</span><span class="control-value" id="val-higher">1</span></div><input type="range" class="slider" id="slider-higher" min="0" max="2" step="0.1" value="1"></div>
+                <div class="control-group"><div class="control-label"><span>Mark Quality (%)</span><span class="control-value" id="val-quality">85</span></div><input type="range" class="slider" id="slider-quality" min="60" max="100" step="5" value="85"></div>
+            </div>
+        </div>
+        <div class="visualization"><h2 class="section-title">1. Overlay Vector Map</h2><div class="chart-container"><div id="chart1"></div></div></div>
+        <div class="visualization"><h2 class="section-title">2. Overlay Magnitude Heatmap</h2><div class="chart-container"><div id="chart2"></div></div></div>
+        <div class="visualization"><h2 class="section-title">3. Zernike Coefficients</h2><div class="chart-container"><div id="chart3"></div></div></div>
+        <div class="visualization"><h2 class="section-title">4. Overlay Error Tree</h2><div class="chart-container"><div id="chart4"></div></div></div>
+        <div class="visualization"><h2 class="section-title">5. Residuals After Correction</h2><div class="chart-container"><div id="chart5"></div></div></div>
+        <div class="visualization"><h2 class="section-title">6. APC Performance Over Time</h2><div class="chart-container"><div id="chart6"></div></div></div>
+        <div class="visualization"><h2 class="section-title">7. Scanner Matching</h2><div class="chart-container"><div id="chart7"></div></div></div>
+        <div class="visualization"><h2 class="section-title">3D Overlay Field</h2><div id="canvas3d"></div></div>
     </div>
     <script>
-        const x = Array.from({length:100},(_,i)=>i);
-        const y1 = x.map(v => Math.sin(v/10)*50+50);
-        const y2 = x.map(v => Math.cos(v/10)*50+50);
-        const layout = {paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{color:'#e0e0e0'},xaxis:{gridcolor:'rgba(102,126,234,0.2)'},yaxis:{gridcolor:'rgba(102,126,234,0.2)'},margin:{t:20,r:20,b:50,l:60}};
-        Plotly.newPlot('chart1', [{x,y:y1,type:'scatter',mode:'lines',line:{color:'#667eea',width:3}}], layout, {responsive:true});
-        Plotly.newPlot('chart2', [{x,y:y2,type:'scatter',mode:'lines',line:{color:'#f39c12',width:3}}], layout, {responsive:true});
-        Plotly.newPlot('chart3', [{x,y:y1,type:'bar',marker:{color:'#764ba2'}}], layout, {responsive:true});
-        const z = Array.from({length:20},(_,i)=>Array.from({length:20},(_,j)=>Math.sin(i/5)*Math.cos(j/5)));
-        Plotly.newPlot('chart4', [{z,type:'heatmap',colorscale:[[0,'#0a0a0a'],[0.5,'#667eea'],[1,'#f39c12']]}], layout, {responsive:true});
-        Plotly.newPlot('chart5', [{x,y:y1,type:'scatter',mode:'lines+markers',line:{color:'#667eea'},marker:{size:8}}], layout, {responsive:true});
-        Plotly.newPlot('chart6', [{x,y:y2,type:'scatter',mode:'lines',line:{color:'#f39c12',width:3},fill:'tozeroy',fillcolor:'rgba(243,156,18,0.3)'}], layout, {responsive:true});
-        Plotly.newPlot('chart7', [{values:[30,40,20,10],labels:['A','B','C','D'],type:'pie',marker:{colors:['#667eea','#f39c12','#764ba2','#e67e22']}}], layout, {responsive:true});
+    window.addEventListener('load', function() {
+        let params = { tx: 5, ty: 3, mag: 2, rot: 8, ortho: 2, asym: 1.5, higher: 1, quality: 85 };
+
+        document.getElementById('slider-tx').oninput = function(e) { params.tx = parseFloat(e.target.value); document.getElementById('val-tx').textContent = params.tx; updateAll(); };
+        document.getElementById('slider-ty').oninput = function(e) { params.ty = parseFloat(e.target.value); document.getElementById('val-ty').textContent = params.ty; updateAll(); };
+        document.getElementById('slider-mag').oninput = function(e) { params.mag = parseFloat(e.target.value); document.getElementById('val-mag').textContent = params.mag.toFixed(1); updateAll(); };
+        document.getElementById('slider-rot').oninput = function(e) { params.rot = parseFloat(e.target.value); document.getElementById('val-rot').textContent = params.rot.toFixed(1); updateAll(); };
+        document.getElementById('slider-ortho').oninput = function(e) { params.ortho = parseFloat(e.target.value); document.getElementById('val-ortho').textContent = params.ortho.toFixed(1); updateAll(); };
+        document.getElementById('slider-asym').oninput = function(e) { params.asym = parseFloat(e.target.value); document.getElementById('val-asym').textContent = params.asym.toFixed(1); updateAll(); };
+        document.getElementById('slider-higher').oninput = function(e) { params.higher = parseFloat(e.target.value); document.getElementById('val-higher').textContent = params.higher.toFixed(1); updateAll(); };
+        document.getElementById('slider-quality').oninput = function(e) { params.quality = parseFloat(e.target.value); document.getElementById('val-quality').textContent = params.quality; updateAll(); };
+
+        function calcOverlay(x, y) {
+            const dx = params.tx + params.mag * x / 150 + params.rot * y / 150 + params.asym * x * x / 22500;
+            const dy = params.ty + params.mag * y / 150 - params.rot * x / 150 + params.ortho * y / 150;
+            return { dx: dx, dy: dy, mag: Math.sqrt(dx * dx + dy * dy) };
+        }
+
+        function updateStats() {
+            let sumSq = 0;
+            for (let i = -100; i <= 100; i += 50) {
+                for (let j = -100; j <= 100; j += 50) {
+                    const ov = calcOverlay(i, j);
+                    sumSq += ov.mag * ov.mag;
+                }
+            }
+            const rms = Math.sqrt(sumSq / 25);
+            document.getElementById('stat-overlay').textContent = rms.toFixed(1) + ' nm';
+            document.getElementById('stat-translation').textContent = Math.sqrt(params.tx * params.tx + params.ty * params.ty).toFixed(1) + ' nm';
+            document.getElementById('stat-mag').textContent = params.mag.toFixed(1) + ' ppm';
+            document.getElementById('stat-rotation').textContent = params.rot.toFixed(1) + ' μrad';
+        }
+
+        function updateChart1() {
+            const x = [], y = [], u = [], v = [];
+            for (let i = -100; i <= 100; i += 40) {
+                for (let j = -100; j <= 100; j += 40) {
+                    const ov = calcOverlay(i, j);
+                    x.push(i); y.push(j);
+                    u.push(ov.dx * 5); v.push(ov.dy * 5);
+                }
+            }
+            Plotly.newPlot('chart1', [{x: x, y: y, mode: 'markers', type: 'scatter', marker: {size: 8, color: '#667eea'}, text: x.map(function(_, i) { return 'Δx=' + u[i].toFixed(1) + ', Δy=' + v[i].toFixed(1); })}], {paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: '#e0e0e0'}, xaxis: {title: 'X Position (μm)', gridcolor: 'rgba(102,126,234,0.2)'}, yaxis: {title: 'Y Position (μm)', gridcolor: 'rgba(102,126,234,0.2)'}, margin: {t: 20, r: 20, b: 50, l: 60}}, {responsive: true});
+        }
+
+        function updateChart2() {
+            const size = 20;
+            const x = [], y = [], z = [];
+            for (let i = 0; i < size; i++) {
+                const row = [];
+                for (let j = 0; j < size; j++) {
+                    const xi = -100 + (i / size) * 200;
+                    const yj = -100 + (j / size) * 200;
+                    row.push(calcOverlay(xi, yj).mag);
+                }
+                z.push(row);
+            }
+            Plotly.newPlot('chart2', [{z: z, type: 'heatmap', colorscale: [[0, '#0a0a0a'], [0.5, '#667eea'], [1, '#f39c12']], colorbar: {title: 'Overlay (nm)'}}], {paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: '#e0e0e0'}, xaxis: {title: 'X', gridcolor: 'rgba(102,126,234,0.2)'}, yaxis: {title: 'Y', gridcolor: 'rgba(102,126,234,0.2)'}, margin: {t: 20, r: 20, b: 50, l: 60}}, {responsive: true});
+        }
+
+        function updateChart3() {
+            const labels = ['TX', 'TY', 'Mag', 'Rot', 'Ortho', 'AsymMag', 'Higher'];
+            const values = [params.tx, params.ty, params.mag * 5, params.rot, params.ortho, params.asym * 3, params.higher * 2];
+            Plotly.newPlot('chart3', [{x: labels, y: values, type: 'bar', marker: {color: '#764ba2'}}], {paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: '#e0e0e0'}, xaxis: {gridcolor: 'rgba(102,126,234,0.2)'}, yaxis: {title: 'Magnitude (nm)', gridcolor: 'rgba(102,126,234,0.2)'}, margin: {t: 20, r: 20, b: 50, l: 60}}, {responsive: true});
+        }
+
+        function updateChart4() {
+            Plotly.newPlot('chart4', [{values: [params.tx * params.tx, params.ty * params.ty, params.mag * params.mag * 25, params.rot * params.rot, params.higher * params.higher * 4], labels: ['TX', 'TY', 'Mag', 'Rot', 'Higher'], type: 'pie', marker: {colors: ['#667eea', '#f39c12', '#764ba2', '#e67e22', '#16a085']}}], {paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: '#e0e0e0'}, margin: {t: 20, r: 20, b: 50, l: 60}}, {responsive: true});
+        }
+
+        function updateChart5() {
+            const residuals = [];
+            for (let i = 0; i < 100; i++) {
+                const x = (Math.random() - 0.5) * 200;
+                const y = (Math.random() - 0.5) * 200;
+                const ov = calcOverlay(x, y);
+                residuals.push((Math.random() - 0.5) * 2 + ov.mag * 0.1);
+            }
+            Plotly.newPlot('chart5', [{x: residuals, type: 'histogram', nbinsx: 25, marker: {color: '#f39c12'}}], {paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: '#e0e0e0'}, xaxis: {title: 'Residual (nm)', gridcolor: 'rgba(102,126,234,0.2)'}, yaxis: {title: 'Count', gridcolor: 'rgba(102,126,234,0.2)'}, margin: {t: 20, r: 20, b: 50, l: 60}}, {responsive: true});
+        }
+
+        function updateChart6() {
+            const wafers = Array.from({length: 30}, function(_, i) { return i + 1; });
+            const overlay = wafers.map(function(w) { return 5 + (Math.random() - 0.5) * 2 - w * 0.08; });
+            Plotly.newPlot('chart6', [{x: wafers, y: overlay, type: 'scatter', mode: 'lines+markers', line: {color: '#667eea', width: 2}, marker: {size: 6}}], {paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: '#e0e0e0'}, xaxis: {title: 'Wafer Number', gridcolor: 'rgba(102,126,234,0.2)'}, yaxis: {title: 'Overlay (nm)', gridcolor: 'rgba(102,126,234,0.2)'}, margin: {t: 20, r: 20, b: 50, l: 60}}, {responsive: true});
+        }
+
+        function updateChart7() {
+            const x = Array.from({length: 20}, function(_, i) { return -100 + i * 10; });
+            const s1 = x.map(function(xi) { return calcOverlay(xi, 0).dx; });
+            const s2 = x.map(function(xi) { return calcOverlay(xi, 0).dx + 1.5; });
+            Plotly.newPlot('chart7', [{x: x, y: s1, type: 'scatter', mode: 'lines', name: 'Scanner A', line: {color: '#667eea', width: 3}}, {x: x, y: s2, type: 'scatter', mode: 'lines', name: 'Scanner B', line: {color: '#f39c12', width: 3}}], {paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: '#e0e0e0'}, xaxis: {title: 'Position (μm)', gridcolor: 'rgba(102,126,234,0.2)'}, yaxis: {title: 'Overlay (nm)', gridcolor: 'rgba(102,126,234,0.2)'}, margin: {t: 20, r: 20, b: 50, l: 60}, showlegend: true}, {responsive: true});
+        }
+
+        let scene, camera, renderer, mesh;
+        function init3D() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
+            const container = document.getElementById('canvas3d');
+            renderer.setSize(container.clientWidth, 500);
+            container.appendChild(renderer.domElement);
+            camera.position.set(4, 4, 4);
+            camera.lookAt(0, 0, 0);
+            const light = new THREE.DirectionalLight(0x667eea, 1);
+            light.position.set(1, 1, 1);
+            scene.add(light);
+            update3D();
+            animate3D();
+        }
+
+        function update3D() {
+            if (mesh) scene.remove(mesh);
+            const geometry = new THREE.BufferGeometry();
+            const vertices = [], colors = [];
+            for (let i = 0; i < 40; i++) {
+                for (let j = 0; j < 40; j++) {
+                    const x = -2 + (i / 40) * 4;
+                    const z = -2 + (j / 40) * 4;
+                    const ov = calcOverlay(x * 50, z * 50);
+                    const y = ov.mag / 50;
+                    vertices.push(x, y, z);
+                    const c = Math.min(1, ov.mag / 15);
+                    colors.push(0.4 + c * 0.3, 0.49, 0.91 - c * 0.3);
+                }
+            }
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            mesh = new THREE.Points(geometry, new THREE.PointsMaterial({size: 0.08, vertexColors: true}));
+            scene.add(mesh);
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+            if (mesh) mesh.rotation.y += 0.004;
+            renderer.render(scene, camera);
+        }
+
+        function updateAll() {
+            updateStats();
+            updateChart1();
+            updateChart2();
+            updateChart3();
+            updateChart4();
+            updateChart5();
+            updateChart6();
+            updateChart7();
+            update3D();
+        }
+
+        updateAll();
+        init3D();
+    });
     </script>
 </body>
 </html>

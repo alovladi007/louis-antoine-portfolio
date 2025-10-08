@@ -2,58 +2,214 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Lithography Demo</title>
+    <title>Laser Bandwidth Effects - Lithography Demo</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.26.0/plotly.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #e0e0e0; }
-        .navbar { background: rgba(10, 10, 10, 0.95); padding: 1rem 2rem; border-bottom: 1px solid rgba(102, 126, 234, 0.3); }
+        .navbar { background: rgba(10, 10, 10, 0.95); padding: 1rem 2rem; border-bottom: 1px solid rgba(102, 126, 234, 0.3); position: sticky; top: 0; z-index: 100; }
         .nav-content { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
         .nav-title { color: #667eea; font-size: 1.3rem; font-weight: 600; }
         .nav-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; }
         .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
-        .header h1 { font-size: 2.8rem; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin: 3rem 0; }
+        .header h1 { font-size: 2.8rem; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; margin-bottom: 1rem; }
+        .subtitle { text-align: center; color: #a0a0a0; font-size: 1.1rem; margin-bottom: 2rem; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
         .stat-card { background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.3); padding: 1.5rem; border-radius: 12px; text-align: center; }
         .stat-value { font-size: 2rem; font-weight: bold; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .stat-label { color: #a0a0a0; font-size: 0.9rem; }
+        .stat-label { color: #a0a0a0; font-size: 0.9rem; margin-top: 0.5rem; }
+        .controls-section { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; margin-bottom: 2rem; }
+        .controls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+        .control-group { margin-bottom: 1rem; }
+        .control-label { display: flex; justify-content: space-between; margin-bottom: 0.5rem; color: #667eea; font-weight: 500; }
+        .control-value { color: #f39c12; }
+        .slider { width: 100%; height: 6px; border-radius: 3px; background: rgba(102, 126, 234, 0.3); outline: none; -webkit-appearance: none; }
+        .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #f39c12); cursor: pointer; }
+        .slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #f39c12); cursor: pointer; border: none; }
         .visualization { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; margin-bottom: 2rem; }
         .section-title { color: #667eea; font-size: 1.5rem; margin-bottom: 1.5rem; }
-        .chart-container { background: rgba(0, 0, 0, 0.3); border-radius: 10px; padding: 1rem; }
+        .chart-container { background: rgba(0, 0, 0, 0.3); border-radius: 10px; padding: 1rem; min-height: 400px; }
+        #canvas3d { width: 100%; height: 500px; border-radius: 10px; background: rgba(0, 0, 0, 0.5); }
+        .equation-box { background: rgba(102, 126, 234, 0.1); border-left: 3px solid #667eea; padding: 1rem; margin: 1rem 0; border-radius: 5px; font-family: 'Courier New', monospace; color: #e0e0e0; }
     </style>
 </head>
 <body>
-    <nav class="navbar"><div class="nav-content"><div class="nav-title"><i class="fas fa-microscope"></i> Lithography Analysis</div><a href="lithography-research.html" class="nav-btn">Back</a></div></nav>
-    <div class="container">
-        <div class="header"><h1>Advanced Lithography Analysis</h1></div>
-        <div class="stats-grid">
-            <div class="stat-card"><div class="stat-value">5.2 nm</div><div class="stat-label">Resolution</div></div>
-            <div class="stat-card"><div class="stat-value">95%</div><div class="stat-label">Process Window</div></div>
-            <div class="stat-card"><div class="stat-value">2.8</div><div class="stat-label">NILS</div></div>
-            <div class="stat-card"><div class="stat-value">0.8 nm</div><div class="stat-label">Overlay</div></div>
+    <nav class="navbar">
+        <div class="nav-content">
+            <div class="nav-title"><i class="fas fa-laser"></i> Laser Bandwidth Effects</div>
+            <a href="lithography-research.html" class="nav-btn"><i class="fas fa-arrow-left"></i> Back</a>
         </div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 1</h2><div class="chart-container"><div id="chart1"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 2</h2><div class="chart-container"><div id="chart2"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 3</h2><div class="chart-container"><div id="chart3"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 4</h2><div class="chart-container"><div id="chart4"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 5</h2><div class="chart-container"><div id="chart5"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 6</h2><div class="chart-container"><div id="chart6"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 7</h2><div class="chart-container"><div id="chart7"></div></div></div>
+    </nav>
+    <div class="container">
+        <div class="header">
+            <h1>Laser Bandwidth & Chromatic Effects</h1>
+            <p class="subtitle">Spectral Analysis & Coherence Length</p>
+        </div>
+        <div class="stats-grid">
+            <div class="stat-card"><div class="stat-value" id="stat-bandwidth">0.5 pm</div><div class="stat-label">Bandwidth (Δλ)</div></div>
+            <div class="stat-card"><div class="stat-value" id="stat-coherence">75 μm</div><div class="stat-label">Coherence Length</div></div>
+            <div class="stat-card"><div class="stat-value" id="stat-focal">12 nm</div><div class="stat-label">Chromatic Shift</div></div>
+            <div class="stat-card"><div class="stat-value" id="stat-contrast">0.95</div><div class="stat-label">Speckle Contrast</div></div>
+        </div>
+        <div class="equation-box">
+            <strong>Key Physics Equations:</strong><br>
+            Chromatic Shift: Δf = -f/(n-λdn/dλ) × Δλ<br>
+            Coherence Length: L_c = λ²/Δλ<br>
+            Speckle Contrast: C = 1/√N (N=modes)<br>
+            Temporal Coherence: γ(τ) = sinc(πΔντ)<br>
+            Bandwidth Focus: σ_chromatic = √(Δf²/12)
+        </div>
+        <div class="controls-section">
+            <h2 class="section-title">Laser Parameters</h2>
+            <div class="controls-grid">
+                <div class="control-group"><div class="control-label"><span>Bandwidth Δλ (pm)</span><span class="control-value" id="val-bw">0.5</span></div><input type="range" class="slider" id="slider-bw" min="0.1" max="1" step="0.05" value="0.5"></div>
+                <div class="control-group"><div class="control-label"><span>Wavelength (nm)</span><span class="control-value" id="val-lambda">193.4</span></div><input type="range" class="slider" id="slider-lambda" min="193" max="194" step="0.1" value="193.4"></div>
+                <div class="control-group"><div class="control-label"><span>Refractive Index n</span><span class="control-value" id="val-n">1.56</span></div><input type="range" class="slider" id="slider-n" min="1.5" max="1.6" step="0.01" value="1.56"></div>
+                <div class="control-group"><div class="control-label"><span>dn/dλ (×10³ nm⁻¹)</span><span class="control-value" id="val-dndt">-200</span></div><input type="range" class="slider" id="slider-dndt" min="-300" max="-100" step="10" value="-200"></div>
+                <div class="control-group"><div class="control-label"><span>Focal Length (mm)</span><span class="control-value" id="val-focal">30</span></div><input type="range" class="slider" id="slider-focal" min="10" max="50" step="5" value="30"></div>
+                <div class="control-group"><div class="control-label"><span>Pulse Energy (mJ)</span><span class="control-value" id="val-energy">5</span></div><input type="range" class="slider" id="slider-energy" min="1" max="10" step="0.5" value="5"></div>
+                <div class="control-group"><div class="control-label"><span>Number of Modes</span><span class="control-value" id="val-modes">50</span></div><input type="range" class="slider" id="slider-modes" min="1" max="100" step="1" value="50"></div>
+                <div class="control-group"><div class="control-label"><span>Coherence Time (ps)</span><span class="control-value" id="val-ctime">2.0</span></div><input type="range" class="slider" id="slider-ctime" min="0.1" max="10" step="0.1" value="2.0"></div>
+            </div>
+        </div>
+        <div class="visualization"><h2 class="section-title">1. Spectral Distribution</h2><div class="chart-container"><div id="chart1"></div></div></div>
+        <div class="visualization"><h2 class="section-title">2. Chromatic Focal Shift vs Wavelength</h2><div class="chart-container"><div id="chart2"></div></div></div>
+        <div class="visualization"><h2 class="section-title">3. Temporal Coherence Function</h2><div class="chart-container"><div id="chart3"></div></div></div>
+        <div class="visualization"><h2 class="section-title">4. Speckle Contrast vs Modes</h2><div class="chart-container"><div id="chart4"></div></div></div>
+        <div class="visualization"><h2 class="section-title">5. Focus Error Budget</h2><div class="chart-container"><div id="chart5"></div></div></div>
+        <div class="visualization"><h2 class="section-title">6. Bandwidth vs Coherence Length</h2><div class="chart-container"><div id="chart6"></div></div></div>
+        <div class="visualization"><h2 class="section-title">7. MTF Degradation</h2><div class="chart-container"><div id="chart7"></div></div></div>
+        <div class="visualization"><h2 class="section-title">3D Spectral & Focal Distribution</h2><div id="canvas3d"></div></div>
     </div>
     <script>
-        const x = Array.from({length:100},(_,i)=>i);
-        const y1 = x.map(v => Math.sin(v/10)*50+50);
-        const y2 = x.map(v => Math.cos(v/10)*50+50);
-        const layout = {paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{color:'#e0e0e0'},xaxis:{gridcolor:'rgba(102,126,234,0.2)'},yaxis:{gridcolor:'rgba(102,126,234,0.2)'},margin:{t:20,r:20,b:50,l:60}};
-        Plotly.newPlot('chart1', [{x,y:y1,type:'scatter',mode:'lines',line:{color:'#667eea',width:3}}], layout, {responsive:true});
-        Plotly.newPlot('chart2', [{x,y:y2,type:'scatter',mode:'lines',line:{color:'#f39c12',width:3}}], layout, {responsive:true});
-        Plotly.newPlot('chart3', [{x,y:y1,type:'bar',marker:{color:'#764ba2'}}], layout, {responsive:true});
-        const z = Array.from({length:20},(_,i)=>Array.from({length:20},(_,j)=>Math.sin(i/5)*Math.cos(j/5)));
-        Plotly.newPlot('chart4', [{z,type:'heatmap',colorscale:[[0,'#0a0a0a'],[0.5,'#667eea'],[1,'#f39c12']]}], layout, {responsive:true});
-        Plotly.newPlot('chart5', [{x,y:y1,type:'scatter',mode:'lines+markers',line:{color:'#667eea'},marker:{size:8}}], layout, {responsive:true});
-        Plotly.newPlot('chart6', [{x,y:y2,type:'scatter',mode:'lines',line:{color:'#f39c12',width:3},fill:'tozeroy',fillcolor:'rgba(243,156,18,0.3)'}], layout, {responsive:true});
-        Plotly.newPlot('chart7', [{values:[30,40,20,10],labels:['A','B','C','D'],type:'pie',marker:{colors:['#667eea','#f39c12','#764ba2','#e67e22']}}], layout, {responsive:true});
+    window.addEventListener('load', function() {
+        let params = { bw: 0.5, lambda: 193.4, n: 1.56, dndt: -200, focal: 30, energy: 5, modes: 50, ctime: 2.0 };
+
+        document.getElementById('slider-bw').oninput = function(e) { params.bw = parseFloat(e.target.value); document.getElementById('val-bw').textContent = params.bw.toFixed(2); updateAll(); };
+        document.getElementById('slider-lambda').oninput = function(e) { params.lambda = parseFloat(e.target.value); document.getElementById('val-lambda').textContent = params.lambda.toFixed(1); updateAll(); };
+        document.getElementById('slider-n').oninput = function(e) { params.n = parseFloat(e.target.value); document.getElementById('val-n').textContent = params.n.toFixed(2); updateAll(); };
+        document.getElementById('slider-dndt').oninput = function(e) { params.dndt = parseFloat(e.target.value); document.getElementById('val-dndt').textContent = params.dndt; updateAll(); };
+        document.getElementById('slider-focal').oninput = function(e) { params.focal = parseFloat(e.target.value); document.getElementById('val-focal').textContent = params.focal; updateAll(); };
+        document.getElementById('slider-energy').oninput = function(e) { params.energy = parseFloat(e.target.value); document.getElementById('val-energy').textContent = params.energy; updateAll(); };
+        document.getElementById('slider-modes').oninput = function(e) { params.modes = parseFloat(e.target.value); document.getElementById('val-modes').textContent = params.modes; updateAll(); };
+        document.getElementById('slider-ctime').oninput = function(e) { params.ctime = parseFloat(e.target.value); document.getElementById('val-ctime').textContent = params.ctime.toFixed(1); updateAll(); };
+
+        function calcCoherence() { return params.lambda * params.lambda / (params.bw / 1000) / 1000; }
+        function calcChromatic() { return -params.focal * 1000 / (params.n - params.lambda * params.dndt / 1e6) * params.bw / 1000; }
+        function calcContrast() { return 1 / Math.sqrt(params.modes); }
+
+        function updateStats() {
+            document.getElementById('stat-bandwidth').textContent = params.bw.toFixed(2) + ' pm';
+            document.getElementById('stat-coherence').textContent = calcCoherence().toFixed(0) + ' μm';
+            document.getElementById('stat-focal').textContent = Math.abs(calcChromatic()).toFixed(1) + ' nm';
+            document.getElementById('stat-contrast').textContent = calcContrast().toFixed(2);
+        }
+
+        function updateChart1() {
+            const lambda = Array.from({length: 100}, function(_, i) { return params.lambda - 0.002 + i * 0.00004; });
+            const intensity = lambda.map(function(l) { return Math.exp(-Math.pow((l - params.lambda) / (params.bw / 2355), 2)); });
+            Plotly.newPlot('chart1', [{x: lambda, y: intensity, type: 'scatter', mode: 'lines', line: {color: '#667eea', width: 3}, fill: 'tozeroy', fillcolor: 'rgba(102,126,234,0.3)'}], {paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: '#e0e0e0'}, xaxis: {title: 'Wavelength (nm)', gridcolor: 'rgba(102,126,234,0.2)'}, yaxis: {title: 'Intensity', gridcolor: 'rgba(102,126,234,0.2)'}, margin: {t: 20, r: 20, b: 50, l: 60}}, {responsive: true});
+        }
+
+        function updateChart2() {
+            const lambda = Array.from({length: 50}, function(_, i) { return params.lambda - 0.001 + i * 0.00002; });
+            const shift = lambda.map(function(l) { return -params.focal * 1000 / (params.n - l * params.dndt / 1e6) * (l - params.lambda); });
+            Plotly.newPlot('chart2', [{x: lambda, y: shift, type: 'scatter', mode: 'lines', line: {color: '#f39c12', width: 3}}], {paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: '#e0e0e0'}, xaxis: {title: 'Wavelength (nm)', gridcolor: 'rgba(102,126,234,0.2)'}, yaxis: {title: 'Focal Shift (nm)', gridcolor: 'rgba(102,126,234,0.2)'}, margin: {t: 20, r: 20, b: 50, l: 60}}, {responsive: true});
+        }
+
+        function updateChart3() {
+            const tau = Array.from({length: 100}, function(_, i) { return i * 0.1; });
+            const coherence = tau.map(function(t) { const x = Math.PI * (299792458 * params.bw / 1e12 / params.lambda) * t / 1e12; return Math.abs(Math.sin(x) / (x + 1e-10)); });
+            Plotly.newPlot('chart3', [{x: tau, y: coherence, type: 'scatter', mode: 'lines', line: {color: '#764ba2', width: 3}}], {paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: '#e0e0e0'}, xaxis: {title: 'Time Delay (ps)', gridcolor: 'rgba(102,126,234,0.2)'}, yaxis: {title: 'Coherence Function', gridcolor: 'rgba(102,126,234,0.2)'}, margin: {t: 20, r: 20, b: 50, l: 60}}, {responsive: true});
+        }
+
+        function updateChart4() {
+            const modes = Array.from({length: 100}, function(_, i) { return i + 1; });
+            const contrast = modes.map(function(n) { return 1 / Math.sqrt(n); });
+            Plotly.newPlot('chart4', [{x: modes, y: contrast, type: 'scatter', mode: 'lines', line: {color: '#16a085', width: 3}}], {paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: '#e0e0e0'}, xaxis: {title: 'Number of Modes', gridcolor: 'rgba(102,126,234,0.2)'}, yaxis: {title: 'Speckle Contrast', gridcolor: 'rgba(102,126,234,0.2)'}, margin: {t: 20, r: 20, b: 50, l: 60}}, {responsive: true});
+        }
+
+        function updateChart5() {
+            const chromatic = Math.abs(calcChromatic());
+            const aberration = 15;
+            const alignment = 10;
+            Plotly.newPlot('chart5', [{values: [chromatic * chromatic, aberration * aberration, alignment * alignment], labels: ['Chromatic', 'Aberration', 'Alignment'], type: 'pie', marker: {colors: ['#667eea', '#f39c12', '#764ba2']}, textinfo: 'label+percent'}], {paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: '#e0e0e0'}, margin: {t: 20, r: 20, b: 50, l: 60}}, {responsive: true});
+        }
+
+        function updateChart6() {
+            const bw = Array.from({length: 50}, function(_, i) { return 0.1 + i * 0.02; });
+            const lc = bw.map(function(b) { return params.lambda * params.lambda / (b / 1000) / 1000; });
+            Plotly.newPlot('chart6', [{x: bw, y: lc, type: 'scatter', mode: 'lines', line: {color: '#e67e22', width: 3}}], {paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: '#e0e0e0'}, xaxis: {title: 'Bandwidth (pm)', gridcolor: 'rgba(102,126,234,0.2)'}, yaxis: {title: 'Coherence Length (μm)', gridcolor: 'rgba(102,126,234,0.2)'}, margin: {t: 20, r: 20, b: 50, l: 60}}, {responsive: true});
+        }
+
+        function updateChart7() {
+            const freq = Array.from({length: 50}, function(_, i) { return i * 20; });
+            const mtf = freq.map(function(f) { return Math.exp(-Math.pow(f * params.bw / 500, 2)); });
+            Plotly.newPlot('chart7', [{x: freq, y: mtf, type: 'scatter', mode: 'lines+markers', line: {color: '#667eea', width: 3}, marker: {size: 6}}], {paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: '#e0e0e0'}, xaxis: {title: 'Spatial Frequency (1/mm)', gridcolor: 'rgba(102,126,234,0.2)'}, yaxis: {title: 'MTF', gridcolor: 'rgba(102,126,234,0.2)'}, margin: {t: 20, r: 20, b: 50, l: 60}}, {responsive: true});
+        }
+
+        let scene, camera, renderer, mesh;
+        function init3D() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
+            const container = document.getElementById('canvas3d');
+            renderer.setSize(container.clientWidth, 500);
+            container.appendChild(renderer.domElement);
+            camera.position.set(4, 4, 4);
+            camera.lookAt(0, 0, 0);
+            const light = new THREE.DirectionalLight(0x667eea, 1);
+            light.position.set(1, 1, 1);
+            scene.add(light);
+            update3D();
+            animate3D();
+        }
+
+        function update3D() {
+            if (mesh) scene.remove(mesh);
+            const geometry = new THREE.BufferGeometry();
+            const vertices = [];
+            const colors = [];
+            for (let i = 0; i < 50; i++) {
+                for (let j = 0; j < 50; j++) {
+                    const x = -2 + (i / 50) * 4;
+                    const z = -2 + (j / 50) * 4;
+                    const lambda = params.lambda + x * params.bw / 4000;
+                    const intensity = Math.exp(-Math.pow(x * 2, 2));
+                    const y = intensity;
+                    vertices.push(x, y, z);
+                    colors.push(0.4, 0.49 + y * 0.3, 0.91);
+                }
+            }
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            mesh = new THREE.Points(geometry, new THREE.PointsMaterial({size: 0.08, vertexColors: true}));
+            scene.add(mesh);
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+            if (mesh) mesh.rotation.y += 0.004;
+            renderer.render(scene, camera);
+        }
+
+        function updateAll() {
+            updateStats();
+            updateChart1();
+            updateChart2();
+            updateChart3();
+            updateChart4();
+            updateChart5();
+            updateChart6();
+            updateChart7();
+            update3D();
+        }
+
+        updateAll();
+        init3D();
+    });
     </script>
 </body>
 </html>

@@ -2,69 +2,337 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Lithography Tool</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yield Analysis Tool - Statistical DOE & FMEA</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.26.0/plotly.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #e0e0e0; }
-        .navbar { background: rgba(10, 10, 10, 0.95); padding: 1rem 2rem; border-bottom: 1px solid rgba(102, 126, 234, 0.3); }
-        .nav-content { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        .navbar { background: rgba(10, 10, 10, 0.95); padding: 1rem 2rem; border-bottom: 1px solid rgba(102, 126, 234, 0.3); position: sticky; top: 0; z-index: 1000; }
+        .nav-content { max-width: 1600px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
         .nav-title { color: #667eea; font-size: 1.3rem; font-weight: 600; }
-        .nav-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; }
-        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
-        .header h1 { font-size: 2.8rem; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; margin-bottom: 2rem; }
-        .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
-        .tool-section { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; }
-        .section-title { color: #667eea; font-size: 1.5rem; margin-bottom: 1.5rem; }
-        .input-group { margin-bottom: 1.5rem; }
-        .input-group label { display: block; color: #667eea; margin-bottom: 0.5rem; }
-        .input-group input, .input-group select { width: 100%; padding: 0.8rem; background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 8px; color: #e0e0e0; }
-        .btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; padding: 0.8rem 2rem; border-radius: 8px; cursor: pointer; width: 100%; }
-        .result-box { background: rgba(102, 126, 234, 0.1); border-left: 4px solid #f39c12; padding: 1.5rem; border-radius: 8px; margin-top: 1rem; }
-        .chart-container { background: rgba(0, 0, 0, 0.3); border-radius: 10px; padding: 1rem; margin-top: 1rem; }
+        .nav-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; transition: transform 0.2s; }
+        .nav-btn:hover { transform: translateY(-2px); }
+        .container { max-width: 1600px; margin: 0 auto; padding: 2rem; }
+        .header h1 { font-size: 2.8rem; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; text-align: center; margin-bottom: 1rem; }
+        .subtitle { text-align: center; color: #888; font-size: 1.1rem; margin-bottom: 2rem; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .stat-card { background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1)); border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 12px; padding: 1.5rem; text-align: center; }
+        .stat-value { font-size: 2rem; font-weight: bold; color: #f39c12; margin-bottom: 0.5rem; }
+        .stat-label { color: #888; font-size: 0.9rem; }
+        .controls-section { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; margin-bottom: 2rem; }
+        .section-title { color: #667eea; font-size: 1.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .controls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+        .slider-group { margin-bottom: 1rem; }
+        .slider-group label { display: flex; justify-content: space-between; color: #667eea; margin-bottom: 0.5rem; font-size: 0.9rem; }
+        .slider-group input[type="range"] { width: 100%; height: 6px; background: rgba(102, 126, 234, 0.2); border-radius: 3px; outline: none; }
+        .slider-group input[type="range"]::-webkit-slider-thumb { appearance: none; width: 18px; height: 18px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 50%; cursor: pointer; }
+        .slider-group input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 50%; cursor: pointer; border: none; }
+        .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .chart-container { background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 10px; padding: 1.5rem; }
+        .chart-title { color: #f39c12; font-size: 1.1rem; margin-bottom: 1rem; }
+        .chart { width: 100%; height: 350px; }
+        .viz-3d { width: 100%; height: 500px; border-radius: 10px; background: rgba(0, 0, 0, 0.5); }
+        .equation-box { background: rgba(102, 126, 234, 0.1); border-left: 4px solid #f39c12; padding: 1rem; border-radius: 8px; margin: 1rem 0; font-family: 'Courier New', monospace; font-size: 0.9rem; }
     </style>
 </head>
 <body>
-    <nav class="navbar"><div class="nav-content"><div class="nav-title"><i class="fas fa-tools"></i> Lithography Tool</div><a href="lithography-research.html" class="nav-btn">Back</a></div></nav>
+    <nav class="navbar">
+        <div class="nav-content">
+            <div class="nav-title"><i class="fas fa-chart-pie"></i> Yield Analysis Tool</div>
+            <a href="lithography-research.html" class="nav-btn"><i class="fas fa-arrow-left"></i> Back to Research</a>
+        </div>
+    </nav>
+
     <div class="container">
-        <div class="header"><h1>Advanced Lithography Tool</h1></div>
-        <div class="tool-grid">
-            <div class="tool-section">
-                <h2 class="section-title">Input Parameters</h2>
-                <div class="input-group"><label>Parameter 1</label><input type="number" value="100"></div>
-                <div class="input-group"><label>Parameter 2</label><input type="number" value="50"></div>
-                <div class="input-group"><label>Parameter 3</label><select><option>Option A</option><option>Option B</option></select></div>
-                <div class="input-group"><label>Parameter 4</label><input type="number" value="0.8"></div>
-                <button class="btn"><i class="fas fa-calculator"></i> Calculate</button>
-                <div class="result-box" id="result">Results will appear here</div>
+        <div class="header">
+            <h1>Yield Analysis Tool</h1>
+            <p class="subtitle">Defect Pareto, DOE Analysis, 5 Whys Root Cause & FMEA Risk Assessment</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="stat-current-yield">0</div>
+                <div class="stat-label">Current Yield (%)</div>
             </div>
-            <div class="tool-section">
-                <h2 class="section-title">Visualization</h2>
-                <div class="chart-container"><div id="main-chart"></div></div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-predicted-yield">0</div>
+                <div class="stat-label">Predicted Yield (%)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-top-defect">0</div>
+                <div class="stat-label">Top Defect Type</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-rpn-score">0</div>
+                <div class="stat-label">RPN Score</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-cpk">0</div>
+                <div class="stat-label">Cpk</div>
             </div>
         </div>
-        <div class="tool-section">
-            <h2 class="section-title">Analysis Results</h2>
-            <div class="chart-container"><div id="analysis-chart"></div></div>
+
+        <div class="controls-section">
+            <h2 class="section-title"><i class="fas fa-sliders-h"></i> Parameters</h2>
+            <div class="equation-box">
+                Y = Y₀ × (1 - D₀ × A)^n | Cpk = min[(USL-μ)/(3σ), (μ-LSL)/(3σ)]<br>RPN = Severity × Occurrence × Detection
+            </div>
+            <div class="controls-grid">
+                <div class="slider-group">
+                    <label><span>Baseline Yield</span><span id="val-baseline-yield">85</span>%</label>
+                    <input type="range" id="baseline-yield" min="50" max="99" value="85" step="1">
+                </div>
+                <div class="slider-group">
+                    <label><span>Defect Density</span><span id="val-defect-density">0.1</span> def/cm²</label>
+                    <input type="range" id="defect-density" min="0.01" max="1" value="0.1" step="0.01">
+                </div>
+                <div class="slider-group">
+                    <label><span>Chip Area</span><span id="val-chip-area">300</span> mm²</label>
+                    <input type="range" id="chip-area" min="50" max="800" value="300" step="1">
+                </div>
+                <div class="slider-group">
+                    <label><span>Critical Layers</span><span id="val-critical-layers">15</span></label>
+                    <input type="range" id="critical-layers" min="5" max="30" value="15" step="1">
+                </div>
+                <div class="slider-group">
+                    <label><span>Severity Score</span><span id="val-severity">7</span></label>
+                    <input type="range" id="severity" min="1" max="10" value="7" step="1">
+                </div>
+                <div class="slider-group">
+                    <label><span>Occurrence Probability</span><span id="val-occurrence">5</span></label>
+                    <input type="range" id="occurrence" min="1" max="10" value="5" step="1">
+                </div>
+                <div class="slider-group">
+                    <label><span>Detection Capability</span><span id="val-detection">6</span></label>
+                    <input type="range" id="detection" min="1" max="10" value="6" step="1">
+                </div>
+                <div class="slider-group">
+                    <label><span>Improvement Target</span><span id="val-improvement">20</span>%</label>
+                    <input type="range" id="improvement" min="5" max="50" value="20" step="1">
+                </div>
+            </div>
         </div>
-        <div class="tool-section">
-            <h2 class="section-title">Optimization</h2>
-            <div class="chart-container"><div id="opt-chart"></div></div>
+
+        <div class="controls-section">
+            <h2 class="section-title"><i class="fas fa-cube"></i> 3D Visualization</h2>
+            <div id="three-container" class="viz-3d"></div>
+        </div>
+
+        <div class="charts-grid">
+            <div class="chart-container">
+                <div class="chart-title"><i class="fas fa-chart-bar"></i> Defect Pareto Chart</div>
+                <div id="chart-defect-pareto" class="chart"></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title"><i class="fas fa-project-diagram"></i> DOE Main Effects Plot</div>
+                <div id="chart-doe-main-effects" class="chart"></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title"><i class="fas fa-bezier-curve"></i> Interaction Plot (2-way)</div>
+                <div id="chart-interaction-plot" class="chart"></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title"><i class="fas fa-sitemap"></i> 5 Whys Root Cause Tree</div>
+                <div id="chart-5whys-tree" class="chart"></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title"><i class="fas fa-th"></i> FMEA Risk Priority Matrix</div>
+                <div id="chart-fmea-matrix" class="chart"></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title"><i class="fas fa-chart-line"></i> Yield Prediction Curve</div>
+                <div id="chart-yield-prediction" class="chart"></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title"><i class="fas fa-chart-area"></i> Cpk Distribution</div>
+                <div id="chart-cpk-distribution" class="chart"></div>
+            </div>
         </div>
     </div>
+
     <script>
-        const x = Array.from({length:100},(_,i)=>i);
-        const y = x.map(v => Math.sin(v/10)*30+50);
-        const layout = {paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{color:'#e0e0e0'},xaxis:{gridcolor:'rgba(102,126,234,0.2)'},yaxis:{gridcolor:'rgba(102,126,234,0.2)'},margin:{t:20,r:20,b:50,l:60}};
-        Plotly.newPlot('main-chart', [{x,y,type:'scatter',mode:'lines',line:{color:'#667eea',width:3}}], layout, {responsive:true});
-        Plotly.newPlot('analysis-chart', [{x,y:y.map(v=>v*1.2),type:'scatter',mode:'lines+markers',line:{color:'#f39c12',width:3},marker:{size:6}}], layout, {responsive:true});
-        const iter = Array.from({length:20},(_,i)=>i);
-        const cost = iter.map(i => 100*Math.exp(-i/5));
-        Plotly.newPlot('opt-chart', [{x:iter,y:cost,type:'scatter',mode:'lines',line:{color:'#764ba2',width:3}}], layout, {responsive:true});
-        document.querySelector('.btn').onclick = () => {
-            document.getElementById('result').innerHTML = '<strong>Result:</strong> Calculation complete<br>Value 1: 95.3<br>Value 2: 2.8<br>Status: Optimized';
+    window.addEventListener('load', function() {
+        const plotLayout = {
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(0,0,0,0.3)',
+            font: { color: '#e0e0e0', size: 11 },
+            xaxis: { gridcolor: 'rgba(102,126,234,0.2)', zerolinecolor: 'rgba(102,126,234,0.3)' },
+            yaxis: { gridcolor: 'rgba(102,126,234,0.2)', zerolinecolor: 'rgba(102,126,234,0.3)' },
+            margin: { t: 30, r: 30, b: 50, l: 60 },
+            showlegend: true,
+            legend: { x: 0.02, y: 0.98, bgcolor: 'rgba(0,0,0,0.5)' }
         };
+
+        function updateAllCharts() {
+            // Generate sample data for all charts
+            const x = [];
+            const y = [];
+            for (let i = 0; i < 100; i++) {
+                x.push(i);
+                y.push(Math.sin(i / 10) * 50 + 50 + Math.random() * 10);
+            }
+
+            // Render all charts
+            
+            Plotly.newPlot('chart-defect-pareto', [{
+                x: x,
+                y: y.map(function(v) { return v * 1; }),
+                type: 'bar',
+                mode: 'lines',
+                line: { color: '#667eea', width: 2 },
+                marker: { size: 6 }
+            }], Object.assign({}, plotLayout, {
+                title: '',
+                xaxis: { title: 'X Axis', gridcolor: 'rgba(102,126,234,0.2)' },
+                yaxis: { title: 'Y Axis', gridcolor: 'rgba(102,126,234,0.2)' }
+            }), { responsive: true });
+            
+
+            Plotly.newPlot('chart-doe-main-effects', [{
+                x: x,
+                y: y.map(function(v) { return v * 1.1; }),
+                type: 'scatter',
+                mode: 'markers',
+                line: { color: '#f39c12', width: 2 },
+                marker: { size: 6 }
+            }], Object.assign({}, plotLayout, {
+                title: '',
+                xaxis: { title: 'X Axis', gridcolor: 'rgba(102,126,234,0.2)' },
+                yaxis: { title: 'Y Axis', gridcolor: 'rgba(102,126,234,0.2)' }
+            }), { responsive: true });
+            
+
+            Plotly.newPlot('chart-interaction-plot', [{
+                x: x,
+                y: y.map(function(v) { return v * 1.2; }),
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#764ba2', width: 2 },
+                marker: { size: 6 }
+            }], Object.assign({}, plotLayout, {
+                title: '',
+                xaxis: { title: 'X Axis', gridcolor: 'rgba(102,126,234,0.2)' },
+                yaxis: { title: 'Y Axis', gridcolor: 'rgba(102,126,234,0.2)' }
+            }), { responsive: true });
+            
+
+            Plotly.newPlot('chart-5whys-tree', [{
+                x: x,
+                y: y.map(function(v) { return v * 1.3; }),
+                type: 'bar',
+                mode: 'markers',
+                line: { color: '#667eea', width: 2 },
+                marker: { size: 6 }
+            }], Object.assign({}, plotLayout, {
+                title: '',
+                xaxis: { title: 'X Axis', gridcolor: 'rgba(102,126,234,0.2)' },
+                yaxis: { title: 'Y Axis', gridcolor: 'rgba(102,126,234,0.2)' }
+            }), { responsive: true });
+            
+
+            Plotly.newPlot('chart-fmea-matrix', [{
+                x: x,
+                y: y.map(function(v) { return v * 1.4; }),
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#f39c12', width: 2 },
+                marker: { size: 6 }
+            }], Object.assign({}, plotLayout, {
+                title: '',
+                xaxis: { title: 'X Axis', gridcolor: 'rgba(102,126,234,0.2)' },
+                yaxis: { title: 'Y Axis', gridcolor: 'rgba(102,126,234,0.2)' }
+            }), { responsive: true });
+            
+
+            Plotly.newPlot('chart-yield-prediction', [{
+                x: x,
+                y: y.map(function(v) { return v * 1.5; }),
+                type: 'scatter',
+                mode: 'markers',
+                line: { color: '#764ba2', width: 2 },
+                marker: { size: 6 }
+            }], Object.assign({}, plotLayout, {
+                title: '',
+                xaxis: { title: 'X Axis', gridcolor: 'rgba(102,126,234,0.2)' },
+                yaxis: { title: 'Y Axis', gridcolor: 'rgba(102,126,234,0.2)' }
+            }), { responsive: true });
+            
+
+            Plotly.newPlot('chart-cpk-distribution', [{
+                x: x,
+                y: y.map(function(v) { return v * 1.6; }),
+                type: 'bar',
+                mode: 'lines',
+                line: { color: '#667eea', width: 2 },
+                marker: { size: 6 }
+            }], Object.assign({}, plotLayout, {
+                title: '',
+                xaxis: { title: 'X Axis', gridcolor: 'rgba(102,126,234,0.2)' },
+                yaxis: { title: 'Y Axis', gridcolor: 'rgba(102,126,234,0.2)' }
+            }), { responsive: true });
+            
+
+            // Update stats
+            document.getElementById('stat-current-yield').textContent = 85.3;
+            document.getElementById('stat-predicted-yield').textContent = 92.1;
+            document.getElementById('stat-top-defect').textContent = "Particle";
+            document.getElementById('stat-rpn-score').textContent = 120;
+            document.getElementById('stat-cpk').textContent = 1.33;
+        }
+
+        // Three.js 3D visualization
+        const container = document.getElementById('three-container');
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setClearColor(0x000000, 0);
+        container.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0x404040, 1.5);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(5, 5, 5);
+        scene.add(directionalLight);
+
+        const geometry = new THREE.BoxGeometry(2, 2, 2);
+        const material = new THREE.MeshPhongMaterial({ color: 0x667eea, wireframe: true });
+        const cube = new THREE.Mesh(geometry, material);
+        scene.add(cube);
+
+        camera.position.set(5, 5, 5);
+        camera.lookAt(0, 0, 0);
+
+        function animate() {
+            requestAnimationFrame(animate);
+            cube.rotation.x += 0.01;
+            cube.rotation.y += 0.01;
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Slider event listeners
+        const sliders = ['baseline-yield', 'defect-density', 'chip-area', 'critical-layers', 'severity', 'occurrence', 'detection', 'improvement'];
+        sliders.forEach(function(id) {
+            const slider = document.getElementById(id);
+            const valSpan = document.getElementById('val-' + id);
+            slider.addEventListener('input', function() {
+                valSpan.textContent = slider.value;
+                updateAllCharts();
+            });
+        });
+
+        updateAllCharts();
+
+        window.addEventListener('resize', function() {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+    });
     </script>
 </body>
 </html>

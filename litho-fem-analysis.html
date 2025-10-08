@@ -2,58 +2,824 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Lithography Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Focus-Exposure Matrix Analysis - Lithography Demo</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.26.0/plotly.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #e0e0e0; }
-        .navbar { background: rgba(10, 10, 10, 0.95); padding: 1rem 2rem; border-bottom: 1px solid rgba(102, 126, 234, 0.3); }
-        .nav-content { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+        }
+        .navbar {
+            background: rgba(10, 10, 10, 0.95);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .nav-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
         .nav-title { color: #667eea; font-size: 1.3rem; font-weight: 600; }
-        .nav-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; }
+        .nav-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: transform 0.2s;
+        }
+        .nav-btn:hover { transform: scale(1.05); }
         .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
-        .header h1 { font-size: 2.8rem; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin: 3rem 0; }
-        .stat-card { background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.3); padding: 1.5rem; border-radius: 12px; text-align: center; }
-        .stat-value { font-size: 2rem; font-weight: bold; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .stat-label { color: #a0a0a0; font-size: 0.9rem; }
-        .visualization { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; margin-bottom: 2rem; }
-        .section-title { color: #667eea; font-size: 1.5rem; margin-bottom: 1.5rem; }
-        .chart-container { background: rgba(0, 0, 0, 0.3); border-radius: 10px; padding: 1rem; }
+        .header h1 {
+            font-size: 2.8rem;
+            background: linear-gradient(135deg, #667eea, #f39c12);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        .subtitle {
+            text-align: center;
+            color: #a0a0a0;
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        .stat-card {
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea, #f39c12);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .stat-label { color: #a0a0a0; font-size: 0.9rem; margin-top: 0.5rem; }
+
+        .controls-section {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        .control-group { margin-bottom: 1rem; }
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            color: #667eea;
+            font-weight: 500;
+        }
+        .control-value { color: #f39c12; }
+        .slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(102, 126, 234, 0.3);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #f39c12);
+            cursor: pointer;
+        }
+        .slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #f39c12);
+            cursor: pointer;
+            border: none;
+        }
+
+        .visualization {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        .section-title {
+            color: #667eea;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .chart-container {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 1rem;
+            min-height: 400px;
+        }
+        #canvas3d {
+            width: 100%;
+            height: 500px;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.5);
+        }
+        .equation-box {
+            background: rgba(102, 126, 234, 0.1);
+            border-left: 3px solid #667eea;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            color: #e0e0e0;
+        }
     </style>
 </head>
 <body>
-    <nav class="navbar"><div class="nav-content"><div class="nav-title"><i class="fas fa-microscope"></i> Lithography Analysis</div><a href="lithography-research.html" class="nav-btn">Back</a></div></nav>
-    <div class="container">
-        <div class="header"><h1>Advanced Lithography Analysis</h1></div>
-        <div class="stats-grid">
-            <div class="stat-card"><div class="stat-value">5.2 nm</div><div class="stat-label">Resolution</div></div>
-            <div class="stat-card"><div class="stat-value">95%</div><div class="stat-label">Process Window</div></div>
-            <div class="stat-card"><div class="stat-value">2.8</div><div class="stat-label">NILS</div></div>
-            <div class="stat-card"><div class="stat-value">0.8 nm</div><div class="stat-label">Overlay</div></div>
+    <nav class="navbar">
+        <div class="nav-content">
+            <div class="nav-title">
+                <i class="fas fa-chart-area"></i> Focus-Exposure Matrix Analysis
+            </div>
+            <a href="lithography-research.html" class="nav-btn">
+                <i class="fas fa-arrow-left"></i> Back to Research
+            </a>
         </div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 1</h2><div class="chart-container"><div id="chart1"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 2</h2><div class="chart-container"><div id="chart2"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 3</h2><div class="chart-container"><div id="chart3"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 4</h2><div class="chart-container"><div id="chart4"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 5</h2><div class="chart-container"><div id="chart5"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 6</h2><div class="chart-container"><div id="chart6"></div></div></div>
-        <div class="visualization"><h2 class="section-title">Analysis Chart 7</h2><div class="chart-container"><div id="chart7"></div></div></div>
+    </nav>
+
+    <div class="container">
+        <div class="header">
+            <h1>Focus-Exposure Matrix (FEM) Analysis</h1>
+            <p class="subtitle">Process Window Optimization & Bossung Curve Analysis</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="stat-dof">0.35 μm</div>
+                <div class="stat-label">Depth of Focus (DOF)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-el">12.5%</div>
+                <div class="stat-label">Exposure Latitude</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-mef">2.8</div>
+                <div class="stat-label">Mask Error Factor</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-ils">1.2</div>
+                <div class="stat-label">Image Log Slope</div>
+            </div>
+        </div>
+
+        <div class="equation-box">
+            <strong>Key Physics Equations:</strong><br>
+            Bossung Curve: CD(f) = CD₀ + α·f + β·f² + γ·f³<br>
+            DOF = k₂λ/NA² where k₂ = 0.5-1.0<br>
+            Exposure Latitude: EL = (Emax - Emin)/Enominal × 100%<br>
+            MEF = (∂CD/∂M) / (∂CD/∂E) × (E/M)<br>
+            Image Log Slope: ILS = λ/(pitch × NILS)
+        </div>
+
+        <div class="controls-section">
+            <h2 class="section-title">Process Parameters</h2>
+            <div class="controls-grid">
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Focus Offset (μm)</span>
+                        <span class="control-value" id="val-focus">0.00</span>
+                    </div>
+                    <input type="range" class="slider" id="slider-focus" min="-0.5" max="0.5" step="0.01" value="0">
+                </div>
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Exposure Dose (mJ/cm²)</span>
+                        <span class="control-value" id="val-exposure">30</span>
+                    </div>
+                    <input type="range" class="slider" id="slider-exposure" min="10" max="50" step="1" value="30">
+                </div>
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Numerical Aperture (NA)</span>
+                        <span class="control-value" id="val-na">0.40</span>
+                    </div>
+                    <input type="range" class="slider" id="slider-na" min="0.25" max="0.55" step="0.01" value="0.40">
+                </div>
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>σ Inner</span>
+                        <span class="control-value" id="val-sigma-inner">0.50</span>
+                    </div>
+                    <input type="range" class="slider" id="slider-sigma-inner" min="0.3" max="0.7" step="0.01" value="0.50">
+                </div>
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>σ Outer</span>
+                        <span class="control-value" id="val-sigma-outer">0.80</span>
+                    </div>
+                    <input type="range" class="slider" id="slider-sigma-outer" min="0.7" max="0.95" step="0.01" value="0.80">
+                </div>
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Pitch (nm)</span>
+                        <span class="control-value" id="val-pitch">100</span>
+                    </div>
+                    <input type="range" class="slider" id="slider-pitch" min="40" max="200" step="5" value="100">
+                </div>
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>CD Target (nm)</span>
+                        <span class="control-value" id="val-cd">50</span>
+                    </div>
+                    <input type="range" class="slider" id="slider-cd" min="20" max="100" step="1" value="50">
+                </div>
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Resist Contrast (γ)</span>
+                        <span class="control-value" id="val-gamma">8</span>
+                    </div>
+                    <input type="range" class="slider" id="slider-gamma" min="3" max="15" step="0.5" value="8">
+                </div>
+            </div>
+        </div>
+
+        <div class="visualization">
+            <h2 class="section-title">1. Bossung Curves - CD vs Focus at Different Exposures</h2>
+            <div class="chart-container">
+                <div id="chart1"></div>
+            </div>
+        </div>
+
+        <div class="visualization">
+            <h2 class="section-title">2. FEM Matrix - CD Heatmap (Focus × Exposure)</h2>
+            <div class="chart-container">
+                <div id="chart2"></div>
+            </div>
+        </div>
+
+        <div class="visualization">
+            <h2 class="section-title">3. Process Window - Acceptable CD Region</h2>
+            <div class="chart-container">
+                <div id="chart3"></div>
+            </div>
+        </div>
+
+        <div class="visualization">
+            <h2 class="section-title">4. Exposure Latitude vs Feature Size</h2>
+            <div class="chart-container">
+                <div id="chart4"></div>
+            </div>
+        </div>
+
+        <div class="visualization">
+            <h2 class="section-title">5. Depth of Focus vs NA and Pitch</h2>
+            <div class="chart-container">
+                <div id="chart5"></div>
+            </div>
+        </div>
+
+        <div class="visualization">
+            <h2 class="section-title">6. Mask Error Factor (MEF) vs Pitch</h2>
+            <div class="chart-container">
+                <div id="chart6"></div>
+            </div>
+        </div>
+
+        <div class="visualization">
+            <h2 class="section-title">7. Common Process Window - Multiple Features</h2>
+            <div class="chart-container">
+                <div id="chart7"></div>
+            </div>
+        </div>
+
+        <div class="visualization">
+            <h2 class="section-title">3D Resist Profile Visualization</h2>
+            <div id="canvas3d"></div>
+        </div>
     </div>
+
     <script>
-        const x = Array.from({length:100},(_,i)=>i);
-        const y1 = x.map(v => Math.sin(v/10)*50+50);
-        const y2 = x.map(v => Math.cos(v/10)*50+50);
-        const layout = {paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{color:'#e0e0e0'},xaxis:{gridcolor:'rgba(102,126,234,0.2)'},yaxis:{gridcolor:'rgba(102,126,234,0.2)'},margin:{t:20,r:20,b:50,l:60}};
-        Plotly.newPlot('chart1', [{x,y:y1,type:'scatter',mode:'lines',line:{color:'#667eea',width:3}}], layout, {responsive:true});
-        Plotly.newPlot('chart2', [{x,y:y2,type:'scatter',mode:'lines',line:{color:'#f39c12',width:3}}], layout, {responsive:true});
-        Plotly.newPlot('chart3', [{x,y:y1,type:'bar',marker:{color:'#764ba2'}}], layout, {responsive:true});
-        const z = Array.from({length:20},(_,i)=>Array.from({length:20},(_,j)=>Math.sin(i/5)*Math.cos(j/5)));
-        Plotly.newPlot('chart4', [{z,type:'heatmap',colorscale:[[0,'#0a0a0a'],[0.5,'#667eea'],[1,'#f39c12']]}], layout, {responsive:true});
-        Plotly.newPlot('chart5', [{x,y:y1,type:'scatter',mode:'lines+markers',line:{color:'#667eea'},marker:{size:8}}], layout, {responsive:true});
-        Plotly.newPlot('chart6', [{x,y:y2,type:'scatter',mode:'lines',line:{color:'#f39c12',width:3},fill:'tozeroy',fillcolor:'rgba(243,156,18,0.3)'}], layout, {responsive:true});
-        Plotly.newPlot('chart7', [{values:[30,40,20,10],labels:['A','B','C','D'],type:'pie',marker:{colors:['#667eea','#f39c12','#764ba2','#e67e22']}}], layout, {responsive:true});
+    window.addEventListener('load', function() {
+        // State variables
+        let params = {
+            focus: 0,
+            exposure: 30,
+            na: 0.40,
+            sigmaInner: 0.50,
+            sigmaOuter: 0.80,
+            pitch: 100,
+            cd: 50,
+            gamma: 8
+        };
+
+        // Slider event handlers
+        document.getElementById('slider-focus').oninput = function(e) {
+            params.focus = parseFloat(e.target.value);
+            document.getElementById('val-focus').textContent = params.focus.toFixed(2);
+            updateAll();
+        };
+
+        document.getElementById('slider-exposure').oninput = function(e) {
+            params.exposure = parseFloat(e.target.value);
+            document.getElementById('val-exposure').textContent = params.exposure;
+            updateAll();
+        };
+
+        document.getElementById('slider-na').oninput = function(e) {
+            params.na = parseFloat(e.target.value);
+            document.getElementById('val-na').textContent = params.na.toFixed(2);
+            updateAll();
+        };
+
+        document.getElementById('slider-sigma-inner').oninput = function(e) {
+            params.sigmaInner = parseFloat(e.target.value);
+            document.getElementById('val-sigma-inner').textContent = params.sigmaInner.toFixed(2);
+            updateAll();
+        };
+
+        document.getElementById('slider-sigma-outer').oninput = function(e) {
+            params.sigmaOuter = parseFloat(e.target.value);
+            document.getElementById('val-sigma-outer').textContent = params.sigmaOuter.toFixed(2);
+            updateAll();
+        };
+
+        document.getElementById('slider-pitch').oninput = function(e) {
+            params.pitch = parseFloat(e.target.value);
+            document.getElementById('val-pitch').textContent = params.pitch;
+            updateAll();
+        };
+
+        document.getElementById('slider-cd').oninput = function(e) {
+            params.cd = parseFloat(e.target.value);
+            document.getElementById('val-cd').textContent = params.cd;
+            updateAll();
+        };
+
+        document.getElementById('slider-gamma').oninput = function(e) {
+            params.gamma = parseFloat(e.target.value);
+            document.getElementById('val-gamma').textContent = params.gamma;
+            updateAll();
+        };
+
+        // Physics calculations
+        function calculateCD(focus, exposure) {
+            const alpha = 15 * (1 / params.na);
+            const beta = 30 * Math.pow(1 / params.na, 2);
+            const gamma = 10 * Math.pow(1 / params.na, 3);
+            const exposureFactor = (exposure / 30) * (params.gamma / 8);
+            const cd0 = params.cd * exposureFactor;
+            return cd0 + alpha * focus + beta * focus * focus + gamma * focus * focus * focus;
+        }
+
+        function calculateDOF() {
+            const lambda = 0.193; // ArF wavelength in μm
+            const k2 = 0.5 + 0.3 * (params.sigmaOuter - params.sigmaInner);
+            return k2 * lambda / (params.na * params.na);
+        }
+
+        function calculateEL() {
+            const baseEL = 15 * (params.gamma / 8) * (params.na / 0.4);
+            return baseEL * (1 + (params.pitch - 100) / 500);
+        }
+
+        function calculateMEF() {
+            const baseMEF = 1.5 + 2 * (100 / params.pitch);
+            return baseMEF * (params.na / 0.4);
+        }
+
+        function calculateILS() {
+            const lambda = 0.193;
+            const nils = 1.5 + params.gamma / 10;
+            return lambda / ((params.pitch / 1000) * nils);
+        }
+
+        // Update statistics
+        function updateStats() {
+            document.getElementById('stat-dof').textContent = calculateDOF().toFixed(2) + ' μm';
+            document.getElementById('stat-el').textContent = calculateEL().toFixed(1) + '%';
+            document.getElementById('stat-mef').textContent = calculateMEF().toFixed(1);
+            document.getElementById('stat-ils').textContent = calculateILS().toFixed(1);
+        }
+
+        // Chart 1: Bossung Curves
+        function updateChart1() {
+            const focusRange = Array.from({length: 100}, function(_, i) { return -0.5 + i * 0.01; });
+            const exposures = [20, 25, 30, 35, 40];
+            const traces = [];
+
+            for (let i = 0; i < exposures.length; i++) {
+                const exp = exposures[i];
+                const cds = focusRange.map(function(f) { return calculateCD(f, exp); });
+                traces.push({
+                    x: focusRange,
+                    y: cds,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: exp + ' mJ/cm²',
+                    line: { width: 3 }
+                });
+            }
+
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                xaxis: {
+                    title: 'Focus Offset (μm)',
+                    gridcolor: 'rgba(102,126,234,0.2)',
+                    zeroline: true,
+                    zerolinecolor: 'rgba(102,126,234,0.4)'
+                },
+                yaxis: {
+                    title: 'Critical Dimension (nm)',
+                    gridcolor: 'rgba(102,126,234,0.2)'
+                },
+                margin: { t: 20, r: 20, b: 50, l: 60 },
+                showlegend: true,
+                legend: { x: 1, xanchor: 'right', y: 1 }
+            };
+
+            Plotly.newPlot('chart1', traces, layout, {responsive: true});
+        }
+
+        // Chart 2: FEM Matrix
+        function updateChart2() {
+            const focusRange = Array.from({length: 30}, function(_, i) { return -0.45 + i * 0.03; });
+            const exposureRange = Array.from({length: 30}, function(_, i) { return 15 + i * 1.2; });
+            const zData = [];
+
+            for (let i = 0; i < exposureRange.length; i++) {
+                const row = [];
+                for (let j = 0; j < focusRange.length; j++) {
+                    row.push(calculateCD(focusRange[j], exposureRange[i]));
+                }
+                zData.push(row);
+            }
+
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                xaxis: { title: 'Focus Offset (μm)', gridcolor: 'rgba(102,126,234,0.2)' },
+                yaxis: { title: 'Exposure Dose (mJ/cm²)', gridcolor: 'rgba(102,126,234,0.2)' },
+                margin: { t: 20, r: 20, b: 50, l: 60 }
+            };
+
+            Plotly.newPlot('chart2', [{
+                x: focusRange,
+                y: exposureRange,
+                z: zData,
+                type: 'heatmap',
+                colorscale: [
+                    [0, '#0a0a0a'],
+                    [0.3, '#764ba2'],
+                    [0.5, '#667eea'],
+                    [0.7, '#f39c12'],
+                    [1, '#e67e22']
+                ],
+                colorbar: { title: 'CD (nm)' }
+            }], layout, {responsive: true});
+        }
+
+        // Chart 3: Process Window
+        function updateChart3() {
+            const focusRange = Array.from({length: 100}, function(_, i) { return -0.5 + i * 0.01; });
+            const exposureRange = Array.from({length: 100}, function(_, i) { return 10 + i * 0.4; });
+
+            const cdMin = params.cd * 0.9;
+            const cdMax = params.cd * 1.1;
+
+            const upperBound = [];
+            const lowerBound = [];
+
+            for (let i = 0; i < focusRange.length; i++) {
+                const f = focusRange[i];
+                let eMin = 50, eMax = 10;
+
+                for (let j = 0; j < exposureRange.length; j++) {
+                    const e = exposureRange[j];
+                    const cd = calculateCD(f, e);
+                    if (cd >= cdMin && cd <= cdMax) {
+                        if (e < eMin) eMin = e;
+                        if (e > eMax) eMax = e;
+                    }
+                }
+
+                upperBound.push(eMax > 10 ? eMax : null);
+                lowerBound.push(eMin < 50 ? eMin : null);
+            }
+
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                xaxis: { title: 'Focus Offset (μm)', gridcolor: 'rgba(102,126,234,0.2)' },
+                yaxis: { title: 'Exposure Dose (mJ/cm²)', gridcolor: 'rgba(102,126,234,0.2)' },
+                margin: { t: 20, r: 20, b: 50, l: 60 },
+                showlegend: true
+            };
+
+            Plotly.newPlot('chart3', [
+                {
+                    x: focusRange,
+                    y: upperBound,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Upper Bound',
+                    line: { color: '#667eea', width: 3 },
+                    fill: 'tonexty',
+                    fillcolor: 'rgba(102,126,234,0.3)'
+                },
+                {
+                    x: focusRange,
+                    y: lowerBound,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Lower Bound',
+                    line: { color: '#f39c12', width: 3 }
+                }
+            ], layout, {responsive: true});
+        }
+
+        // Chart 4: Exposure Latitude vs Feature Size
+        function updateChart4() {
+            const featureSizes = Array.from({length: 50}, function(_, i) { return 20 + i * 1.6; });
+            const els = featureSizes.map(function(size) {
+                const baseEL = 15 * (params.gamma / 8) * (params.na / 0.4);
+                return baseEL * (1 + (size - 50) / 200);
+            });
+
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                xaxis: { title: 'Feature Size (nm)', gridcolor: 'rgba(102,126,234,0.2)' },
+                yaxis: { title: 'Exposure Latitude (%)', gridcolor: 'rgba(102,126,234,0.2)' },
+                margin: { t: 20, r: 20, b: 50, l: 60 }
+            };
+
+            Plotly.newPlot('chart4', [{
+                x: featureSizes,
+                y: els,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#f39c12', width: 4 },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(243,156,18,0.3)'
+            }], layout, {responsive: true});
+        }
+
+        // Chart 5: DOF vs NA and Pitch
+        function updateChart5() {
+            const naRange = Array.from({length: 30}, function(_, i) { return 0.25 + i * 0.01; });
+            const pitches = [60, 80, 100, 120, 150];
+            const traces = [];
+
+            for (let i = 0; i < pitches.length; i++) {
+                const pitch = pitches[i];
+                const dofs = naRange.map(function(na) {
+                    const lambda = 0.193;
+                    const k2 = 0.5 + 0.3 * (params.sigmaOuter - params.sigmaInner);
+                    return k2 * lambda / (na * na);
+                });
+
+                traces.push({
+                    x: naRange,
+                    y: dofs,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: pitch + ' nm pitch',
+                    line: { width: 3 }
+                });
+            }
+
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                xaxis: { title: 'Numerical Aperture (NA)', gridcolor: 'rgba(102,126,234,0.2)' },
+                yaxis: { title: 'Depth of Focus (μm)', gridcolor: 'rgba(102,126,234,0.2)' },
+                margin: { t: 20, r: 20, b: 50, l: 60 },
+                showlegend: true,
+                legend: { x: 1, xanchor: 'right', y: 1 }
+            };
+
+            Plotly.newPlot('chart5', traces, layout, {responsive: true});
+        }
+
+        // Chart 6: MEF vs Pitch
+        function updateChart6() {
+            const pitchRange = Array.from({length: 50}, function(_, i) { return 40 + i * 3.2; });
+            const mefs = pitchRange.map(function(pitch) {
+                const baseMEF = 1.5 + 2 * (100 / pitch);
+                return baseMEF * (params.na / 0.4);
+            });
+
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                xaxis: { title: 'Pitch (nm)', gridcolor: 'rgba(102,126,234,0.2)' },
+                yaxis: { title: 'Mask Error Factor (MEF)', gridcolor: 'rgba(102,126,234,0.2)' },
+                margin: { t: 20, r: 20, b: 50, l: 60 }
+            };
+
+            Plotly.newPlot('chart6', [{
+                x: pitchRange,
+                y: mefs,
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: { color: '#764ba2', width: 3 },
+                marker: { size: 8, color: '#667eea' }
+            }], layout, {responsive: true});
+        }
+
+        // Chart 7: Common Process Window
+        function updateChart7() {
+            const focusRange = Array.from({length: 100}, function(_, i) { return -0.5 + i * 0.01; });
+            const features = [
+                { cd: params.cd * 0.8, name: 'Small (80%)' },
+                { cd: params.cd, name: 'Nominal (100%)' },
+                { cd: params.cd * 1.2, name: 'Large (120%)' }
+            ];
+
+            const traces = [];
+
+            for (let k = 0; k < features.length; k++) {
+                const feature = features[k];
+                const cdMin = feature.cd * 0.95;
+                const cdMax = feature.cd * 1.05;
+
+                const upperBound = [];
+                const lowerBound = [];
+
+                for (let i = 0; i < focusRange.length; i++) {
+                    const f = focusRange[i];
+                    let eMin = 50, eMax = 10;
+
+                    for (let j = 10; j < 50; j += 0.5) {
+                        const cd = calculateCD(f, j) * (feature.cd / params.cd);
+                        if (cd >= cdMin && cd <= cdMax) {
+                            if (j < eMin) eMin = j;
+                            if (j > eMax) eMax = j;
+                        }
+                    }
+
+                    upperBound.push(eMax > 10 ? eMax : null);
+                    lowerBound.push(eMin < 50 ? eMin : null);
+                }
+
+                traces.push({
+                    x: focusRange,
+                    y: upperBound,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: feature.name + ' (upper)',
+                    line: { width: 2 }
+                });
+
+                traces.push({
+                    x: focusRange,
+                    y: lowerBound,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: feature.name + ' (lower)',
+                    line: { width: 2, dash: 'dash' }
+                });
+            }
+
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                xaxis: { title: 'Focus Offset (μm)', gridcolor: 'rgba(102,126,234,0.2)' },
+                yaxis: { title: 'Exposure Dose (mJ/cm²)', gridcolor: 'rgba(102,126,234,0.2)' },
+                margin: { t: 20, r: 20, b: 50, l: 60 },
+                showlegend: true,
+                legend: { x: 1.02, xanchor: 'left', y: 1 }
+            };
+
+            Plotly.newPlot('chart7', traces, layout, {responsive: true});
+        }
+
+        // 3D Visualization
+        let scene, camera, renderer, mesh;
+
+        function init3D() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+
+            const container = document.getElementById('canvas3d');
+            const width = container.clientWidth;
+            const height = 500;
+            renderer.setSize(width, height);
+            container.appendChild(renderer.domElement);
+
+            camera.position.set(3, 3, 3);
+            camera.lookAt(0, 0, 0);
+
+            const light1 = new THREE.DirectionalLight(0x667eea, 1);
+            light1.position.set(1, 1, 1);
+            scene.add(light1);
+
+            const light2 = new THREE.DirectionalLight(0xf39c12, 0.5);
+            light2.position.set(-1, -1, -1);
+            scene.add(light2);
+
+            const ambientLight = new THREE.AmbientLight(0x404040);
+            scene.add(ambientLight);
+
+            update3D();
+            animate3D();
+        }
+
+        function update3D() {
+            if (mesh) scene.remove(mesh);
+
+            const geometry = new THREE.BufferGeometry();
+            const vertices = [];
+            const colors = [];
+
+            const steps = 50;
+            for (let i = 0; i < steps; i++) {
+                for (let j = 0; j < steps; j++) {
+                    const x = -2 + (i / steps) * 4;
+                    const z = -2 + (j / steps) * 4;
+                    const focus = x * 0.25;
+                    const exposure = 25 + z * 5;
+                    const cd = calculateCD(focus, exposure);
+                    const y = (cd - params.cd) / 50;
+
+                    vertices.push(x, y, z);
+
+                    const colorValue = (cd - params.cd * 0.8) / (params.cd * 0.4);
+                    const r = Math.max(0, Math.min(1, 0.4 + colorValue * 0.3));
+                    const g = Math.max(0, Math.min(1, 0.49 - Math.abs(colorValue - 0.5) * 0.5));
+                    const b = Math.max(0, Math.min(1, 0.91 - colorValue * 0.3));
+                    colors.push(r, g, b);
+                }
+            }
+
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+            const material = new THREE.PointsMaterial({
+                size: 0.1,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8
+            });
+
+            mesh = new THREE.Points(geometry, material);
+            scene.add(mesh);
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+            if (mesh) mesh.rotation.y += 0.005;
+            renderer.render(scene, camera);
+        }
+
+        function updateAll() {
+            updateStats();
+            updateChart1();
+            updateChart2();
+            updateChart3();
+            updateChart4();
+            updateChart5();
+            updateChart6();
+            updateChart7();
+            update3D();
+        }
+
+        // Initialize
+        updateAll();
+        init3D();
+    });
     </script>
 </body>
 </html>

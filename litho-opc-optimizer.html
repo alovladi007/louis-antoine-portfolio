@@ -2,69 +2,489 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Lithography Tool</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OPC/RET Optimizer - Interactive OPC Rule Tuning</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.26.0/plotly.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #e0e0e0; }
-        .navbar { background: rgba(10, 10, 10, 0.95); padding: 1rem 2rem; border-bottom: 1px solid rgba(102, 126, 234, 0.3); }
-        .nav-content { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        .navbar { background: rgba(10, 10, 10, 0.95); padding: 1rem 2rem; border-bottom: 1px solid rgba(102, 126, 234, 0.3); position: sticky; top: 0; z-index: 1000; }
+        .nav-content { max-width: 1600px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
         .nav-title { color: #667eea; font-size: 1.3rem; font-weight: 600; }
-        .nav-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; }
-        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
-        .header h1 { font-size: 2.8rem; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; margin-bottom: 2rem; }
-        .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
-        .tool-section { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; }
-        .section-title { color: #667eea; font-size: 1.5rem; margin-bottom: 1.5rem; }
-        .input-group { margin-bottom: 1.5rem; }
-        .input-group label { display: block; color: #667eea; margin-bottom: 0.5rem; }
-        .input-group input, .input-group select { width: 100%; padding: 0.8rem; background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 8px; color: #e0e0e0; }
-        .btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; padding: 0.8rem 2rem; border-radius: 8px; cursor: pointer; width: 100%; }
-        .result-box { background: rgba(102, 126, 234, 0.1); border-left: 4px solid #f39c12; padding: 1.5rem; border-radius: 8px; margin-top: 1rem; }
-        .chart-container { background: rgba(0, 0, 0, 0.3); border-radius: 10px; padding: 1rem; margin-top: 1rem; }
+        .nav-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; transition: transform 0.2s; }
+        .nav-btn:hover { transform: translateY(-2px); }
+        .container { max-width: 1600px; margin: 0 auto; padding: 2rem; }
+        .header h1 { font-size: 2.8rem; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; text-align: center; margin-bottom: 1rem; }
+        .subtitle { text-align: center; color: #888; font-size: 1.1rem; margin-bottom: 2rem; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .stat-card { background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1)); border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 12px; padding: 1.5rem; text-align: center; }
+        .stat-value { font-size: 2rem; font-weight: bold; color: #f39c12; margin-bottom: 0.5rem; }
+        .stat-label { color: #888; font-size: 0.9rem; }
+        .controls-section { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; margin-bottom: 2rem; }
+        .section-title { color: #667eea; font-size: 1.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .controls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+        .slider-group { margin-bottom: 1rem; }
+        .slider-group label { display: flex; justify-content: space-between; color: #667eea; margin-bottom: 0.5rem; font-size: 0.9rem; }
+        .slider-group input[type="range"] { width: 100%; height: 6px; background: rgba(102, 126, 234, 0.2); border-radius: 3px; outline: none; }
+        .slider-group input[type="range"]::-webkit-slider-thumb { appearance: none; width: 18px; height: 18px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 50%; cursor: pointer; }
+        .slider-group input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 50%; cursor: pointer; border: none; }
+        .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .chart-container { background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 10px; padding: 1.5rem; }
+        .chart-title { color: #f39c12; font-size: 1.1rem; margin-bottom: 1rem; }
+        .chart { width: 100%; height: 350px; }
+        .viz-3d { width: 100%; height: 500px; border-radius: 10px; background: rgba(0, 0, 0, 0.5); }
+        .equation-box { background: rgba(102, 126, 234, 0.1); border-left: 4px solid #f39c12; padding: 1rem; border-radius: 8px; margin: 1rem 0; font-family: 'Courier New', monospace; font-size: 0.9rem; }
     </style>
 </head>
 <body>
-    <nav class="navbar"><div class="nav-content"><div class="nav-title"><i class="fas fa-tools"></i> Lithography Tool</div><a href="lithography-research.html" class="nav-btn">Back</a></div></nav>
+    <nav class="navbar">
+        <div class="nav-content">
+            <div class="nav-title"><i class="fas fa-vector-square"></i> OPC/RET Optimizer</div>
+            <a href="lithography-research.html" class="nav-btn"><i class="fas fa-arrow-left"></i> Back to Research</a>
+        </div>
+    </nav>
+
     <div class="container">
-        <div class="header"><h1>Advanced Lithography Tool</h1></div>
-        <div class="tool-grid">
-            <div class="tool-section">
-                <h2 class="section-title">Input Parameters</h2>
-                <div class="input-group"><label>Parameter 1</label><input type="number" value="100"></div>
-                <div class="input-group"><label>Parameter 2</label><input type="number" value="50"></div>
-                <div class="input-group"><label>Parameter 3</label><select><option>Option A</option><option>Option B</option></select></div>
-                <div class="input-group"><label>Parameter 4</label><input type="number" value="0.8"></div>
-                <button class="btn"><i class="fas fa-calculator"></i> Calculate</button>
-                <div class="result-box" id="result">Results will appear here</div>
+        <div class="header">
+            <h1>OPC/RET Optimizer</h1>
+            <p class="subtitle">Interactive Optical Proximity Correction & SRAF Insertion Tool</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="stat-mean-epe">0.0</div>
+                <div class="stat-label">Mean EPE (nm)</div>
             </div>
-            <div class="tool-section">
-                <h2 class="section-title">Visualization</h2>
-                <div class="chart-container"><div id="main-chart"></div></div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-max-epe">0.0</div>
+                <div class="stat-label">Max EPE (nm)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-within-spec">0.0</div>
+                <div class="stat-label">% Within Spec</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-sraf-count">0</div>
+                <div class="stat-label">SRAF Count</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-model-r2">0.000</div>
+                <div class="stat-label">Model R²</div>
             </div>
         </div>
-        <div class="tool-section">
-            <h2 class="section-title">Analysis Results</h2>
-            <div class="chart-container"><div id="analysis-chart"></div></div>
+
+        <div class="controls-section">
+            <h2 class="section-title"><i class="fas fa-sliders-h"></i> OPC Parameters</h2>
+            <div class="equation-box">
+                Model-based OPC: ΔCD = f(mask_bias, neighbor_density, pattern_orientation)<br>
+                Edge Placement Error: EPE = |CD_wafer - CD_target|<br>
+                SRAF Effectiveness: ΔNILS = NILS_with_SRAF - NILS_without_SRAF
+            </div>
+            <div class="controls-grid">
+                <div class="slider-group">
+                    <label><span>Main Feature Bias</span><span id="val-main-bias">0</span> nm</label>
+                    <input type="range" id="main-bias" min="-20" max="20" value="0" step="1">
+                </div>
+                <div class="slider-group">
+                    <label><span>Inside Corner (Hammerhead)</span><span id="val-inside-corner">15</span> nm</label>
+                    <input type="range" id="inside-corner" min="0" max="30" value="15" step="1">
+                </div>
+                <div class="slider-group">
+                    <label><span>Outside Corner (Serif)</span><span id="val-outside-corner">15</span> nm</label>
+                    <input type="range" id="outside-corner" min="0" max="30" value="15" step="1">
+                </div>
+                <div class="slider-group">
+                    <label><span>Line-End Pullback</span><span id="val-lineend">25</span> nm</label>
+                    <input type="range" id="lineend" min="0" max="50" value="25" step="1">
+                </div>
+                <div class="slider-group">
+                    <label><span>SRAF Width</span><span id="val-sraf-width">40</span> nm</label>
+                    <input type="range" id="sraf-width" min="20" max="60" value="40" step="2">
+                </div>
+                <div class="slider-group">
+                    <label><span>SRAF-to-Main Spacing</span><span id="val-sraf-spacing">140</span> nm</label>
+                    <input type="range" id="sraf-spacing" min="80" max="200" value="140" step="5">
+                </div>
+                <div class="slider-group">
+                    <label><span>OPC Model Aggressiveness</span><span id="val-aggressiveness">1.0</span></label>
+                    <input type="range" id="aggressiveness" min="0.1" max="2.0" value="1.0" step="0.1">
+                </div>
+                <div class="slider-group">
+                    <label><span>Verification Tolerance</span><span id="val-tolerance">±5</span> nm</label>
+                    <input type="range" id="tolerance" min="1" max="10" value="5" step="1">
+                </div>
+            </div>
         </div>
-        <div class="tool-section">
-            <h2 class="section-title">Optimization</h2>
-            <div class="chart-container"><div id="opt-chart"></div></div>
+
+        <div class="controls-section">
+            <h2 class="section-title"><i class="fas fa-cube"></i> 3D Visualization</h2>
+            <div id="three-container" class="viz-3d"></div>
+        </div>
+
+        <div class="charts-grid">
+            <div class="chart-container">
+                <div class="chart-title"><i class="fas fa-layer-group"></i> Mask Layout (Before/After OPC)</div>
+                <div id="chart-mask-layout" class="chart"></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title"><i class="fas fa-wave-square"></i> Aerial Image Intensity Cross-Section</div>
+                <div id="chart-aerial-image" class="chart"></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title"><i class="fas fa-chart-line"></i> Resist CD vs Mask CD (Calibration)</div>
+                <div id="chart-calibration" class="chart"></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title"><i class="fas fa-chart-bar"></i> EPE Distribution</div>
+                <div id="chart-epe-dist" class="chart"></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title"><i class="fas fa-arrows-alt-h"></i> SRAF Effectiveness (NILS Improvement)</div>
+                <div id="chart-sraf-effectiveness" class="chart"></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title"><i class="fas fa-project-diagram"></i> Corner Rounding Analysis</div>
+                <div id="chart-corner-rounding" class="chart"></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title"><i class="fas fa-border-all"></i> Process Window (With/Without OPC)</div>
+                <div id="chart-process-window" class="chart"></div>
+            </div>
         </div>
     </div>
+
     <script>
-        const x = Array.from({length:100},(_,i)=>i);
-        const y = x.map(v => Math.sin(v/10)*30+50);
-        const layout = {paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{color:'#e0e0e0'},xaxis:{gridcolor:'rgba(102,126,234,0.2)'},yaxis:{gridcolor:'rgba(102,126,234,0.2)'},margin:{t:20,r:20,b:50,l:60}};
-        Plotly.newPlot('main-chart', [{x,y,type:'scatter',mode:'lines',line:{color:'#667eea',width:3}}], layout, {responsive:true});
-        Plotly.newPlot('analysis-chart', [{x,y:y.map(v=>v*1.2),type:'scatter',mode:'lines+markers',line:{color:'#f39c12',width:3},marker:{size:6}}], layout, {responsive:true});
-        const iter = Array.from({length:20},(_,i)=>i);
-        const cost = iter.map(i => 100*Math.exp(-i/5));
-        Plotly.newPlot('opt-chart', [{x:iter,y:cost,type:'scatter',mode:'lines',line:{color:'#764ba2',width:3}}], layout, {responsive:true});
-        document.querySelector('.btn').onclick = () => {
-            document.getElementById('result').innerHTML = '<strong>Result:</strong> Calculation complete<br>Value 1: 95.3<br>Value 2: 2.8<br>Status: Optimized';
+    window.addEventListener('load', function() {
+        const plotLayout = {
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(0,0,0,0.3)',
+            font: { color: '#e0e0e0', size: 11 },
+            xaxis: { gridcolor: 'rgba(102,126,234,0.2)', zerolinecolor: 'rgba(102,126,234,0.3)' },
+            yaxis: { gridcolor: 'rgba(102,126,234,0.2)', zerolinecolor: 'rgba(102,126,234,0.3)' },
+            margin: { t: 30, r: 30, b: 50, l: 60 },
+            showlegend: true,
+            legend: { x: 0.02, y: 0.98, bgcolor: 'rgba(0,0,0,0.5)' }
         };
+
+        function updateAllCharts() {
+            const mainBias = parseFloat(document.getElementById('main-bias').value);
+            const insideCorner = parseFloat(document.getElementById('inside-corner').value);
+            const outsideCorner = parseFloat(document.getElementById('outside-corner').value);
+            const lineEnd = parseFloat(document.getElementById('lineend').value);
+            const srafWidth = parseFloat(document.getElementById('sraf-width').value);
+            const srafSpacing = parseFloat(document.getElementById('sraf-spacing').value);
+            const aggressiveness = parseFloat(document.getElementById('aggressiveness').value);
+            const tolerance = parseFloat(document.getElementById('tolerance').value);
+
+            // Chart 1: Mask Layout (Before/After OPC)
+            const maskX = [];
+            const maskYBefore = [];
+            const maskYAfter = [];
+            for (let i = 0; i < 200; i++) {
+                const x = i * 2;
+                maskX.push(x);
+                // Before OPC - simple rectangle
+                if (x > 50 && x < 150) {
+                    maskYBefore.push(100);
+                } else {
+                    maskYBefore.push(0);
+                }
+                // After OPC - with corrections
+                let afterVal = 0;
+                if (x > 50 && x < 150) {
+                    afterVal = 100 + mainBias;
+                    // Corner enhancements
+                    if (x < 60) afterVal += insideCorner;
+                    if (x > 140) afterVal += insideCorner;
+                    // Line end pullback
+                    if (x < 55 || x > 145) afterVal -= lineEnd * 0.5;
+                }
+                maskYAfter.push(afterVal);
+            }
+            Plotly.newPlot('chart-mask-layout', [
+                { x: maskX, y: maskYBefore, type: 'scatter', mode: 'lines', name: 'Before OPC', line: { color: '#888', width: 2 } },
+                { x: maskX, y: maskYAfter, type: 'scatter', mode: 'lines', name: 'After OPC', line: { color: '#667eea', width: 2 } }
+            ], Object.assign({}, plotLayout, {
+                title: '',
+                xaxis: { title: 'Position (nm)', gridcolor: 'rgba(102,126,234,0.2)' },
+                yaxis: { title: 'Intensity (a.u.)', gridcolor: 'rgba(102,126,234,0.2)' }
+            }), { responsive: true });
+
+            // Chart 2: Aerial Image Intensity Cross-Section
+            const aerialX = [];
+            const aerialY = [];
+            const k1 = 0.35;
+            const lambda = 193;
+            const NA = 0.33;
+            const resolution = k1 * lambda / NA;
+            for (let i = 0; i < 300; i++) {
+                const x = i * 2 - 300;
+                aerialX.push(x);
+                // Simulate aerial image with OPC
+                let intensity = 0.5;
+                const featureCenter = 0;
+                const featureWidth = 100 + mainBias;
+                const dist = Math.abs(x - featureCenter);
+                if (dist < featureWidth / 2) {
+                    intensity = 0.8 + 0.2 * Math.cos(Math.PI * dist / featureWidth);
+                } else {
+                    const decay = (dist - featureWidth / 2) / resolution;
+                    intensity = 0.5 + 0.3 * Math.exp(-decay * decay / (2 * aggressiveness));
+                }
+                // SRAF contribution
+                const srafPos1 = -featureWidth / 2 - srafSpacing;
+                const srafPos2 = featureWidth / 2 + srafSpacing;
+                const distSraf1 = Math.abs(x - srafPos1);
+                const distSraf2 = Math.abs(x - srafPos2);
+                if (distSraf1 < srafWidth / 2) intensity += 0.15;
+                if (distSraf2 < srafWidth / 2) intensity += 0.15;
+                aerialY.push(intensity);
+            }
+            Plotly.newPlot('chart-aerial-image', [{
+                x: aerialX, y: aerialY, type: 'scatter', mode: 'lines',
+                line: { color: '#f39c12', width: 3 },
+                fill: 'tozeroy', fillcolor: 'rgba(243, 156, 18, 0.2)'
+            }], Object.assign({}, plotLayout, {
+                title: '',
+                xaxis: { title: 'Position (nm)', gridcolor: 'rgba(102,126,234,0.2)' },
+                yaxis: { title: 'Normalized Intensity', gridcolor: 'rgba(102,126,234,0.2)' }
+            }), { responsive: true });
+
+            // Chart 3: Resist CD vs Mask CD (Calibration Curve)
+            const maskCD = [];
+            const resistCD = [];
+            for (let i = 30; i <= 120; i += 3) {
+                maskCD.push(i);
+                // Sigmoid calibration model
+                const a = 0.85;
+                const b = 10;
+                const c = 70;
+                const cd = a * i + b * Math.tanh((i - c) / 20);
+                resistCD.push(cd);
+            }
+            // Fit line
+            const n = maskCD.length;
+            let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+            for (let i = 0; i < n; i++) {
+                sumX += maskCD[i];
+                sumY += resistCD[i];
+                sumXY += maskCD[i] * resistCD[i];
+                sumX2 += maskCD[i] * maskCD[i];
+            }
+            const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+            const intercept = (sumY - slope * sumX) / n;
+            const fitLine = maskCD.map(function(x) { return slope * x + intercept; });
+            // Calculate R²
+            const meanY = sumY / n;
+            let ssRes = 0, ssTot = 0;
+            for (let i = 0; i < n; i++) {
+                ssRes += Math.pow(resistCD[i] - fitLine[i], 2);
+                ssTot += Math.pow(resistCD[i] - meanY, 2);
+            }
+            const r2 = 1 - ssRes / ssTot;
+            document.getElementById('stat-model-r2').textContent = r2.toFixed(3);
+
+            Plotly.newPlot('chart-calibration', [
+                { x: maskCD, y: resistCD, type: 'scatter', mode: 'markers', name: 'Data', marker: { color: '#667eea', size: 8 } },
+                { x: maskCD, y: fitLine, type: 'scatter', mode: 'lines', name: 'Fit (R²=' + r2.toFixed(3) + ')', line: { color: '#f39c12', width: 2, dash: 'dash' } }
+            ], Object.assign({}, plotLayout, {
+                title: '',
+                xaxis: { title: 'Mask CD (nm)', gridcolor: 'rgba(102,126,234,0.2)' },
+                yaxis: { title: 'Resist CD (nm)', gridcolor: 'rgba(102,126,234,0.2)' }
+            }), { responsive: true });
+
+            // Chart 4: EPE Distribution
+            const epeValues = [];
+            const targetCD = 80;
+            for (let i = 0; i < 100; i++) {
+                const randomNoise = (Math.random() - 0.5) * 3;
+                const opcError = (1 - aggressiveness) * 2;
+                const cornerEffect = (i % 10 < 2) ? (insideCorner / 10) : 0;
+                const epe = Math.abs(opcError + randomNoise + cornerEffect);
+                epeValues.push(epe);
+            }
+            const meanEPE = epeValues.reduce(function(a, b) { return a + b; }, 0) / epeValues.length;
+            const maxEPE = Math.max.apply(null, epeValues);
+            const withinSpec = epeValues.filter(function(e) { return e <= tolerance; }).length / epeValues.length * 100;
+
+            document.getElementById('stat-mean-epe').textContent = meanEPE.toFixed(2);
+            document.getElementById('stat-max-epe').textContent = maxEPE.toFixed(2);
+            document.getElementById('stat-within-spec').textContent = withinSpec.toFixed(1);
+
+            Plotly.newPlot('chart-epe-dist', [{
+                x: epeValues,
+                type: 'histogram',
+                nbinsx: 20,
+                marker: { color: '#764ba2' },
+                name: 'EPE Distribution'
+            }], Object.assign({}, plotLayout, {
+                title: '',
+                xaxis: { title: 'EPE (nm)', gridcolor: 'rgba(102,126,234,0.2)' },
+                yaxis: { title: 'Frequency', gridcolor: 'rgba(102,126,234,0.2)' },
+                shapes: [{
+                    type: 'line',
+                    x0: tolerance,
+                    x1: tolerance,
+                    y0: 0,
+                    y1: 1,
+                    yref: 'paper',
+                    line: { color: '#f39c12', width: 2, dash: 'dash' }
+                }]
+            }), { responsive: true });
+
+            // Chart 5: SRAF Effectiveness
+            const pitchValues = [];
+            const nilsWithout = [];
+            const nilsWith = [];
+            for (let p = 120; p <= 300; p += 10) {
+                pitchValues.push(p);
+                const baseNILS = 2.5 + (p - 120) / 50;
+                nilsWithout.push(baseNILS);
+                const srafBoost = (srafWidth / 50) * (200 / srafSpacing) * 0.5;
+                nilsWith.push(baseNILS + srafBoost);
+            }
+            const srafCount = Math.floor(400 / srafSpacing) * 2;
+            document.getElementById('stat-sraf-count').textContent = srafCount;
+
+            Plotly.newPlot('chart-sraf-effectiveness', [
+                { x: pitchValues, y: nilsWithout, type: 'scatter', mode: 'lines+markers', name: 'Without SRAF', line: { color: '#888', width: 2 }, marker: { size: 6 } },
+                { x: pitchValues, y: nilsWith, type: 'scatter', mode: 'lines+markers', name: 'With SRAF', line: { color: '#667eea', width: 2 }, marker: { size: 6 } }
+            ], Object.assign({}, plotLayout, {
+                title: '',
+                xaxis: { title: 'Pitch (nm)', gridcolor: 'rgba(102,126,234,0.2)' },
+                yaxis: { title: 'NILS', gridcolor: 'rgba(102,126,234,0.2)' }
+            }), { responsive: true });
+
+            // Chart 6: Corner Rounding Analysis
+            const cornerPos = [];
+            const cornerBefore = [];
+            const cornerAfter = [];
+            for (let i = 0; i <= 50; i++) {
+                const angle = i * Math.PI / 50;
+                cornerPos.push(i);
+                // Before - sharp corner with rounding
+                const radiusBefore = 15;
+                cornerBefore.push(radiusBefore * (1 - Math.cos(angle)));
+                // After - hammerhead correction reduces rounding
+                const radiusAfter = Math.max(5, radiusBefore - insideCorner);
+                cornerAfter.push(radiusAfter * (1 - Math.cos(angle)));
+            }
+            Plotly.newPlot('chart-corner-rounding', [
+                { x: cornerPos, y: cornerBefore, type: 'scatter', mode: 'lines', name: 'Before OPC', line: { color: '#888', width: 2 } },
+                { x: cornerPos, y: cornerAfter, type: 'scatter', mode: 'lines', name: 'After OPC', line: { color: '#f39c12', width: 3 } }
+            ], Object.assign({}, plotLayout, {
+                title: '',
+                xaxis: { title: 'Corner Position (nm)', gridcolor: 'rgba(102,126,234,0.2)' },
+                yaxis: { title: 'Rounding (nm)', gridcolor: 'rgba(102,126,234,0.2)' }
+            }), { responsive: true });
+
+            // Chart 7: Process Window (With/Without OPC)
+            const focusRange = [];
+            const doseRange = [];
+            const pwWithout = [];
+            const pwWith = [];
+            for (let f = -200; f <= 200; f += 20) {
+                for (let d = 15; d <= 25; d += 1) {
+                    focusRange.push(f);
+                    doseRange.push(d);
+                    // CD calculation
+                    const cdWithout = 80 + f / 20 + (20 - d) * 2 + Math.random() * 3;
+                    const cdWith = 80 + (f / 20) * 0.5 + (20 - d) * 1.5 * (1 / aggressiveness) + Math.random() * 2;
+                    pwWithout.push(Math.abs(cdWithout - 80) < tolerance ? 1 : 0);
+                    pwWith.push(Math.abs(cdWith - 80) < tolerance ? 1 : 0);
+                }
+            }
+            Plotly.newPlot('chart-process-window', [
+                { x: focusRange, y: doseRange, mode: 'markers', type: 'scatter',
+                  marker: { color: pwWithout, colorscale: [[0, '#330000'], [1, '#00ff00']], size: 8, opacity: 0.6 },
+                  name: 'Without OPC' },
+                { x: focusRange, y: doseRange, mode: 'markers', type: 'scatter',
+                  marker: { color: pwWith, colorscale: [[0, '#330000'], [1, '#667eea']], size: 8, symbol: 'square' },
+                  name: 'With OPC' }
+            ], Object.assign({}, plotLayout, {
+                title: '',
+                xaxis: { title: 'Focus (nm)', gridcolor: 'rgba(102,126,234,0.2)' },
+                yaxis: { title: 'Dose (mJ/cm²)', gridcolor: 'rgba(102,126,234,0.2)' }
+            }), { responsive: true });
+        }
+
+        // Setup Three.js 3D visualization
+        const container = document.getElementById('three-container');
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setClearColor(0x000000, 0);
+        container.appendChild(renderer.domElement);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 1.5);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(5, 5, 5);
+        scene.add(directionalLight);
+
+        // Create layers: Mask, Aerial Image, Resist
+        const maskGeometry = new THREE.BoxGeometry(4, 0.2, 2);
+        const maskMaterial = new THREE.MeshPhongMaterial({ color: 0x667eea, transparent: true, opacity: 0.8 });
+        const maskMesh = new THREE.Mesh(maskGeometry, maskMaterial);
+        maskMesh.position.y = 2;
+        scene.add(maskMesh);
+
+        const aerialGeometry = new THREE.PlaneGeometry(5, 5, 50, 50);
+        const aerialMaterial = new THREE.MeshPhongMaterial({ color: 0xf39c12, wireframe: true, transparent: true, opacity: 0.6 });
+        const aerialMesh = new THREE.Mesh(aerialGeometry, aerialMaterial);
+        aerialMesh.rotation.x = -Math.PI / 2;
+        scene.add(aerialMesh);
+
+        const resistGeometry = new THREE.BoxGeometry(3.5, 1, 1.8);
+        const resistMaterial = new THREE.MeshPhongMaterial({ color: 0x764ba2, transparent: true, opacity: 0.7 });
+        const resistMesh = new THREE.Mesh(resistGeometry, resistMaterial);
+        resistMesh.position.y = -1.5;
+        scene.add(resistMesh);
+
+        camera.position.set(6, 4, 6);
+        camera.lookAt(0, 0, 0);
+
+        let animationFrame = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            animationFrame += 0.01;
+            maskMesh.rotation.y = Math.sin(animationFrame) * 0.1;
+            aerialMesh.rotation.z = animationFrame * 0.2;
+            resistMesh.rotation.y = Math.sin(animationFrame) * 0.1;
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Slider event listeners
+        const sliders = ['main-bias', 'inside-corner', 'outside-corner', 'lineend', 'sraf-width', 'sraf-spacing', 'aggressiveness', 'tolerance'];
+        sliders.forEach(function(id) {
+            const slider = document.getElementById(id);
+            const valSpan = document.getElementById('val-' + id);
+            slider.addEventListener('input', function() {
+                let val = slider.value;
+                if (id === 'tolerance') {
+                    valSpan.textContent = '±' + val;
+                } else {
+                    valSpan.textContent = val;
+                }
+                updateAllCharts();
+            });
+        });
+
+        // Initial chart render
+        updateAllCharts();
+
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+    });
     </script>
 </body>
 </html>
