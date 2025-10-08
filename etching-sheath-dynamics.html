@@ -210,6 +210,100 @@
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 1.5rem;
         }
+
+        .sim-controls {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .btn-play {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+        }
+
+        .btn-play:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .btn-pause {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+        }
+
+        .btn-pause:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .btn-reset {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+        }
+
+        .btn-reset:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4CAF50;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-dot.paused {
+            background: #f39c12;
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .speed-control label {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .speed-control input[type="range"] {
+            width: 150px;
+        }
     </style>
 </head>
 <body>
@@ -226,6 +320,21 @@
         <div class="info-box">
             <h3>Key Physics</h3>
             <p>The plasma sheath is a thin boundary layer with strong electric fields that accelerates ions toward the wafer surface. The ion energy distribution function (IEDF) and angular distribution determine etch anisotropy, selectivity, and damage. RF bias creates time-varying sheath voltages crucial for directionality control.</p>
+        </div>
+
+        <div class="sim-controls">
+            <button id="playBtn" class="btn btn-play">Play</button>
+            <button id="pauseBtn" class="btn btn-pause" style="display: none;">Pause</button>
+            <button id="resetBtn" class="btn btn-reset">Reset</button>
+            <div class="status-indicator">
+                <div id="statusDot" class="status-dot"></div>
+                <span id="statusText">Running</span>
+            </div>
+            <div class="speed-control">
+                <label for="speedControl">Speed:</label>
+                <input type="range" id="speedControl" min="0.5" max="5" value="1" step="0.5">
+                <span id="speedValue" class="value-display">1.0×</span>
+            </div>
         </div>
 
         <div class="controls">
@@ -394,7 +503,20 @@ Total potential drop: V_total = V_sheath + ΔV_pre
     </div>
 
     <script>
+        // Simulation state
+        let isRunning = true;
+        let simulationSpeed = 1.0;
+        let simulationTime = 0;
+
         // Get DOM elements
+        const playBtn = document.getElementById('playBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const speedControl = document.getElementById('speedControl');
+        const speedValue = document.getElementById('speedValue');
+
         const rfPowerInput = document.getElementById('rfPower');
         const pressureInput = document.getElementById('pressure');
         const biasVoltageInput = document.getElementById('biasVoltage');
@@ -469,6 +591,50 @@ Total potential drop: V_total = V_sheath + ΔV_pre
             const density = Math.pow(10, parseFloat(e.target.value));
             plasmaDensityValue.textContent = density.toExponential(1);
             updateCalculations();
+        });
+
+        // Simulation controls
+        playBtn.addEventListener('click', () => {
+            isRunning = true;
+            playBtn.style.display = 'none';
+            pauseBtn.style.display = 'inline-block';
+            statusDot.classList.remove('paused');
+            statusText.textContent = 'Running';
+            startSimulation();
+        });
+
+        pauseBtn.addEventListener('click', () => {
+            isRunning = false;
+            pauseBtn.style.display = 'none';
+            playBtn.style.display = 'inline-block';
+            statusDot.classList.add('paused');
+            statusText.textContent = 'Paused';
+        });
+
+        resetBtn.addEventListener('click', () => {
+            simulationTime = 0;
+            rfPowerInput.value = 800;
+            pressureInput.value = 15;
+            biasVoltageInput.value = -150;
+            frequencyInput.value = 13.56;
+            ionMassInput.value = 40;
+            electronTempInput.value = 3.5;
+            plasmaDensityInput.value = 11;
+
+            rfPowerValue.textContent = '800';
+            pressureValue.textContent = '15';
+            biasVoltageValue.textContent = '-150';
+            frequencyValue.textContent = '13.56';
+            ionMassValue.textContent = '40 amu (Ar⁺)';
+            electronTempValue.textContent = '3.5';
+            plasmaDensityValue.textContent = '1.0e11';
+
+            updateCalculations();
+        });
+
+        speedControl.addEventListener('input', (e) => {
+            simulationSpeed = parseFloat(e.target.value);
+            speedValue.textContent = simulationSpeed.toFixed(1) + '×';
         });
 
         function updateCalculations() {
@@ -775,12 +941,41 @@ Total potential drop: V_total = V_sheath + ΔV_pre
             requestAnimationFrame(animate);
 
             // Rotate camera slowly
-            const time = Date.now() * 0.0001;
+            const time = Date.now() * 0.0001 * (isRunning ? simulationSpeed : 0);
             camera.position.x = Math.sin(time) * 25;
             camera.position.z = Math.cos(time) * 25;
             camera.lookAt(0, 0, 0);
 
             renderer.render(scene, camera);
+        }
+
+        // Auto-evolving simulation
+        function startSimulation() {
+            function evolveSimulation() {
+                if (!isRunning) return;
+
+                simulationTime += 0.1 * simulationSpeed;
+
+                // Oscillate parameters to create dynamic evolution
+                const t = simulationTime;
+                const powerOsc = 800 + 300 * Math.sin(t * 0.08);
+                const biasOsc = -150 - 80 * Math.sin(t * 0.12);
+                const tempOsc = 3.5 + 0.8 * Math.sin(t * 0.1);
+
+                rfPowerInput.value = powerOsc.toFixed(0);
+                biasVoltageInput.value = biasOsc.toFixed(0);
+                electronTempInput.value = tempOsc.toFixed(1);
+
+                rfPowerValue.textContent = powerOsc.toFixed(0);
+                biasVoltageValue.textContent = biasOsc.toFixed(0);
+                electronTempValue.textContent = tempOsc.toFixed(1);
+
+                updateCalculations();
+
+                setTimeout(evolveSimulation, 100 / simulationSpeed);
+            }
+
+            evolveSimulation();
         }
 
         function updateThreeJS(s, E_ion, theta_total) {
@@ -810,6 +1005,11 @@ Total potential drop: V_total = V_sheath + ΔV_pre
         // Initialize
         initThreeJS();
         updateCalculations();
+
+        // Auto-start simulation
+        playBtn.style.display = 'none';
+        pauseBtn.style.display = 'inline-block';
+        startSimulation();
     </script>
 </body>
 </html>
