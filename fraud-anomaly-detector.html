@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anomaly Detector - Fraud Detection</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>.gradient-bg { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }</style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-red-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="fraud-complete-project.html" class="flex items-center text-red-400 hover:text-red-300">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Fraud Suite
+                </a>
+                <span class="text-red-400 font-semibold">Anomaly Detector</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-3xl font-bold"><i class="fas fa-search mr-4"></i>Anomaly Detector</h1>
+            <p class="text-red-100 mt-2">Isolation Forest-based anomaly scoring</p>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <!-- Transaction Input -->
+        <div class="grid lg:grid-cols-2 gap-6 mb-6">
+            <div class="bg-gray-800 rounded-xl p-6 border border-red-500/30">
+                <h3 class="text-lg font-semibold text-red-400 mb-4"><i class="fas fa-edit mr-2"></i>Transaction Features</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Amount ($)</label>
+                        <input type="range" id="amount" min="10" max="10000" value="250" class="w-full" oninput="updateScore()">
+                        <span class="text-red-400 font-semibold" id="amountVal">$250</span>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Distance from Home (km)</label>
+                        <input type="range" id="distance" min="0" max="5000" value="50" class="w-full" oninput="updateScore()">
+                        <span class="text-red-400" id="distanceVal">50 km</span>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Time Since Last (hrs)</label>
+                        <input type="range" id="timeSince" min="0" max="72" value="4" class="w-full" oninput="updateScore()">
+                        <span class="text-red-400" id="timeVal">4 hrs</span>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Txns Last 24h</label>
+                        <input type="range" id="txnCount" min="0" max="50" value="3" class="w-full" oninput="updateScore()">
+                        <span class="text-red-400" id="txnVal">3</span>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Merchant Category</label>
+                        <select id="merchant" class="w-full bg-gray-700 rounded px-3 py-2" onchange="updateScore()">
+                            <option value="0">Grocery</option>
+                            <option value="1">Gas Station</option>
+                            <option value="2">Restaurant</option>
+                            <option value="3">Online Shopping</option>
+                            <option value="4">Jewelry/Luxury</option>
+                            <option value="5">Cash Advance</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Card Present</label>
+                        <select id="cardPresent" class="w-full bg-gray-700 rounded px-3 py-2" onchange="updateScore()">
+                            <option value="1">Yes (Chip/Swipe)</option>
+                            <option value="0">No (Online/Phone)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gray-800 rounded-xl p-6 border border-red-500/30">
+                <h3 class="text-lg font-semibold text-red-400 mb-4"><i class="fas fa-chart-pie mr-2"></i>Anomaly Score</h3>
+                <div class="text-center mb-4">
+                    <div class="text-6xl font-bold" id="anomalyScore">0.23</div>
+                    <div class="text-gray-400 mt-1">Isolation Forest Score</div>
+                </div>
+                <div class="h-4 bg-gray-700 rounded-full overflow-hidden mb-2">
+                    <div id="scoreBar" class="h-full bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 transition-all" style="width: 23%"></div>
+                </div>
+                <div class="flex justify-between text-sm text-gray-500">
+                    <span>Normal</span>
+                    <span>Suspicious</span>
+                    <span>Anomaly</span>
+                </div>
+                <div class="mt-4 p-4 bg-gray-900 rounded-lg">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400">Decision:</span>
+                        <span id="decision" class="text-xl font-bold text-green-400">APPROVE</span>
+                    </div>
+                    <div class="flex justify-between items-center mt-2">
+                        <span class="text-gray-400">Threshold:</span>
+                        <span class="text-gray-300">0.65</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feature Contribution -->
+        <div class="grid lg:grid-cols-2 gap-6 mb-6">
+            <div class="bg-gray-800 rounded-xl p-6 border border-red-500/30">
+                <h3 class="text-lg font-semibold text-red-400 mb-4">Feature Contribution</h3>
+                <div id="contributionChart" style="height: 300px;"></div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-6 border border-red-500/30">
+                <h3 class="text-lg font-semibold text-red-400 mb-4">Anomaly Landscape</h3>
+                <div id="landscapeChart" style="height: 300px;"></div>
+            </div>
+        </div>
+
+        <!-- Historical Context -->
+        <div class="bg-gray-800 rounded-xl p-6 border border-red-500/30">
+            <h3 class="text-lg font-semibold text-red-400 mb-4"><i class="fas fa-history mr-2"></i>Historical Context</h3>
+            <div class="grid md:grid-cols-4 gap-4">
+                <div class="p-4 bg-gray-900 rounded-lg">
+                    <div class="text-gray-400 text-sm">Avg Transaction</div>
+                    <div class="text-xl font-bold text-white">$127</div>
+                    <div class="text-sm text-red-400">Current: $250 (+97%)</div>
+                </div>
+                <div class="p-4 bg-gray-900 rounded-lg">
+                    <div class="text-gray-400 text-sm">Typical Location</div>
+                    <div class="text-xl font-bold text-white">15 km</div>
+                    <div class="text-sm text-amber-400">Current: 50 km (+233%)</div>
+                </div>
+                <div class="p-4 bg-gray-900 rounded-lg">
+                    <div class="text-gray-400 text-sm">Usual Frequency</div>
+                    <div class="text-xl font-bold text-white">2/day</div>
+                    <div class="text-sm text-green-400">Current: Normal</div>
+                </div>
+                <div class="p-4 bg-gray-900 rounded-lg">
+                    <div class="text-gray-400 text-sm">Common Merchant</div>
+                    <div class="text-xl font-bold text-white">Grocery</div>
+                    <div class="text-sm text-green-400">Match: Yes</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function updateScore() {
+            var amount = parseInt(document.getElementById('amount').value);
+            var distance = parseInt(document.getElementById('distance').value);
+            var timeSince = parseInt(document.getElementById('timeSince').value);
+            var txnCount = parseInt(document.getElementById('txnCount').value);
+            var merchant = parseInt(document.getElementById('merchant').value);
+            var cardPresent = parseInt(document.getElementById('cardPresent').value);
+
+            document.getElementById('amountVal').textContent = '$' + amount.toLocaleString();
+            document.getElementById('distanceVal').textContent = distance + ' km';
+            document.getElementById('timeVal').textContent = timeSince + ' hrs';
+            document.getElementById('txnVal').textContent = txnCount;
+
+            // Calculate anomaly score
+            var score = 0;
+            score += Math.min(0.25, (amount / 10000) * 0.3);
+            score += Math.min(0.2, (distance / 5000) * 0.25);
+            score += timeSince < 0.5 ? 0.15 : 0;
+            score += txnCount > 10 ? 0.1 : 0;
+            score += merchant * 0.05;
+            score += cardPresent === 0 ? 0.1 : 0;
+            score = Math.min(0.99, Math.max(0.05, score));
+
+            document.getElementById('anomalyScore').textContent = score.toFixed(2);
+            document.getElementById('scoreBar').style.width = (score * 100) + '%';
+
+            var scoreEl = document.getElementById('anomalyScore');
+            var decisionEl = document.getElementById('decision');
+            if (score >= 0.65) {
+                scoreEl.className = 'text-6xl font-bold text-red-400';
+                decisionEl.textContent = 'BLOCK';
+                decisionEl.className = 'text-xl font-bold text-red-400';
+            } else if (score >= 0.45) {
+                scoreEl.className = 'text-6xl font-bold text-amber-400';
+                decisionEl.textContent = 'REVIEW';
+                decisionEl.className = 'text-xl font-bold text-amber-400';
+            } else {
+                scoreEl.className = 'text-6xl font-bold text-green-400';
+                decisionEl.textContent = 'APPROVE';
+                decisionEl.className = 'text-xl font-bold text-green-400';
+            }
+
+            updateCharts(amount, distance, timeSince, txnCount, merchant, cardPresent);
+        }
+
+        function updateCharts(amount, distance, timeSince, txnCount, merchant, cardPresent) {
+            var features = ['Amount', 'Distance', 'Time Gap', 'Velocity', 'Merchant', 'Card Type'];
+            var values = [
+                Math.min(0.25, (amount / 10000) * 0.3),
+                Math.min(0.2, (distance / 5000) * 0.25),
+                timeSince < 0.5 ? 0.15 : -0.02,
+                txnCount > 10 ? 0.1 : -0.01,
+                merchant * 0.05 - 0.1,
+                cardPresent === 0 ? 0.1 : -0.03
+            ];
+
+            Plotly.react('contributionChart', [{
+                type: 'bar',
+                x: values,
+                y: features,
+                orientation: 'h',
+                marker: { color: values.map(function(v) { return v > 0 ? '#ef4444' : '#10b981'; }) }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' }, margin: { l: 80, r: 20, t: 10, b: 40 },
+                xaxis: { title: 'Contribution to Score', gridcolor: '#374151', zeroline: true, zerolinecolor: '#6b7280' }
+            }, { responsive: true });
+
+            // Landscape scatter
+            var x = [], y = [], colors = [];
+            for (var i = 0; i < 100; i++) {
+                x.push(Math.random() * 10000);
+                y.push(Math.random() * 5000);
+                var s = x[i] / 10000 * 0.3 + y[i] / 5000 * 0.25 + Math.random() * 0.2;
+                colors.push(s > 0.65 ? '#ef4444' : s > 0.45 ? '#f59e0b' : '#10b981');
+            }
+            x.push(amount); y.push(distance); colors.push('#ffffff');
+
+            Plotly.react('landscapeChart', [{
+                type: 'scatter',
+                mode: 'markers',
+                x: x, y: y,
+                marker: { color: colors, size: x.map(function(_, i) { return i === 100 ? 15 : 6; }), opacity: 0.7 }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' }, margin: { l: 50, r: 20, t: 10, b: 40 },
+                xaxis: { title: 'Amount ($)', gridcolor: '#374151' },
+                yaxis: { title: 'Distance (km)', gridcolor: '#374151' }
+            }, { responsive: true });
+        }
+
+        function checkPlotly() {
+            if (typeof Plotly !== 'undefined') { updateScore(); }
+            else { setTimeout(checkPlotly, 100); }
+        }
+        checkPlotly();
+    </script>
+</body>
+</html>

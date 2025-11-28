@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Analysis - Fraud Detection</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
+        .node { cursor: pointer; }
+        .node:hover { filter: brightness(1.2); }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-red-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="fraud-complete-project.html" class="flex items-center text-red-400 hover:text-red-300">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Fraud Suite
+                </a>
+                <span class="text-red-400 font-semibold">Network Analysis</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-3xl font-bold"><i class="fas fa-project-diagram mr-4"></i>Fraud Network Analysis</h1>
+            <p class="text-red-100 mt-2">Graph-based detection of fraud rings and connected entities</p>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <!-- Stats -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-gray-800 rounded-xl p-4 border border-red-500/30">
+                <div class="text-gray-400 text-sm">Entities Tracked</div>
+                <div class="text-2xl font-bold text-white">24,589</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-4 border border-red-500/30">
+                <div class="text-gray-400 text-sm">Known Fraud Rings</div>
+                <div class="text-2xl font-bold text-red-400">47</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-4 border border-red-500/30">
+                <div class="text-gray-400 text-sm">Suspicious Clusters</div>
+                <div class="text-2xl font-bold text-amber-400">128</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-4 border border-red-500/30">
+                <div class="text-gray-400 text-sm">Connections Analyzed</div>
+                <div class="text-2xl font-bold text-cyan-400">1.2M</div>
+            </div>
+        </div>
+
+        <!-- Graph Visualization -->
+        <div class="grid lg:grid-cols-4 gap-6 mb-6">
+            <div class="lg:col-span-3 bg-gray-800 rounded-xl p-6 border border-red-500/30">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-red-400">Entity Relationship Graph</h3>
+                    <div class="flex gap-2">
+                        <button onclick="zoomIn()" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded"><i class="fas fa-search-plus"></i></button>
+                        <button onclick="zoomOut()" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded"><i class="fas fa-search-minus"></i></button>
+                        <button onclick="resetView()" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded"><i class="fas fa-undo"></i></button>
+                    </div>
+                </div>
+                <div id="networkGraph" style="height: 450px; background: #1f2937; border-radius: 8px;"></div>
+                <div class="flex justify-center gap-6 mt-4 text-sm">
+                    <div class="flex items-center gap-2"><div class="w-4 h-4 rounded-full bg-red-500"></div>Fraud Confirmed</div>
+                    <div class="flex items-center gap-2"><div class="w-4 h-4 rounded-full bg-amber-500"></div>Suspicious</div>
+                    <div class="flex items-center gap-2"><div class="w-4 h-4 rounded-full bg-green-500"></div>Legitimate</div>
+                    <div class="flex items-center gap-2"><div class="w-4 h-4 rounded-full bg-gray-500"></div>Unknown</div>
+                </div>
+            </div>
+
+            <!-- Controls & Details -->
+            <div class="space-y-6">
+                <div class="bg-gray-800 rounded-xl p-4 border border-red-500/30">
+                    <h3 class="text-sm font-semibold text-red-400 mb-3">Search Entity</h3>
+                    <input type="text" id="entitySearch" class="w-full bg-gray-700 rounded px-3 py-2 mb-2" placeholder="Card, email, IP...">
+                    <button onclick="searchEntity()" class="w-full px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg text-sm">
+                        <i class="fas fa-search mr-2"></i>Search
+                    </button>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl p-4 border border-red-500/30">
+                    <h3 class="text-sm font-semibold text-red-400 mb-3">Link Types</h3>
+                    <div class="space-y-2 text-sm">
+                        <label class="flex items-center gap-2"><input type="checkbox" checked class="rounded" onchange="updateGraph()">Same Device</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" checked class="rounded" onchange="updateGraph()">Same IP</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" checked class="rounded" onchange="updateGraph()">Same Email Domain</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" checked class="rounded" onchange="updateGraph()">Same Address</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" class="rounded" onchange="updateGraph()">Temporal (5min)</label>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl p-4 border border-red-500/30">
+                    <h3 class="text-sm font-semibold text-red-400 mb-3">Selected Node</h3>
+                    <div id="nodeDetails" class="text-sm space-y-2">
+                        <div class="p-2 bg-gray-900 rounded">
+                            <div class="text-gray-400">Entity ID</div>
+                            <div class="font-mono">ENT-8832-A</div>
+                        </div>
+                        <div class="p-2 bg-gray-900 rounded">
+                            <div class="text-gray-400">Type</div>
+                            <div>Credit Card</div>
+                        </div>
+                        <div class="p-2 bg-gray-900 rounded">
+                            <div class="text-gray-400">Connections</div>
+                            <div class="text-amber-400">12 entities</div>
+                        </div>
+                        <div class="p-2 bg-gray-900 rounded">
+                            <div class="text-gray-400">Risk Score</div>
+                            <div class="text-red-400">0.87</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fraud Rings Table -->
+        <div class="bg-gray-800 rounded-xl p-6 border border-red-500/30">
+            <h3 class="text-lg font-semibold text-red-400 mb-4"><i class="fas fa-users mr-2"></i>Detected Fraud Rings</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-gray-700">
+                            <th class="text-left py-2 text-gray-400">Ring ID</th>
+                            <th class="text-right py-2 text-gray-400">Members</th>
+                            <th class="text-right py-2 text-gray-400">Total Fraud</th>
+                            <th class="text-right py-2 text-gray-400">Avg Score</th>
+                            <th class="text-center py-2 text-gray-400">Status</th>
+                            <th class="text-center py-2 text-gray-400">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-b border-gray-700/50 hover:bg-gray-700/30">
+                            <td class="py-3 font-mono">RING-2024-001</td>
+                            <td class="text-right text-white">34</td>
+                            <td class="text-right text-red-400">$245,800</td>
+                            <td class="text-right">0.94</td>
+                            <td class="text-center"><span class="px-2 py-0.5 bg-red-600 rounded text-xs">Active</span></td>
+                            <td class="text-center"><button class="text-cyan-400 hover:text-cyan-300"><i class="fas fa-eye"></i></button></td>
+                        </tr>
+                        <tr class="border-b border-gray-700/50 hover:bg-gray-700/30">
+                            <td class="py-3 font-mono">RING-2024-002</td>
+                            <td class="text-right text-white">18</td>
+                            <td class="text-right text-red-400">$89,200</td>
+                            <td class="text-right">0.89</td>
+                            <td class="text-center"><span class="px-2 py-0.5 bg-amber-600 rounded text-xs">Investigating</span></td>
+                            <td class="text-center"><button class="text-cyan-400 hover:text-cyan-300"><i class="fas fa-eye"></i></button></td>
+                        </tr>
+                        <tr class="border-b border-gray-700/50 hover:bg-gray-700/30">
+                            <td class="py-3 font-mono">RING-2024-003</td>
+                            <td class="text-right text-white">52</td>
+                            <td class="text-right text-red-400">$412,000</td>
+                            <td class="text-right">0.91</td>
+                            <td class="text-center"><span class="px-2 py-0.5 bg-green-600 rounded text-xs">Dismantled</span></td>
+                            <td class="text-center"><button class="text-cyan-400 hover:text-cyan-300"><i class="fas fa-eye"></i></button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function generateNetworkData() {
+            var nodes = [];
+            var edges = [];
+            var n = 40;
+
+            // Generate nodes with different risk levels
+            for (var i = 0; i < n; i++) {
+                var risk = Math.random();
+                var color = risk > 0.8 ? '#ef4444' : risk > 0.5 ? '#f59e0b' : risk > 0.2 ? '#10b981' : '#6b7280';
+                nodes.push({
+                    x: Math.random() * 2 - 1,
+                    y: Math.random() * 2 - 1,
+                    color: color,
+                    size: 10 + risk * 15,
+                    risk: risk
+                });
+            }
+
+            // Generate edges between related nodes
+            var edgeX = [];
+            var edgeY = [];
+            for (var i = 0; i < n; i++) {
+                var numConnections = Math.floor(Math.random() * 4) + 1;
+                for (var j = 0; j < numConnections; j++) {
+                    var target = Math.floor(Math.random() * n);
+                    if (target !== i) {
+                        edgeX.push(nodes[i].x, nodes[target].x, null);
+                        edgeY.push(nodes[i].y, nodes[target].y, null);
+                    }
+                }
+            }
+
+            return { nodes: nodes, edgeX: edgeX, edgeY: edgeY };
+        }
+
+        function drawNetwork() {
+            var data = generateNetworkData();
+
+            var edgeTrace = {
+                x: data.edgeX,
+                y: data.edgeY,
+                mode: 'lines',
+                line: { color: '#374151', width: 1 },
+                hoverinfo: 'none'
+            };
+
+            var nodeTrace = {
+                x: data.nodes.map(function(n) { return n.x; }),
+                y: data.nodes.map(function(n) { return n.y; }),
+                mode: 'markers',
+                marker: {
+                    color: data.nodes.map(function(n) { return n.color; }),
+                    size: data.nodes.map(function(n) { return n.size; }),
+                    line: { color: '#fff', width: 1 }
+                },
+                hovertemplate: 'Risk: %{text:.2f}<extra></extra>',
+                text: data.nodes.map(function(n) { return n.risk; })
+            };
+
+            Plotly.react('networkGraph', [edgeTrace, nodeTrace], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 20, r: 20, t: 20, b: 20 },
+                xaxis: { showgrid: false, zeroline: false, showticklabels: false },
+                yaxis: { showgrid: false, zeroline: false, showticklabels: false },
+                showlegend: false,
+                hovermode: 'closest'
+            }, { responsive: true });
+        }
+
+        function searchEntity() {
+            var query = document.getElementById('entitySearch').value;
+            alert('Searching for entity: ' + query + '\n\nFound 3 matching entities in the graph.');
+        }
+
+        function updateGraph() {
+            drawNetwork();
+        }
+
+        function zoomIn() {
+            Plotly.relayout('networkGraph', { 'xaxis.range': [-0.5, 0.5], 'yaxis.range': [-0.5, 0.5] });
+        }
+
+        function zoomOut() {
+            Plotly.relayout('networkGraph', { 'xaxis.range': [-1.5, 1.5], 'yaxis.range': [-1.5, 1.5] });
+        }
+
+        function resetView() {
+            Plotly.relayout('networkGraph', { 'xaxis.range': [-1.2, 1.2], 'yaxis.range': [-1.2, 1.2] });
+        }
+
+        function checkPlotly() {
+            if (typeof Plotly !== 'undefined') { drawNetwork(); }
+            else { setTimeout(checkPlotly, 100); }
+        }
+        checkPlotly();
+    </script>
+</body>
+</html>
