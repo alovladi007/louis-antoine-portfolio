@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buoyancy Calculator - Mini-UUV Systems</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%); }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-emerald-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="mini-uuv-complete-project.html" class="flex items-center text-emerald-400 hover:text-emerald-300 transition-colors">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Mini-UUV Project
+                </a>
+                <span class="text-emerald-400 font-semibold">Buoyancy Calculator</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4">
+                <i class="fas fa-balance-scale mr-4 text-emerald-400"></i>Buoyancy & Ballast Calculator
+            </h1>
+            <p class="text-xl text-emerald-100 max-w-3xl mx-auto">
+                Calculate vehicle buoyancy, center of gravity, and metacentric height for stability analysis
+            </p>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <!-- Hull Parameters -->
+            <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                <h2 class="text-xl font-semibold text-emerald-400 mb-4"><i class="fas fa-ship mr-2"></i>Hull Parameters</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>Hull Length (m)</span><span id="lengthValue" class="text-emerald-400">1.5</span></label>
+                        <input type="range" id="length" min="0.5" max="3" step="0.1" value="1.5" class="w-full" oninput="calculate()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>Hull Diameter (m)</span><span id="diameterValue" class="text-emerald-400">0.3</span></label>
+                        <input type="range" id="diameter" min="0.1" max="0.6" step="0.02" value="0.3" class="w-full" oninput="calculate()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>Wall Thickness (mm)</span><span id="thicknessValue" class="text-emerald-400">5</span></label>
+                        <input type="range" id="thickness" min="2" max="15" step="1" value="5" class="w-full" oninput="calculate()">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-300 mb-1">Hull Material</label>
+                        <select id="material" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2" onchange="calculate()">
+                            <option value="aluminum">Aluminum 6061</option>
+                            <option value="titanium">Titanium Ti-6Al-4V</option>
+                            <option value="acrylic">Acrylic (PMMA)</option>
+                            <option value="hdpe">HDPE</option>
+                            <option value="carbon">Carbon Fiber</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mass Components -->
+            <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                <h2 class="text-xl font-semibold text-emerald-400 mb-4"><i class="fas fa-weight-hanging mr-2"></i>Mass Components</h2>
+                <div class="space-y-3 text-sm">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-300">Hull Mass</span>
+                        <span id="hullMass" class="text-emerald-400">8.5 kg</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-300">Electronics</span>
+                        <input type="number" id="electronicsMass" value="3" class="w-20 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-right" onchange="calculate()">
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-300">Battery</span>
+                        <input type="number" id="batteryMass" value="5" class="w-20 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-right" onchange="calculate()">
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-300">Thrusters</span>
+                        <input type="number" id="thrusterMass" value="2" class="w-20 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-right" onchange="calculate()">
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-300">Payload</span>
+                        <input type="number" id="payloadMass" value="3" class="w-20 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-right" onchange="calculate()">
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-300">Ballast (adjustable)</span>
+                        <input type="number" id="ballastMass" value="0" class="w-20 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-right" onchange="calculate()">
+                    </div>
+                    <div class="flex justify-between items-center border-t border-gray-600 pt-3">
+                        <span class="text-white font-semibold">Total Mass</span>
+                        <span id="totalMass" class="text-emerald-400 font-bold">21.5 kg</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Buoyancy Results -->
+            <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                <h2 class="text-xl font-semibold text-emerald-400 mb-4"><i class="fas fa-water mr-2"></i>Buoyancy Analysis</h2>
+                <div class="space-y-3">
+                    <div class="bg-gray-700 rounded-lg p-3">
+                        <div class="text-xs text-gray-400">Displaced Volume</div>
+                        <div id="volume" class="text-xl font-bold text-blue-400">0.106 m³</div>
+                    </div>
+                    <div class="bg-gray-700 rounded-lg p-3">
+                        <div class="text-xs text-gray-400">Buoyancy Force</div>
+                        <div id="buoyancy" class="text-xl font-bold text-emerald-400">108.7 N</div>
+                    </div>
+                    <div class="bg-gray-700 rounded-lg p-3">
+                        <div class="text-xs text-gray-400">Net Buoyancy</div>
+                        <div id="netBuoyancy" class="text-xl font-bold text-yellow-400">-2.3 N</div>
+                    </div>
+                    <div class="bg-gray-700 rounded-lg p-3">
+                        <div class="text-xs text-gray-400">Required Ballast</div>
+                        <div id="requiredBallast" class="text-xl font-bold text-purple-400">0.23 kg</div>
+                    </div>
+                    <div class="bg-gray-700 rounded-lg p-3">
+                        <div class="text-xs text-gray-400">Stability</div>
+                        <div id="stability" class="text-xl font-bold text-cyan-400">Stable</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stability Diagram -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                <h2 class="text-xl font-semibold text-emerald-400 mb-4"><i class="fas fa-crosshairs mr-2"></i>Center of Mass & Buoyancy</h2>
+                <div id="stabilityDiagram" class="h-72"></div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                <h2 class="text-xl font-semibold text-emerald-400 mb-4"><i class="fas fa-chart-line mr-2"></i>Righting Moment</h2>
+                <div id="rightingMomentChart" class="h-72"></div>
+            </div>
+        </div>
+
+        <!-- Water Conditions -->
+        <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6 mb-8">
+            <h2 class="text-xl font-semibold text-emerald-400 mb-4"><i class="fas fa-globe-americas mr-2"></i>Water Conditions</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div>
+                    <label class="block text-sm text-gray-300 mb-1">Water Type</label>
+                    <select id="waterType" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2" onchange="calculate()">
+                        <option value="seawater">Seawater (1025 kg/m³)</option>
+                        <option value="freshwater">Freshwater (1000 kg/m³)</option>
+                        <option value="brackish">Brackish (1015 kg/m³)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="flex justify-between text-sm text-gray-300 mb-1"><span>Temperature (°C)</span><span id="tempValue" class="text-emerald-400">15</span></label>
+                    <input type="range" id="temperature" min="0" max="35" value="15" class="w-full" oninput="calculate()">
+                </div>
+                <div>
+                    <label class="flex justify-between text-sm text-gray-300 mb-1"><span>Depth (m)</span><span id="depthValue" class="text-emerald-400">50</span></label>
+                    <input type="range" id="depth" min="0" max="500" value="50" class="w-full" oninput="calculate()">
+                </div>
+                <div>
+                    <label class="flex justify-between text-sm text-gray-300 mb-1"><span>Salinity (ppt)</span><span id="salinityValue" class="text-emerald-400">35</span></label>
+                    <input type="range" id="salinity" min="0" max="40" value="35" class="w-full" oninput="calculate()">
+                </div>
+            </div>
+        </div>
+
+        <!-- Depth Rating -->
+        <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+            <h2 class="text-xl font-semibold text-emerald-400 mb-4"><i class="fas fa-tachometer-alt mr-2"></i>Pressure & Depth Rating</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-gray-700 rounded-lg p-4 text-center">
+                    <div class="text-xs text-gray-400">External Pressure</div>
+                    <div id="extPressure" class="text-2xl font-bold text-blue-400">6.0 bar</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-4 text-center">
+                    <div class="text-xs text-gray-400">Hull Stress</div>
+                    <div id="hullStress" class="text-2xl font-bold text-yellow-400">45 MPa</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-4 text-center">
+                    <div class="text-xs text-gray-400">Safety Factor</div>
+                    <div id="safetyFactor" class="text-2xl font-bold text-emerald-400">6.2</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-4 text-center">
+                    <div class="text-xs text-gray-400">Max Depth Rating</div>
+                    <div id="maxDepth" class="text-2xl font-bold text-purple-400">310 m</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-800 border-t border-emerald-500/20 py-6 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center text-gray-400">
+            <p>Mini-UUV Buoyancy & Ballast Calculator - Stability Analysis Tool</p>
+        </div>
+    </footer>
+
+    <script>
+        const materials = {
+            aluminum: { density: 2700, yieldStrength: 276 },
+            titanium: { density: 4430, yieldStrength: 880 },
+            acrylic: { density: 1180, yieldStrength: 75 },
+            hdpe: { density: 960, yieldStrength: 26 },
+            carbon: { density: 1550, yieldStrength: 600 }
+        };
+
+        const waterDensities = { seawater: 1025, freshwater: 1000, brackish: 1015 };
+
+        function calculate() {
+            const L = parseFloat(document.getElementById('length').value);
+            const D = parseFloat(document.getElementById('diameter').value);
+            const t = parseFloat(document.getElementById('thickness').value) / 1000;
+            const mat = document.getElementById('material').value;
+            const waterType = document.getElementById('waterType').value;
+            const depth = parseFloat(document.getElementById('depth').value);
+            const temp = parseFloat(document.getElementById('temperature').value);
+            const salinity = parseFloat(document.getElementById('salinity').value);
+
+            document.getElementById('lengthValue').textContent = L.toFixed(1);
+            document.getElementById('diameterValue').textContent = D.toFixed(2);
+            document.getElementById('thicknessValue').textContent = (t * 1000).toFixed(0);
+            document.getElementById('tempValue').textContent = temp;
+            document.getElementById('depthValue').textContent = depth;
+            document.getElementById('salinityValue').textContent = salinity;
+
+            // Hull calculations
+            const outerVolume = Math.PI * (D/2) * (D/2) * L + (4/3) * Math.PI * (D/2) * (D/2) * (D/2);
+            const innerVolume = Math.PI * ((D-2*t)/2) * ((D-2*t)/2) * L;
+            const hullVolume = outerVolume - innerVolume;
+            const hullMass = hullVolume * materials[mat].density;
+
+            document.getElementById('hullMass').textContent = hullMass.toFixed(1) + ' kg';
+
+            // Total mass
+            const electronicsMass = parseFloat(document.getElementById('electronicsMass').value);
+            const batteryMass = parseFloat(document.getElementById('batteryMass').value);
+            const thrusterMass = parseFloat(document.getElementById('thrusterMass').value);
+            const payloadMass = parseFloat(document.getElementById('payloadMass').value);
+            const ballastMass = parseFloat(document.getElementById('ballastMass').value);
+            const totalMass = hullMass + electronicsMass + batteryMass + thrusterMass + payloadMass + ballastMass;
+
+            document.getElementById('totalMass').textContent = totalMass.toFixed(1) + ' kg';
+
+            // Buoyancy
+            const rhoWater = waterDensities[waterType] + salinity * 0.7 - (temp - 15) * 0.2;
+            const buoyancyForce = rhoWater * 9.81 * outerVolume;
+            const weightForce = totalMass * 9.81;
+            const netBuoyancy = buoyancyForce - weightForce;
+            const requiredBallast = -netBuoyancy / 9.81;
+
+            document.getElementById('volume').textContent = outerVolume.toFixed(4) + ' m³';
+            document.getElementById('buoyancy').textContent = buoyancyForce.toFixed(1) + ' N';
+            document.getElementById('netBuoyancy').textContent = (netBuoyancy > 0 ? '+' : '') + netBuoyancy.toFixed(1) + ' N';
+            document.getElementById('requiredBallast').textContent = Math.abs(requiredBallast).toFixed(2) + ' kg';
+            document.getElementById('stability').textContent = Math.abs(netBuoyancy) < 5 ? 'Neutral' : netBuoyancy > 0 ? 'Positive' : 'Negative';
+            document.getElementById('stability').className = 'text-xl font-bold ' + (Math.abs(netBuoyancy) < 5 ? 'text-emerald-400' : netBuoyancy > 0 ? 'text-blue-400' : 'text-yellow-400');
+
+            // Pressure calculations
+            const pressure = rhoWater * 9.81 * depth / 100000; // bar
+            const hoopStress = pressure * 100000 * (D/2) / t / 1e6; // MPa
+            const safetyFactor = materials[mat].yieldStrength / hoopStress;
+            const maxDepthRating = materials[mat].yieldStrength * t / ((D/2) * rhoWater * 9.81 / 100000) / 3; // with SF=3
+
+            document.getElementById('extPressure').textContent = pressure.toFixed(1) + ' bar';
+            document.getElementById('hullStress').textContent = hoopStress.toFixed(0) + ' MPa';
+            document.getElementById('safetyFactor').textContent = safetyFactor.toFixed(1);
+            document.getElementById('maxDepth').textContent = Math.round(maxDepthRating) + ' m';
+
+            updateCharts(L, D, totalMass, buoyancyForce, netBuoyancy);
+        }
+
+        function updateCharts(L, D, mass, buoyancy, netB) {
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#d1d5db' }, margin: { t: 30, r: 20, b: 40, l: 50 },
+                xaxis: { color: '#9ca3af', gridcolor: 'rgba(156,163,175,0.2)' },
+                yaxis: { color: '#9ca3af', gridcolor: 'rgba(156,163,175,0.2)', scaleanchor: 'x' }
+            };
+
+            // Stability diagram - shows CoG and CoB positions
+            const cog = 0; // Center of mass at center
+            const cob = D * 0.05; // Center of buoyancy slightly above center
+
+            Plotly.react('stabilityDiagram', [
+                { x: [-L/2, L/2, L/2, -L/2, -L/2], y: [-D/2, -D/2, D/2, D/2, -D/2], mode: 'lines', line: { color: '#10b981', width: 2 }, fill: 'toself', fillcolor: 'rgba(16,185,129,0.2)', name: 'Hull' },
+                { x: [0], y: [cog], mode: 'markers', marker: { size: 15, color: '#ef4444', symbol: 'x' }, name: 'CoG' },
+                { x: [0], y: [cob], mode: 'markers', marker: { size: 15, color: '#3b82f6', symbol: 'circle' }, name: 'CoB' }
+            ], { ...layout, xaxis: { ...layout.xaxis, title: 'Length (m)' }, yaxis: { ...layout.yaxis, title: 'Height (m)' }, showlegend: true, legend: { x: 1, y: 1 } }, { responsive: true, displayModeBar: false });
+
+            // Righting moment vs heel angle
+            const angles = [], moments = [];
+            for (let a = -30; a <= 30; a += 2) {
+                angles.push(a);
+                const arm = (cob - cog) * Math.sin(a * Math.PI / 180);
+                moments.push(buoyancy * arm);
+            }
+
+            Plotly.react('rightingMomentChart', [{
+                x: angles, y: moments, type: 'scatter', mode: 'lines',
+                line: { color: '#10b981', width: 2 }, fill: 'tozeroy', fillcolor: 'rgba(16,185,129,0.2)'
+            }], {
+                ...layout,
+                xaxis: { ...layout.xaxis, title: 'Heel Angle (°)' },
+                yaxis: { ...layout.yaxis, title: 'Righting Moment (Nm)', scaleanchor: null }
+            }, { responsive: true, displayModeBar: false });
+        }
+
+        document.addEventListener('DOMContentLoaded', calculate);
+    </script>
+</body>
+</html>

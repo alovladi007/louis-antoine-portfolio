@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini-UUV Systems Demo - Complete Simulation Suite</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #0a0a0a;
+            color: #e0e0e0;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Navigation Bar */
+        .navigation-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #047857, #10b981);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
+        }
+
+        /* Hero Section */
+        .hero-section {
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem 2rem;
+            margin-top: 60px;
+            overflow: hidden;
+        }
+
+        #hero-animation {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .hero-title {
+            font-size: 4rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #047857, #34d399);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(16, 185, 129, 0.5);
+        }
+
+        .hero-subtitle {
+            font-size: 1.5rem;
+            color: #a0a0a0;
+            margin-bottom: 2rem;
+        }
+
+        .hero-description {
+            font-size: 1.2rem;
+            color: #c0c0c0;
+            max-width: 800px;
+            margin: 0 auto 3rem;
+            line-height: 1.8;
+        }
+
+        .hero-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .stat-card {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            padding: 2rem;
+            border-radius: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            background: rgba(16, 185, 129, 0.15);
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #10b981;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: #a0a0a0;
+            font-size: 1rem;
+        }
+
+        /* Section Styling */
+        .section {
+            padding: 5rem 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            font-size: 3rem;
+            text-align: center;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #047857, #34d399);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .section-subtitle {
+            text-align: center;
+            color: #888;
+            font-size: 1.2rem;
+            margin-bottom: 3rem;
+        }
+
+        /* Demo Cards Grid */
+        .demos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .demo-card {
+            background: rgba(16, 185, 129, 0.05);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .demo-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .demo-card:hover::before {
+            left: 100%;
+        }
+
+        .demo-card:hover {
+            transform: translateY(-10px);
+            border-color: rgba(16, 185, 129, 0.5);
+            box-shadow: 0 15px 40px rgba(16, 185, 129, 0.2);
+        }
+
+        .demo-icon {
+            font-size: 3rem;
+            color: #10b981;
+            margin-bottom: 1rem;
+        }
+
+        .demo-title {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #34d399;
+        }
+
+        .demo-description {
+            color: #a0a0a0;
+            line-height: 1.6;
+        }
+
+        .demo-badge {
+            display: inline-block;
+            background: rgba(16, 185, 129, 0.2);
+            color: #34d399;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            margin-top: 1rem;
+        }
+
+        /* Features Grid */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            padding: 2rem;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            background: rgba(16, 185, 129, 0.05);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.2);
+        }
+
+        .feature-icon {
+            font-size: 2.5rem;
+            color: #10b981;
+            margin-bottom: 1rem;
+        }
+
+        .feature-title {
+            font-size: 1.3rem;
+            color: #34d399;
+            margin-bottom: 0.8rem;
+        }
+
+        /* Documentation Links */
+        .doc-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .doc-link {
+            background: rgba(16, 185, 129, 0.1);
+            padding: 1.5rem;
+            border-radius: 10px;
+            text-align: center;
+            text-decoration: none;
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.8rem;
+        }
+
+        .doc-link:hover {
+            background: rgba(16, 185, 129, 0.2);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 20px rgba(16, 185, 129, 0.3);
+        }
+
+        /* Table Styling */
+        .comparison-table {
+            overflow-x: auto;
+            margin-top: 2rem;
+        }
+
+        .comparison-table table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .comparison-table th {
+            background: rgba(16, 185, 129, 0.2);
+            color: #34d399;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .comparison-table td {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: #c0c0c0;
+        }
+
+        .comparison-table tr:hover {
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        /* CTA Button */
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #047857, #10b981);
+            color: white;
+            padding: 1rem 2.5rem;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            margin-top: 2rem;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4);
+        }
+
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2.5rem;
+            }
+            .section-title {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <div class="navigation-bar">
+        <div>
+            <h2 style="color: #34d399;"><i class="fas fa-ship"></i> Mini-UUV Systems Suite</h2>
+        </div>
+        <a href="electronics-projects.html" class="nav-btn">
+            <i class="fas fa-arrow-left"></i> Back to Projects
+        </a>
+    </div>
+
+    <!-- Hero Section with 3D Animation -->
+    <section class="hero-section">
+        <canvas id="hero-animation"></canvas>
+        <div class="hero-content">
+            <h1 class="hero-title">Mini-UUV Systems Demo</h1>
+            <p class="hero-subtitle">Volume/Mass-Constrained Autonomous Underwater Vehicle Platform</p>
+            <p class="hero-description">
+                A comprehensive mini-UUV demonstrator with modular payload bay and simulated effects integration.
+                Navigation stack fuses IMU, Doppler surrogate, and acoustic beacons achieving 1.2%/hr drift,
+                75-110 min endurance at 50-80W, with hot-swap payloads up to 0.8L/700g.
+            </p>
+
+            <div class="hero-stats">
+                <div class="stat-card">
+                    <div class="stat-value">1.2%/hr</div>
+                    <div class="stat-label">Navigation Drift</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">75-110</div>
+                    <div class="stat-label">Endurance (min)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">50-80W</div>
+                    <div class="stat-label">Power Consumption</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">0.8L</div>
+                    <div class="stat-label">Payload Volume</div>
+                </div>
+            </div>
+
+            <a href="#demos" class="cta-button">
+                <i class="fas fa-play-circle"></i> Explore Interactive Demos
+            </a>
+        </div>
+    </section>
+
+    <!-- Interactive Demonstrations -->
+    <section class="section" id="demos">
+        <h2 class="section-title">Interactive Demonstrations</h2>
+        <p class="section-subtitle">Real-Time UUV Simulations & Visualizations</p>
+
+        <div class="demos-grid">
+            <a href="uuv-navigation-simulator.html" class="demo-card">
+                <i class="fas fa-compass demo-icon"></i>
+                <h3 class="demo-title">Navigation Simulator</h3>
+                <p class="demo-description">Interactive multi-sensor fusion navigation with IMU, Doppler surrogate, and acoustic beacon integration showing real-time drift accumulation.</p>
+                <span class="demo-badge">Sensor Fusion</span>
+            </a>
+
+            <a href="uuv-mission-planner.html" class="demo-card">
+                <i class="fas fa-route demo-icon"></i>
+                <h3 class="demo-title">Mission Planner</h3>
+                <p class="demo-description">Plan and visualize AUV missions with waypoint navigation, obstacle avoidance, and predicted battery consumption analysis.</p>
+                <span class="demo-badge">Mission Control</span>
+            </a>
+
+            <a href="uuv-power-management.html" class="demo-card">
+                <i class="fas fa-battery-full demo-icon"></i>
+                <h3 class="demo-title">Power Management System</h3>
+                <p class="demo-description">Real-time power budget analysis with subsystem breakdown, endurance prediction, and energy optimization strategies.</p>
+                <span class="demo-badge">Power Analysis</span>
+            </a>
+
+            <a href="uuv-payload-configurator.html" class="demo-card">
+                <i class="fas fa-box demo-icon"></i>
+                <h3 class="demo-title">Payload Configurator</h3>
+                <p class="demo-description">Configure modular payload bay with mass/volume constraints, buoyancy calculations, and interface specifications.</p>
+                <span class="demo-badge">Payload Design</span>
+            </a>
+
+            <a href="uuv-gazebo-simulator.html" class="demo-card">
+                <i class="fas fa-cube demo-icon"></i>
+                <h3 class="demo-title">Gazebo Physics Simulator</h3>
+                <p class="demo-description">Full physics simulation with hydrodynamic forces, thruster dynamics, and environmental effects in realistic underwater environments.</p>
+                <span class="demo-badge">Physics Simulation</span>
+            </a>
+
+            <a href="uuv-ros2-interface.html" class="demo-card">
+                <i class="fas fa-robot demo-icon"></i>
+                <h3 class="demo-title">ROS2 Control Interface</h3>
+                <p class="demo-description">Interactive ROS2 node visualization with topic monitoring, service calls, and real-time parameter tuning.</p>
+                <span class="demo-badge">ROS2 Integration</span>
+            </a>
+
+            <a href="uuv-depth-controller.html" class="demo-card">
+                <i class="fas fa-arrows-alt-v demo-icon"></i>
+                <h3 class="demo-title">Depth Controller</h3>
+                <p class="demo-description">PID-based depth control with buoyancy compensation, pressure sensor fusion, and emergency surface protocols.</p>
+                <span class="demo-badge">Control Systems</span>
+            </a>
+
+            <a href="uuv-thruster-dynamics.html" class="demo-card">
+                <i class="fas fa-fan demo-icon"></i>
+                <h3 class="demo-title">Thruster Dynamics</h3>
+                <p class="demo-description">Model thruster response curves, dead zones, and allocation matrices for multi-thruster configurations.</p>
+                <span class="demo-badge">Propulsion</span>
+            </a>
+
+            <a href="uuv-fmea-analyzer.html" class="demo-card">
+                <i class="fas fa-exclamation-triangle demo-icon"></i>
+                <h3 class="demo-title">FMEA Analyzer</h3>
+                <p class="demo-description">Comprehensive failure modes and effects analysis with severity ratings, detection methods, and mitigation strategies.</p>
+                <span class="demo-badge">Safety Analysis</span>
+            </a>
+
+            <a href="uuv-acoustic-modem.html" class="demo-card">
+                <i class="fas fa-broadcast-tower demo-icon"></i>
+                <h3 class="demo-title">Acoustic Modem Simulator</h3>
+                <p class="demo-description">Simulate underwater acoustic communication with multipath effects, Doppler shifts, and bandwidth limitations.</p>
+                <span class="demo-badge">Communications</span>
+            </a>
+
+            <a href="uuv-obstacle-detection.html" class="demo-card">
+                <i class="fas fa-radar demo-icon"></i>
+                <h3 class="demo-title">Obstacle Detection</h3>
+                <p class="demo-description">Sonar-based obstacle detection and avoidance with sector scanning, range estimation, and collision prediction.</p>
+                <span class="demo-badge">Perception</span>
+            </a>
+
+            <a href="uuv-unity-visualization.html" class="demo-card">
+                <i class="fas fa-gamepad demo-icon"></i>
+                <h3 class="demo-title">Unity 3D Visualization</h3>
+                <p class="demo-description">High-fidelity 3D visualization with underwater rendering, particle effects, and real-time telemetry overlay.</p>
+                <span class="demo-badge">Visualization</span>
+            </a>
+        </div>
+    </section>
+
+    <!-- Technical Documentation -->
+    <section class="section" id="documentation">
+        <h2 class="section-title">Technical Documentation</h2>
+        <p class="section-subtitle">Comprehensive Guides and References</p>
+
+        <div class="doc-links">
+            <a href="uuv-theory-guide.html" class="doc-link">
+                <i class="fas fa-book-open"></i> Theory Guide
+            </a>
+            <a href="uuv-api-reference.html" class="doc-link">
+                <i class="fas fa-code"></i> API Reference
+            </a>
+            <a href="uuv-tutorials.html" class="doc-link">
+                <i class="fas fa-graduation-cap"></i> Tutorials
+            </a>
+            <a href="uuv-examples.html" class="doc-link">
+                <i class="fas fa-laptop-code"></i> Code Examples
+            </a>
+            <a href="mini-uuv-systems-demo.html" class="doc-link">
+                <i class="fas fa-file-alt"></i> Technical Paper
+            </a>
+        </div>
+    </section>
+
+    <!-- System Specifications -->
+    <section class="section">
+        <h2 class="section-title">System Specifications</h2>
+        <p class="section-subtitle">Mini-UUV Platform Components & Performance</p>
+
+        <div class="comparison-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Subsystem</th>
+                        <th>Specification</th>
+                        <th>Performance</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Navigation (IMU)</td>
+                        <td>9-DOF MEMS IMU</td>
+                        <td>1.2%/hr drift</td>
+                        <td>Fused with DVL surrogate</td>
+                    </tr>
+                    <tr>
+                        <td>Doppler Surrogate</td>
+                        <td>4-beam acoustic</td>
+                        <td>0.2% velocity accuracy</td>
+                        <td>Bottom-track &lt; 50m</td>
+                    </tr>
+                    <tr>
+                        <td>Acoustic Positioning</td>
+                        <td>USBL transponder</td>
+                        <td>&lt; 2m accuracy @ 500m</td>
+                        <td>Surface vessel reference</td>
+                    </tr>
+                    <tr>
+                        <td>Propulsion</td>
+                        <td>4x brushless thrusters</td>
+                        <td>15N max thrust each</td>
+                        <td>Vector configuration</td>
+                    </tr>
+                    <tr>
+                        <td>Battery</td>
+                        <td>Li-ion 48V 20Ah</td>
+                        <td>960 Wh capacity</td>
+                        <td>Hot-swap capable</td>
+                    </tr>
+                    <tr>
+                        <td>Payload Bay</td>
+                        <td>0.8L / 700g max</td>
+                        <td>12-pin interface</td>
+                        <td>&lt; 3 min swap time</td>
+                    </tr>
+                    <tr>
+                        <td>Depth Rating</td>
+                        <td>100m operational</td>
+                        <td>150m tested</td>
+                        <td>Titanium pressure vessel</td>
+                    </tr>
+                    <tr>
+                        <td>Communication</td>
+                        <td>Acoustic modem</td>
+                        <td>300-900 bps</td>
+                        <td>1km range typical</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Research Tools -->
+    <section class="section" id="tools">
+        <h2 class="section-title">Research & Analysis Tools</h2>
+        <p class="section-subtitle">Advanced UUV Design and Optimization</p>
+
+        <div class="features-grid">
+            <a href="uuv-hydrodynamics-calculator.html" class="feature-card" style="text-decoration: none; color: inherit;">
+                <i class="fas fa-water feature-icon"></i>
+                <h3 class="feature-title">Hydrodynamics Calculator</h3>
+                <p>Calculate drag coefficients, added mass, and hydrodynamic derivatives for hull optimization.</p>
+            </a>
+
+            <a href="uuv-battery-estimator.html" class="feature-card" style="text-decoration: none; color: inherit;">
+                <i class="fas fa-battery-half feature-icon"></i>
+                <h3 class="feature-title">Battery Estimator</h3>
+                <p>Estimate mission endurance based on speed profile, payload power, and environmental conditions.</p>
+            </a>
+
+            <a href="uuv-buoyancy-calculator.html" class="feature-card" style="text-decoration: none; color: inherit;">
+                <i class="fas fa-balance-scale feature-icon"></i>
+                <h3 class="feature-title">Buoyancy Calculator</h3>
+                <p>Calculate neutral buoyancy trim, center of gravity, and stability margins for payload configurations.</p>
+            </a>
+
+            <a href="uuv-pid-tuner.html" class="feature-card" style="text-decoration: none; color: inherit;">
+                <i class="fas fa-sliders-h feature-icon"></i>
+                <h3 class="feature-title">PID Tuner</h3>
+                <p>Interactive controller tuning with step response analysis, stability margins, and auto-tune algorithms.</p>
+            </a>
+
+            <a href="uuv-data-logger.html" class="feature-card" style="text-decoration: none; color: inherit;">
+                <i class="fas fa-database feature-icon"></i>
+                <h3 class="feature-title">Mission Data Logger</h3>
+                <p>Record and replay mission data with sensor logs, control signals, and state estimation outputs.</p>
+            </a>
+
+            <a href="uuv-export-tools.html" class="feature-card" style="text-decoration: none; color: inherit;">
+                <i class="fas fa-download feature-icon"></i>
+                <h3 class="feature-title">Export Tools</h3>
+                <p>Export simulation data in ROS bag, CSV, MATLAB, and custom formats for post-processing.</p>
+            </a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer style="text-align: center; padding: 3rem 2rem; border-top: 1px solid rgba(16, 185, 129, 0.2); margin-top: 5rem;">
+        <p style="color: #666;">© 2024 Mini-UUV Systems Demo Research Suite</p>
+        <p style="color: #888; margin-top: 1rem;">Autonomous Underwater Vehicle Development Platform</p>
+    </footer>
+
+    <!-- JavaScript for 3D Animation -->
+    <script>
+        // 3D Underwater UUV Animation
+        let scene, camera, renderer, uuv, particles, propellers;
+
+        function init3DAnimation() {
+            const canvas = document.getElementById('hero-animation');
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x001a1a, 0.012);
+
+            camera = new THREE.PerspectiveCamera(75, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
+            camera.position.set(0, 3, 12);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
+            renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+            renderer.setClearColor(0x001a1a, 0.3);
+
+            // Create UUV body (torpedo shape)
+            const bodyGeometry = new THREE.CylinderGeometry(0.4, 0.3, 2.5, 16);
+            const bodyMaterial = new THREE.MeshBasicMaterial({
+                color: 0x10b981,
+                wireframe: true,
+                wireframeLinewidth: 2
+            });
+            uuv = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            uuv.rotation.z = Math.PI / 2;
+            scene.add(uuv);
+
+            // Create nose cone
+            const noseGeometry = new THREE.ConeGeometry(0.3, 0.6, 16);
+            const noseMaterial = new THREE.MeshBasicMaterial({
+                color: 0x34d399,
+                wireframe: true
+            });
+            const nose = new THREE.Mesh(noseGeometry, noseMaterial);
+            nose.rotation.z = -Math.PI / 2;
+            nose.position.x = 1.55;
+            scene.add(nose);
+
+            // Create propeller housing
+            const propGeometry = new THREE.TorusGeometry(0.25, 0.05, 8, 16);
+            const propMaterial = new THREE.MeshBasicMaterial({
+                color: 0x10b981,
+                wireframe: true
+            });
+            const propHousing = new THREE.Mesh(propGeometry, propMaterial);
+            propHousing.position.x = -1.4;
+            propHousing.rotation.y = Math.PI / 2;
+            scene.add(propHousing);
+
+            // Create fins
+            const finGeometry = new THREE.BoxGeometry(0.5, 0.02, 0.3);
+            const finMaterial = new THREE.MeshBasicMaterial({ color: 0x047857, wireframe: true });
+
+            for (let i = 0; i < 4; i++) {
+                const fin = new THREE.Mesh(finGeometry, finMaterial);
+                fin.position.x = -0.8;
+                fin.rotation.x = (i * Math.PI / 2);
+                fin.position.y = Math.cos(i * Math.PI / 2) * 0.45;
+                fin.position.z = Math.sin(i * Math.PI / 2) * 0.45;
+                scene.add(fin);
+            }
+
+            // Create bubble particles
+            const particleGeometry = new THREE.BufferGeometry();
+            const particleCount = 800;
+            const positions = new Float32Array(particleCount * 3);
+
+            for (let i = 0; i < particleCount * 3; i += 3) {
+                positions[i] = (Math.random() - 0.5) * 40;
+                positions[i + 1] = (Math.random() - 0.5) * 40;
+                positions[i + 2] = (Math.random() - 0.5) * 40;
+            }
+
+            particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+            const particleMaterial = new THREE.PointsMaterial({
+                color: 0x34d399,
+                size: 0.08,
+                transparent: true,
+                opacity: 0.5,
+                blending: THREE.AdditiveBlending
+            });
+
+            particles = new THREE.Points(particleGeometry, particleMaterial);
+            scene.add(particles);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 2);
+            scene.add(ambientLight);
+
+            const pointLight = new THREE.PointLight(0x10b981, 1, 50);
+            pointLight.position.set(0, 10, 10);
+            scene.add(pointLight);
+
+            animate();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Gentle UUV movement
+            uuv.rotation.y += 0.005;
+            uuv.position.y = Math.sin(Date.now() * 0.001) * 0.3;
+            uuv.position.x = Math.cos(Date.now() * 0.0005) * 0.5;
+
+            // Animate particles (bubbles rising)
+            const positions = particles.geometry.attributes.position.array;
+            for (let i = 0; i < positions.length; i += 3) {
+                positions[i + 1] += 0.015;
+                if (positions[i + 1] > 20) {
+                    positions[i + 1] = -20;
+                }
+            }
+            particles.geometry.attributes.position.needsUpdate = true;
+            particles.rotation.y += 0.0005;
+
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            const canvas = document.getElementById('hero-animation');
+            camera.aspect = canvas.clientWidth / canvas.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+        });
+
+        // Initialize animation when page loads
+        window.addEventListener('load', init3DAnimation);
+    </script>
+</body>
+</html>

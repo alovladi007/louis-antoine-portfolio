@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payload Configurator - Mini-UUV Systems</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #0a0a0a; color: #e0e0e0; line-height: 1.6; }
+        .navbar { background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(10px); padding: 1rem 2rem; border-bottom: 1px solid rgba(16, 185, 129, 0.3); position: sticky; top: 0; z-index: 100; display: flex; justify-content: space-between; align-items: center; }
+        .nav-title { color: #34d399; font-size: 1.5rem; font-weight: 600; }
+        .nav-btn { background: linear-gradient(135deg, #047857, #10b981); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; transition: all 0.3s ease; }
+        .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4); }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .hero { text-align: center; padding: 3rem 0; background: linear-gradient(135deg, rgba(4, 120, 87, 0.1), rgba(16, 185, 129, 0.1)); border-radius: 20px; margin-bottom: 3rem; }
+        .hero h1 { font-size: 3rem; background: linear-gradient(135deg, #047857, #34d399); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 1rem; }
+        .hero-subtitle { font-size: 1.2rem; color: #a0a0a0; max-width: 800px; margin: 0 auto; }
+        .main-grid { display: grid; grid-template-columns: 1fr 350px; gap: 2rem; }
+        .panel { background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 15px; padding: 1.5rem; margin-bottom: 2rem; }
+        .panel-title { color: #34d399; font-size: 1.3rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .payload-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; }
+        .payload-card { background: rgba(16, 185, 129, 0.1); border: 2px solid rgba(16, 185, 129, 0.2); border-radius: 12px; padding: 1rem; cursor: pointer; transition: all 0.3s; }
+        .payload-card:hover { border-color: #10b981; transform: translateY(-3px); }
+        .payload-card.selected { border-color: #10b981; background: rgba(16, 185, 129, 0.2); }
+        .payload-card.disabled { opacity: 0.5; cursor: not-allowed; }
+        .payload-icon { font-size: 2rem; color: #10b981; margin-bottom: 0.5rem; }
+        .payload-name { font-weight: 600; color: #34d399; margin-bottom: 0.5rem; }
+        .payload-specs { font-size: 0.85rem; color: #a0a0a0; }
+        .payload-specs span { display: block; margin: 0.2rem 0; }
+        .constraint-bar { margin: 1rem 0; }
+        .constraint-label { display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.9rem; }
+        .constraint-track { height: 12px; background: rgba(16, 185, 129, 0.1); border-radius: 6px; overflow: hidden; }
+        .constraint-fill { height: 100%; border-radius: 6px; transition: width 0.3s, background 0.3s; }
+        .constraint-fill.ok { background: linear-gradient(90deg, #10b981, #34d399); }
+        .constraint-fill.warning { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+        .constraint-fill.critical { background: linear-gradient(90deg, #ef4444, #f87171); }
+        .metrics-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1rem; }
+        .metric-box { background: rgba(16, 185, 129, 0.1); border-radius: 10px; padding: 1rem; text-align: center; }
+        .metric-value { font-size: 1.8rem; font-weight: bold; color: #10b981; }
+        .metric-label { font-size: 0.85rem; color: #a0a0a0; }
+        .btn { background: linear-gradient(135deg, #047857, #10b981); color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: all 0.3s; margin-bottom: 0.5rem; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4); }
+        .btn-secondary { background: rgba(16, 185, 129, 0.2); border: 1px solid rgba(16, 185, 129, 0.3); }
+        .status-box { padding: 1rem; border-radius: 8px; margin-top: 1rem; }
+        .status-ok { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); }
+        .status-warning { background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); }
+        .status-error { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); }
+        .status-ok h4 { color: #10b981; }
+        .status-warning h4 { color: #f59e0b; }
+        .status-error h4 { color: #ef4444; }
+        .interface-spec { background: rgba(0, 0, 0, 0.2); border-radius: 8px; padding: 1rem; margin-top: 1rem; }
+        .spec-item { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid rgba(16, 185, 129, 0.1); }
+        .spec-item:last-child { border-bottom: none; }
+        .spec-label { color: #a0a0a0; }
+        .spec-value { color: #34d399; font-family: monospace; }
+        @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <span class="nav-title"><i class="fas fa-box"></i> Payload Configurator</span>
+        <a href="mini-uuv-complete-project.html" class="nav-btn"><i class="fas fa-arrow-left"></i> Back to Project</a>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h1><i class="fas fa-box"></i> Modular Payload Configurator</h1>
+            <p class="hero-subtitle">Configure hot-swappable payload modules with real-time mass/volume constraints, buoyancy calculations, and interface verification.</p>
+        </div>
+
+        <div class="main-grid">
+            <div>
+                <!-- Available Payloads -->
+                <div class="panel">
+                    <h3 class="panel-title"><i class="fas fa-cubes"></i> Available Payload Modules</h3>
+                    <div class="payload-grid" id="payload-grid">
+                        <div class="payload-card" data-payload="camera" onclick="togglePayload(this)">
+                            <div class="payload-icon"><i class="fas fa-camera"></i></div>
+                            <div class="payload-name">Optical Camera</div>
+                            <div class="payload-specs">
+                                <span><i class="fas fa-weight-hanging"></i> 350g</span>
+                                <span><i class="fas fa-cube"></i> 0.4L</span>
+                                <span><i class="fas fa-bolt"></i> 8W</span>
+                            </div>
+                        </div>
+                        <div class="payload-card" data-payload="sonar" onclick="togglePayload(this)">
+                            <div class="payload-icon"><i class="fas fa-radar"></i></div>
+                            <div class="payload-name">Side-Scan Sonar</div>
+                            <div class="payload-specs">
+                                <span><i class="fas fa-weight-hanging"></i> 650g</span>
+                                <span><i class="fas fa-cube"></i> 0.7L</span>
+                                <span><i class="fas fa-bolt"></i> 15W</span>
+                            </div>
+                        </div>
+                        <div class="payload-card" data-payload="sampler" onclick="togglePayload(this)">
+                            <div class="payload-icon"><i class="fas fa-vial"></i></div>
+                            <div class="payload-name">Water Sampler</div>
+                            <div class="payload-specs">
+                                <span><i class="fas fa-weight-hanging"></i> 500g</span>
+                                <span><i class="fas fa-cube"></i> 0.6L</span>
+                                <span><i class="fas fa-bolt"></i> 5W</span>
+                            </div>
+                        </div>
+                        <div class="payload-card" data-payload="relay" onclick="togglePayload(this)">
+                            <div class="payload-icon"><i class="fas fa-broadcast-tower"></i></div>
+                            <div class="payload-name">Acoustic Relay</div>
+                            <div class="payload-specs">
+                                <span><i class="fas fa-weight-hanging"></i> 400g</span>
+                                <span><i class="fas fa-cube"></i> 0.5L</span>
+                                <span><i class="fas fa-bolt"></i> 12W</span>
+                            </div>
+                        </div>
+                        <div class="payload-card" data-payload="ctd" onclick="togglePayload(this)">
+                            <div class="payload-icon"><i class="fas fa-thermometer-half"></i></div>
+                            <div class="payload-name">CTD Sensor</div>
+                            <div class="payload-specs">
+                                <span><i class="fas fa-weight-hanging"></i> 300g</span>
+                                <span><i class="fas fa-cube"></i> 0.3L</span>
+                                <span><i class="fas fa-bolt"></i> 3W</span>
+                            </div>
+                        </div>
+                        <div class="payload-card" data-payload="mag" onclick="togglePayload(this)">
+                            <div class="payload-icon"><i class="fas fa-magnet"></i></div>
+                            <div class="payload-name">Magnetometer</div>
+                            <div class="payload-specs">
+                                <span><i class="fas fa-weight-hanging"></i> 250g</span>
+                                <span><i class="fas fa-cube"></i> 0.25L</span>
+                                <span><i class="fas fa-bolt"></i> 2W</span>
+                            </div>
+                        </div>
+                        <div class="payload-card" data-payload="light" onclick="togglePayload(this)">
+                            <div class="payload-icon"><i class="fas fa-lightbulb"></i></div>
+                            <div class="payload-name">LED Illuminator</div>
+                            <div class="payload-specs">
+                                <span><i class="fas fa-weight-hanging"></i> 200g</span>
+                                <span><i class="fas fa-cube"></i> 0.2L</span>
+                                <span><i class="fas fa-bolt"></i> 20W</span>
+                            </div>
+                        </div>
+                        <div class="payload-card" data-payload="grabber" onclick="togglePayload(this)">
+                            <div class="payload-icon"><i class="fas fa-hand-rock"></i></div>
+                            <div class="payload-name">Sample Grabber</div>
+                            <div class="payload-specs">
+                                <span><i class="fas fa-weight-hanging"></i> 450g</span>
+                                <span><i class="fas fa-cube"></i> 0.35L</span>
+                                <span><i class="fas fa-bolt"></i> 10W</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Buoyancy Analysis -->
+                <div class="panel">
+                    <h3 class="panel-title"><i class="fas fa-balance-scale"></i> Buoyancy Analysis</h3>
+                    <div class="plot-container" style="background: rgba(0,0,0,0.3); border-radius: 10px; padding: 1rem;">
+                        <div id="buoyancy-plot" style="width: 100%; height: 300px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div>
+                <div class="panel">
+                    <h3 class="panel-title"><i class="fas fa-check-circle"></i> Configuration Status</h3>
+
+                    <div class="constraint-bar">
+                        <div class="constraint-label">
+                            <span>Mass</span>
+                            <span id="mass-val">0 / 700g</span>
+                        </div>
+                        <div class="constraint-track">
+                            <div class="constraint-fill ok" id="mass-fill" style="width: 0%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="constraint-bar">
+                        <div class="constraint-label">
+                            <span>Volume</span>
+                            <span id="vol-val">0 / 0.8L</span>
+                        </div>
+                        <div class="constraint-track">
+                            <div class="constraint-fill ok" id="vol-fill" style="width: 0%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="constraint-bar">
+                        <div class="constraint-label">
+                            <span>Power</span>
+                            <span id="power-val">0 / 25W</span>
+                        </div>
+                        <div class="constraint-track">
+                            <div class="constraint-fill ok" id="power-fill" style="width: 0%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="metrics-row">
+                        <div class="metric-box">
+                            <div class="metric-value" id="selected-count">0</div>
+                            <div class="metric-label">Modules</div>
+                        </div>
+                        <div class="metric-box">
+                            <div class="metric-value" id="endurance-impact">0</div>
+                            <div class="metric-label">Endurance Impact</div>
+                        </div>
+                    </div>
+
+                    <div id="status-display" class="status-box status-ok">
+                        <h4><i class="fas fa-check"></i> Ready</h4>
+                        <p>No payload selected. Select modules to configure.</p>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h3 class="panel-title"><i class="fas fa-plug"></i> Interface Spec</h3>
+                    <div class="interface-spec">
+                        <div class="spec-item">
+                            <span class="spec-label">Connector</span>
+                            <span class="spec-value">12-Pin Wet-Mate</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Power Rails</span>
+                            <span class="spec-value">12V @ 2A, 5V @ 1A</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Data Bus</span>
+                            <span class="spec-value">RS-485 / Ethernet</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Swap Time</span>
+                            <span class="spec-value">&lt; 3 min</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Depth Rating</span>
+                            <span class="spec-value">100m</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn" onclick="validateConfig()"><i class="fas fa-check-double"></i> Validate Configuration</button>
+                <button class="btn btn-secondary" onclick="clearSelection()"><i class="fas fa-redo"></i> Clear Selection</button>
+                <button class="btn btn-secondary" onclick="exportConfig()"><i class="fas fa-download"></i> Export Config</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const payloadSpecs = {
+            camera: { mass: 350, volume: 0.4, power: 8 },
+            sonar: { mass: 650, volume: 0.7, power: 15 },
+            sampler: { mass: 500, volume: 0.6, power: 5 },
+            relay: { mass: 400, volume: 0.5, power: 12 },
+            ctd: { mass: 300, volume: 0.3, power: 3 },
+            mag: { mass: 250, volume: 0.25, power: 2 },
+            light: { mass: 200, volume: 0.2, power: 20 },
+            grabber: { mass: 450, volume: 0.35, power: 10 }
+        };
+
+        const maxMass = 700, maxVolume = 0.8, maxPower = 25;
+        let selectedPayloads = [];
+
+        function togglePayload(card) {
+            const payload = card.dataset.payload;
+            const specs = payloadSpecs[payload];
+
+            if (card.classList.contains('selected')) {
+                card.classList.remove('selected');
+                selectedPayloads = selectedPayloads.filter(p => p !== payload);
+            } else {
+                // Check if adding would exceed limits
+                const currentMass = selectedPayloads.reduce((sum, p) => sum + payloadSpecs[p].mass, 0);
+                const currentVol = selectedPayloads.reduce((sum, p) => sum + payloadSpecs[p].volume, 0);
+
+                if (currentMass + specs.mass <= maxMass && currentVol + specs.volume <= maxVolume) {
+                    card.classList.add('selected');
+                    selectedPayloads.push(payload);
+                }
+            }
+
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            const totalMass = selectedPayloads.reduce((sum, p) => sum + payloadSpecs[p].mass, 0);
+            const totalVol = selectedPayloads.reduce((sum, p) => sum + payloadSpecs[p].volume, 0);
+            const totalPower = selectedPayloads.reduce((sum, p) => sum + payloadSpecs[p].power, 0);
+
+            // Update constraint bars
+            document.getElementById('mass-val').textContent = `${totalMass} / ${maxMass}g`;
+            document.getElementById('vol-val').textContent = `${totalVol.toFixed(2)} / ${maxVolume}L`;
+            document.getElementById('power-val').textContent = `${totalPower} / ${maxPower}W`;
+
+            const massPercent = (totalMass / maxMass) * 100;
+            const volPercent = (totalVol / maxVolume) * 100;
+            const powerPercent = (totalPower / maxPower) * 100;
+
+            updateBar('mass-fill', massPercent);
+            updateBar('vol-fill', volPercent);
+            updateBar('power-fill', powerPercent);
+
+            // Update metrics
+            document.getElementById('selected-count').textContent = selectedPayloads.length;
+            const enduranceImpact = -Math.round(totalPower * 0.8); // Approximate impact
+            document.getElementById('endurance-impact').textContent = enduranceImpact + ' min';
+
+            // Update status
+            updateStatus(massPercent, volPercent, powerPercent);
+
+            // Update card states
+            updateCardStates(totalMass, totalVol);
+
+            // Update buoyancy plot
+            updateBuoyancyPlot(totalMass, totalVol);
+        }
+
+        function updateBar(id, percent) {
+            const fill = document.getElementById(id);
+            fill.style.width = percent + '%';
+            fill.classList.remove('ok', 'warning', 'critical');
+            if (percent > 90) fill.classList.add('critical');
+            else if (percent > 70) fill.classList.add('warning');
+            else fill.classList.add('ok');
+        }
+
+        function updateStatus(mass, vol, power) {
+            const statusDiv = document.getElementById('status-display');
+
+            if (mass > 100 || vol > 100) {
+                statusDiv.className = 'status-box status-error';
+                statusDiv.innerHTML = '<h4><i class="fas fa-times-circle"></i> Over Limit</h4><p>Configuration exceeds mass or volume constraints.</p>';
+            } else if (power > 100) {
+                statusDiv.className = 'status-box status-warning';
+                statusDiv.innerHTML = '<h4><i class="fas fa-exclamation-triangle"></i> Power Warning</h4><p>Power draw exceeds recommended limit. Endurance will be significantly reduced.</p>';
+            } else if (selectedPayloads.length === 0) {
+                statusDiv.className = 'status-box status-ok';
+                statusDiv.innerHTML = '<h4><i class="fas fa-info-circle"></i> Ready</h4><p>No payload selected. Select modules to configure.</p>';
+            } else {
+                statusDiv.className = 'status-box status-ok';
+                statusDiv.innerHTML = '<h4><i class="fas fa-check-circle"></i> Configuration Valid</h4><p>All constraints satisfied. Ready for deployment.</p>';
+            }
+        }
+
+        function updateCardStates(currentMass, currentVol) {
+            document.querySelectorAll('.payload-card').forEach(card => {
+                if (card.classList.contains('selected')) return;
+
+                const payload = card.dataset.payload;
+                const specs = payloadSpecs[payload];
+
+                if (currentMass + specs.mass > maxMass || currentVol + specs.volume > maxVolume) {
+                    card.classList.add('disabled');
+                } else {
+                    card.classList.remove('disabled');
+                }
+            });
+        }
+
+        function updateBuoyancyPlot(totalMass, totalVol) {
+            // Simplified buoyancy calculation
+            const waterDensity = 1025; // kg/m³ seawater
+            const displacedMass = totalVol * waterDensity; // grams
+            const netBuoyancy = displacedMass - totalMass;
+
+            const categories = ['Vehicle Base', 'Payload Mass', 'Displaced Water', 'Net Buoyancy'];
+            const values = [2500, totalMass, -displacedMass, -netBuoyancy];
+            const colors = ['#3b82f6', '#ef4444', '#10b981', netBuoyancy > 0 ? '#f59e0b' : '#10b981'];
+
+            const trace = {
+                x: categories,
+                y: values,
+                type: 'bar',
+                marker: { color: colors }
+            };
+
+            const layout = {
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                xaxis: { gridcolor: '#333' },
+                yaxis: { title: 'Mass (g)', gridcolor: '#333' },
+                margin: { t: 30 }
+            };
+
+            Plotly.newPlot('buoyancy-plot', [trace], layout, {responsive: true});
+        }
+
+        function clearSelection() {
+            selectedPayloads = [];
+            document.querySelectorAll('.payload-card').forEach(card => {
+                card.classList.remove('selected', 'disabled');
+            });
+            updateDisplay();
+        }
+
+        function validateConfig() {
+            alert(selectedPayloads.length > 0
+                ? `Configuration validated: ${selectedPayloads.join(', ')}`
+                : 'No payloads selected');
+        }
+
+        function exportConfig() {
+            const config = {
+                payloads: selectedPayloads,
+                specs: selectedPayloads.map(p => ({ name: p, ...payloadSpecs[p] })),
+                totals: {
+                    mass: selectedPayloads.reduce((sum, p) => sum + payloadSpecs[p].mass, 0),
+                    volume: selectedPayloads.reduce((sum, p) => sum + payloadSpecs[p].volume, 0),
+                    power: selectedPayloads.reduce((sum, p) => sum + payloadSpecs[p].power, 0)
+                }
+            };
+            const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'payload_config.json';
+            a.click();
+        }
+
+        window.addEventListener('load', updateDisplay);
+    </script>
+</body>
+</html>

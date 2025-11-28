@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acoustic Modem Simulator - Mini-UUV Systems</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%);
+        }
+        .wave-animation {
+            animation: wave-pulse 2s ease-out infinite;
+        }
+        @keyframes wave-pulse {
+            0% { transform: scale(1); opacity: 0.6; }
+            100% { transform: scale(3); opacity: 0; }
+        }
+        .signal-bar {
+            transition: height 0.3s ease;
+        }
+        .packet-indicator {
+            animation: blink 0.5s ease infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-emerald-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="mini-uuv-complete-project.html" class="flex items-center text-emerald-400 hover:text-emerald-300 transition-colors">
+                    <i class="fas fa-arrow-left mr-2"></i>
+                    Back to Mini-UUV Project
+                </a>
+                <span class="text-emerald-400 font-semibold">Acoustic Modem Simulator</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="gradient-bg py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4">
+                <i class="fas fa-broadcast-tower mr-4 text-emerald-400"></i>
+                Acoustic Modem Simulator
+            </h1>
+            <p class="text-xl text-emerald-100 max-w-3xl mx-auto">
+                Underwater acoustic communication modeling with channel propagation,
+                multipath effects, and data transmission simulation
+            </p>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Communication Overview -->
+        <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6 mb-8">
+            <h2 class="text-xl font-semibold text-emerald-400 mb-4">
+                <i class="fas fa-satellite-dish mr-2"></i>Communication Link
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
+                <!-- Transmitter -->
+                <div class="text-center">
+                    <div class="relative w-32 h-32 mx-auto mb-4">
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <div id="txWave1" class="absolute w-16 h-16 rounded-full border-2 border-emerald-400 wave-animation"></div>
+                            <div id="txWave2" class="absolute w-16 h-16 rounded-full border-2 border-emerald-400 wave-animation" style="animation-delay: 0.5s;"></div>
+                            <div id="txWave3" class="absolute w-16 h-16 rounded-full border-2 border-emerald-400 wave-animation" style="animation-delay: 1s;"></div>
+                            <div class="w-16 h-16 bg-emerald-600 rounded-full flex items-center justify-center z-10">
+                                <i class="fas fa-satellite-dish text-2xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <h3 class="text-lg font-semibold text-white">Transmitter (UUV)</h3>
+                    <div class="mt-2 text-sm text-gray-400">
+                        <div>Position: <span id="txPos" class="text-emerald-400">(0, 0, -15)</span> m</div>
+                        <div>TX Power: <span id="txPowerDisplay" class="text-emerald-400">180</span> dB re 1μPa</div>
+                    </div>
+                </div>
+
+                <!-- Channel -->
+                <div class="text-center">
+                    <div class="bg-gray-700 rounded-lg p-4">
+                        <h3 class="text-lg font-semibold text-blue-400 mb-3">Acoustic Channel</h3>
+                        <div class="grid grid-cols-2 gap-3 text-sm">
+                            <div>
+                                <span class="text-gray-400">Distance:</span>
+                                <div id="linkDistance" class="text-xl font-bold text-blue-400">500 m</div>
+                            </div>
+                            <div>
+                                <span class="text-gray-400">Delay:</span>
+                                <div id="propDelay" class="text-xl font-bold text-blue-400">333 ms</div>
+                            </div>
+                            <div>
+                                <span class="text-gray-400">Path Loss:</span>
+                                <div id="pathLoss" class="text-xl font-bold text-yellow-400">65 dB</div>
+                            </div>
+                            <div>
+                                <span class="text-gray-400">SNR:</span>
+                                <div id="snrDisplay" class="text-xl font-bold text-emerald-400">25 dB</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Receiver -->
+                <div class="text-center">
+                    <div class="relative w-32 h-32 mx-auto mb-4">
+                        <div class="w-16 h-16 mx-auto bg-blue-600 rounded-full flex items-center justify-center">
+                            <i class="fas fa-broadcast-tower text-2xl"></i>
+                        </div>
+                        <div id="rxIndicator" class="mt-2 hidden">
+                            <div class="flex justify-center gap-1">
+                                <div class="w-2 h-6 bg-emerald-400 signal-bar"></div>
+                                <div class="w-2 h-8 bg-emerald-400 signal-bar"></div>
+                                <div class="w-2 h-10 bg-emerald-400 signal-bar"></div>
+                                <div class="w-2 h-8 bg-emerald-400 signal-bar"></div>
+                                <div class="w-2 h-6 bg-emerald-400 signal-bar"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <h3 class="text-lg font-semibold text-white">Receiver (Base)</h3>
+                    <div class="mt-2 text-sm text-gray-400">
+                        <div>Position: <span id="rxPos" class="text-blue-400">(500, 0, -20)</span> m</div>
+                        <div>RX Level: <span id="rxLevel" class="text-blue-400">115</span> dB re 1μPa</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Configuration and Control -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <!-- Modem Settings -->
+            <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                <h2 class="text-xl font-semibold text-emerald-400 mb-4">
+                    <i class="fas fa-cog mr-2"></i>Modem Settings
+                </h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1">
+                            <span>Center Frequency</span>
+                            <span id="freqValue" class="text-emerald-400">25 kHz</span>
+                        </label>
+                        <input type="range" id="freqSlider" min="5" max="100" value="25" class="w-full" oninput="updateModemSettings()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1">
+                            <span>Bandwidth</span>
+                            <span id="bwValue" class="text-emerald-400">10 kHz</span>
+                        </label>
+                        <input type="range" id="bwSlider" min="1" max="30" value="10" class="w-full" oninput="updateModemSettings()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1">
+                            <span>TX Power</span>
+                            <span id="txPowerValue" class="text-emerald-400">180 dB</span>
+                        </label>
+                        <input type="range" id="txPowerSlider" min="150" max="200" value="180" class="w-full" oninput="updateModemSettings()">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-300 mb-1">Modulation</label>
+                        <select id="modSelect" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2" onchange="updateModemSettings()">
+                            <option value="BPSK">BPSK</option>
+                            <option value="QPSK" selected>QPSK</option>
+                            <option value="8PSK">8-PSK</option>
+                            <option value="16QAM">16-QAM</option>
+                            <option value="OFDM">OFDM</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-300 mb-1">FEC Coding</label>
+                        <select id="fecSelect" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2" onchange="updateModemSettings()">
+                            <option value="none">None</option>
+                            <option value="conv12" selected>Convolutional 1/2</option>
+                            <option value="conv34">Convolutional 3/4</option>
+                            <option value="ldpc">LDPC</option>
+                            <option value="turbo">Turbo Code</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Channel Parameters -->
+            <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                <h2 class="text-xl font-semibold text-emerald-400 mb-4">
+                    <i class="fas fa-water mr-2"></i>Channel Parameters
+                </h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1">
+                            <span>Link Distance</span>
+                            <span id="distValue" class="text-emerald-400">500 m</span>
+                        </label>
+                        <input type="range" id="distSlider" min="50" max="5000" step="50" value="500" class="w-full" oninput="updateChannel()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1">
+                            <span>Water Depth</span>
+                            <span id="depthValue" class="text-emerald-400">50 m</span>
+                        </label>
+                        <input type="range" id="depthSlider" min="10" max="200" value="50" class="w-full" oninput="updateChannel()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1">
+                            <span>Sound Speed</span>
+                            <span id="ssValue" class="text-emerald-400">1500 m/s</span>
+                        </label>
+                        <input type="range" id="ssSlider" min="1450" max="1550" value="1500" class="w-full" oninput="updateChannel()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1">
+                            <span>Ambient Noise</span>
+                            <span id="noiseValue" class="text-emerald-400">50 dB</span>
+                        </label>
+                        <input type="range" id="noiseSlider" min="30" max="80" value="50" class="w-full" oninput="updateChannel()">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-300 mb-1">Sea State</label>
+                        <select id="seaState" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2" onchange="updateChannel()">
+                            <option value="0">0 - Calm</option>
+                            <option value="1">1 - Light Air</option>
+                            <option value="2" selected>2 - Light Breeze</option>
+                            <option value="3">3 - Gentle Breeze</option>
+                            <option value="4">4 - Moderate</option>
+                            <option value="5">5 - Fresh Breeze</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transmission Control -->
+            <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                <h2 class="text-xl font-semibold text-emerald-400 mb-4">
+                    <i class="fas fa-paper-plane mr-2"></i>Transmission Control
+                </h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm text-gray-300 mb-1">Message</label>
+                        <textarea id="txMessage" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 h-20" placeholder="Enter message to transmit...">Hello from UUV!</textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-300 mb-1">Packet Size</label>
+                        <select id="packetSize" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2">
+                            <option value="32">32 bytes</option>
+                            <option value="64" selected>64 bytes</option>
+                            <option value="128">128 bytes</option>
+                            <option value="256">256 bytes</option>
+                        </select>
+                    </div>
+                    <button onclick="transmitMessage()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-lg transition-colors">
+                        <i class="fas fa-broadcast-tower mr-2"></i>Transmit
+                    </button>
+                    <button onclick="startContinuousTx()" id="contTxBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors">
+                        <i class="fas fa-sync mr-2"></i>Continuous TX
+                    </button>
+                </div>
+                <div class="mt-4 pt-4 border-t border-gray-700">
+                    <div class="text-sm text-gray-400 mb-2">Last Transmission</div>
+                    <div id="txStatus" class="text-sm text-gray-300">No transmission yet</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Signal Visualizations -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Transmitted Signal -->
+            <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                <h2 class="text-xl font-semibold text-emerald-400 mb-4">
+                    <i class="fas fa-wave-square mr-2"></i>Transmitted Signal
+                </h2>
+                <div id="txSignalChart" class="h-64"></div>
+            </div>
+
+            <!-- Received Signal -->
+            <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                <h2 class="text-xl font-semibold text-emerald-400 mb-4">
+                    <i class="fas fa-signal mr-2"></i>Received Signal
+                </h2>
+                <div id="rxSignalChart" class="h-64"></div>
+            </div>
+        </div>
+
+        <!-- Channel Response -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Channel Impulse Response -->
+            <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                <h2 class="text-xl font-semibold text-emerald-400 mb-4">
+                    <i class="fas fa-chart-bar mr-2"></i>Channel Impulse Response
+                </h2>
+                <div id="channelIRChart" class="h-64"></div>
+            </div>
+
+            <!-- Frequency Response -->
+            <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                <h2 class="text-xl font-semibold text-emerald-400 mb-4">
+                    <i class="fas fa-chart-line mr-2"></i>Channel Frequency Response
+                </h2>
+                <div id="freqResponseChart" class="h-64"></div>
+            </div>
+        </div>
+
+        <!-- BER and Performance -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- BER Curve -->
+            <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                <h2 class="text-xl font-semibold text-emerald-400 mb-4">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>Bit Error Rate Performance
+                </h2>
+                <div id="berChart" class="h-64"></div>
+            </div>
+
+            <!-- Throughput -->
+            <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                <h2 class="text-xl font-semibold text-emerald-400 mb-4">
+                    <i class="fas fa-tachometer-alt mr-2"></i>Throughput Analysis
+                </h2>
+                <div id="throughputChart" class="h-64"></div>
+            </div>
+        </div>
+
+        <!-- Statistics Dashboard -->
+        <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6 mb-8">
+            <h2 class="text-xl font-semibold text-emerald-400 mb-4">
+                <i class="fas fa-chart-pie mr-2"></i>Communication Statistics
+            </h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+                <div class="bg-gray-700 rounded-lg p-3 text-center">
+                    <div class="text-xs text-gray-400">Data Rate</div>
+                    <div id="dataRate" class="text-lg font-bold text-emerald-400">5 kbps</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-3 text-center">
+                    <div class="text-xs text-gray-400">Eff. Throughput</div>
+                    <div id="effThroughput" class="text-lg font-bold text-blue-400">4.2 kbps</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-3 text-center">
+                    <div class="text-xs text-gray-400">Packets Sent</div>
+                    <div id="packetsSent" class="text-lg font-bold text-yellow-400">0</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-3 text-center">
+                    <div class="text-xs text-gray-400">Packets Lost</div>
+                    <div id="packetsLost" class="text-lg font-bold text-red-400">0</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-3 text-center">
+                    <div class="text-xs text-gray-400">BER</div>
+                    <div id="currentBER" class="text-lg font-bold text-purple-400">0</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-3 text-center">
+                    <div class="text-xs text-gray-400">Latency</div>
+                    <div id="latency" class="text-lg font-bold text-cyan-400">333 ms</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-3 text-center">
+                    <div class="text-xs text-gray-400">Multipath Spread</div>
+                    <div id="multipathSpread" class="text-lg font-bold text-orange-400">15 ms</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-3 text-center">
+                    <div class="text-xs text-gray-400">Doppler Shift</div>
+                    <div id="dopplerShift" class="text-lg font-bold text-pink-400">0 Hz</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Received Message Log -->
+        <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+            <h2 class="text-xl font-semibold text-emerald-400 mb-4">
+                <i class="fas fa-inbox mr-2"></i>Message Log
+            </h2>
+            <div id="messageLog" class="bg-gray-900 rounded-lg p-4 h-48 overflow-y-auto font-mono text-sm">
+                <div class="text-gray-500">Waiting for transmissions...</div>
+            </div>
+            <button onclick="clearLog()" class="mt-4 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
+                <i class="fas fa-trash mr-2"></i>Clear Log
+            </button>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 border-t border-emerald-500/20 py-6 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center text-gray-400">
+            <p>Mini-UUV Acoustic Modem Simulator - Underwater Communication Modeling</p>
+        </div>
+    </footer>
+
+    <script>
+        // State
+        let modemSettings = {
+            frequency: 25000,
+            bandwidth: 10000,
+            txPower: 180,
+            modulation: 'QPSK',
+            fec: 'conv12'
+        };
+
+        let channelParams = {
+            distance: 500,
+            depth: 50,
+            soundSpeed: 1500,
+            ambientNoise: 50,
+            seaState: 2
+        };
+
+        let stats = {
+            packetsSent: 0,
+            packetsLost: 0,
+            continuousTx: false
+        };
+
+        let txInterval;
+
+        // Modulation bits per symbol
+        const bitsPerSymbol = {
+            'BPSK': 1,
+            'QPSK': 2,
+            '8PSK': 3,
+            '16QAM': 4,
+            'OFDM': 4
+        };
+
+        // FEC code rates
+        const codeRates = {
+            'none': 1.0,
+            'conv12': 0.5,
+            'conv34': 0.75,
+            'ldpc': 0.83,
+            'turbo': 0.5
+        };
+
+        // Calculate path loss (Thorp model)
+        function calculatePathLoss(distance, frequency) {
+            const f = frequency / 1000; // kHz
+            const alpha = 0.11 * Math.pow(f, 2) / (1 + Math.pow(f, 2)) +
+                         44 * Math.pow(f, 2) / (4100 + Math.pow(f, 2)) +
+                         2.75e-4 * Math.pow(f, 2) + 0.003;
+            const spreadingLoss = 20 * Math.log10(distance);
+            const absorptionLoss = alpha * distance / 1000;
+            return spreadingLoss + absorptionLoss;
+        }
+
+        // Update modem settings
+        function updateModemSettings() {
+            modemSettings.frequency = parseFloat(document.getElementById('freqSlider').value) * 1000;
+            modemSettings.bandwidth = parseFloat(document.getElementById('bwSlider').value) * 1000;
+            modemSettings.txPower = parseFloat(document.getElementById('txPowerSlider').value);
+            modemSettings.modulation = document.getElementById('modSelect').value;
+            modemSettings.fec = document.getElementById('fecSelect').value;
+
+            document.getElementById('freqValue').textContent = (modemSettings.frequency / 1000) + ' kHz';
+            document.getElementById('bwValue').textContent = (modemSettings.bandwidth / 1000) + ' kHz';
+            document.getElementById('txPowerValue').textContent = modemSettings.txPower + ' dB';
+            document.getElementById('txPowerDisplay').textContent = modemSettings.txPower;
+
+            updateCalculations();
+            updateCharts();
+        }
+
+        // Update channel parameters
+        function updateChannel() {
+            channelParams.distance = parseFloat(document.getElementById('distSlider').value);
+            channelParams.depth = parseFloat(document.getElementById('depthSlider').value);
+            channelParams.soundSpeed = parseFloat(document.getElementById('ssSlider').value);
+            channelParams.ambientNoise = parseFloat(document.getElementById('noiseSlider').value);
+            channelParams.seaState = parseInt(document.getElementById('seaState').value);
+
+            document.getElementById('distValue').textContent = channelParams.distance + ' m';
+            document.getElementById('depthValue').textContent = channelParams.depth + ' m';
+            document.getElementById('ssValue').textContent = channelParams.soundSpeed + ' m/s';
+            document.getElementById('noiseValue').textContent = channelParams.ambientNoise + ' dB';
+
+            updateCalculations();
+            updateCharts();
+        }
+
+        // Update calculations
+        function updateCalculations() {
+            const pathLoss = calculatePathLoss(channelParams.distance, modemSettings.frequency);
+            const rxLevel = modemSettings.txPower - pathLoss;
+            const snr = rxLevel - channelParams.ambientNoise - channelParams.seaState * 3;
+            const propagationDelay = channelParams.distance / channelParams.soundSpeed * 1000;
+
+            // Data rate calculation
+            const symbolRate = modemSettings.bandwidth * 0.8; // 80% of bandwidth
+            const bps = bitsPerSymbol[modemSettings.modulation];
+            const codeRate = codeRates[modemSettings.fec];
+            const dataRate = symbolRate * bps * codeRate / 1000; // kbps
+
+            // BER estimation (simplified)
+            const snrLinear = Math.pow(10, snr / 10);
+            const ber = 0.5 * (1 - Math.sqrt(snrLinear / (snrLinear + 1)));
+
+            // Effective throughput
+            const effThroughput = dataRate * (1 - ber) * (1 - ber);
+
+            // Multipath spread (simplified model)
+            const multipathSpread = 5 + channelParams.depth / 10 + channelParams.distance / 200;
+
+            // Update displays
+            document.getElementById('linkDistance').textContent = channelParams.distance + ' m';
+            document.getElementById('propDelay').textContent = propagationDelay.toFixed(0) + ' ms';
+            document.getElementById('pathLoss').textContent = pathLoss.toFixed(1) + ' dB';
+            document.getElementById('snrDisplay').textContent = snr.toFixed(1) + ' dB';
+            document.getElementById('rxLevel').textContent = rxLevel.toFixed(1);
+
+            document.getElementById('dataRate').textContent = dataRate.toFixed(1) + ' kbps';
+            document.getElementById('effThroughput').textContent = effThroughput.toFixed(1) + ' kbps';
+            document.getElementById('currentBER').textContent = ber.toExponential(2);
+            document.getElementById('latency').textContent = propagationDelay.toFixed(0) + ' ms';
+            document.getElementById('multipathSpread').textContent = multipathSpread.toFixed(1) + ' ms';
+
+            return { pathLoss, rxLevel, snr, dataRate, ber, propagationDelay };
+        }
+
+        // Transmit message
+        function transmitMessage() {
+            const message = document.getElementById('txMessage').value;
+            const packetSize = parseInt(document.getElementById('packetSize').value);
+            const calcs = updateCalculations();
+
+            stats.packetsSent++;
+
+            // Simulate packet loss based on BER
+            const packetErrorProb = 1 - Math.pow(1 - calcs.ber, packetSize * 8);
+            const lost = Math.random() < packetErrorProb;
+            if (lost) stats.packetsLost++;
+
+            document.getElementById('packetsSent').textContent = stats.packetsSent;
+            document.getElementById('packetsLost').textContent = stats.packetsLost;
+
+            // Show animation
+            const rxIndicator = document.getElementById('rxIndicator');
+            rxIndicator.classList.remove('hidden');
+            setTimeout(() => rxIndicator.classList.add('hidden'), 1000);
+
+            // Update status
+            const status = lost ?
+                `<span class="text-red-400">FAILED</span> - Packet error at ${new Date().toLocaleTimeString()}` :
+                `<span class="text-emerald-400">SUCCESS</span> - ${message.length} bytes at ${new Date().toLocaleTimeString()}`;
+            document.getElementById('txStatus').innerHTML = status;
+
+            // Add to log
+            addToLog(message, lost, calcs);
+
+            // Update signal charts
+            updateSignalCharts();
+        }
+
+        // Add to message log
+        function addToLog(message, lost, calcs) {
+            const log = document.getElementById('messageLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = lost ? 'text-red-400' : 'text-emerald-400';
+            const status = lost ? '[ERROR]' : '[OK]';
+
+            const entry = document.createElement('div');
+            entry.className = `mb-2 ${color}`;
+            entry.innerHTML = `<span class="text-gray-500">${timestamp}</span> ${status} "${lost ? '???' : message}" <span class="text-gray-500">(SNR: ${calcs.snr.toFixed(1)}dB, Delay: ${calcs.propagationDelay.toFixed(0)}ms)</span>`;
+
+            // Remove placeholder if exists
+            const placeholder = log.querySelector('.text-gray-500');
+            if (placeholder && placeholder.textContent.includes('Waiting')) {
+                log.innerHTML = '';
+            }
+
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        // Continuous transmission
+        function startContinuousTx() {
+            const btn = document.getElementById('contTxBtn');
+            stats.continuousTx = !stats.continuousTx;
+
+            if (stats.continuousTx) {
+                btn.innerHTML = '<i class="fas fa-stop mr-2"></i>Stop Continuous';
+                btn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                btn.classList.add('bg-red-600', 'hover:bg-red-700');
+                txInterval = setInterval(transmitMessage, 2000);
+            } else {
+                btn.innerHTML = '<i class="fas fa-sync mr-2"></i>Continuous TX';
+                btn.classList.remove('bg-red-600', 'hover:bg-red-700');
+                btn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                clearInterval(txInterval);
+            }
+        }
+
+        // Clear log
+        function clearLog() {
+            document.getElementById('messageLog').innerHTML = '<div class="text-gray-500">Waiting for transmissions...</div>';
+            stats.packetsSent = 0;
+            stats.packetsLost = 0;
+            document.getElementById('packetsSent').textContent = '0';
+            document.getElementById('packetsLost').textContent = '0';
+        }
+
+        // Initialize charts
+        function initCharts() {
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#d1d5db' },
+                margin: { t: 20, r: 20, b: 40, l: 50 },
+                xaxis: { color: '#9ca3af', gridcolor: 'rgba(156,163,175,0.2)' },
+                yaxis: { color: '#9ca3af', gridcolor: 'rgba(156,163,175,0.2)' }
+            };
+
+            // TX Signal
+            Plotly.newPlot('txSignalChart', [{
+                x: [],
+                y: [],
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#10b981', width: 1 }
+            }], { ...layout, xaxis: { ...layout.xaxis, title: 'Time (ms)' }, yaxis: { ...layout.yaxis, title: 'Amplitude' } }, { responsive: true, displayModeBar: false });
+
+            // RX Signal
+            Plotly.newPlot('rxSignalChart', [{
+                x: [],
+                y: [],
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#3b82f6', width: 1 }
+            }], { ...layout, xaxis: { ...layout.xaxis, title: 'Time (ms)' }, yaxis: { ...layout.yaxis, title: 'Amplitude' } }, { responsive: true, displayModeBar: false });
+
+            // Channel IR
+            Plotly.newPlot('channelIRChart', [{
+                x: [],
+                y: [],
+                type: 'bar',
+                marker: { color: '#10b981' }
+            }], { ...layout, xaxis: { ...layout.xaxis, title: 'Delay (ms)' }, yaxis: { ...layout.yaxis, title: 'Magnitude' } }, { responsive: true, displayModeBar: false });
+
+            // Frequency Response
+            Plotly.newPlot('freqResponseChart', [{
+                x: [],
+                y: [],
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#f59e0b', width: 2 }
+            }], { ...layout, xaxis: { ...layout.xaxis, title: 'Frequency (kHz)' }, yaxis: { ...layout.yaxis, title: 'Gain (dB)' } }, { responsive: true, displayModeBar: false });
+
+            // BER Chart
+            const snrVals = [];
+            const berVals = {};
+            for (let snr = 0; snr <= 30; snr += 1) {
+                snrVals.push(snr);
+            }
+            ['BPSK', 'QPSK', '8PSK', '16QAM'].forEach(mod => {
+                berVals[mod] = snrVals.map(snr => {
+                    const snrLin = Math.pow(10, snr / 10);
+                    const bps = bitsPerSymbol[mod];
+                    return Math.max(1e-7, 0.2 * Math.exp(-snrLin / bps));
+                });
+            });
+
+            Plotly.newPlot('berChart', [
+                { x: snrVals, y: berVals['BPSK'], name: 'BPSK', line: { color: '#10b981' } },
+                { x: snrVals, y: berVals['QPSK'], name: 'QPSK', line: { color: '#3b82f6' } },
+                { x: snrVals, y: berVals['8PSK'], name: '8-PSK', line: { color: '#f59e0b' } },
+                { x: snrVals, y: berVals['16QAM'], name: '16-QAM', line: { color: '#ef4444' } }
+            ], {
+                ...layout,
+                xaxis: { ...layout.xaxis, title: 'SNR (dB)' },
+                yaxis: { ...layout.yaxis, title: 'BER', type: 'log', range: [-7, 0] }
+            }, { responsive: true, displayModeBar: false });
+
+            // Throughput Chart
+            const distances = [];
+            const throughputs = [];
+            for (let d = 100; d <= 5000; d += 100) {
+                distances.push(d);
+                const pl = calculatePathLoss(d, modemSettings.frequency);
+                const rxLvl = modemSettings.txPower - pl;
+                const snr = rxLvl - channelParams.ambientNoise;
+                const rate = modemSettings.bandwidth * 0.8 * bitsPerSymbol[modemSettings.modulation] * codeRates[modemSettings.fec] / 1000;
+                const berVal = 0.2 * Math.exp(-Math.pow(10, snr / 10) / 2);
+                throughputs.push(Math.max(0, rate * (1 - berVal) * (1 - berVal)));
+            }
+
+            Plotly.newPlot('throughputChart', [{
+                x: distances,
+                y: throughputs,
+                type: 'scatter',
+                mode: 'lines',
+                fill: 'tozeroy',
+                line: { color: '#10b981', width: 2 },
+                fillcolor: 'rgba(16,185,129,0.2)'
+            }], {
+                ...layout,
+                xaxis: { ...layout.xaxis, title: 'Distance (m)' },
+                yaxis: { ...layout.yaxis, title: 'Throughput (kbps)' }
+            }, { responsive: true, displayModeBar: false });
+
+            updateCharts();
+        }
+
+        // Update signal charts
+        function updateSignalCharts() {
+            const freq = modemSettings.frequency;
+            const t = [];
+            const txSig = [];
+            const rxSig = [];
+
+            for (let i = 0; i < 200; i++) {
+                const time = i * 0.01;
+                t.push(time);
+                // Modulated signal
+                const carrier = Math.sin(2 * Math.PI * 5 * time);
+                const data = Math.sin(2 * Math.PI * 0.5 * time) > 0 ? 1 : -1;
+                txSig.push(carrier * data);
+                // Add noise and attenuation
+                const calcs = updateCalculations();
+                const atten = Math.pow(10, -calcs.pathLoss / 40);
+                const noise = (Math.random() - 0.5) * 0.5 * Math.pow(10, -calcs.snr / 40);
+                rxSig.push(carrier * data * atten + noise);
+            }
+
+            Plotly.update('txSignalChart', { x: [t], y: [txSig] });
+            Plotly.update('rxSignalChart', { x: [t], y: [rxSig] });
+        }
+
+        // Update all charts
+        function updateCharts() {
+            // Channel IR (multipath)
+            const delays = [0, 5, 8, 12, 15, 20, 25];
+            const mags = [1, 0.6, 0.4, 0.25, 0.15, 0.08, 0.03];
+            Plotly.update('channelIRChart', { x: [delays], y: [mags] });
+
+            // Frequency response
+            const freqs = [];
+            const gain = [];
+            const centerFreq = modemSettings.frequency / 1000;
+            const bw = modemSettings.bandwidth / 1000;
+            for (let f = centerFreq - bw; f <= centerFreq + bw; f += 0.5) {
+                freqs.push(f);
+                const attenuation = -calculatePathLoss(channelParams.distance, f * 1000);
+                const filterResp = -10 * Math.pow((f - centerFreq) / (bw / 2), 2);
+                gain.push(attenuation + filterResp + 50);
+            }
+            Plotly.update('freqResponseChart', { x: [freqs], y: [gain] });
+
+            // Update throughput chart
+            const distances = [];
+            const throughputs = [];
+            for (let d = 100; d <= 5000; d += 100) {
+                distances.push(d);
+                const pl = calculatePathLoss(d, modemSettings.frequency);
+                const rxLvl = modemSettings.txPower - pl;
+                const snr = rxLvl - channelParams.ambientNoise;
+                const rate = modemSettings.bandwidth * 0.8 * bitsPerSymbol[modemSettings.modulation] * codeRates[modemSettings.fec] / 1000;
+                const berVal = 0.2 * Math.exp(-Math.pow(10, snr / 10) / 2);
+                throughputs.push(Math.max(0, rate * (1 - berVal) * (1 - berVal)));
+            }
+            Plotly.update('throughputChart', { x: [distances], y: [throughputs] });
+
+            updateSignalCharts();
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            updateCalculations();
+        });
+    </script>
+</body>
+</html>

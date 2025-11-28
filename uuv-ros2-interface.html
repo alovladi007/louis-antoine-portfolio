@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ROS2 Control Interface - Mini-UUV Systems</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%);
+        }
+        .card-gradient {
+            background: linear-gradient(180deg, rgba(16, 185, 129, 0.1) 0%, rgba(6, 78, 59, 0.05) 100%);
+        }
+        .glow-effect {
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.3);
+        }
+        .node-active {
+            animation: pulse-node 2s ease-in-out infinite;
+        }
+        @keyframes pulse-node {
+            0%, 100% { box-shadow: 0 0 5px rgba(16, 185, 129, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.8); }
+        }
+        .topic-flow {
+            animation: flow 1.5s linear infinite;
+        }
+        @keyframes flow {
+            0% { stroke-dashoffset: 20; }
+            100% { stroke-dashoffset: 0; }
+        }
+        .terminal-output {
+            font-family: 'Courier New', monospace;
+            background: #0d1117;
+            color: #10b981;
+        }
+        .message-highlight {
+            background: rgba(16, 185, 129, 0.1);
+            border-left: 3px solid #10b981;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-emerald-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="mini-uuv-complete-project.html" class="flex items-center text-emerald-400 hover:text-emerald-300 transition-colors">
+                    <i class="fas fa-arrow-left mr-2"></i>
+                    Back to Mini-UUV Project
+                </a>
+                <span class="text-emerald-400 font-semibold">ROS2 Control Interface</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="gradient-bg py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4">
+                <i class="fas fa-project-diagram mr-4 text-emerald-400"></i>
+                ROS2 Control Interface
+            </h1>
+            <p class="text-xl text-emerald-100 max-w-3xl mx-auto">
+                Interactive ROS2 node graph visualization with real-time topic monitoring,
+                message publishing, and service call simulation
+            </p>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Node Graph Visualization -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <div class="lg:col-span-2 bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                <h2 class="text-xl font-semibold text-emerald-400 mb-4">
+                    <i class="fas fa-sitemap mr-2"></i>ROS2 Node Graph
+                </h2>
+                <div id="nodeGraph" class="h-96 bg-gray-900 rounded-lg relative overflow-hidden">
+                    <!-- SVG Node Graph -->
+                    <svg id="graphSvg" class="w-full h-full" viewBox="0 0 600 350">
+                        <!-- Connection Lines -->
+                        <g id="connections">
+                            <!-- Will be populated dynamically -->
+                        </g>
+                        <!-- Nodes -->
+                        <g id="nodes">
+                            <!-- Will be populated dynamically -->
+                        </g>
+                    </svg>
+                </div>
+                <div class="mt-4 flex flex-wrap gap-4">
+                    <div class="flex items-center">
+                        <div class="w-4 h-4 rounded-full bg-emerald-500 mr-2"></div>
+                        <span class="text-sm text-gray-300">Active Node</span>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-4 h-4 rounded-full bg-yellow-500 mr-2"></div>
+                        <span class="text-sm text-gray-300">Sensor Node</span>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-4 h-4 rounded-full bg-blue-500 mr-2"></div>
+                        <span class="text-sm text-gray-300">Control Node</span>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-4 h-4 rounded-full bg-purple-500 mr-2"></div>
+                        <span class="text-sm text-gray-300">Actuator Node</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Node List -->
+            <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                <h2 class="text-xl font-semibold text-emerald-400 mb-4">
+                    <i class="fas fa-list mr-2"></i>Active Nodes
+                </h2>
+                <div id="nodeList" class="space-y-2 max-h-80 overflow-y-auto">
+                    <!-- Populated dynamically -->
+                </div>
+                <div class="mt-4 pt-4 border-t border-gray-700">
+                    <button onclick="launchNode()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg transition-colors">
+                        <i class="fas fa-plus mr-2"></i>Launch Node
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Topic Monitor and Publisher -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Topic Monitor -->
+            <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                <h2 class="text-xl font-semibold text-emerald-400 mb-4">
+                    <i class="fas fa-broadcast-tower mr-2"></i>Topic Monitor
+                </h2>
+                <div class="mb-4">
+                    <label class="block text-gray-300 text-sm mb-2">Select Topic</label>
+                    <select id="topicSelect" onchange="selectTopic()" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:border-emerald-500 focus:outline-none">
+                        <option value="/uuv/pose">/uuv/pose</option>
+                        <option value="/uuv/velocity">/uuv/velocity</option>
+                        <option value="/uuv/imu">/uuv/imu</option>
+                        <option value="/uuv/dvl">/uuv/dvl</option>
+                        <option value="/uuv/depth">/uuv/depth</option>
+                        <option value="/uuv/thruster_cmd">/uuv/thruster_cmd</option>
+                        <option value="/uuv/battery_state">/uuv/battery_state</option>
+                    </select>
+                </div>
+                <div class="terminal-output rounded-lg p-4 h-64 overflow-y-auto text-sm" id="topicOutput">
+                    <div class="text-gray-500">$ ros2 topic echo /uuv/pose</div>
+                    <div class="mt-2" id="topicMessages">
+                        <!-- Messages populated dynamically -->
+                    </div>
+                </div>
+                <div class="mt-4 flex gap-2">
+                    <button onclick="toggleTopicEcho()" id="echoBtn" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg transition-colors">
+                        <i class="fas fa-play mr-2"></i>Start Echo
+                    </button>
+                    <button onclick="clearTopicOutput()" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors">
+                        <i class="fas fa-trash mr-2"></i>Clear
+                    </button>
+                </div>
+            </div>
+
+            <!-- Message Publisher -->
+            <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                <h2 class="text-xl font-semibold text-emerald-400 mb-4">
+                    <i class="fas fa-paper-plane mr-2"></i>Message Publisher
+                </h2>
+                <div class="mb-4">
+                    <label class="block text-gray-300 text-sm mb-2">Publish Topic</label>
+                    <select id="publishTopic" onchange="updatePublishForm()" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:border-emerald-500 focus:outline-none">
+                        <option value="cmd_vel">geometry_msgs/Twist - /uuv/cmd_vel</option>
+                        <option value="depth_cmd">std_msgs/Float64 - /uuv/depth_setpoint</option>
+                        <option value="heading_cmd">std_msgs/Float64 - /uuv/heading_setpoint</option>
+                        <option value="thruster_cmd">std_msgs/Float64MultiArray - /uuv/thruster_cmd</option>
+                    </select>
+                </div>
+                <div id="publishForm" class="space-y-3 mb-4">
+                    <!-- Form populated based on message type -->
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="publishMessage()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg transition-colors">
+                        <i class="fas fa-paper-plane mr-2"></i>Publish
+                    </button>
+                    <button onclick="toggleRepeatPublish()" id="repeatBtn" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors">
+                        <i class="fas fa-redo mr-2"></i>Repeat
+                    </button>
+                </div>
+                <div id="publishStatus" class="mt-3 text-sm text-gray-400"></div>
+            </div>
+        </div>
+
+        <!-- Service Calls and Parameters -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Service Caller -->
+            <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                <h2 class="text-xl font-semibold text-emerald-400 mb-4">
+                    <i class="fas fa-server mr-2"></i>Service Caller
+                </h2>
+                <div class="mb-4">
+                    <label class="block text-gray-300 text-sm mb-2">Select Service</label>
+                    <select id="serviceSelect" onchange="updateServiceForm()" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:border-emerald-500 focus:outline-none">
+                        <option value="arm">/uuv/arm - std_srvs/SetBool</option>
+                        <option value="set_mode">/uuv/set_mode - uuv_msgs/SetMode</option>
+                        <option value="emergency_stop">/uuv/emergency_stop - std_srvs/Trigger</option>
+                        <option value="reset_ekf">/uuv/reset_ekf - std_srvs/Empty</option>
+                        <option value="calibrate_imu">/uuv/calibrate_imu - std_srvs/Trigger</option>
+                    </select>
+                </div>
+                <div id="serviceForm" class="space-y-3 mb-4">
+                    <!-- Service request form -->
+                </div>
+                <button onclick="callService()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors">
+                    <i class="fas fa-bolt mr-2"></i>Call Service
+                </button>
+                <div id="serviceResponse" class="mt-4 terminal-output rounded-lg p-3 text-sm hidden">
+                    <!-- Response displayed here -->
+                </div>
+            </div>
+
+            <!-- Parameter Server -->
+            <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                <h2 class="text-xl font-semibold text-emerald-400 mb-4">
+                    <i class="fas fa-sliders-h mr-2"></i>Parameter Server
+                </h2>
+                <div class="mb-4">
+                    <label class="block text-gray-300 text-sm mb-2">Select Node</label>
+                    <select id="paramNode" onchange="loadParameters()" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:border-emerald-500 focus:outline-none">
+                        <option value="navigation">navigation_node</option>
+                        <option value="controller">controller_node</option>
+                        <option value="thruster">thruster_node</option>
+                    </select>
+                </div>
+                <div id="paramList" class="space-y-2 max-h-48 overflow-y-auto mb-4">
+                    <!-- Parameters listed here -->
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="text" id="paramName" placeholder="Parameter name" class="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-emerald-500 focus:outline-none">
+                    <input type="text" id="paramValue" placeholder="New value" class="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-emerald-500 focus:outline-none">
+                </div>
+                <button onclick="setParameter()" class="w-full mt-3 bg-yellow-600 hover:bg-yellow-700 text-white py-2 rounded-lg transition-colors">
+                    <i class="fas fa-save mr-2"></i>Set Parameter
+                </button>
+            </div>
+        </div>
+
+        <!-- Topic Statistics -->
+        <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6 mb-8">
+            <h2 class="text-xl font-semibold text-emerald-400 mb-4">
+                <i class="fas fa-chart-bar mr-2"></i>Topic Statistics
+            </h2>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div id="topicRateChart" class="h-64"></div>
+                <div id="topicBandwidthChart" class="h-64"></div>
+            </div>
+        </div>
+
+        <!-- TF Tree -->
+        <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+            <h2 class="text-xl font-semibold text-emerald-400 mb-4">
+                <i class="fas fa-code-branch mr-2"></i>TF Transform Tree
+            </h2>
+            <div id="tfTree" class="h-72 bg-gray-900 rounded-lg">
+                <!-- TF tree visualization -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 border-t border-emerald-500/20 py-6 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center text-gray-400">
+            <p>Mini-UUV ROS2 Control Interface - Real-time Robot Operating System Simulation</p>
+        </div>
+    </footer>
+
+    <script>
+        // ROS2 Nodes Configuration
+        const ros2Nodes = [
+            { id: 'nav', name: 'navigation_node', type: 'control', x: 300, y: 80, active: true },
+            { id: 'imu', name: 'imu_driver', type: 'sensor', x: 100, y: 150, active: true },
+            { id: 'dvl', name: 'dvl_driver', type: 'sensor', x: 150, y: 250, active: true },
+            { id: 'depth', name: 'depth_sensor', type: 'sensor', x: 100, y: 320, active: true },
+            { id: 'ctrl', name: 'controller_node', type: 'control', x: 400, y: 175, active: true },
+            { id: 'thrust', name: 'thruster_node', type: 'actuator', x: 500, y: 100, active: true },
+            { id: 'mission', name: 'mission_planner', type: 'control', x: 450, y: 280, active: true },
+            { id: 'logger', name: 'data_logger', type: 'active', x: 300, y: 320, active: false }
+        ];
+
+        const connections = [
+            { from: 'imu', to: 'nav', topic: '/uuv/imu' },
+            { from: 'dvl', to: 'nav', topic: '/uuv/dvl' },
+            { from: 'depth', to: 'nav', topic: '/uuv/depth' },
+            { from: 'nav', to: 'ctrl', topic: '/uuv/pose' },
+            { from: 'ctrl', to: 'thrust', topic: '/uuv/thruster_cmd' },
+            { from: 'mission', to: 'ctrl', topic: '/uuv/waypoint' },
+            { from: 'nav', to: 'logger', topic: '/uuv/state' }
+        ];
+
+        // Topic data simulation
+        let topicEchoActive = false;
+        let topicEchoInterval;
+        let repeatPublishActive = false;
+        let repeatPublishInterval;
+        let messageCount = 0;
+
+        const topicMessages = {
+            '/uuv/pose': () => ({
+                header: { stamp: { sec: Math.floor(Date.now()/1000), nanosec: (Date.now() % 1000) * 1e6 }, frame_id: 'world' },
+                pose: {
+                    position: { x: (10 + Math.random() * 0.1).toFixed(3), y: (5 + Math.random() * 0.1).toFixed(3), z: (-15 + Math.random() * 0.05).toFixed(3) },
+                    orientation: { x: 0.001, y: 0.002, z: (0.707 + Math.random() * 0.01).toFixed(4), w: (0.707 + Math.random() * 0.01).toFixed(4) }
+                }
+            }),
+            '/uuv/velocity': () => ({
+                header: { stamp: { sec: Math.floor(Date.now()/1000), nanosec: (Date.now() % 1000) * 1e6 }, frame_id: 'base_link' },
+                twist: {
+                    linear: { x: (1.2 + Math.random() * 0.1).toFixed(2), y: (0.05 * Math.random()).toFixed(3), z: (0.01 * Math.random()).toFixed(3) },
+                    angular: { x: 0.0, y: 0.0, z: (0.02 + Math.random() * 0.01).toFixed(3) }
+                }
+            }),
+            '/uuv/imu': () => ({
+                header: { stamp: { sec: Math.floor(Date.now()/1000), nanosec: (Date.now() % 1000) * 1e6 }, frame_id: 'imu_link' },
+                orientation: { x: (0.001 + Math.random() * 0.001).toFixed(4), y: (0.002 + Math.random() * 0.001).toFixed(4), z: 0.707, w: 0.707 },
+                angular_velocity: { x: (0.01 * Math.random()).toFixed(4), y: (0.01 * Math.random()).toFixed(4), z: (0.02 + Math.random() * 0.01).toFixed(4) },
+                linear_acceleration: { x: (0.1 * Math.random()).toFixed(3), y: (0.1 * Math.random()).toFixed(3), z: (9.81 + Math.random() * 0.01).toFixed(3) }
+            }),
+            '/uuv/dvl': () => ({
+                header: { stamp: { sec: Math.floor(Date.now()/1000), nanosec: (Date.now() % 1000) * 1e6 }, frame_id: 'dvl_link' },
+                velocity: { x: (1.2 + Math.random() * 0.05).toFixed(3), y: (0.02 * Math.random()).toFixed(3), z: (0.01 * Math.random()).toFixed(3) },
+                altitude: (35.2 + Math.random() * 0.1).toFixed(2),
+                beam_valid: [true, true, true, true]
+            }),
+            '/uuv/depth': () => ({
+                header: { stamp: { sec: Math.floor(Date.now()/1000), nanosec: (Date.now() % 1000) * 1e6 }, frame_id: 'pressure_sensor' },
+                depth: (15.0 + Math.random() * 0.02).toFixed(3),
+                pressure: (251.325 + Math.random() * 0.1).toFixed(3)
+            }),
+            '/uuv/thruster_cmd': () => ({
+                header: { stamp: { sec: Math.floor(Date.now()/1000), nanosec: (Date.now() % 1000) * 1e6 } },
+                data: [
+                    (150 + Math.random() * 5).toFixed(1),
+                    (148 + Math.random() * 5).toFixed(1),
+                    (75 + Math.random() * 3).toFixed(1),
+                    (73 + Math.random() * 3).toFixed(1)
+                ]
+            }),
+            '/uuv/battery_state': () => ({
+                header: { stamp: { sec: Math.floor(Date.now()/1000), nanosec: (Date.now() % 1000) * 1e6 } },
+                voltage: (25.2 - messageCount * 0.001).toFixed(2),
+                current: (8.5 + Math.random() * 0.5).toFixed(2),
+                percentage: Math.max(0, (85 - messageCount * 0.01)).toFixed(1),
+                power_supply_status: 2
+            })
+        };
+
+        // Initialize node graph
+        function initNodeGraph() {
+            const svg = document.getElementById('graphSvg');
+            const connectionsGroup = document.getElementById('connections');
+            const nodesGroup = document.getElementById('nodes');
+
+            // Draw connections
+            connections.forEach((conn, idx) => {
+                const fromNode = ros2Nodes.find(n => n.id === conn.from);
+                const toNode = ros2Nodes.find(n => n.id === conn.to);
+
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', fromNode.x);
+                line.setAttribute('y1', fromNode.y);
+                line.setAttribute('x2', toNode.x);
+                line.setAttribute('y2', toNode.y);
+                line.setAttribute('stroke', '#10b981');
+                line.setAttribute('stroke-width', '2');
+                line.setAttribute('stroke-dasharray', '5,5');
+                line.setAttribute('class', 'topic-flow');
+                line.setAttribute('opacity', '0.6');
+                connectionsGroup.appendChild(line);
+
+                // Topic label
+                const midX = (fromNode.x + toNode.x) / 2;
+                const midY = (fromNode.y + toNode.y) / 2;
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', midX);
+                text.setAttribute('y', midY - 5);
+                text.setAttribute('fill', '#9ca3af');
+                text.setAttribute('font-size', '8');
+                text.setAttribute('text-anchor', 'middle');
+                text.textContent = conn.topic.split('/').pop();
+                connectionsGroup.appendChild(text);
+            });
+
+            // Draw nodes
+            ros2Nodes.forEach(node => {
+                const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                group.setAttribute('transform', `translate(${node.x}, ${node.y})`);
+                group.style.cursor = 'pointer';
+                group.onclick = () => selectNode(node);
+
+                const colors = {
+                    sensor: '#eab308',
+                    control: '#3b82f6',
+                    actuator: '#a855f7',
+                    active: '#10b981'
+                };
+
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('r', '20');
+                circle.setAttribute('fill', colors[node.type]);
+                circle.setAttribute('opacity', node.active ? '1' : '0.4');
+                if (node.active) circle.setAttribute('class', 'node-active');
+                group.appendChild(circle);
+
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('y', '35');
+                text.setAttribute('fill', '#d1d5db');
+                text.setAttribute('font-size', '10');
+                text.setAttribute('text-anchor', 'middle');
+                text.textContent = node.name;
+                group.appendChild(text);
+
+                nodesGroup.appendChild(group);
+            });
+        }
+
+        // Initialize node list
+        function initNodeList() {
+            const nodeList = document.getElementById('nodeList');
+            nodeList.innerHTML = ros2Nodes.map(node => `
+                <div class="flex items-center justify-between p-2 rounded-lg ${node.active ? 'bg-gray-700' : 'bg-gray-800'} hover:bg-gray-600 cursor-pointer" onclick="selectNode(ros2Nodes.find(n => n.id === '${node.id}'))">
+                    <div class="flex items-center">
+                        <div class="w-3 h-3 rounded-full ${node.active ? 'bg-emerald-500' : 'bg-gray-500'} mr-3"></div>
+                        <span class="text-sm">${node.name}</span>
+                    </div>
+                    <span class="text-xs text-gray-400">${node.type}</span>
+                </div>
+            `).join('');
+        }
+
+        function selectNode(node) {
+            console.log('Selected node:', node.name);
+            // Could expand to show node details
+        }
+
+        function launchNode() {
+            const loggerNode = ros2Nodes.find(n => n.id === 'logger');
+            if (loggerNode) {
+                loggerNode.active = !loggerNode.active;
+                initNodeGraph();
+                initNodeList();
+            }
+        }
+
+        // Topic echo functionality
+        function selectTopic() {
+            if (topicEchoActive) {
+                document.getElementById('topicMessages').innerHTML = '';
+                messageCount = 0;
+            }
+        }
+
+        function toggleTopicEcho() {
+            const btn = document.getElementById('echoBtn');
+            topicEchoActive = !topicEchoActive;
+
+            if (topicEchoActive) {
+                btn.innerHTML = '<i class="fas fa-stop mr-2"></i>Stop Echo';
+                btn.classList.remove('bg-emerald-600', 'hover:bg-emerald-700');
+                btn.classList.add('bg-red-600', 'hover:bg-red-700');
+
+                topicEchoInterval = setInterval(() => {
+                    const topic = document.getElementById('topicSelect').value;
+                    const msg = topicMessages[topic]();
+                    addTopicMessage(msg);
+                    messageCount++;
+                }, 100);
+            } else {
+                btn.innerHTML = '<i class="fas fa-play mr-2"></i>Start Echo';
+                btn.classList.remove('bg-red-600', 'hover:bg-red-700');
+                btn.classList.add('bg-emerald-600', 'hover:bg-emerald-700');
+                clearInterval(topicEchoInterval);
+            }
+        }
+
+        function addTopicMessage(msg) {
+            const container = document.getElementById('topicMessages');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'message-highlight p-2 mb-2 rounded text-xs';
+            msgDiv.innerHTML = `<pre>${JSON.stringify(msg, null, 2)}</pre>`;
+            container.appendChild(msgDiv);
+            container.scrollTop = container.scrollHeight;
+
+            // Limit messages
+            while (container.children.length > 20) {
+                container.removeChild(container.firstChild);
+            }
+        }
+
+        function clearTopicOutput() {
+            document.getElementById('topicMessages').innerHTML = '';
+            messageCount = 0;
+        }
+
+        // Publisher functionality
+        function updatePublishForm() {
+            const topic = document.getElementById('publishTopic').value;
+            const form = document.getElementById('publishForm');
+
+            const forms = {
+                cmd_vel: `
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <label class="text-xs text-gray-400">Linear X</label>
+                            <input type="number" id="pub_lin_x" value="0.5" step="0.1" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400">Linear Y</label>
+                            <input type="number" id="pub_lin_y" value="0" step="0.1" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400">Linear Z</label>
+                            <input type="number" id="pub_lin_z" value="0" step="0.1" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <label class="text-xs text-gray-400">Angular X</label>
+                            <input type="number" id="pub_ang_x" value="0" step="0.1" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400">Angular Y</label>
+                            <input type="number" id="pub_ang_y" value="0" step="0.1" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400">Angular Z</label>
+                            <input type="number" id="pub_ang_z" value="0.1" step="0.1" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm">
+                        </div>
+                    </div>
+                `,
+                depth_cmd: `
+                    <div>
+                        <label class="text-xs text-gray-400">Depth Setpoint (m)</label>
+                        <input type="number" id="pub_depth" value="15.0" step="0.5" min="0" max="100" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2">
+                    </div>
+                `,
+                heading_cmd: `
+                    <div>
+                        <label class="text-xs text-gray-400">Heading Setpoint (deg)</label>
+                        <input type="number" id="pub_heading" value="90" step="5" min="0" max="360" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2">
+                    </div>
+                `,
+                thruster_cmd: `
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-xs text-gray-400">Thruster 1 (RPM)</label>
+                            <input type="number" id="pub_t1" value="150" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400">Thruster 2 (RPM)</label>
+                            <input type="number" id="pub_t2" value="150" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400">Thruster 3 (RPM)</label>
+                            <input type="number" id="pub_t3" value="75" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400">Thruster 4 (RPM)</label>
+                            <input type="number" id="pub_t4" value="75" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm">
+                        </div>
+                    </div>
+                `
+            };
+
+            form.innerHTML = forms[topic] || '';
+        }
+
+        function publishMessage() {
+            const status = document.getElementById('publishStatus');
+            const topic = document.getElementById('publishTopic').value;
+            status.innerHTML = `<span class="text-emerald-400"><i class="fas fa-check mr-1"></i>Published to /uuv/${topic.replace('_cmd', '_setpoint').replace('cmd_vel', 'cmd_vel')}</span>`;
+            setTimeout(() => status.innerHTML = '', 3000);
+        }
+
+        function toggleRepeatPublish() {
+            const btn = document.getElementById('repeatBtn');
+            repeatPublishActive = !repeatPublishActive;
+
+            if (repeatPublishActive) {
+                btn.classList.add('bg-emerald-600');
+                btn.classList.remove('bg-gray-700');
+                repeatPublishInterval = setInterval(publishMessage, 100);
+            } else {
+                btn.classList.remove('bg-emerald-600');
+                btn.classList.add('bg-gray-700');
+                clearInterval(repeatPublishInterval);
+            }
+        }
+
+        // Service functionality
+        function updateServiceForm() {
+            const service = document.getElementById('serviceSelect').value;
+            const form = document.getElementById('serviceForm');
+
+            const forms = {
+                arm: `
+                    <div>
+                        <label class="flex items-center">
+                            <input type="checkbox" id="srv_arm" class="mr-2 h-4 w-4">
+                            <span class="text-gray-300">Arm vehicle</span>
+                        </label>
+                    </div>
+                `,
+                set_mode: `
+                    <div>
+                        <label class="text-xs text-gray-400">Mode</label>
+                        <select id="srv_mode" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm">
+                            <option value="0">MANUAL</option>
+                            <option value="1">DEPTH_HOLD</option>
+                            <option value="2">HEADING_HOLD</option>
+                            <option value="3">STATION_KEEP</option>
+                            <option value="4">WAYPOINT</option>
+                            <option value="5">MISSION</option>
+                        </select>
+                    </div>
+                `,
+                emergency_stop: `<p class="text-yellow-400 text-sm"><i class="fas fa-exclamation-triangle mr-2"></i>No parameters - triggers immediate stop</p>`,
+                reset_ekf: `<p class="text-gray-400 text-sm"><i class="fas fa-info-circle mr-2"></i>Resets EKF state to initial conditions</p>`,
+                calibrate_imu: `<p class="text-gray-400 text-sm"><i class="fas fa-info-circle mr-2"></i>Begins IMU calibration sequence</p>`
+            };
+
+            form.innerHTML = forms[service] || '';
+        }
+
+        function callService() {
+            const service = document.getElementById('serviceSelect').value;
+            const response = document.getElementById('serviceResponse');
+            response.classList.remove('hidden');
+
+            const responses = {
+                arm: { success: true, message: 'Vehicle armed successfully' },
+                set_mode: { success: true, previous_mode: 0, current_mode: parseInt(document.getElementById('srv_mode')?.value || 0) },
+                emergency_stop: { success: true, message: 'Emergency stop activated' },
+                reset_ekf: { success: true },
+                calibrate_imu: { success: true, message: 'Calibration started, please hold vehicle still' }
+            };
+
+            response.innerHTML = `<div class="text-emerald-400 mb-1">Response:</div><pre>${JSON.stringify(responses[service], null, 2)}</pre>`;
+        }
+
+        // Parameter server
+        const parameters = {
+            navigation: {
+                'ekf.process_noise': 0.01,
+                'ekf.measurement_noise': 0.1,
+                'ekf.initial_covariance': 1.0,
+                'gps_denied_mode': true,
+                'acoustic_beacon_ids': '[1, 2, 3]'
+            },
+            controller: {
+                'pid.depth.kp': 2.0,
+                'pid.depth.ki': 0.1,
+                'pid.depth.kd': 0.5,
+                'pid.heading.kp': 1.5,
+                'pid.heading.ki': 0.05,
+                'pid.heading.kd': 0.3,
+                'max_velocity': 2.0
+            },
+            thruster: {
+                'max_rpm': 300,
+                'deadzone': 10,
+                'ramp_rate': 50,
+                'reverse_enabled': true
+            }
+        };
+
+        function loadParameters() {
+            const node = document.getElementById('paramNode').value;
+            const list = document.getElementById('paramList');
+            const params = parameters[node];
+
+            list.innerHTML = Object.entries(params).map(([name, value]) => `
+                <div class="flex justify-between items-center p-2 bg-gray-700 rounded text-sm">
+                    <span class="text-gray-300">${name}</span>
+                    <span class="text-emerald-400">${value}</span>
+                </div>
+            `).join('');
+        }
+
+        function setParameter() {
+            const name = document.getElementById('paramName').value;
+            const value = document.getElementById('paramValue').value;
+            const node = document.getElementById('paramNode').value;
+
+            if (name && value && parameters[node]) {
+                parameters[node][name] = isNaN(value) ? value : parseFloat(value);
+                loadParameters();
+                document.getElementById('paramName').value = '';
+                document.getElementById('paramValue').value = '';
+            }
+        }
+
+        // Topic statistics charts
+        function initTopicCharts() {
+            const topics = ['/uuv/pose', '/uuv/imu', '/uuv/dvl', '/uuv/depth', '/uuv/cmd_vel', '/uuv/thruster_cmd'];
+            const rates = [50, 100, 10, 20, 50, 50];
+            const bandwidth = [2.4, 4.8, 0.8, 0.4, 1.2, 0.6];
+
+            Plotly.newPlot('topicRateChart', [{
+                x: topics.map(t => t.split('/').pop()),
+                y: rates,
+                type: 'bar',
+                marker: { color: '#10b981' }
+            }], {
+                title: { text: 'Topic Publish Rates (Hz)', font: { color: '#d1d5db' } },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                xaxis: { color: '#9ca3af', gridcolor: 'rgba(156,163,175,0.2)' },
+                yaxis: { color: '#9ca3af', gridcolor: 'rgba(156,163,175,0.2)', title: 'Hz' },
+                margin: { t: 40, r: 20, b: 60, l: 50 }
+            }, { responsive: true, displayModeBar: false });
+
+            Plotly.newPlot('topicBandwidthChart', [{
+                x: topics.map(t => t.split('/').pop()),
+                y: bandwidth,
+                type: 'bar',
+                marker: { color: '#3b82f6' }
+            }], {
+                title: { text: 'Topic Bandwidth (KB/s)', font: { color: '#d1d5db' } },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                xaxis: { color: '#9ca3af', gridcolor: 'rgba(156,163,175,0.2)' },
+                yaxis: { color: '#9ca3af', gridcolor: 'rgba(156,163,175,0.2)', title: 'KB/s' },
+                margin: { t: 40, r: 20, b: 60, l: 50 }
+            }, { responsive: true, displayModeBar: false });
+        }
+
+        // TF Tree visualization
+        function initTFTree() {
+            const container = document.getElementById('tfTree');
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('width', '100%');
+            svg.setAttribute('height', '100%');
+            svg.setAttribute('viewBox', '0 0 700 280');
+
+            const frames = [
+                { name: 'world', x: 350, y: 30 },
+                { name: 'odom', x: 350, y: 80, parent: 'world' },
+                { name: 'base_link', x: 350, y: 130, parent: 'odom' },
+                { name: 'imu_link', x: 200, y: 190, parent: 'base_link' },
+                { name: 'dvl_link', x: 280, y: 190, parent: 'base_link' },
+                { name: 'pressure_sensor', x: 350, y: 190, parent: 'base_link' },
+                { name: 'camera_link', x: 420, y: 190, parent: 'base_link' },
+                { name: 'sonar_link', x: 500, y: 190, parent: 'base_link' },
+                { name: 'thruster_0', x: 150, y: 250, parent: 'base_link' },
+                { name: 'thruster_1', x: 250, y: 250, parent: 'base_link' },
+                { name: 'thruster_2', x: 450, y: 250, parent: 'base_link' },
+                { name: 'thruster_3', x: 550, y: 250, parent: 'base_link' }
+            ];
+
+            // Draw connections
+            frames.forEach(frame => {
+                if (frame.parent) {
+                    const parent = frames.find(f => f.name === frame.parent);
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', parent.x);
+                    line.setAttribute('y1', parent.y + 10);
+                    line.setAttribute('x2', frame.x);
+                    line.setAttribute('y2', frame.y - 10);
+                    line.setAttribute('stroke', '#10b981');
+                    line.setAttribute('stroke-width', '2');
+                    svg.appendChild(line);
+                }
+            });
+
+            // Draw frames
+            frames.forEach(frame => {
+                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('x', frame.x - 45);
+                rect.setAttribute('y', frame.y - 12);
+                rect.setAttribute('width', '90');
+                rect.setAttribute('height', '24');
+                rect.setAttribute('rx', '4');
+                rect.setAttribute('fill', frame.name === 'base_link' ? '#10b981' : '#374151');
+                rect.setAttribute('stroke', '#10b981');
+                rect.setAttribute('stroke-width', '1');
+                svg.appendChild(rect);
+
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', frame.x);
+                text.setAttribute('y', frame.y + 4);
+                text.setAttribute('fill', '#d1d5db');
+                text.setAttribute('font-size', '10');
+                text.setAttribute('text-anchor', 'middle');
+                text.textContent = frame.name;
+                svg.appendChild(text);
+            });
+
+            container.appendChild(svg);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initNodeGraph();
+            initNodeList();
+            updatePublishForm();
+            updateServiceForm();
+            loadParameters();
+            initTopicCharts();
+            initTFTree();
+        });
+    </script>
+</body>
+</html>

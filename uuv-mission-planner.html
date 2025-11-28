@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mission Planner - Mini-UUV Systems</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #0a0a0a;
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+        .navbar {
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid rgba(16, 185, 129, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .nav-title { color: #34d399; font-size: 1.5rem; font-weight: 600; }
+        .nav-btn {
+            background: linear-gradient(135deg, #047857, #10b981);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4); }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .hero {
+            text-align: center;
+            padding: 3rem 0;
+            background: linear-gradient(135deg, rgba(4, 120, 87, 0.1), rgba(16, 185, 129, 0.1));
+            border-radius: 20px;
+            margin-bottom: 3rem;
+        }
+        .hero h1 {
+            font-size: 3rem;
+            background: linear-gradient(135deg, #047857, #34d399);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+        .hero-subtitle { font-size: 1.2rem; color: #a0a0a0; max-width: 800px; margin: 0 auto; }
+        .main-grid {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 2rem;
+        }
+        .sidebar {
+            background: rgba(16, 185, 129, 0.05);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 15px;
+            padding: 1.5rem;
+        }
+        .sidebar-section { margin-bottom: 2rem; }
+        .sidebar-title {
+            color: #34d399;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .waypoint-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .waypoint-item {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 8px;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .waypoint-info { font-size: 0.9rem; }
+        .waypoint-info span { color: #a0a0a0; }
+        .waypoint-delete {
+            background: rgba(239, 68, 68, 0.2);
+            border: none;
+            color: #ef4444;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .control-group { margin-bottom: 1rem; }
+        .control-group label {
+            display: block;
+            color: #a0a0a0;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        .control-group input, .control-group select {
+            width: 100%;
+            padding: 0.6rem;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 0.95rem;
+        }
+        .btn {
+            background: linear-gradient(135deg, #047857, #10b981);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            width: 100%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+            margin-bottom: 0.5rem;
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4); }
+        .btn-secondary {
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        .main-panel {
+            background: rgba(16, 185, 129, 0.05);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 15px;
+            padding: 1.5rem;
+        }
+        .plot-container {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .metrics-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .metric-box {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+        }
+        .metric-value { font-size: 1.5rem; font-weight: bold; color: #10b981; }
+        .metric-label { font-size: 0.8rem; color: #a0a0a0; margin-top: 0.25rem; }
+        .warning-box {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-left: 4px solid #f59e0b;
+            padding: 1rem;
+            border-radius: 0 8px 8px 0;
+            margin-top: 1rem;
+        }
+        .warning-box h4 { color: #f59e0b; margin-bottom: 0.5rem; }
+        .success-box {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-left: 4px solid #10b981;
+            padding: 1rem;
+            border-radius: 0 8px 8px 0;
+            margin-top: 1rem;
+        }
+        .success-box h4 { color: #10b981; margin-bottom: 0.5rem; }
+        .mission-patterns {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .pattern-btn {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            color: #34d399;
+            padding: 0.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+        .pattern-btn:hover {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: #10b981;
+        }
+        @media (max-width: 900px) {
+            .main-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <span class="nav-title"><i class="fas fa-route"></i> Mission Planner</span>
+        <a href="mini-uuv-complete-project.html" class="nav-btn">
+            <i class="fas fa-arrow-left"></i> Back to Project
+        </a>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h1><i class="fas fa-route"></i> AUV Mission Planner</h1>
+            <p class="hero-subtitle">
+                Plan and visualize autonomous underwater vehicle missions with waypoint navigation,
+                obstacle avoidance, and real-time battery consumption analysis.
+            </p>
+        </div>
+
+        <div class="main-grid">
+            <!-- Sidebar Controls -->
+            <div class="sidebar">
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title"><i class="fas fa-map-marker-alt"></i> Mission Patterns</h3>
+                    <div class="mission-patterns">
+                        <button class="pattern-btn" onclick="generatePattern('lawnmower')">
+                            <i class="fas fa-align-justify"></i> Lawnmower
+                        </button>
+                        <button class="pattern-btn" onclick="generatePattern('spiral')">
+                            <i class="fas fa-spinner"></i> Spiral
+                        </button>
+                        <button class="pattern-btn" onclick="generatePattern('waypoints')">
+                            <i class="fas fa-route"></i> Waypoints
+                        </button>
+                        <button class="pattern-btn" onclick="generatePattern('box')">
+                            <i class="fas fa-square"></i> Box Survey
+                        </button>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title"><i class="fas fa-cog"></i> Mission Parameters</h3>
+                    <div class="control-group">
+                        <label>Survey Area (m x m)</label>
+                        <input type="number" id="survey-size" value="100" min="20" max="500">
+                    </div>
+                    <div class="control-group">
+                        <label>Track Spacing (m)</label>
+                        <input type="number" id="track-spacing" value="10" min="2" max="50">
+                    </div>
+                    <div class="control-group">
+                        <label>Operating Depth (m)</label>
+                        <input type="number" id="depth" value="20" min="1" max="100">
+                    </div>
+                    <div class="control-group">
+                        <label>Transit Speed (m/s)</label>
+                        <input type="number" id="speed" value="1.0" min="0.3" max="2.0" step="0.1">
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title"><i class="fas fa-list"></i> Waypoints</h3>
+                    <div class="waypoint-list" id="waypoint-list">
+                        <!-- Waypoints will be added here -->
+                    </div>
+                    <button class="btn btn-secondary" onclick="clearWaypoints()" style="margin-top: 1rem;">
+                        <i class="fas fa-trash"></i> Clear All
+                    </button>
+                </div>
+
+                <div class="sidebar-section">
+                    <button class="btn" onclick="analyzeMission()">
+                        <i class="fas fa-calculator"></i> Analyze Mission
+                    </button>
+                    <button class="btn btn-secondary" onclick="exportMission()">
+                        <i class="fas fa-download"></i> Export Plan
+                    </button>
+                </div>
+            </div>
+
+            <!-- Main Panel -->
+            <div class="main-panel">
+                <h3 style="color: #34d399; margin-bottom: 1rem;"><i class="fas fa-map"></i> Mission Overview</h3>
+
+                <div class="metrics-row">
+                    <div class="metric-box">
+                        <div class="metric-value" id="total-distance">--</div>
+                        <div class="metric-label">Total Distance (m)</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-value" id="mission-time">--</div>
+                        <div class="metric-label">Est. Time (min)</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-value" id="battery-usage">--</div>
+                        <div class="metric-label">Battery Usage (%)</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-value" id="waypoint-count">0</div>
+                        <div class="metric-label">Waypoints</div>
+                    </div>
+                </div>
+
+                <div class="plot-container">
+                    <div id="mission-plot" style="width: 100%; height: 450px;"></div>
+                </div>
+
+                <h3 style="color: #34d399; margin: 1.5rem 0 1rem;"><i class="fas fa-battery-half"></i> Power Analysis</h3>
+                <div class="plot-container">
+                    <div id="power-plot" style="width: 100%; height: 300px;"></div>
+                </div>
+
+                <div id="mission-status"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let waypoints = [];
+
+        // Generate mission pattern
+        function generatePattern(pattern) {
+            const size = parseFloat(document.getElementById('survey-size').value);
+            const spacing = parseFloat(document.getElementById('track-spacing').value);
+            const depth = parseFloat(document.getElementById('depth').value);
+
+            waypoints = [];
+
+            switch(pattern) {
+                case 'lawnmower':
+                    const numTracks = Math.floor(size / spacing);
+                    for (let i = 0; i <= numTracks; i++) {
+                        const y = i * spacing;
+                        if (i % 2 === 0) {
+                            waypoints.push({ x: 0, y: y, z: depth });
+                            waypoints.push({ x: size, y: y, z: depth });
+                        } else {
+                            waypoints.push({ x: size, y: y, z: depth });
+                            waypoints.push({ x: 0, y: y, z: depth });
+                        }
+                    }
+                    break;
+
+                case 'spiral':
+                    const turns = 5;
+                    const points = 50;
+                    for (let i = 0; i < points; i++) {
+                        const angle = (i / points) * turns * 2 * Math.PI;
+                        const radius = (i / points) * (size / 2);
+                        waypoints.push({
+                            x: size/2 + radius * Math.cos(angle),
+                            y: size/2 + radius * Math.sin(angle),
+                            z: depth
+                        });
+                    }
+                    break;
+
+                case 'waypoints':
+                    waypoints = [
+                        { x: 0, y: 0, z: depth },
+                        { x: size * 0.3, y: size * 0.7, z: depth },
+                        { x: size * 0.7, y: size * 0.8, z: depth },
+                        { x: size, y: size * 0.5, z: depth },
+                        { x: size * 0.6, y: size * 0.2, z: depth },
+                        { x: 0, y: 0, z: depth }
+                    ];
+                    break;
+
+                case 'box':
+                    waypoints = [
+                        { x: 0, y: 0, z: depth },
+                        { x: size, y: 0, z: depth },
+                        { x: size, y: size, z: depth },
+                        { x: 0, y: size, z: depth },
+                        { x: 0, y: 0, z: depth }
+                    ];
+                    break;
+            }
+
+            updateWaypointList();
+            plotMission();
+            analyzeMission();
+        }
+
+        // Update waypoint list display
+        function updateWaypointList() {
+            const list = document.getElementById('waypoint-list');
+            list.innerHTML = '';
+
+            waypoints.forEach((wp, index) => {
+                const item = document.createElement('div');
+                item.className = 'waypoint-item';
+                item.innerHTML = `
+                    <div class="waypoint-info">
+                        <strong>WP${index + 1}</strong><br>
+                        <span>X: ${wp.x.toFixed(1)}m, Y: ${wp.y.toFixed(1)}m, Z: ${wp.z.toFixed(1)}m</span>
+                    </div>
+                    <button class="waypoint-delete" onclick="deleteWaypoint(${index})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                list.appendChild(item);
+            });
+
+            document.getElementById('waypoint-count').textContent = waypoints.length;
+        }
+
+        // Delete waypoint
+        function deleteWaypoint(index) {
+            waypoints.splice(index, 1);
+            updateWaypointList();
+            plotMission();
+            analyzeMission();
+        }
+
+        // Clear all waypoints
+        function clearWaypoints() {
+            waypoints = [];
+            updateWaypointList();
+            plotMission();
+            document.getElementById('total-distance').textContent = '--';
+            document.getElementById('mission-time').textContent = '--';
+            document.getElementById('battery-usage').textContent = '--';
+            document.getElementById('mission-status').innerHTML = '';
+        }
+
+        // Plot mission
+        function plotMission() {
+            if (waypoints.length < 2) {
+                Plotly.newPlot('mission-plot', [], {
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    font: { color: '#e0e0e0' },
+                    xaxis: { title: 'X (m)', gridcolor: '#333' },
+                    yaxis: { title: 'Y (m)', gridcolor: '#333' }
+                }, {responsive: true});
+                return;
+            }
+
+            const x = waypoints.map(wp => wp.x);
+            const y = waypoints.map(wp => wp.y);
+
+            const traces = [
+                {
+                    x: x, y: y,
+                    mode: 'lines+markers',
+                    name: 'Mission Path',
+                    line: { color: '#10b981', width: 2 },
+                    marker: { size: 8, color: '#10b981' }
+                },
+                {
+                    x: [x[0]], y: [y[0]],
+                    mode: 'markers',
+                    name: 'Start',
+                    marker: { size: 15, color: '#3b82f6', symbol: 'star' }
+                },
+                {
+                    x: [x[x.length-1]], y: [y[y.length-1]],
+                    mode: 'markers',
+                    name: 'End',
+                    marker: { size: 15, color: '#ef4444', symbol: 'square' }
+                }
+            ];
+
+            const layout = {
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                xaxis: { title: 'X Position (m)', gridcolor: '#333', zeroline: false },
+                yaxis: { title: 'Y Position (m)', gridcolor: '#333', zeroline: false, scaleanchor: 'x' },
+                legend: { bgcolor: 'rgba(0,0,0,0.5)' },
+                margin: { t: 30 }
+            };
+
+            Plotly.newPlot('mission-plot', traces, layout, {responsive: true});
+        }
+
+        // Analyze mission
+        function analyzeMission() {
+            if (waypoints.length < 2) return;
+
+            const speed = parseFloat(document.getElementById('speed').value);
+
+            // Calculate total distance
+            let totalDistance = 0;
+            for (let i = 1; i < waypoints.length; i++) {
+                const dx = waypoints[i].x - waypoints[i-1].x;
+                const dy = waypoints[i].y - waypoints[i-1].y;
+                const dz = waypoints[i].z - waypoints[i-1].z;
+                totalDistance += Math.sqrt(dx*dx + dy*dy + dz*dz);
+            }
+
+            // Calculate mission time
+            const missionTime = totalDistance / speed / 60; // minutes
+
+            // Calculate battery usage (assuming 65W average, 960Wh battery)
+            const powerConsumption = 65; // Watts
+            const batteryCapacity = 960; // Wh
+            const energyUsed = powerConsumption * (missionTime / 60);
+            const batteryUsage = (energyUsed / batteryCapacity) * 100;
+
+            // Update metrics
+            document.getElementById('total-distance').textContent = totalDistance.toFixed(0);
+            document.getElementById('mission-time').textContent = missionTime.toFixed(1);
+            document.getElementById('battery-usage').textContent = batteryUsage.toFixed(1);
+
+            // Plot power analysis
+            plotPowerAnalysis(missionTime, batteryUsage);
+
+            // Show status
+            const statusDiv = document.getElementById('mission-status');
+            if (batteryUsage > 80) {
+                statusDiv.innerHTML = `
+                    <div class="warning-box">
+                        <h4><i class="fas fa-exclamation-triangle"></i> Warning: High Battery Usage</h4>
+                        <p>Mission requires ${batteryUsage.toFixed(1)}% of battery capacity. Consider reducing mission scope or adding charging waypoints.</p>
+                    </div>
+                `;
+            } else if (missionTime > 90) {
+                statusDiv.innerHTML = `
+                    <div class="warning-box">
+                        <h4><i class="fas fa-clock"></i> Warning: Long Mission Duration</h4>
+                        <p>Mission duration of ${missionTime.toFixed(1)} minutes exceeds recommended 90-minute limit for optimal navigation accuracy.</p>
+                    </div>
+                `;
+            } else {
+                statusDiv.innerHTML = `
+                    <div class="success-box">
+                        <h4><i class="fas fa-check-circle"></i> Mission Parameters OK</h4>
+                        <p>Mission is within operational limits. Estimated ${batteryUsage.toFixed(1)}% battery usage with ${(100-batteryUsage).toFixed(1)}% reserve.</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Plot power analysis
+        function plotPowerAnalysis(missionTime, totalBatteryUsage) {
+            const time = [];
+            const batteryLevel = [];
+            const powerDraw = [];
+
+            for (let t = 0; t <= missionTime; t += 1) {
+                time.push(t);
+                batteryLevel.push(100 - (totalBatteryUsage * t / missionTime));
+                powerDraw.push(50 + Math.random() * 30); // Simulated varying power
+            }
+
+            const traces = [
+                {
+                    x: time, y: batteryLevel,
+                    mode: 'lines',
+                    name: 'Battery Level',
+                    line: { color: '#10b981', width: 2 },
+                    fill: 'tozeroy',
+                    fillcolor: 'rgba(16, 185, 129, 0.2)'
+                }
+            ];
+
+            const layout = {
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                xaxis: { title: 'Mission Time (min)', gridcolor: '#333' },
+                yaxis: { title: 'Battery Level (%)', gridcolor: '#333', range: [0, 100] },
+                margin: { t: 30 },
+                shapes: [{
+                    type: 'line',
+                    x0: 0, x1: missionTime,
+                    y0: 20, y1: 20,
+                    line: { color: '#ef4444', width: 2, dash: 'dash' }
+                }],
+                annotations: [{
+                    x: missionTime * 0.9,
+                    y: 25,
+                    text: 'Low Battery Warning',
+                    showarrow: false,
+                    font: { color: '#ef4444', size: 11 }
+                }]
+            };
+
+            Plotly.newPlot('power-plot', traces, layout, {responsive: true});
+        }
+
+        // Export mission
+        function exportMission() {
+            const missionData = {
+                waypoints: waypoints,
+                parameters: {
+                    surveySize: document.getElementById('survey-size').value,
+                    trackSpacing: document.getElementById('track-spacing').value,
+                    depth: document.getElementById('depth').value,
+                    speed: document.getElementById('speed').value
+                },
+                metrics: {
+                    totalDistance: document.getElementById('total-distance').textContent,
+                    missionTime: document.getElementById('mission-time').textContent,
+                    batteryUsage: document.getElementById('battery-usage').textContent
+                }
+            };
+
+            const blob = new Blob([JSON.stringify(missionData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'uuv_mission_plan.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Initialize with a default pattern
+        window.addEventListener('load', () => {
+            generatePattern('lawnmower');
+        });
+    </script>
+</body>
+</html>
