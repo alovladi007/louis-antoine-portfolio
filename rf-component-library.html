@@ -169,53 +169,66 @@
 
         let selectedComponent = null;
 
-        function renderComponentList(filter = 'all', search = '') {
-            const list = document.getElementById('componentList');
-            const filtered = components.filter(c => {
-                const matchCategory = filter === 'all' || c.category === filter;
-                const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
-                                   c.partNumber.toLowerCase().includes(search.toLowerCase());
-                return matchCategory && matchSearch;
-            });
+        function renderComponentList(filter, search) {
+            filter = filter || 'all';
+            search = search || '';
+            var list = document.getElementById('componentList');
+            var filtered = [];
+            for (var i = 0; i < components.length; i++) {
+                var c = components[i];
+                var matchCategory = filter === 'all' || c.category === filter;
+                var matchSearch = c.name.toLowerCase().indexOf(search.toLowerCase()) !== -1 ||
+                                  c.partNumber.toLowerCase().indexOf(search.toLowerCase()) !== -1;
+                if (matchCategory && matchSearch) {
+                    filtered.push(c);
+                }
+            }
 
-            list.innerHTML = filtered.map(c => `
-                <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 cursor-pointer hover:border-cyan-400 transition-all ${selectedComponent?.id === c.id ? 'ring-2 ring-cyan-400' : ''}"
-                     onclick="selectComponent('${c.id}')">
-                    <div class="flex justify-between items-start mb-2">
-                        <h4 class="font-semibold text-white">${c.name}</h4>
-                        <span class="text-xs px-2 py-1 bg-gray-700 rounded">${c.category}</span>
-                    </div>
-                    <p class="text-sm text-gray-400">${c.manufacturer} • ${c.partNumber}</p>
-                    <div class="flex gap-2 mt-2">
-                        ${Object.entries(c.specs).slice(0, 2).map(([k, v]) =>
-                            `<span class="text-xs bg-gray-700/50 px-2 py-1 rounded">${v}</span>`
-                        ).join('')}
-                    </div>
-                </div>
-            `).join('');
+            var html = '';
+            for (var j = 0; j < filtered.length; j++) {
+                var comp = filtered[j];
+                var isSelected = selectedComponent && selectedComponent.id === comp.id;
+                var specs = Object.entries(comp.specs).slice(0, 2);
+                var specsHtml = '';
+                for (var k = 0; k < specs.length; k++) {
+                    specsHtml += '<span class="text-xs bg-gray-700/50 px-2 py-1 rounded">' + specs[k][1] + '</span>';
+                }
+                html += '<div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 cursor-pointer hover:border-cyan-400 transition-all ' + (isSelected ? 'ring-2 ring-cyan-400' : '') + '" onclick="selectComponent(\'' + comp.id + '\')">' +
+                    '<div class="flex justify-between items-start mb-2">' +
+                        '<h4 class="font-semibold text-white">' + comp.name + '</h4>' +
+                        '<span class="text-xs px-2 py-1 bg-gray-700 rounded">' + comp.category + '</span>' +
+                    '</div>' +
+                    '<p class="text-sm text-gray-400">' + comp.manufacturer + ' • ' + comp.partNumber + '</p>' +
+                    '<div class="flex gap-2 mt-2">' + specsHtml + '</div>' +
+                '</div>';
+            }
+            list.innerHTML = html;
         }
 
         function selectComponent(id) {
-            selectedComponent = components.find(c => c.id === id);
+            selectedComponent = components.find(function(c) { return c.id === id; });
             if (!selectedComponent) return;
 
             document.getElementById('componentName').textContent = selectedComponent.name;
             document.getElementById('componentDesc').textContent =
-                `${selectedComponent.manufacturer} • ${selectedComponent.partNumber}`;
+                selectedComponent.manufacturer + ' • ' + selectedComponent.partNumber;
             document.getElementById('componentCategory').textContent = selectedComponent.category;
 
             // Render specs
-            document.getElementById('componentSpecs').innerHTML = Object.entries(selectedComponent.specs).map(([k, v]) => `
-                <div class="bg-gray-700/50 rounded-lg p-3 text-center">
-                    <div class="text-xl font-bold text-cyan-400">${v}</div>
-                    <div class="text-xs text-gray-400 capitalize">${k}</div>
-                </div>
-            `).join('');
+            var specsHtml = '';
+            var entries = Object.entries(selectedComponent.specs);
+            for (var i = 0; i < entries.length; i++) {
+                specsHtml += '<div class="bg-gray-700/50 rounded-lg p-3 text-center">' +
+                    '<div class="text-xl font-bold text-cyan-400">' + entries[i][1] + '</div>' +
+                    '<div class="text-xs text-gray-400 capitalize">' + entries[i][0] + '</div>' +
+                '</div>';
+            }
+            document.getElementById('componentSpecs').innerHTML = specsHtml;
 
-            // Update charts
-            updateSparamChart();
-            updateSmithChart();
-            updateEquivCircuit();
+            // Update charts (with error handling)
+            try { updateSparamChart(); } catch(e) { console.error('S-param chart error:', e); }
+            try { updateSmithChart(); } catch(e) { console.error('Smith chart error:', e); }
+            try { updateEquivCircuit(); } catch(e) { console.error('Circuit error:', e); }
 
             renderComponentList(document.getElementById('categoryFilter').value,
                                document.getElementById('searchBox').value);
@@ -342,24 +355,34 @@
         }
 
         // Event listeners
-        document.getElementById('searchBox').addEventListener('input', (e) => {
+        document.getElementById('searchBox').addEventListener('input', function(e) {
             renderComponentList(document.getElementById('categoryFilter').value, e.target.value);
         });
 
-        document.getElementById('categoryFilter').addEventListener('change', (e) => {
+        document.getElementById('categoryFilter').addEventListener('change', function(e) {
             renderComponentList(e.target.value, document.getElementById('searchBox').value);
         });
 
-        // Initialize - wait for Plotly to load from CDN
-        function init() {
+        // Render component list immediately (no Plotly needed)
+        try {
+            renderComponentList();
+        } catch(e) {
+            console.error('Error rendering list:', e);
+        }
+
+        // Wait for Plotly then select first component
+        function waitForPlotly() {
             if (typeof Plotly === 'undefined') {
-                setTimeout(init, 50);
+                setTimeout(waitForPlotly, 100);
                 return;
             }
-            renderComponentList();
-            selectComponent('mlcc-100pf');
+            try {
+                selectComponent('mlcc-100pf');
+            } catch(e) {
+                console.error('Error selecting component:', e);
+            }
         }
-        init();
+        waitForPlotly();
     </script>
 </body>
 </html>
