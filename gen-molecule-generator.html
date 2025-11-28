@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Molecule Generator - Generative Scientific Models</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>.gradient-bg { background: linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%); }</style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-emerald-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="generative-scientific-complete-project.html" class="flex items-center text-emerald-400 hover:text-emerald-300">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Generative Models
+                </a>
+                <span class="text-emerald-400 font-semibold">Molecule Generator</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4"><i class="fas fa-pills mr-4"></i>Molecule Generator</h1>
+            <p class="text-xl text-emerald-100">Generate novel drug-like molecules using diffusion models</p>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid lg:grid-cols-4 gap-6">
+            <div class="space-y-6">
+                <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-emerald-400 mb-4"><i class="fas fa-sliders-h mr-2"></i>Generation Settings</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Model</label>
+                            <select id="model" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white">
+                                <option value="diffusion" selected>Diffusion (DDPM)</option>
+                                <option value="vae">VAE</option>
+                                <option value="flow">Flow Matching</option>
+                                <option value="gan">StyleGAN</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Number of Molecules: <span id="numVal">10</span></label>
+                            <input type="range" id="numMolecules" min="1" max="50" value="10" class="w-full accent-emerald-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Diffusion Steps: <span id="stepsVal">50</span></label>
+                            <input type="range" id="steps" min="10" max="1000" step="10" value="50" class="w-full accent-emerald-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Temperature: <span id="tempVal">1.0</span></label>
+                            <input type="range" id="temperature" min="0.1" max="2" step="0.1" value="1.0" class="w-full accent-emerald-500">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-emerald-400 mb-4"><i class="fas fa-filter mr-2"></i>Property Constraints</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Molecular Weight: <span id="mwVal">300-500</span></label>
+                            <input type="range" id="mwMin" min="100" max="400" value="300" class="w-full accent-emerald-500">
+                            <input type="range" id="mwMax" min="300" max="700" value="500" class="w-full accent-emerald-500 mt-1">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">LogP: <span id="logpVal">1-4</span></label>
+                            <input type="range" id="logpMin" min="-2" max="3" value="1" class="w-full accent-emerald-500">
+                            <input type="range" id="logpMax" min="2" max="7" value="4" class="w-full accent-emerald-500 mt-1">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" id="drugLike" checked class="accent-emerald-500">
+                                <span>Drug-like (Lipinski)</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" id="synthesizable" checked class="accent-emerald-500">
+                                <span>Synthesizable (SA ≤ 4)</span>
+                            </label>
+                        </div>
+                    </div>
+                    <button onclick="generate()" class="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors">
+                        <i class="fas fa-magic mr-2"></i>Generate Molecules
+                    </button>
+                </div>
+            </div>
+
+            <div class="lg:col-span-3 space-y-6">
+                <div class="grid md:grid-cols-4 gap-4">
+                    <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-4 text-center">
+                        <div class="text-3xl font-bold text-emerald-400" id="validCount">0/0</div>
+                        <div class="text-sm text-gray-400">Valid</div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-4 text-center">
+                        <div class="text-3xl font-bold text-cyan-400" id="uniqueCount">0</div>
+                        <div class="text-sm text-gray-400">Unique</div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-4 text-center">
+                        <div class="text-3xl font-bold text-purple-400" id="novelCount">0</div>
+                        <div class="text-sm text-gray-400">Novel</div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-4 text-center">
+                        <div class="text-3xl font-bold text-amber-400" id="genTime">0s</div>
+                        <div class="text-sm text-gray-400">Gen Time</div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-emerald-400 mb-4"><i class="fas fa-flask mr-2"></i>Generated Molecules</h3>
+                    <div id="moleculeGrid" class="grid grid-cols-2 md:grid-cols-5 gap-4"></div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                        <h3 class="text-lg font-semibold text-emerald-400 mb-4"><i class="fas fa-chart-bar mr-2"></i>Property Distribution</h3>
+                        <div id="propertyChart" style="height: 280px;"></div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                        <h3 class="text-lg font-semibold text-emerald-400 mb-4"><i class="fas fa-project-diagram mr-2"></i>Chemical Space</h3>
+                        <div id="chemSpaceChart" style="height: 280px;"></div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-emerald-400 mb-4"><i class="fas fa-info-circle mr-2"></i>Selected Molecule Details</h3>
+                    <div id="moleculeDetails" class="grid md:grid-cols-3 gap-6">
+                        <div class="text-gray-400 text-center py-8">Click a molecule to see details</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const numMolecules = document.getElementById('numMolecules');
+        const numVal = document.getElementById('numVal');
+        const steps = document.getElementById('steps');
+        const stepsVal = document.getElementById('stepsVal');
+        const temperature = document.getElementById('temperature');
+        const tempVal = document.getElementById('tempVal');
+
+        numMolecules.addEventListener('input', () => numVal.textContent = numMolecules.value);
+        steps.addEventListener('input', () => stepsVal.textContent = steps.value);
+        temperature.addEventListener('input', () => tempVal.textContent = temperature.value);
+
+        const mwMin = document.getElementById('mwMin');
+        const mwMax = document.getElementById('mwMax');
+        const mwVal = document.getElementById('mwVal');
+        const logpMin = document.getElementById('logpMin');
+        const logpMax = document.getElementById('logpMax');
+        const logpVal = document.getElementById('logpVal');
+
+        mwMin.addEventListener('input', () => mwVal.textContent = `${mwMin.value}-${mwMax.value}`);
+        mwMax.addEventListener('input', () => mwVal.textContent = `${mwMin.value}-${mwMax.value}`);
+        logpMin.addEventListener('input', () => logpVal.textContent = `${logpMin.value}-${logpMax.value}`);
+        logpMax.addEventListener('input', () => logpVal.textContent = `${logpMin.value}-${logpMax.value}`);
+
+        let generatedMolecules = [];
+
+        function generate() {
+            const n = parseInt(numMolecules.value);
+            const t = parseFloat(temperature.value);
+            const startTime = Date.now();
+
+            generatedMolecules = [];
+
+            // Generate random molecules (simplified simulation)
+            const atoms = ['C', 'N', 'O', 'S', 'F', 'Cl'];
+            const structures = [
+                'benzene', 'pyridine', 'piperidine', 'morpholine', 'thiophene',
+                'furan', 'imidazole', 'pyrazole', 'triazole', 'indole'
+            ];
+
+            for (let i = 0; i < n; i++) {
+                const mw = 200 + Math.random() * 400;
+                const logP = -1 + Math.random() * 6;
+                const hbd = Math.floor(Math.random() * 5);
+                const hba = Math.floor(Math.random() * 10);
+                const rotBonds = Math.floor(Math.random() * 10);
+                const tpsa = 20 + Math.random() * 120;
+                const qed = 0.3 + Math.random() * 0.6;
+                const sa = 1 + Math.random() * 5;
+
+                generatedMolecules.push({
+                    id: i,
+                    smiles: generateRandomSMILES(),
+                    mw: mw,
+                    logP: logP,
+                    hbd: hbd,
+                    hba: hba,
+                    rotBonds: rotBonds,
+                    tpsa: tpsa,
+                    qed: qed,
+                    sa: sa,
+                    valid: Math.random() > 0.02,
+                    unique: Math.random() > 0.05,
+                    novel: Math.random() > 0.1
+                });
+            }
+
+            const genTime = ((Date.now() - startTime) / 1000 + Math.random() * 2).toFixed(2);
+
+            // Update stats
+            const valid = generatedMolecules.filter(m => m.valid).length;
+            const unique = generatedMolecules.filter(m => m.unique).length;
+            const novel = generatedMolecules.filter(m => m.novel).length;
+
+            document.getElementById('validCount').textContent = `${valid}/${n}`;
+            document.getElementById('uniqueCount').textContent = unique;
+            document.getElementById('novelCount').textContent = novel;
+            document.getElementById('genTime').textContent = genTime + 's';
+
+            renderMolecules();
+            renderPropertyChart();
+            renderChemSpaceChart();
+        }
+
+        function generateRandomSMILES() {
+            const fragments = ['c1ccccc1', 'C1CCNCC1', 'c1ccncc1', 'C1CCOCC1', 'c1ccoc1'];
+            const linkers = ['C', 'CC', 'CCC', 'N', 'O', 'NC(=O)'];
+            const groups = ['C', 'F', 'Cl', 'O', 'N', 'OC', 'NC'];
+
+            let smiles = fragments[Math.floor(Math.random() * fragments.length)];
+            if (Math.random() > 0.5) {
+                smiles += linkers[Math.floor(Math.random() * linkers.length)];
+                smiles += fragments[Math.floor(Math.random() * fragments.length)];
+            }
+            for (let i = 0; i < Math.floor(Math.random() * 3); i++) {
+                smiles = smiles.replace('c', 'c(' + groups[Math.floor(Math.random() * groups.length)] + ')');
+            }
+            return smiles;
+        }
+
+        function renderMolecules() {
+            const grid = document.getElementById('moleculeGrid');
+            grid.innerHTML = generatedMolecules.map(m => `
+                <div class="bg-gray-700/50 rounded-lg p-3 cursor-pointer hover:bg-gray-700 transition-colors border ${m.valid ? 'border-emerald-500/30' : 'border-red-500/30'}"
+                     onclick="showDetails(${m.id})">
+                    <div class="aspect-square bg-gray-800 rounded-lg flex items-center justify-center mb-2">
+                        <i class="fas fa-atom text-3xl ${m.valid ? 'text-emerald-400' : 'text-red-400'}"></i>
+                    </div>
+                    <div class="text-xs text-center">
+                        <div class="text-gray-300 truncate">${m.smiles.substring(0, 15)}...</div>
+                        <div class="text-gray-500">MW: ${m.mw.toFixed(0)}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showDetails(id) {
+            const m = generatedMolecules[id];
+            document.getElementById('moleculeDetails').innerHTML = `
+                <div class="bg-gray-700/50 rounded-lg p-4">
+                    <div class="aspect-square bg-gray-800 rounded-lg flex items-center justify-center mb-4">
+                        <i class="fas fa-atom text-6xl text-emerald-400"></i>
+                    </div>
+                    <div class="text-center">
+                        <code class="text-sm text-emerald-400 break-all">${m.smiles}</code>
+                    </div>
+                </div>
+                <div class="space-y-3">
+                    <h4 class="font-semibold text-emerald-400">Physicochemical Properties</h4>
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                        <div class="flex justify-between p-2 bg-gray-700/50 rounded">
+                            <span class="text-gray-400">MW</span>
+                            <span>${m.mw.toFixed(1)}</span>
+                        </div>
+                        <div class="flex justify-between p-2 bg-gray-700/50 rounded">
+                            <span class="text-gray-400">LogP</span>
+                            <span>${m.logP.toFixed(2)}</span>
+                        </div>
+                        <div class="flex justify-between p-2 bg-gray-700/50 rounded">
+                            <span class="text-gray-400">HBD</span>
+                            <span>${m.hbd}</span>
+                        </div>
+                        <div class="flex justify-between p-2 bg-gray-700/50 rounded">
+                            <span class="text-gray-400">HBA</span>
+                            <span>${m.hba}</span>
+                        </div>
+                        <div class="flex justify-between p-2 bg-gray-700/50 rounded">
+                            <span class="text-gray-400">TPSA</span>
+                            <span>${m.tpsa.toFixed(1)}</span>
+                        </div>
+                        <div class="flex justify-between p-2 bg-gray-700/50 rounded">
+                            <span class="text-gray-400">RotBonds</span>
+                            <span>${m.rotBonds}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="space-y-3">
+                    <h4 class="font-semibold text-emerald-400">Quality Metrics</h4>
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400">QED Score</span>
+                            <span class="font-bold text-cyan-400">${m.qed.toFixed(3)}</span>
+                        </div>
+                        <div class="w-full bg-gray-600 rounded-full h-2">
+                            <div class="bg-cyan-500 h-2 rounded-full" style="width: ${m.qed * 100}%"></div>
+                        </div>
+                        <div class="flex justify-between items-center mt-3">
+                            <span class="text-gray-400">SA Score</span>
+                            <span class="font-bold ${m.sa < 4 ? 'text-green-400' : 'text-amber-400'}">${m.sa.toFixed(2)}</span>
+                        </div>
+                        <div class="w-full bg-gray-600 rounded-full h-2">
+                            <div class="${m.sa < 4 ? 'bg-green-500' : 'bg-amber-500'} h-2 rounded-full" style="width: ${(6 - m.sa) / 5 * 100}%"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderPropertyChart() {
+            const mws = generatedMolecules.map(m => m.mw);
+            const logPs = generatedMolecules.map(m => m.logP);
+
+            Plotly.newPlot('propertyChart', [
+                { x: mws, type: 'histogram', name: 'MW', marker: { color: '#10b981' }, opacity: 0.7 }
+            ], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 50, r: 20, t: 10, b: 40 },
+                xaxis: { title: 'Molecular Weight', gridcolor: '#374151' },
+                yaxis: { title: 'Count', gridcolor: '#374151' }
+            }, { responsive: true });
+        }
+
+        function renderChemSpaceChart() {
+            const x = generatedMolecules.map(m => m.logP);
+            const y = generatedMolecules.map(m => m.mw);
+            const colors = generatedMolecules.map(m => m.qed);
+
+            Plotly.newPlot('chemSpaceChart', [{
+                x: x,
+                y: y,
+                mode: 'markers',
+                marker: {
+                    color: colors,
+                    colorscale: 'Viridis',
+                    size: 10,
+                    colorbar: { title: 'QED', tickfont: { color: '#fff' } }
+                },
+                type: 'scatter'
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 50, r: 60, t: 10, b: 40 },
+                xaxis: { title: 'LogP', gridcolor: '#374151' },
+                yaxis: { title: 'MW', gridcolor: '#374151' }
+            }, { responsive: true });
+        }
+
+        // Initialize with empty charts
+        Plotly.newPlot('propertyChart', [], { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' });
+        Plotly.newPlot('chemSpaceChart', [], { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' });
+    </script>
+</body>
+</html>

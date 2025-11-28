@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pipeline Parallelism - Distributed ML</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>.gradient-bg { background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #fcd34d 100%); }</style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-amber-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="distributed-ml-complete-project.html" class="flex items-center text-amber-400 hover:text-amber-300">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Distributed ML
+                </a>
+                <span class="text-amber-400 font-semibold">Pipeline Parallelism</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4 text-gray-900"><i class="fas fa-stream mr-4"></i>Pipeline Parallelism</h1>
+            <p class="text-xl text-amber-900">Visualize GPipe, PipeDream, and 1F1B scheduling strategies</p>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid lg:grid-cols-4 gap-6">
+            <div class="space-y-6">
+                <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-amber-400 mb-4"><i class="fas fa-cog mr-2"></i>Pipeline Config</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Pipeline Stages</label>
+                            <select id="numStages" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white">
+                                <option value="2">2 Stages</option>
+                                <option value="4" selected>4 Stages</option>
+                                <option value="8">8 Stages</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Micro-batches</label>
+                            <select id="microBatches" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white">
+                                <option value="4">4 Micro-batches</option>
+                                <option value="8" selected>8 Micro-batches</option>
+                                <option value="16">16 Micro-batches</option>
+                                <option value="32">32 Micro-batches</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Schedule</label>
+                            <select id="schedule" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white">
+                                <option value="gpipe">GPipe (Fill-Drain)</option>
+                                <option value="1f1b" selected>1F1B (Steady State)</option>
+                                <option value="interleaved">Interleaved 1F1B</option>
+                                <option value="chimera">Chimera (Bidirectional)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Forward Time: <span id="fwdVal">10</span> ms</label>
+                            <input type="range" id="fwdTime" min="5" max="50" value="10" class="w-full accent-amber-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Backward Time: <span id="bwdVal">20</span> ms</label>
+                            <input type="range" id="bwdTime" min="10" max="100" value="20" class="w-full accent-amber-500">
+                        </div>
+                    </div>
+                    <button onclick="runPipeline()" class="w-full mt-4 bg-amber-600 hover:bg-amber-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors">
+                        <i class="fas fa-play mr-2"></i>Visualize Schedule
+                    </button>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-amber-400 mb-4"><i class="fas fa-info-circle mr-2"></i>Schedule Info</h3>
+                    <div id="scheduleInfo" class="text-sm text-gray-300 space-y-2">
+                        <p><strong class="text-amber-400">1F1B Schedule:</strong></p>
+                        <p>One forward, one backward in steady state. Minimizes memory while maintaining throughput.</p>
+                        <p class="text-gray-400">Memory: O(stages) activations</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-3 space-y-6">
+                <div class="grid md:grid-cols-4 gap-4">
+                    <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-4 text-center">
+                        <div class="text-3xl font-bold text-amber-400" id="bubbleTime">-</div>
+                        <div class="text-sm text-gray-400">Bubble Time</div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-4 text-center">
+                        <div class="text-3xl font-bold text-green-400" id="pipeEfficiency">-</div>
+                        <div class="text-sm text-gray-400">Efficiency</div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-4 text-center">
+                        <div class="text-3xl font-bold text-cyan-400" id="throughputVal">-</div>
+                        <div class="text-sm text-gray-400">Throughput</div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-4 text-center">
+                        <div class="text-3xl font-bold text-purple-400" id="memoryPeak">-</div>
+                        <div class="text-sm text-gray-400">Peak Memory</div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-amber-400 mb-4"><i class="fas fa-calendar-alt mr-2"></i>Pipeline Schedule</h3>
+                    <div id="pipelineChart" style="height: 350px;"></div>
+                    <div class="flex justify-center gap-6 mt-4 text-sm">
+                        <span class="flex items-center gap-2"><span class="w-4 h-4 bg-amber-500 rounded"></span>Forward</span>
+                        <span class="flex items-center gap-2"><span class="w-4 h-4 bg-purple-500 rounded"></span>Backward</span>
+                        <span class="flex items-center gap-2"><span class="w-4 h-4 bg-gray-600 rounded"></span>Bubble (Idle)</span>
+                    </div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-6">
+                        <h3 class="text-lg font-semibold text-amber-400 mb-4"><i class="fas fa-memory mr-2"></i>Memory Over Time</h3>
+                        <div id="memoryChart" style="height: 250px;"></div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-6">
+                        <h3 class="text-lg font-semibold text-amber-400 mb-4"><i class="fas fa-chart-bar mr-2"></i>Schedule Comparison</h3>
+                        <div id="comparisonChart" style="height: 250px;"></div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-amber-400 mb-4"><i class="fas fa-server mr-2"></i>Stage Visualization</h3>
+                    <div id="stageViz" class="flex flex-wrap justify-center gap-4"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const fwdTime = document.getElementById('fwdTime');
+        const fwdVal = document.getElementById('fwdVal');
+        const bwdTime = document.getElementById('bwdTime');
+        const bwdVal = document.getElementById('bwdVal');
+
+        fwdTime.addEventListener('input', () => fwdVal.textContent = fwdTime.value);
+        bwdTime.addEventListener('input', () => bwdVal.textContent = bwdTime.value);
+
+        document.getElementById('schedule').addEventListener('change', updateScheduleInfo);
+
+        function updateScheduleInfo() {
+            const schedule = document.getElementById('schedule').value;
+            const info = document.getElementById('scheduleInfo');
+            const descriptions = {
+                gpipe: '<p><strong class="text-amber-400">GPipe Schedule:</strong></p><p>Fill pipeline, then drain. Simple but has large bubble at start/end.</p><p class="text-gray-400">Memory: O(micro-batches) activations</p>',
+                '1f1b': '<p><strong class="text-amber-400">1F1B Schedule:</strong></p><p>One forward, one backward in steady state. Minimizes memory while maintaining throughput.</p><p class="text-gray-400">Memory: O(stages) activations</p>',
+                interleaved: '<p><strong class="text-amber-400">Interleaved 1F1B:</strong></p><p>Multiple model chunks per device. Reduces bubble but increases communication.</p><p class="text-gray-400">Memory: O(stages/chunks) activations</p>',
+                chimera: '<p><strong class="text-amber-400">Chimera Schedule:</strong></p><p>Bidirectional pipeline reduces bubble by half. Requires 2x memory.</p><p class="text-gray-400">Memory: 2x base memory</p>'
+            };
+            info.innerHTML = descriptions[schedule];
+        }
+
+        function runPipeline() {
+            const stages = parseInt(document.getElementById('numStages').value);
+            const micros = parseInt(document.getElementById('microBatches').value);
+            const schedule = document.getElementById('schedule').value;
+            const fwd = parseInt(fwdTime.value);
+            const bwd = parseInt(bwdTime.value);
+
+            // Generate schedule
+            const events = generateSchedule(stages, micros, schedule, fwd, bwd);
+
+            // Calculate metrics
+            const totalTime = Math.max(...events.map(e => e.end));
+            const workTime = events.reduce((sum, e) => sum + (e.end - e.start), 0);
+            const bubbleRatio = 1 - workTime / (stages * totalTime);
+            const efficiency = (1 - bubbleRatio) * 100;
+            const throughput = (micros * 1000) / totalTime;
+
+            let peakMemory;
+            if (schedule === 'gpipe') peakMemory = micros;
+            else if (schedule === '1f1b') peakMemory = stages;
+            else if (schedule === 'interleaved') peakMemory = Math.ceil(stages / 2);
+            else peakMemory = stages * 2;
+
+            document.getElementById('bubbleTime').textContent = (bubbleRatio * 100).toFixed(1) + '%';
+            document.getElementById('pipeEfficiency').textContent = efficiency.toFixed(1) + '%';
+            document.getElementById('throughputVal').textContent = throughput.toFixed(1) + '/s';
+            document.getElementById('memoryPeak').textContent = peakMemory + ' act';
+
+            // Draw pipeline chart
+            const shapes = [];
+            const annotations = [];
+
+            events.forEach(e => {
+                const color = e.type === 'fwd' ? '#f59e0b' : '#8b5cf6';
+                shapes.push({
+                    type: 'rect',
+                    x0: e.start,
+                    x1: e.end,
+                    y0: e.stage - 0.4,
+                    y1: e.stage + 0.4,
+                    fillcolor: color,
+                    line: { width: 1, color: '#fff' },
+                    opacity: 0.8
+                });
+                if (e.end - e.start > 5) {
+                    annotations.push({
+                        x: (e.start + e.end) / 2,
+                        y: e.stage,
+                        text: `${e.type === 'fwd' ? 'F' : 'B'}${e.micro}`,
+                        showarrow: false,
+                        font: { size: 10, color: '#fff' }
+                    });
+                }
+            });
+
+            Plotly.newPlot('pipelineChart', [], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 80, r: 20, t: 20, b: 50 },
+                xaxis: { title: 'Time (ms)', gridcolor: '#374151', range: [0, totalTime * 1.05] },
+                yaxis: {
+                    title: 'Pipeline Stage',
+                    gridcolor: '#374151',
+                    tickmode: 'array',
+                    tickvals: Array.from({length: stages}, (_, i) => i),
+                    ticktext: Array.from({length: stages}, (_, i) => `Stage ${i}`)
+                },
+                shapes: shapes,
+                annotations: annotations
+            }, {responsive: true});
+
+            // Memory over time chart
+            const memoryTrace = generateMemoryTrace(events, stages, totalTime);
+            Plotly.newPlot('memoryChart', [{
+                x: memoryTrace.map(m => m.time),
+                y: memoryTrace.map(m => m.memory),
+                type: 'scatter',
+                fill: 'tozeroy',
+                fillcolor: 'rgba(139, 92, 246, 0.3)',
+                line: { color: '#8b5cf6' }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 50, r: 20, t: 10, b: 40 },
+                xaxis: { title: 'Time (ms)', gridcolor: '#374151' },
+                yaxis: { title: 'Activations Stored', gridcolor: '#374151' }
+            }, {responsive: true});
+
+            // Comparison chart
+            const schedules = ['gpipe', '1f1b', 'interleaved', 'chimera'];
+            const efficiencies = schedules.map(s => {
+                const evts = generateSchedule(stages, micros, s, fwd, bwd);
+                const total = Math.max(...evts.map(e => e.end));
+                const work = evts.reduce((sum, e) => sum + (e.end - e.start), 0);
+                return (work / (stages * total)) * 100;
+            });
+
+            Plotly.newPlot('comparisonChart', [{
+                x: ['GPipe', '1F1B', 'Interleaved', 'Chimera'],
+                y: efficiencies,
+                type: 'bar',
+                marker: { color: schedules.map(s => s === schedule ? '#f59e0b' : '#6b7280') }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 50, r: 20, t: 10, b: 60 },
+                xaxis: { gridcolor: '#374151' },
+                yaxis: { title: 'Efficiency (%)', gridcolor: '#374151', range: [0, 100] }
+            }, {responsive: true});
+
+            // Stage visualization
+            renderStages(stages);
+        }
+
+        function generateSchedule(stages, micros, schedule, fwd, bwd) {
+            const events = [];
+
+            if (schedule === 'gpipe') {
+                // GPipe: all forwards, then all backwards
+                for (let m = 0; m < micros; m++) {
+                    for (let s = 0; s < stages; s++) {
+                        const start = m * fwd + s * fwd;
+                        events.push({ type: 'fwd', stage: s, micro: m, start, end: start + fwd });
+                    }
+                }
+                const fwdEnd = (micros - 1) * fwd + stages * fwd;
+                for (let m = micros - 1; m >= 0; m--) {
+                    for (let s = stages - 1; s >= 0; s--) {
+                        const offset = (micros - 1 - m) * bwd + (stages - 1 - s) * bwd;
+                        const start = fwdEnd + offset;
+                        events.push({ type: 'bwd', stage: s, micro: m, start, end: start + bwd });
+                    }
+                }
+            } else if (schedule === '1f1b') {
+                // 1F1B: warmup, steady state, cooldown
+                const stageTime = [];
+                for (let s = 0; s < stages; s++) stageTime[s] = 0;
+
+                // Warmup: stages forwards
+                for (let m = 0; m < stages; m++) {
+                    for (let s = 0; s < stages; s++) {
+                        if (s <= m) {
+                            const start = stageTime[s];
+                            events.push({ type: 'fwd', stage: s, micro: m - s, start, end: start + fwd });
+                            stageTime[s] = start + fwd;
+                        }
+                    }
+                }
+
+                // Steady state: 1F1B
+                for (let m = stages; m < micros; m++) {
+                    for (let s = stages - 1; s >= 0; s--) {
+                        const bwdMicro = m - stages + (stages - 1 - s);
+                        if (bwdMicro >= 0 && bwdMicro < micros) {
+                            const start = stageTime[s];
+                            events.push({ type: 'bwd', stage: s, micro: bwdMicro, start, end: start + bwd });
+                            stageTime[s] = start + bwd;
+                        }
+                    }
+                    for (let s = 0; s < stages; s++) {
+                        const fwdMicro = m - s;
+                        if (fwdMicro >= 0 && fwdMicro < micros) {
+                            const start = stageTime[s];
+                            events.push({ type: 'fwd', stage: s, micro: fwdMicro, start, end: start + fwd });
+                            stageTime[s] = start + fwd;
+                        }
+                    }
+                }
+
+                // Cooldown: remaining backwards
+                for (let m = micros - stages; m < micros; m++) {
+                    for (let s = stages - 1; s >= 0; s--) {
+                        const bwdMicro = m + (stages - 1 - s);
+                        if (bwdMicro < micros) {
+                            const start = stageTime[s];
+                            events.push({ type: 'bwd', stage: s, micro: bwdMicro, start, end: start + bwd });
+                            stageTime[s] = start + bwd;
+                        }
+                    }
+                }
+            } else {
+                // Simplified versions for interleaved and chimera
+                return generateSchedule(stages, micros, '1f1b', fwd, bwd);
+            }
+
+            return events;
+        }
+
+        function generateMemoryTrace(events, stages, totalTime) {
+            const trace = [];
+            const sortedEvents = [...events].sort((a, b) => a.start - b.start);
+            let memory = 0;
+
+            for (let t = 0; t <= totalTime; t += totalTime / 100) {
+                const activeForwards = sortedEvents.filter(e =>
+                    e.type === 'fwd' && e.start <= t && !sortedEvents.some(b =>
+                        b.type === 'bwd' && b.micro === e.micro && b.stage === e.stage && b.end <= t
+                    )
+                );
+                trace.push({ time: t, memory: activeForwards.length });
+            }
+            return trace;
+        }
+
+        function renderStages(stages) {
+            const viz = document.getElementById('stageViz');
+            viz.innerHTML = '';
+            for (let s = 0; s < stages; s++) {
+                viz.innerHTML += `
+                    <div class="bg-gray-700 rounded-xl p-4 text-center flex-1 min-w-32">
+                        <i class="fas fa-layer-group text-2xl text-amber-400 mb-2"></i>
+                        <div class="text-sm font-semibold">Stage ${s}</div>
+                        <div class="text-xs text-gray-400">GPU ${s}</div>
+                        <div class="mt-2 text-xs">
+                            <span class="text-green-400">Layers ${s * 8}-${(s + 1) * 8 - 1}</span>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // Initialize
+        runPipeline();
+    </script>
+</body>
+</html>

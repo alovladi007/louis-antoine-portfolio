@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Training Dashboard - Distributed ML</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>.gradient-bg { background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #fcd34d 100%); }</style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-amber-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="distributed-ml-complete-project.html" class="flex items-center text-amber-400 hover:text-amber-300">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Distributed ML
+                </a>
+                <span class="text-amber-400 font-semibold">Training Dashboard</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4 text-gray-900"><i class="fas fa-desktop mr-4"></i>Training Dashboard</h1>
+            <p class="text-xl text-amber-900">Real-time monitoring of distributed training runs</p>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="flex justify-between items-center mb-6">
+            <div class="flex items-center gap-4">
+                <span class="flex items-center gap-2 text-green-400"><i class="fas fa-circle animate-pulse"></i>Live</span>
+                <span class="text-gray-400">Run: llama-7b-ft-001</span>
+            </div>
+            <button onclick="toggleSimulation()" class="bg-amber-600 hover:bg-amber-700 px-4 py-2 rounded-lg" id="simBtn">
+                <i class="fas fa-play mr-2"></i>Start Simulation
+            </button>
+        </div>
+
+        <div class="grid md:grid-cols-6 gap-4 mb-6">
+            <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-4 text-center">
+                <div class="text-2xl font-bold text-amber-400" id="step">0</div>
+                <div class="text-xs text-gray-400">Step</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-4 text-center">
+                <div class="text-2xl font-bold text-green-400" id="loss">-</div>
+                <div class="text-xs text-gray-400">Loss</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-4 text-center">
+                <div class="text-2xl font-bold text-cyan-400" id="throughput">-</div>
+                <div class="text-xs text-gray-400">Throughput</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-4 text-center">
+                <div class="text-2xl font-bold text-purple-400" id="lr">-</div>
+                <div class="text-xs text-gray-400">Learning Rate</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-4 text-center">
+                <div class="text-2xl font-bold text-yellow-400" id="eta">-</div>
+                <div class="text-xs text-gray-400">ETA</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-4 text-center">
+                <div class="text-2xl font-bold text-pink-400" id="gpuUtil">-</div>
+                <div class="text-xs text-gray-400">GPU Util</div>
+            </div>
+        </div>
+
+        <div class="grid lg:grid-cols-2 gap-6 mb-6">
+            <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-6">
+                <h3 class="text-lg font-semibold text-amber-400 mb-4"><i class="fas fa-chart-line mr-2"></i>Training Loss</h3>
+                <div id="lossChart" style="height: 250px;"></div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-6">
+                <h3 class="text-lg font-semibold text-amber-400 mb-4"><i class="fas fa-tachometer-alt mr-2"></i>Throughput</h3>
+                <div id="throughputChart" style="height: 250px;"></div>
+            </div>
+        </div>
+
+        <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-6 mb-6">
+            <h3 class="text-lg font-semibold text-amber-400 mb-4"><i class="fas fa-server mr-2"></i>GPU Status (8x A100)</h3>
+            <div class="grid grid-cols-4 gap-4" id="gpuGrid"></div>
+        </div>
+
+        <div class="grid lg:grid-cols-3 gap-6">
+            <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-6">
+                <h3 class="text-lg font-semibold text-amber-400 mb-4"><i class="fas fa-memory mr-2"></i>Memory Usage</h3>
+                <div id="memoryChart" style="height: 200px;"></div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-6">
+                <h3 class="text-lg font-semibold text-amber-400 mb-4"><i class="fas fa-network-wired mr-2"></i>Network I/O</h3>
+                <div id="networkChart" style="height: 200px;"></div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-6">
+                <h3 class="text-lg font-semibold text-amber-400 mb-4"><i class="fas fa-list mr-2"></i>Recent Events</h3>
+                <div id="events" class="space-y-2 text-sm max-h-48 overflow-y-auto"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let simulating = false;
+        let simInterval;
+        let step = 0;
+        const maxSteps = 10000;
+        let lossData = [];
+        let throughputData = [];
+        let steps = [];
+
+        function toggleSimulation() {
+            simulating = !simulating;
+            const btn = document.getElementById('simBtn');
+            if (simulating) {
+                btn.innerHTML = '<i class="fas fa-pause mr-2"></i>Pause';
+                simInterval = setInterval(updateStep, 500);
+            } else {
+                btn.innerHTML = '<i class="fas fa-play mr-2"></i>Resume';
+                clearInterval(simInterval);
+            }
+        }
+
+        function updateStep() {
+            step++;
+            if (step > maxSteps) {
+                toggleSimulation();
+                return;
+            }
+
+            // Calculate metrics
+            const loss = 2.5 * Math.exp(-step / 3000) + 0.3 + Math.random() * 0.1;
+            const throughput = 12000 + Math.random() * 500 - 250;
+            const lr = step < 100 ? step / 100 * 1e-4 : 1e-4 * Math.exp(-step / 5000);
+            const eta = (maxSteps - step) / (throughput / 32) / 3600;
+            const gpuUtil = 85 + Math.random() * 10;
+
+            // Update displays
+            document.getElementById('step').textContent = step.toLocaleString();
+            document.getElementById('loss').textContent = loss.toFixed(3);
+            document.getElementById('throughput').textContent = Math.round(throughput) + '/s';
+            document.getElementById('lr').textContent = lr.toExponential(1);
+            document.getElementById('eta').textContent = eta.toFixed(1) + 'h';
+            document.getElementById('gpuUtil').textContent = gpuUtil.toFixed(0) + '%';
+
+            // Update data arrays
+            steps.push(step);
+            lossData.push(loss);
+            throughputData.push(throughput);
+
+            if (steps.length > 200) {
+                steps.shift();
+                lossData.shift();
+                throughputData.shift();
+            }
+
+            // Update loss chart
+            Plotly.newPlot('lossChart', [{
+                x: steps,
+                y: lossData,
+                mode: 'lines',
+                line: { color: '#10b981', width: 2 }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 50, r: 20, t: 10, b: 40 },
+                xaxis: { title: 'Step', gridcolor: '#374151' },
+                yaxis: { title: 'Loss', gridcolor: '#374151' }
+            }, {responsive: true});
+
+            // Update throughput chart
+            Plotly.newPlot('throughputChart', [{
+                x: steps,
+                y: throughputData,
+                mode: 'lines',
+                line: { color: '#f59e0b', width: 2 },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(245, 158, 11, 0.2)'
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 60, r: 20, t: 10, b: 40 },
+                xaxis: { title: 'Step', gridcolor: '#374151' },
+                yaxis: { title: 'Samples/s', gridcolor: '#374151' }
+            }, {responsive: true});
+
+            // Update GPU grid
+            const gpuGrid = document.getElementById('gpuGrid');
+            gpuGrid.innerHTML = '';
+            for (let i = 0; i < 8; i++) {
+                const util = 80 + Math.random() * 15;
+                const mem = 65 + Math.random() * 10;
+                const temp = 55 + Math.random() * 15;
+                gpuGrid.innerHTML += `
+                    <div class="bg-gray-700/50 rounded-lg p-3">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm font-semibold">GPU ${i}</span>
+                            <span class="text-xs text-green-400"><i class="fas fa-circle"></i></span>
+                        </div>
+                        <div class="space-y-1 text-xs">
+                            <div class="flex justify-between">
+                                <span class="text-gray-400">Util</span>
+                                <span>${util.toFixed(0)}%</span>
+                            </div>
+                            <div class="w-full bg-gray-600 rounded-full h-1">
+                                <div class="bg-green-500 h-1 rounded-full" style="width: ${util}%"></div>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-400">Mem</span>
+                                <span>${mem.toFixed(0)}%</span>
+                            </div>
+                            <div class="w-full bg-gray-600 rounded-full h-1">
+                                <div class="bg-purple-500 h-1 rounded-full" style="width: ${mem}%"></div>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-400">Temp</span>
+                                <span>${temp.toFixed(0)}°C</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Memory chart
+            const memUsage = Array.from({length: 8}, () => 50 + Math.random() * 20);
+            Plotly.newPlot('memoryChart', [{
+                x: memUsage.map((_, i) => `GPU ${i}`),
+                y: memUsage,
+                type: 'bar',
+                marker: { color: '#8b5cf6' }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 40, r: 20, t: 10, b: 60 },
+                yaxis: { title: 'GB', gridcolor: '#374151', range: [0, 80] }
+            }, {responsive: true});
+
+            // Network chart
+            const netData = steps.slice(-50).map(() => 100 + Math.random() * 50);
+            Plotly.newPlot('networkChart', [{
+                y: netData,
+                mode: 'lines',
+                line: { color: '#06b6d4' },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(6, 182, 212, 0.2)'
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 40, r: 20, t: 10, b: 30 },
+                yaxis: { title: 'GB/s', gridcolor: '#374151' },
+                xaxis: { showticklabels: false }
+            }, {responsive: true});
+
+            // Add event
+            if (step % 100 === 0) {
+                addEvent(`Checkpoint saved at step ${step}`);
+            }
+            if (step % 500 === 0) {
+                addEvent(`Evaluation: loss=${loss.toFixed(3)}, perplexity=${Math.exp(loss).toFixed(2)}`);
+            }
+        }
+
+        function addEvent(msg) {
+            const events = document.getElementById('events');
+            const time = new Date().toLocaleTimeString();
+            events.innerHTML = `<div class="text-gray-300"><span class="text-gray-500">[${time}]</span> ${msg}</div>` + events.innerHTML;
+        }
+
+        // Initialize empty charts
+        Plotly.newPlot('lossChart', [], { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' });
+        Plotly.newPlot('throughputChart', [], { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' });
+        Plotly.newPlot('memoryChart', [], { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' });
+        Plotly.newPlot('networkChart', [], { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' });
+
+        addEvent('Training run initialized');
+        addEvent('8x A100-80GB cluster ready');
+    </script>
+</body>
+</html>

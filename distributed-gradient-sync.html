@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gradient Synchronization - Distributed ML</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>.gradient-bg { background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #fcd34d 100%); }</style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-amber-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="distributed-ml-complete-project.html" class="flex items-center text-amber-400 hover:text-amber-300">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Distributed ML
+                </a>
+                <span class="text-amber-400 font-semibold">Gradient Synchronization</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4 text-gray-900"><i class="fas fa-sync-alt mr-4"></i>Gradient Synchronization</h1>
+            <p class="text-xl text-amber-900">Visualize gradient averaging across distributed workers</p>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid lg:grid-cols-4 gap-6">
+            <div class="space-y-6">
+                <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-amber-400 mb-4"><i class="fas fa-cog mr-2"></i>Configuration</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Number of Workers</label>
+                            <select id="numWorkers" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white">
+                                <option value="2">2 Workers</option>
+                                <option value="4" selected>4 Workers</option>
+                                <option value="8">8 Workers</option>
+                                <option value="16">16 Workers</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Sync Algorithm</label>
+                            <select id="algorithm" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white">
+                                <option value="ring">Ring All-Reduce</option>
+                                <option value="tree">Tree All-Reduce</option>
+                                <option value="bucket">Bucketed All-Reduce</option>
+                                <option value="async">Async SGD</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Gradient Size: <span id="gradSizeVal">100</span> MB</label>
+                            <input type="range" id="gradSize" min="10" max="500" value="100" class="w-full accent-amber-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Bandwidth: <span id="bwVal">100</span> Gbps</label>
+                            <input type="range" id="bandwidth" min="10" max="400" step="10" value="100" class="w-full accent-amber-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Latency: <span id="latVal">1</span> μs</label>
+                            <input type="range" id="latency" min="1" max="100" value="1" class="w-full accent-amber-500">
+                        </div>
+                    </div>
+                    <button onclick="runSimulation()" class="w-full mt-4 bg-amber-600 hover:bg-amber-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors">
+                        <i class="fas fa-play mr-2"></i>Run Simulation
+                    </button>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-amber-400 mb-4"><i class="fas fa-info-circle mr-2"></i>Algorithm Info</h3>
+                    <div id="algoInfo" class="text-sm text-gray-300 space-y-2">
+                        <p><strong class="text-amber-400">Ring All-Reduce:</strong></p>
+                        <p>Each worker sends to next in ring. Requires 2(N-1) communication steps.</p>
+                        <p class="text-gray-400">Bandwidth optimal for large messages.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-3 space-y-6">
+                <div class="grid md:grid-cols-4 gap-4">
+                    <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-4 text-center">
+                        <div class="text-3xl font-bold text-amber-400" id="syncTime">-</div>
+                        <div class="text-sm text-gray-400">Sync Time</div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-4 text-center">
+                        <div class="text-3xl font-bold text-green-400" id="throughput">-</div>
+                        <div class="text-sm text-gray-400">Throughput</div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-4 text-center">
+                        <div class="text-3xl font-bold text-cyan-400" id="efficiency">-</div>
+                        <div class="text-sm text-gray-400">Efficiency</div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-4 text-center">
+                        <div class="text-3xl font-bold text-purple-400" id="commVol">-</div>
+                        <div class="text-sm text-gray-400">Comm Volume</div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-amber-400 mb-4"><i class="fas fa-project-diagram mr-2"></i>Worker Communication</h3>
+                    <div id="workerViz" class="flex flex-wrap justify-center gap-4 mb-4"></div>
+                    <div id="commLog" class="bg-gray-900 rounded-lg p-4 h-32 overflow-y-auto text-sm font-mono"></div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-6">
+                        <h3 class="text-lg font-semibold text-amber-400 mb-4"><i class="fas fa-chart-area mr-2"></i>Gradient Values</h3>
+                        <div id="gradientChart" style="height: 250px;"></div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-6">
+                        <h3 class="text-lg font-semibold text-amber-400 mb-4"><i class="fas fa-clock mr-2"></i>Communication Timeline</h3>
+                        <div id="timelineChart" style="height: 250px;"></div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-amber-400 mb-4"><i class="fas fa-chart-bar mr-2"></i>Algorithm Comparison</h3>
+                    <div id="comparisonChart" style="height: 300px;"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const gradSize = document.getElementById('gradSize');
+        const gradSizeVal = document.getElementById('gradSizeVal');
+        const bandwidth = document.getElementById('bandwidth');
+        const bwVal = document.getElementById('bwVal');
+        const latency = document.getElementById('latency');
+        const latVal = document.getElementById('latVal');
+
+        gradSize.addEventListener('input', () => gradSizeVal.textContent = gradSize.value);
+        bandwidth.addEventListener('input', () => bwVal.textContent = bandwidth.value);
+        latency.addEventListener('input', () => latVal.textContent = latency.value);
+
+        document.getElementById('algorithm').addEventListener('change', updateAlgoInfo);
+
+        function updateAlgoInfo() {
+            const algo = document.getElementById('algorithm').value;
+            const info = document.getElementById('algoInfo');
+            const descriptions = {
+                ring: '<p><strong class="text-amber-400">Ring All-Reduce:</strong></p><p>Each worker sends to next in ring. Requires 2(N-1) communication steps.</p><p class="text-gray-400">Bandwidth optimal for large messages.</p>',
+                tree: '<p><strong class="text-amber-400">Tree All-Reduce:</strong></p><p>Hierarchical reduce then broadcast. Requires 2*log₂(N) steps.</p><p class="text-gray-400">Latency optimal for small messages.</p>',
+                bucket: '<p><strong class="text-amber-400">Bucketed All-Reduce:</strong></p><p>Fuse small gradients into buckets, then all-reduce buckets.</p><p class="text-gray-400">Balances latency and bandwidth.</p>',
+                async: '<p><strong class="text-amber-400">Async SGD:</strong></p><p>Workers push gradients to PS without waiting. Can have stale gradients.</p><p class="text-gray-400">Higher throughput, potential accuracy loss.</p>'
+            };
+            info.innerHTML = descriptions[algo];
+        }
+
+        function runSimulation() {
+            const N = parseInt(document.getElementById('numWorkers').value);
+            const algo = document.getElementById('algorithm').value;
+            const size = parseInt(gradSize.value);
+            const bw = parseInt(bandwidth.value);
+            const lat = parseInt(latency.value);
+
+            // Calculate sync time based on algorithm
+            let syncTimeMs, steps;
+            const sizeBytes = size * 1e6;
+            const bwBytesPerMs = (bw * 1e9 / 8) / 1000;
+            const latMs = lat / 1000;
+
+            if (algo === 'ring') {
+                steps = 2 * (N - 1);
+                const chunkSize = sizeBytes / N;
+                syncTimeMs = steps * (latMs + chunkSize / bwBytesPerMs);
+            } else if (algo === 'tree') {
+                steps = 2 * Math.ceil(Math.log2(N));
+                syncTimeMs = steps * (latMs + sizeBytes / bwBytesPerMs);
+            } else if (algo === 'bucket') {
+                const buckets = 4;
+                const bucketSize = sizeBytes / buckets;
+                steps = buckets * 2 * (N - 1) / N;
+                syncTimeMs = steps * (latMs + bucketSize / bwBytesPerMs);
+            } else {
+                steps = 2;
+                syncTimeMs = steps * (latMs + sizeBytes / bwBytesPerMs);
+            }
+
+            const throughput = (size * N) / syncTimeMs;
+            const idealTime = sizeBytes / bwBytesPerMs;
+            const efficiency = (idealTime / syncTimeMs) * 100;
+            const commVolume = algo === 'ring' ? 2 * size * (N - 1) / N : 2 * size;
+
+            document.getElementById('syncTime').textContent = syncTimeMs.toFixed(2) + ' ms';
+            document.getElementById('throughput').textContent = throughput.toFixed(1) + ' GB/s';
+            document.getElementById('efficiency').textContent = Math.min(efficiency, 100).toFixed(1) + '%';
+            document.getElementById('commVol').textContent = commVolume.toFixed(0) + ' MB';
+
+            // Render worker visualization
+            renderWorkers(N, algo);
+            simulateCommunication(N, algo, steps);
+
+            // Gradient values chart
+            const workerGrads = Array.from({length: N}, () => Array.from({length: 10}, () => Math.random() * 2 - 1));
+            const avgGrad = workerGrads[0].map((_, i) => workerGrads.reduce((sum, w) => sum + w[i], 0) / N);
+
+            const traces = workerGrads.map((g, i) => ({
+                y: g,
+                name: `Worker ${i}`,
+                type: 'scatter',
+                mode: 'lines+markers',
+                opacity: 0.5
+            }));
+            traces.push({
+                y: avgGrad,
+                name: 'Synchronized',
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: { width: 3, color: '#f59e0b' }
+            });
+
+            Plotly.newPlot('gradientChart', traces, {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 40, r: 20, t: 10, b: 40 },
+                xaxis: { title: 'Parameter Index', gridcolor: '#374151' },
+                yaxis: { title: 'Gradient Value', gridcolor: '#374151' },
+                showlegend: true,
+                legend: { orientation: 'h', y: -0.2 }
+            }, {responsive: true});
+
+            // Timeline chart
+            const timelineData = [];
+            let currentTime = 0;
+            for (let s = 0; s < Math.min(steps, 8); s++) {
+                timelineData.push({
+                    x: [currentTime, currentTime + syncTimeMs / steps],
+                    y: [s, s],
+                    mode: 'lines',
+                    line: { width: 20, color: s % 2 === 0 ? '#f59e0b' : '#10b981' },
+                    name: s % 2 === 0 ? 'Send' : 'Recv',
+                    showlegend: s < 2
+                });
+                currentTime += syncTimeMs / steps;
+            }
+
+            Plotly.newPlot('timelineChart', timelineData, {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 60, r: 20, t: 10, b: 40 },
+                xaxis: { title: 'Time (ms)', gridcolor: '#374151' },
+                yaxis: { title: 'Step', gridcolor: '#374151', dtick: 1 }
+            }, {responsive: true});
+
+            // Comparison chart
+            const algos = ['ring', 'tree', 'bucket', 'async'];
+            const times = algos.map(a => {
+                if (a === 'ring') return 2 * (N - 1) * (latMs + (sizeBytes / N) / bwBytesPerMs);
+                if (a === 'tree') return 2 * Math.ceil(Math.log2(N)) * (latMs + sizeBytes / bwBytesPerMs);
+                if (a === 'bucket') return 4 * 2 * (N - 1) / N * (latMs + (sizeBytes / 4) / bwBytesPerMs);
+                return 2 * (latMs + sizeBytes / bwBytesPerMs);
+            });
+
+            Plotly.newPlot('comparisonChart', [{
+                x: ['Ring All-Reduce', 'Tree All-Reduce', 'Bucketed', 'Async SGD'],
+                y: times,
+                type: 'bar',
+                marker: { color: algos.map(a => a === algo ? '#f59e0b' : '#6b7280') }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 60, r: 20, t: 20, b: 80 },
+                xaxis: { gridcolor: '#374151' },
+                yaxis: { title: 'Sync Time (ms)', gridcolor: '#374151' }
+            }, {responsive: true});
+        }
+
+        function renderWorkers(N, algo) {
+            const viz = document.getElementById('workerViz');
+            viz.innerHTML = '';
+            for (let i = 0; i < N; i++) {
+                viz.innerHTML += `
+                    <div class="worker-node bg-gray-700 rounded-xl p-4 text-center w-24" id="worker-${i}">
+                        <i class="fas fa-microchip text-2xl text-amber-400 mb-2"></i>
+                        <div class="text-sm font-semibold">Worker ${i}</div>
+                        <div class="text-xs text-gray-400">Rank ${i}</div>
+                    </div>
+                `;
+            }
+        }
+
+        function simulateCommunication(N, algo, steps) {
+            const log = document.getElementById('commLog');
+            log.innerHTML = '';
+            let step = 0;
+            const interval = setInterval(() => {
+                if (step >= Math.min(steps, 10)) {
+                    log.innerHTML += `<div class="text-green-400">[DONE] All-reduce complete</div>`;
+                    clearInterval(interval);
+                    return;
+                }
+                const src = step % N;
+                const dst = (step + 1) % N;
+                log.innerHTML += `<div class="text-gray-300">[Step ${step + 1}] Worker ${src} → Worker ${dst}</div>`;
+                log.scrollTop = log.scrollHeight;
+
+                // Highlight active workers
+                document.querySelectorAll('.worker-node').forEach(n => n.classList.remove('ring-2', 'ring-amber-500'));
+                document.getElementById(`worker-${src}`)?.classList.add('ring-2', 'ring-amber-500');
+                document.getElementById(`worker-${dst}`)?.classList.add('ring-2', 'ring-amber-500');
+
+                step++;
+            }, 300);
+        }
+
+        // Initialize
+        runSimulation();
+    </script>
+</body>
+</html>

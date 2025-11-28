@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Filter Designer - RF/SiP Co-Design</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>.gradient-bg { background: linear-gradient(135deg, #0891b2 0%, #06b6d4 50%, #22d3ee 100%); }</style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-cyan-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="rf-sip-complete-project.html" class="flex items-center text-cyan-400 hover:text-cyan-300">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to RF/SiP Co-Design
+                </a>
+                <span class="text-cyan-400 font-semibold">Filter Designer</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4"><i class="fas fa-filter mr-4"></i>Filter Designer</h1>
+            <p class="text-xl text-cyan-100">Synthesize Butterworth, Chebyshev, and Bessel filters</p>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid lg:grid-cols-4 gap-6">
+            <div class="space-y-6">
+                <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-cog mr-2"></i>Filter Type</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Response Type</label>
+                            <select id="responseType" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white">
+                                <option value="lowpass" selected>Low-Pass</option>
+                                <option value="highpass">High-Pass</option>
+                                <option value="bandpass">Band-Pass</option>
+                                <option value="bandstop">Band-Stop</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Approximation</label>
+                            <select id="approximation" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white">
+                                <option value="butterworth" selected>Butterworth</option>
+                                <option value="chebyshev">Chebyshev (0.5 dB)</option>
+                                <option value="bessel">Bessel</option>
+                                <option value="elliptic">Elliptic</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Order: <span id="orderVal">5</span></label>
+                            <input type="range" id="order" min="1" max="9" value="5" class="w-full accent-cyan-500">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-sliders-h mr-2"></i>Specifications</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Cutoff Freq: <span id="fcVal">1</span> GHz</label>
+                            <input type="range" id="fc" min="0.1" max="10" step="0.1" value="1" class="w-full accent-cyan-500">
+                        </div>
+                        <div id="bwControl">
+                            <label class="block text-sm text-gray-300 mb-1">Bandwidth: <span id="bwVal">0.2</span> GHz</label>
+                            <input type="range" id="bw" min="0.05" max="2" step="0.05" value="0.2" class="w-full accent-cyan-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Impedance: <span id="z0Val">50</span> Ω</label>
+                            <input type="range" id="z0" min="25" max="100" value="50" class="w-full accent-cyan-500">
+                        </div>
+                    </div>
+                    <button onclick="designFilter()" class="w-full mt-4 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors">
+                        <i class="fas fa-magic mr-2"></i>Design Filter
+                    </button>
+                </div>
+            </div>
+
+            <div class="lg:col-span-3 space-y-6">
+                <div class="grid md:grid-cols-4 gap-4">
+                    <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center">
+                        <div class="text-3xl font-bold text-cyan-400" id="insertionLoss">0.5 dB</div>
+                        <div class="text-sm text-gray-400">Insertion Loss</div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center">
+                        <div class="text-3xl font-bold text-green-400" id="stopbandAtten">60 dB</div>
+                        <div class="text-sm text-gray-400">Stopband Atten.</div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center">
+                        <div class="text-3xl font-bold text-purple-400" id="groupDelayVar">2.5 ns</div>
+                        <div class="text-sm text-gray-400">Group Delay</div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center">
+                        <div class="text-3xl font-bold text-amber-400" id="qFactor">15</div>
+                        <div class="text-sm text-gray-400">Q Factor</div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-chart-line mr-2"></i>Frequency Response</h3>
+                    <div id="freqResponse" style="height: 350px;"></div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                        <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-clock mr-2"></i>Group Delay</h3>
+                        <div id="groupDelay" style="height: 280px;"></div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                        <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-project-diagram mr-2"></i>Schematic</h3>
+                        <div id="schematic" class="flex items-center justify-center p-4 bg-gray-900 rounded-lg min-h-48"></div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-list mr-2"></i>Component Values</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b border-gray-700">
+                                    <th class="text-left py-3 px-4 text-gray-400">Element</th>
+                                    <th class="text-right py-3 px-4 text-gray-400">Normalized</th>
+                                    <th class="text-right py-3 px-4 text-gray-400">Denormalized</th>
+                                    <th class="text-right py-3 px-4 text-gray-400">Standard Value</th>
+                                </tr>
+                            </thead>
+                            <tbody id="componentTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Butterworth prototype coefficients (normalized)
+        const butterworth = {
+            1: [2.0],
+            2: [1.414, 1.414],
+            3: [1.0, 2.0, 1.0],
+            4: [0.7654, 1.848, 1.848, 0.7654],
+            5: [0.618, 1.618, 2.0, 1.618, 0.618],
+            6: [0.5176, 1.414, 1.932, 1.932, 1.414, 0.5176],
+            7: [0.445, 1.247, 1.802, 2.0, 1.802, 1.247, 0.445],
+            8: [0.390, 1.111, 1.663, 1.962, 1.962, 1.663, 1.111, 0.390],
+            9: [0.347, 1.0, 1.532, 1.879, 2.0, 1.879, 1.532, 1.0, 0.347]
+        };
+
+        const order = document.getElementById('order');
+        const orderVal = document.getElementById('orderVal');
+        const fc = document.getElementById('fc');
+        const fcVal = document.getElementById('fcVal');
+        const bw = document.getElementById('bw');
+        const bwVal = document.getElementById('bwVal');
+        const z0 = document.getElementById('z0');
+        const z0Val = document.getElementById('z0Val');
+
+        order.addEventListener('input', () => { orderVal.textContent = order.value; designFilter(); });
+        fc.addEventListener('input', () => { fcVal.textContent = fc.value; designFilter(); });
+        bw.addEventListener('input', () => { bwVal.textContent = bw.value; designFilter(); });
+        z0.addEventListener('input', () => { z0Val.textContent = z0.value; designFilter(); });
+        document.getElementById('responseType').addEventListener('change', () => {
+            const rt = document.getElementById('responseType').value;
+            document.getElementById('bwControl').style.display = (rt === 'bandpass' || rt === 'bandstop') ? 'block' : 'none';
+            designFilter();
+        });
+        document.getElementById('approximation').addEventListener('change', designFilter);
+
+        function designFilter() {
+            const n = parseInt(order.value);
+            const f0 = parseFloat(fc.value);
+            const bandwidth = parseFloat(bw.value);
+            const Z0 = parseFloat(z0.value);
+            const responseType = document.getElementById('responseType').value;
+            const approx = document.getElementById('approximation').value;
+
+            // Get prototype values
+            let proto = butterworth[n];
+            if (approx === 'chebyshev') {
+                proto = proto.map(v => v * 1.1); // Approximate Chebyshev
+            } else if (approx === 'bessel') {
+                proto = proto.map(v => v * 0.9); // Approximate Bessel
+            }
+
+            // Denormalize components
+            const omega0 = 2 * Math.PI * f0 * 1e9;
+            const components = [];
+
+            proto.forEach((g, i) => {
+                const isShunt = i % 2 === 0;
+                let value, unit, type;
+
+                if (responseType === 'lowpass') {
+                    if (isShunt) {
+                        // Shunt capacitor
+                        value = g / (Z0 * omega0);
+                        type = 'C';
+                        unit = 'pF';
+                    } else {
+                        // Series inductor
+                        value = g * Z0 / omega0;
+                        type = 'L';
+                        unit = 'nH';
+                    }
+                } else if (responseType === 'highpass') {
+                    if (isShunt) {
+                        // Shunt inductor
+                        value = Z0 / (g * omega0);
+                        type = 'L';
+                        unit = 'nH';
+                    } else {
+                        // Series capacitor
+                        value = 1 / (g * Z0 * omega0);
+                        type = 'C';
+                        unit = 'pF';
+                    }
+                } else {
+                    // Bandpass
+                    if (isShunt) {
+                        value = g / (Z0 * omega0 * bandwidth / f0);
+                        type = 'C';
+                        unit = 'pF';
+                    } else {
+                        value = g * Z0 / (omega0 * bandwidth / f0);
+                        type = 'L';
+                        unit = 'nH';
+                    }
+                }
+
+                const scaledValue = type === 'C' ? value * 1e12 : value * 1e9;
+                components.push({
+                    element: `${type}${i + 1}`,
+                    normalized: g.toFixed(4),
+                    value: scaledValue,
+                    unit: unit,
+                    type: type
+                });
+            });
+
+            // Update metrics
+            document.getElementById('insertionLoss').textContent = (0.1 * n).toFixed(1) + ' dB';
+            document.getElementById('stopbandAtten').textContent = (20 * n).toFixed(0) + ' dB';
+            document.getElementById('groupDelayVar').textContent = (0.5 * n / f0).toFixed(2) + ' ns';
+            document.getElementById('qFactor').textContent = (f0 / bandwidth * 10).toFixed(0);
+
+            // Draw frequency response
+            const freqs = [];
+            const s21 = [];
+            const s11 = [];
+
+            for (let f = 0.01; f <= f0 * 3; f += f0 * 0.02) {
+                freqs.push(f);
+                const omega = f / f0;
+
+                let H2;
+                if (responseType === 'lowpass') {
+                    H2 = 1 / (1 + Math.pow(omega, 2 * n));
+                } else if (responseType === 'highpass') {
+                    H2 = Math.pow(omega, 2 * n) / (1 + Math.pow(omega, 2 * n));
+                } else {
+                    const delta = (f - f0) / (bandwidth / 2);
+                    H2 = 1 / (1 + Math.pow(delta, 2 * n));
+                }
+
+                const s21Val = 10 * Math.log10(H2);
+                s21.push(Math.max(s21Val, -60));
+                s11.push(10 * Math.log10(1 - H2 + 0.001));
+            }
+
+            Plotly.newPlot('freqResponse', [
+                { x: freqs, y: s21, name: 'S21', line: { color: '#06b6d4', width: 2 } },
+                { x: freqs, y: s11, name: 'S11', line: { color: '#ef4444', dash: 'dot' } }
+            ], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 50, r: 20, t: 10, b: 40 },
+                xaxis: { title: 'Frequency (GHz)', gridcolor: '#374151' },
+                yaxis: { title: 'Magnitude (dB)', gridcolor: '#374151', range: [-60, 5] },
+                legend: { orientation: 'h', y: -0.15 },
+                shapes: [
+                    { type: 'line', x0: f0, x1: f0, y0: -60, y1: 0, line: { color: '#f59e0b', dash: 'dash' } },
+                    { type: 'line', x0: 0, x1: f0 * 3, y0: -3, y1: -3, line: { color: '#10b981', dash: 'dot' } }
+                ]
+            }, { responsive: true });
+
+            // Group delay
+            const groupDelayData = freqs.map((f, i) => {
+                const base = 1 / (f0 * 1e9);
+                const peak = f < f0 ? Math.exp(-((f - f0) / (bandwidth * 0.3)) ** 2) : 0.5;
+                return base * (1 + 2 * n * peak) * 1e9;
+            });
+
+            Plotly.newPlot('groupDelay', [{
+                x: freqs,
+                y: groupDelayData,
+                type: 'scatter',
+                line: { color: '#8b5cf6' },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(139, 92, 246, 0.2)'
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 50, r: 20, t: 10, b: 40 },
+                xaxis: { title: 'Frequency (GHz)', gridcolor: '#374151' },
+                yaxis: { title: 'Group Delay (ns)', gridcolor: '#374151' }
+            }, { responsive: true });
+
+            // Schematic
+            renderSchematic(components, responseType);
+
+            // Component table
+            const stdValues = {
+                'pF': [0.5, 1, 1.5, 2.2, 3.3, 4.7, 6.8, 10, 15, 22, 33, 47, 68, 100],
+                'nH': [1, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2, 10, 12, 15, 18, 22]
+            };
+
+            const findNearest = (val, unit) => {
+                const vals = stdValues[unit];
+                return vals.reduce((prev, curr) => Math.abs(curr - val) < Math.abs(prev - val) ? curr : prev);
+            };
+
+            document.getElementById('componentTable').innerHTML = components.map(c => `
+                <tr class="border-b border-gray-700/50">
+                    <td class="py-2 px-4 text-cyan-400">${c.element}</td>
+                    <td class="py-2 px-4 text-right">${c.normalized}</td>
+                    <td class="py-2 px-4 text-right">${c.value.toFixed(2)} ${c.unit}</td>
+                    <td class="py-2 px-4 text-right text-green-400">${findNearest(c.value, c.unit)} ${c.unit}</td>
+                </tr>
+            `).join('');
+        }
+
+        function renderSchematic(components, responseType) {
+            const schematic = document.getElementById('schematic');
+            let html = '<div class="flex items-center gap-2">';
+            html += '<div class="bg-gray-600 text-white px-3 py-1 rounded text-sm">IN</div>';
+            html += '<div class="w-6 h-0.5 bg-cyan-500"></div>';
+
+            components.forEach((c, i) => {
+                const isShunt = i % 2 === 0;
+                const color = c.type === 'L' ? 'bg-amber-600' : 'bg-green-600';
+
+                if (isShunt) {
+                    html += `
+                        <div class="flex flex-col items-center">
+                            <div class="${color} text-white px-2 py-1 rounded text-xs">${c.value.toFixed(1)} ${c.unit}</div>
+                            <div class="w-0.5 h-6 bg-cyan-500"></div>
+                            <div class="text-gray-500 text-xs">⏚</div>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="${color} text-white px-2 py-1 rounded text-xs">${c.value.toFixed(1)} ${c.unit}</div>
+                    `;
+                }
+                html += '<div class="w-6 h-0.5 bg-cyan-500"></div>';
+            });
+
+            html += '<div class="bg-gray-600 text-white px-3 py-1 rounded text-sm">OUT</div>';
+            html += '</div>';
+
+            schematic.innerHTML = html;
+        }
+
+        // Initialize
+        document.getElementById('bwControl').style.display = 'none';
+        designFilter();
+    </script>
+</body>
+</html>

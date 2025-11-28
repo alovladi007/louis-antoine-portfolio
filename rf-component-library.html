@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Component Library - RF/SiP Co-Design</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>.gradient-bg { background: linear-gradient(135deg, #0891b2 0%, #06b6d4 50%, #22d3ee 100%); }</style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-cyan-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="rf-sip-complete-project.html" class="flex items-center text-cyan-400 hover:text-cyan-300">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to RF/SiP Co-Design
+                </a>
+                <span class="text-cyan-400 font-semibold">Component Library</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4"><i class="fas fa-database mr-4"></i>Component Library</h1>
+            <p class="text-xl text-cyan-100">RF component models and S-parameter database</p>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="flex gap-4 mb-6">
+            <div class="flex-1">
+                <input type="text" id="searchBox" placeholder="Search components..."
+                    class="w-full bg-gray-800 border border-cyan-500/30 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:border-cyan-400 focus:outline-none">
+            </div>
+            <select id="categoryFilter" class="bg-gray-800 border border-cyan-500/30 rounded-lg px-4 py-3 text-white">
+                <option value="all">All Categories</option>
+                <option value="capacitor">Capacitors</option>
+                <option value="inductor">Inductors</option>
+                <option value="resistor">Resistors</option>
+                <option value="filter">Filters</option>
+                <option value="amplifier">Amplifiers</option>
+                <option value="connector">Connectors</option>
+            </select>
+        </div>
+
+        <div class="grid lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-1 space-y-4 max-h-screen overflow-y-auto" id="componentList">
+                <!-- Component cards will be rendered here -->
+            </div>
+
+            <div class="lg:col-span-2 space-y-6">
+                <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h2 class="text-2xl font-bold text-cyan-400" id="componentName">Select a Component</h2>
+                            <p class="text-gray-400" id="componentDesc">Choose from the library to view details</p>
+                        </div>
+                        <span class="px-3 py-1 bg-cyan-600/30 text-cyan-400 rounded-full text-sm" id="componentCategory">-</span>
+                    </div>
+                    <div class="grid md:grid-cols-4 gap-4 mb-6" id="componentSpecs">
+                        <!-- Specs will be rendered here -->
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-chart-line mr-2"></i>S-Parameters</h3>
+                    <div id="sparamChart" style="height: 300px;"></div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                        <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-compass mr-2"></i>Smith Chart</h3>
+                        <div id="smithChart" style="height: 280px;"></div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                        <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-project-diagram mr-2"></i>Equivalent Circuit</h3>
+                        <div id="equivCircuit" class="flex items-center justify-center p-4 bg-gray-900 rounded-lg min-h-48"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const components = [
+            {
+                id: 'mlcc-100pf',
+                name: 'MLCC 100pF 0201',
+                category: 'capacitor',
+                manufacturer: 'Murata',
+                partNumber: 'GRM033R71E101KA01',
+                specs: { capacitance: '100 pF', voltage: '25V', tolerance: '±10%', size: '0201' },
+                srf: 8.5,
+                esr: 0.15,
+                esl: 0.3
+            },
+            {
+                id: 'mlcc-1nf',
+                name: 'MLCC 1nF 0402',
+                category: 'capacitor',
+                manufacturer: 'Murata',
+                partNumber: 'GRM155R71H102KA01',
+                specs: { capacitance: '1 nF', voltage: '50V', tolerance: '±10%', size: '0402' },
+                srf: 2.5,
+                esr: 0.1,
+                esl: 0.5
+            },
+            {
+                id: 'inductor-10nh',
+                name: 'RF Inductor 10nH',
+                category: 'inductor',
+                manufacturer: 'Coilcraft',
+                partNumber: '0402HP-10NXJLW',
+                specs: { inductance: '10 nH', current: '300 mA', dcr: '0.35 Ω', size: '0402' },
+                srf: 6.0,
+                q: 45
+            },
+            {
+                id: 'inductor-22nh',
+                name: 'RF Inductor 22nH',
+                category: 'inductor',
+                manufacturer: 'Coilcraft',
+                partNumber: '0402HP-22NXJLW',
+                specs: { inductance: '22 nH', current: '250 mA', dcr: '0.5 Ω', size: '0402' },
+                srf: 4.2,
+                q: 50
+            },
+            {
+                id: 'resistor-50ohm',
+                name: 'Thin Film 50Ω',
+                category: 'resistor',
+                manufacturer: 'Vishay',
+                partNumber: 'FC0402E50R0BSTS',
+                specs: { resistance: '50 Ω', power: '63 mW', tolerance: '±0.1%', size: '0402' },
+                tcr: 25
+            },
+            {
+                id: 'filter-2.4ghz',
+                name: 'SAW Filter 2.4GHz',
+                category: 'filter',
+                manufacturer: 'Murata',
+                partNumber: 'SAFFB2G40MA0F0A',
+                specs: { frequency: '2.4 GHz', bandwidth: '100 MHz', insertion: '1.5 dB', size: '1.1×0.9mm' },
+                il: 1.5,
+                rl: 15
+            },
+            {
+                id: 'lna-28ghz',
+                name: 'mmWave LNA 28GHz',
+                category: 'amplifier',
+                manufacturer: 'Analog Devices',
+                partNumber: 'HMC1040',
+                specs: { frequency: '24-40 GHz', gain: '22 dB', nf: '2.5 dB', p1dB: '10 dBm' },
+                gain: 22,
+                nf: 2.5
+            },
+            {
+                id: 'sma-connector',
+                name: 'SMA Connector',
+                category: 'connector',
+                manufacturer: 'Amphenol',
+                partNumber: '132134',
+                specs: { frequency: 'DC-18 GHz', impedance: '50 Ω', vswr: '1.15:1', gender: 'Female' },
+                rl: 20
+            }
+        ];
+
+        let selectedComponent = null;
+
+        function renderComponentList(filter = 'all', search = '') {
+            const list = document.getElementById('componentList');
+            const filtered = components.filter(c => {
+                const matchCategory = filter === 'all' || c.category === filter;
+                const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
+                                   c.partNumber.toLowerCase().includes(search.toLowerCase());
+                return matchCategory && matchSearch;
+            });
+
+            list.innerHTML = filtered.map(c => `
+                <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 cursor-pointer hover:border-cyan-400 transition-all ${selectedComponent?.id === c.id ? 'ring-2 ring-cyan-400' : ''}"
+                     onclick="selectComponent('${c.id}')">
+                    <div class="flex justify-between items-start mb-2">
+                        <h4 class="font-semibold text-white">${c.name}</h4>
+                        <span class="text-xs px-2 py-1 bg-gray-700 rounded">${c.category}</span>
+                    </div>
+                    <p class="text-sm text-gray-400">${c.manufacturer} • ${c.partNumber}</p>
+                    <div class="flex gap-2 mt-2">
+                        ${Object.entries(c.specs).slice(0, 2).map(([k, v]) =>
+                            `<span class="text-xs bg-gray-700/50 px-2 py-1 rounded">${v}</span>`
+                        ).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function selectComponent(id) {
+            selectedComponent = components.find(c => c.id === id);
+            if (!selectedComponent) return;
+
+            document.getElementById('componentName').textContent = selectedComponent.name;
+            document.getElementById('componentDesc').textContent =
+                `${selectedComponent.manufacturer} • ${selectedComponent.partNumber}`;
+            document.getElementById('componentCategory').textContent = selectedComponent.category;
+
+            // Render specs
+            document.getElementById('componentSpecs').innerHTML = Object.entries(selectedComponent.specs).map(([k, v]) => `
+                <div class="bg-gray-700/50 rounded-lg p-3 text-center">
+                    <div class="text-xl font-bold text-cyan-400">${v}</div>
+                    <div class="text-xs text-gray-400 capitalize">${k}</div>
+                </div>
+            `).join('');
+
+            // Update charts
+            updateSparamChart();
+            updateSmithChart();
+            updateEquivCircuit();
+
+            renderComponentList(document.getElementById('categoryFilter').value,
+                               document.getElementById('searchBox').value);
+        }
+
+        function updateSparamChart() {
+            const freq = [];
+            const s11 = [];
+            const s21 = [];
+
+            const srf = selectedComponent.srf || 10;
+
+            for (let f = 0.1; f <= 20; f += 0.2) {
+                freq.push(f);
+
+                if (selectedComponent.category === 'capacitor') {
+                    const ratio = f / srf;
+                    const s11Val = -10 - 10 / (1 + (ratio * 2) ** 2);
+                    const s21Val = -0.1 - 0.5 * ratio ** 2;
+                    s11.push(s11Val);
+                    s21.push(Math.max(s21Val, -40));
+                } else if (selectedComponent.category === 'inductor') {
+                    const ratio = f / srf;
+                    const s11Val = -15 + 10 * ratio;
+                    const s21Val = -0.2 - ratio ** 2;
+                    s11.push(Math.min(s11Val, 0));
+                    s21.push(Math.max(s21Val, -40));
+                } else if (selectedComponent.category === 'filter') {
+                    const fc = 2.4;
+                    const bw = 0.1;
+                    const delta = (f - fc) / bw;
+                    s11.push(-15 * Math.exp(-delta ** 2) - 3);
+                    s21.push(-1.5 - 20 * Math.min(delta ** 2, 10));
+                } else if (selectedComponent.category === 'amplifier') {
+                    const gain = selectedComponent.gain || 20;
+                    s11.push(-15 + Math.random() * 2);
+                    s21.push(gain - Math.abs(f - 28) * 0.5);
+                } else {
+                    s11.push(-20 + Math.random() * 2);
+                    s21.push(-0.1 - f * 0.01);
+                }
+            }
+
+            Plotly.newPlot('sparamChart', [
+                { x: freq, y: s11, name: 'S11', line: { color: '#06b6d4' } },
+                { x: freq, y: s21, name: 'S21', line: { color: '#10b981' } }
+            ], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 50, r: 20, t: 10, b: 40 },
+                xaxis: { title: 'Frequency (GHz)', gridcolor: '#374151' },
+                yaxis: { title: 'Magnitude (dB)', gridcolor: '#374151' },
+                legend: { orientation: 'h', y: -0.15 }
+            }, { responsive: true });
+        }
+
+        function updateSmithChart() {
+            const traces = [];
+
+            // Unit circle
+            const unitX = [], unitY = [];
+            for (let t = 0; t <= 360; t += 5) {
+                unitX.push(Math.cos(t * Math.PI / 180));
+                unitY.push(Math.sin(t * Math.PI / 180));
+            }
+            traces.push({ x: unitX, y: unitY, mode: 'lines', line: { color: '#6b7280' }, showlegend: false });
+
+            // S11 trajectory
+            const s11X = [], s11Y = [];
+            for (let f = 0.1; f <= 20; f += 0.5) {
+                const angle = f * 20 * Math.PI / 180;
+                const mag = 0.3 + 0.5 * Math.exp(-f / 5);
+                s11X.push(mag * Math.cos(angle));
+                s11Y.push(mag * Math.sin(angle));
+            }
+            traces.push({ x: s11X, y: s11Y, mode: 'lines+markers', line: { color: '#06b6d4' }, marker: { size: 3 }, name: 'S11' });
+
+            Plotly.newPlot('smithChart', traces, {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 20, r: 20, t: 10, b: 20 },
+                xaxis: { range: [-1.2, 1.2], showgrid: false },
+                yaxis: { range: [-1.2, 1.2], showgrid: false, scaleanchor: 'x' },
+                showlegend: false
+            }, { responsive: true });
+        }
+
+        function updateEquivCircuit() {
+            const div = document.getElementById('equivCircuit');
+            let html = '<div class="flex items-center gap-2">';
+
+            if (selectedComponent.category === 'capacitor') {
+                html += `
+                    <div class="text-gray-400">○</div>
+                    <div class="w-8 h-0.5 bg-cyan-500"></div>
+                    <div class="bg-purple-600 text-white px-2 py-1 rounded text-xs">ESL<br>${selectedComponent.esl || 0.3}nH</div>
+                    <div class="w-8 h-0.5 bg-cyan-500"></div>
+                    <div class="bg-amber-600 text-white px-2 py-1 rounded text-xs">ESR<br>${selectedComponent.esr || 0.1}Ω</div>
+                    <div class="w-8 h-0.5 bg-cyan-500"></div>
+                    <div class="bg-green-600 text-white px-2 py-1 rounded text-xs">C<br>${selectedComponent.specs.capacitance}</div>
+                    <div class="w-8 h-0.5 bg-cyan-500"></div>
+                    <div class="text-gray-400">○</div>
+                `;
+            } else if (selectedComponent.category === 'inductor') {
+                html += `
+                    <div class="text-gray-400">○</div>
+                    <div class="w-8 h-0.5 bg-cyan-500"></div>
+                    <div class="bg-amber-600 text-white px-2 py-1 rounded text-xs">L<br>${selectedComponent.specs.inductance}</div>
+                    <div class="w-8 h-0.5 bg-cyan-500"></div>
+                    <div class="flex flex-col items-center">
+                        <div class="bg-gray-600 text-white px-2 py-1 rounded text-xs">DCR<br>${selectedComponent.specs.dcr}</div>
+                    </div>
+                    <div class="w-8 h-0.5 bg-cyan-500"></div>
+                    <div class="text-gray-400">○</div>
+                `;
+            } else {
+                html += `<div class="text-gray-400">Component model not available</div>`;
+            }
+
+            html += '</div>';
+            div.innerHTML = html;
+        }
+
+        // Event listeners
+        document.getElementById('searchBox').addEventListener('input', (e) => {
+            renderComponentList(document.getElementById('categoryFilter').value, e.target.value);
+        });
+
+        document.getElementById('categoryFilter').addEventListener('change', (e) => {
+            renderComponentList(e.target.value, document.getElementById('searchBox').value);
+        });
+
+        // Initialize
+        renderComponentList();
+        selectComponent('mlcc-100pf');
+    </script>
+</body>
+</html>
