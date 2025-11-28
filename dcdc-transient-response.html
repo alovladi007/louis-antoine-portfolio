@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transient Response - DC-DC Converter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #c084fc 100%); }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-violet-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="dcdc-converter-complete-project.html" class="flex items-center text-violet-400 hover:text-violet-300 transition-colors">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to DC-DC Project
+                </a>
+                <span class="text-violet-400 font-semibold">Transient Response</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4">
+                <i class="fas fa-wave-square mr-4 text-violet-200"></i>Transient Response Simulator
+            </h1>
+            <p class="text-xl text-violet-100 max-w-3xl mx-auto">
+                Load step response analysis with PID control loop visualization
+            </p>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Load Step Config -->
+            <div class="bg-gray-800 rounded-xl border border-violet-500/30 p-6">
+                <h2 class="text-xl font-semibold text-violet-400 mb-4"><i class="fas fa-bolt mr-2"></i>Load Step</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>Initial Load</span><span id="i1Val" class="text-violet-400">2A</span></label>
+                        <input type="range" id="i1" min="0" max="10" step="0.5" value="2" class="w-full" oninput="updateSim()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>Final Load</span><span id="i2Val" class="text-violet-400">15A</span></label>
+                        <input type="range" id="i2" min="5" max="25" step="0.5" value="15" class="w-full" oninput="updateSim()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>Step Time</span><span id="stepVal" class="text-violet-400">100µs</span></label>
+                        <input type="range" id="stepTime" min="10" max="500" step="10" value="100" class="w-full" oninput="updateSim()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>Slew Rate</span><span id="slewVal" class="text-violet-400">50A/µs</span></label>
+                        <input type="range" id="slew" min="10" max="200" step="10" value="50" class="w-full" oninput="updateSim()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Output Stage -->
+            <div class="bg-gray-800 rounded-xl border border-violet-500/30 p-6">
+                <h2 class="text-xl font-semibold text-violet-400 mb-4"><i class="fas fa-microchip mr-2"></i>Output Stage</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>Output Cap</span><span id="coutVal" class="text-violet-400">470µF</span></label>
+                        <input type="range" id="cout" min="100" max="2000" step="50" value="470" class="w-full" oninput="updateSim()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>ESR</span><span id="esrVal" class="text-violet-400">5mΩ</span></label>
+                        <input type="range" id="esr" min="1" max="50" step="1" value="5" class="w-full" oninput="updateSim()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>Inductance</span><span id="lVal" class="text-violet-400">1µH</span></label>
+                        <input type="range" id="L" min="0.2" max="5" step="0.1" value="1" class="w-full" oninput="updateSim()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>Vout Target</span><span id="voutVal" class="text-violet-400">1.2V</span></label>
+                        <input type="range" id="vout" min="0.8" max="3.3" step="0.1" value="1.2" class="w-full" oninput="updateSim()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- PID Controller -->
+            <div class="bg-gray-800 rounded-xl border border-violet-500/30 p-6">
+                <h2 class="text-xl font-semibold text-violet-400 mb-4"><i class="fas fa-sliders-h mr-2"></i>PID Control</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>Kp</span><span id="kpVal" class="text-violet-400">0.5</span></label>
+                        <input type="range" id="kp" min="0.1" max="2" step="0.05" value="0.5" class="w-full" oninput="updateSim()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>Ki</span><span id="kiVal" class="text-violet-400">5000</span></label>
+                        <input type="range" id="ki" min="1000" max="20000" step="500" value="5000" class="w-full" oninput="updateSim()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>Kd</span><span id="kdVal" class="text-violet-400">0.0001</span></label>
+                        <input type="range" id="kd" min="0" max="0.001" step="0.00005" value="0.0001" class="w-full" oninput="updateSim()">
+                    </div>
+                    <button onclick="autoTune()" class="w-full bg-violet-600 hover:bg-violet-700 text-white py-2 rounded-lg">
+                        <i class="fas fa-magic mr-2"></i>Auto-Tune
+                    </button>
+                </div>
+            </div>
+
+            <!-- Metrics -->
+            <div class="bg-gray-800 rounded-xl border border-violet-500/30 p-6">
+                <h2 class="text-xl font-semibold text-violet-400 mb-4"><i class="fas fa-chart-bar mr-2"></i>Metrics</h2>
+                <div class="space-y-3">
+                    <div class="p-3 bg-red-500/20 rounded-lg">
+                        <div class="flex justify-between">
+                            <span class="text-gray-400 text-sm">Undershoot</span>
+                            <span id="undershoot" class="text-red-400 font-bold">-45mV</span>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-green-500/20 rounded-lg">
+                        <div class="flex justify-between">
+                            <span class="text-gray-400 text-sm">Overshoot</span>
+                            <span id="overshoot" class="text-green-400 font-bold">+12mV</span>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-cyan-500/20 rounded-lg">
+                        <div class="flex justify-between">
+                            <span class="text-gray-400 text-sm">Recovery Time</span>
+                            <span id="recovery" class="text-cyan-400 font-bold">48µs</span>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-violet-500/20 rounded-lg">
+                        <div class="flex justify-between">
+                            <span class="text-gray-400 text-sm">Settling Time</span>
+                            <span id="settling" class="text-violet-400 font-bold">85µs</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="grid grid-cols-1 gap-6 mb-8">
+            <div class="bg-gray-800 rounded-xl border border-violet-500/30 p-6">
+                <h3 class="text-lg font-semibold text-violet-400 mb-4">Output Voltage Response</h3>
+                <div id="voutChart" style="height: 350px;"></div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-gray-800 rounded-xl border border-violet-500/30 p-6">
+                <h3 class="text-lg font-semibold text-violet-400 mb-4">Inductor Current</h3>
+                <div id="iLChart" style="height: 280px;"></div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-violet-500/30 p-6">
+                <h3 class="text-lg font-semibold text-violet-400 mb-4">Duty Cycle Command</h3>
+                <div id="dutyChart" style="height: 280px;"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function updateSim() {
+            const i1 = parseFloat(document.getElementById('i1').value);
+            const i2 = parseFloat(document.getElementById('i2').value);
+            const stepTime = parseFloat(document.getElementById('stepTime').value);
+            const slew = parseFloat(document.getElementById('slew').value);
+            const cout = parseFloat(document.getElementById('cout').value);
+            const esr = parseFloat(document.getElementById('esr').value);
+            const L = parseFloat(document.getElementById('L').value);
+            const vout = parseFloat(document.getElementById('vout').value);
+            const kp = parseFloat(document.getElementById('kp').value);
+            const ki = parseFloat(document.getElementById('ki').value);
+            const kd = parseFloat(document.getElementById('kd').value);
+
+            // Update displays
+            document.getElementById('i1Val').textContent = i1 + 'A';
+            document.getElementById('i2Val').textContent = i2 + 'A';
+            document.getElementById('stepVal').textContent = stepTime + 'µs';
+            document.getElementById('slewVal').textContent = slew + 'A/µs';
+            document.getElementById('coutVal').textContent = cout + 'µF';
+            document.getElementById('esrVal').textContent = esr + 'mΩ';
+            document.getElementById('lVal').textContent = L + 'µH';
+            document.getElementById('voutVal').textContent = vout + 'V';
+            document.getElementById('kpVal').textContent = kp.toFixed(2);
+            document.getElementById('kiVal').textContent = ki.toFixed(0);
+            document.getElementById('kdVal').textContent = kd.toFixed(5);
+
+            // Simulation parameters
+            const dt = 0.1e-6; // 100ns time step
+            const tTotal = 500e-6; // 500µs total
+            const coutF = cout * 1e-6;
+            const esrOhm = esr * 1e-3;
+            const Lh = L * 1e-6;
+            const stepT = stepTime * 1e-6;
+            const Vin = 12;
+
+            const t = [], voutArr = [], iLArr = [], dutyArr = [], iLoadArr = [];
+
+            let v = vout;
+            let iL = i1;
+            let integral = 0;
+            let prevErr = 0;
+            let duty = vout / Vin;
+
+            for (let time = 0; time < tTotal; time += dt) {
+                // Load current profile
+                let iLoad;
+                if (time < stepT) {
+                    iLoad = i1;
+                } else {
+                    const rampTime = Math.abs(i2 - i1) / (slew * 1e6);
+                    if (time < stepT + rampTime) {
+                        iLoad = i1 + (i2 - i1) * (time - stepT) / rampTime;
+                    } else {
+                        iLoad = i2;
+                    }
+                }
+
+                // PID control
+                const err = vout - v;
+                integral += err * dt;
+                const deriv = (err - prevErr) / dt;
+                duty = 0.1 + kp * err + ki * integral + kd * deriv;
+                duty = Math.max(0.05, Math.min(0.95, duty));
+                prevErr = err;
+
+                // Simplified converter dynamics
+                const vSwNode = duty * Vin;
+                const diL = (vSwNode - v) / Lh * dt;
+                iL += diL;
+
+                const iCap = iL - iLoad;
+                const dv = iCap / coutF * dt;
+                v += dv;
+
+                // ESR voltage drop
+                const vEsr = iCap * esrOhm;
+                const vMeas = v + vEsr;
+
+                t.push(time * 1e6);
+                voutArr.push(vMeas * 1000); // mV
+                iLArr.push(iL);
+                dutyArr.push(duty * 100);
+                iLoadArr.push(iLoad);
+            }
+
+            // Calculate metrics
+            const vTarget = vout * 1000;
+            const undershoot = Math.min(...voutArr) - vTarget;
+            const overshoot = Math.max(...voutArr) - vTarget;
+
+            let recoveryIdx = voutArr.findIndex((v, i) => i > stepTime && Math.abs(v - vTarget) < 10);
+            const recoveryTime = recoveryIdx > 0 ? t[recoveryIdx] - stepTime : 'N/A';
+
+            let settlingIdx = voutArr.length - 1;
+            for (let i = voutArr.length - 1; i > stepTime; i--) {
+                if (Math.abs(voutArr[i] - vTarget) > 5) {
+                    settlingIdx = i + 1;
+                    break;
+                }
+            }
+            const settlingTime = settlingIdx < voutArr.length ? t[settlingIdx] - stepTime : 'N/A';
+
+            document.getElementById('undershoot').textContent = undershoot.toFixed(0) + 'mV';
+            document.getElementById('overshoot').textContent = '+' + Math.max(0, overshoot).toFixed(0) + 'mV';
+            document.getElementById('recovery').textContent = typeof recoveryTime === 'number' ? recoveryTime.toFixed(0) + 'µs' : recoveryTime;
+            document.getElementById('settling').textContent = typeof settlingTime === 'number' ? settlingTime.toFixed(0) + 'µs' : settlingTime;
+
+            // Plot charts
+            Plotly.react('voutChart', [
+                { x: t, y: voutArr, name: 'Vout', line: { color: '#8b5cf6', width: 2 } },
+                { x: [0, t[t.length-1]], y: [vTarget, vTarget], name: 'Target', line: { color: '#22c55e', dash: 'dash' } },
+                { x: [0, t[t.length-1]], y: [vTarget-50, vTarget-50], name: '-50mV', line: { color: '#ef4444', dash: 'dot' } },
+                { x: [0, t[t.length-1]], y: [vTarget+50, vTarget+50], name: '+50mV', line: { color: '#ef4444', dash: 'dot' } }
+            ], {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#9ca3af' }, margin: { t: 30, r: 30, b: 50, l: 70 },
+                xaxis: { title: 'Time (µs)', gridcolor: '#374151' },
+                yaxis: { title: 'Vout (mV)', gridcolor: '#374151' },
+                legend: { x: 1, y: 1, xanchor: 'right' }
+            }, { responsive: true });
+
+            Plotly.react('iLChart', [
+                { x: t, y: iLArr, name: 'IL', line: { color: '#06b6d4', width: 2 } },
+                { x: t, y: iLoadArr, name: 'ILoad', line: { color: '#f59e0b', dash: 'dash' } }
+            ], {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#9ca3af' }, margin: { t: 20, r: 30, b: 50, l: 60 },
+                xaxis: { title: 'Time (µs)', gridcolor: '#374151' },
+                yaxis: { title: 'Current (A)', gridcolor: '#374151' },
+                legend: { x: 1, y: 1, xanchor: 'right' }
+            }, { responsive: true });
+
+            Plotly.react('dutyChart', [{
+                x: t, y: dutyArr, type: 'scatter', mode: 'lines',
+                line: { color: '#a855f7', width: 2 }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#9ca3af' }, margin: { t: 20, r: 30, b: 50, l: 60 },
+                xaxis: { title: 'Time (µs)', gridcolor: '#374151' },
+                yaxis: { title: 'Duty Cycle (%)', gridcolor: '#374151' }
+            }, { responsive: true });
+        }
+
+        function autoTune() {
+            // Simple auto-tuning based on output filter
+            const cout = parseFloat(document.getElementById('cout').value) * 1e-6;
+            const L = parseFloat(document.getElementById('L').value) * 1e-6;
+            const fc = 1 / (2 * Math.PI * Math.sqrt(L * cout));
+
+            document.getElementById('kp').value = 0.6;
+            document.getElementById('ki').value = Math.round(fc * 2);
+            document.getElementById('kd').value = 0.0001;
+            updateSim();
+        }
+
+        updateSim();
+    </script>
+</body>
+</html>
