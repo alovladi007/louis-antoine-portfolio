@@ -1,17 +1,511 @@
 <!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>mac protocol - Comms</title>
-<script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#0a0e27,#1a1f3a);color:#e0e0e0;padding:20px}.container{max-width:1400px;margin:0 auto}header{text-align:center;padding:40px 20px;background:linear-gradient(135deg,#1e3c72,#2a5298);border-radius:15px;margin-bottom:40px}h1{font-size:2.8em;color:#f59e0b;margin-bottom:15px}.subtitle{font-size:1.2em;color:#60a5fa}.nav-btn{background:linear-gradient(135deg,#60a5fa,#3b82f6);color:white;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-flex;gap:8px;margin:10px}.plot-container{background:rgba(30,41,59,0.6);padding:25px;border-radius:15px;margin-bottom:25px;border:1px solid rgba(96,165,250,0.2)}.plot-title{font-size:1.3em;color:#f59e0b;margin-bottom:15px}</style></head>
-<body><div class="container"><header><h1><i class="fas fa-signal"></i> mac protocol</h1>
-<p class="subtitle">Communication System Analysis</p>
-<a href="cross-domain-comms-complete-project.html" class="nav-btn"><i class="fas fa-home"></i> Back</a></header>
-<div class="plot-container"><div class="plot-title">Performance Analysis</div><div id="plot1"></div></div>
-<div class="plot-container"><div class="plot-title">Signal Characteristics</div><div id="plot2"></div></div></div>
-<script>
-const x=Array.from({length:50},(_,i)=>i*0.5);
-const y1=x.map(v=>Math.exp(-v/10));
-const y2=x.map(v=>1-Math.exp(-v/5));
-Plotly.newPlot('plot1',[{x:x,y:y1,mode:'lines',line:{color:'#60a5fa',width:3}}],{plot_bgcolor:'rgba(15,23,42,0.8)',paper_bgcolor:'rgba(0,0,0,0)',font:{color:'#e0e0e0'},xaxis:{title:'SNR (dB)'},yaxis:{title:'BER'},margin:{t:20,r:20,b:60,l:60}});
-Plotly.newPlot('plot2',[{x:x,y:y2,mode:'lines',line:{color:'#f59e0b',width:3}}],{plot_bgcolor:'rgba(15,23,42,0.8)',paper_bgcolor:'rgba(0,0,0,0)',font:{color:'#e0e0e0'},xaxis:{title:'Frequency (kHz)'},yaxis:{title:'Power'},margin:{t:20,r:20,b:60,l:60}});
-</script></body></html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAC Protocol Simulator - Cross-Domain Comms</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #164e63 0%, #155e75 50%, #0e7490 100%); }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 40px rgba(6, 182, 212, 0.3); }
+        .node { transition: all 0.3s ease; }
+        .node.transmitting { animation: pulse 0.5s infinite; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+        .packet { transition: all 0.1s linear; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-cyan-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="cross-domain-comms-complete-project.html" class="flex items-center text-cyan-400 hover:text-cyan-300 transition-colors">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Cross-Domain Comms
+                </a>
+                <span class="text-cyan-400 font-semibold">MAC Protocol Simulator</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4">
+                <i class="fas fa-network-wired mr-4 text-cyan-400"></i>MAC Protocol Simulator
+            </h1>
+            <p class="text-xl text-cyan-100 max-w-3xl mx-auto">
+                Interactive simulation of TDMA, CSMA/CA, and ALOHA protocols for underwater acoustic networks
+            </p>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Protocol Configuration -->
+        <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6 mb-8">
+            <h2 class="text-xl font-semibold text-cyan-400 mb-4"><i class="fas fa-cogs mr-2"></i>Protocol Configuration</h2>
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2">MAC Protocol</label>
+                    <select id="protocol" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white" onchange="updateProtocol()">
+                        <option value="tdma">TDMA</option>
+                        <option value="csma">CSMA/CA</option>
+                        <option value="aloha">Slotted ALOHA</option>
+                        <option value="paloha">Pure ALOHA</option>
+                        <option value="maca">MACA (RTS/CTS)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2">Number of Nodes</label>
+                    <input type="range" id="numNodes" min="2" max="10" value="5" class="w-full" oninput="updateConfig()">
+                    <div class="text-center text-cyan-400" id="nodeDisplay">5</div>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2">Traffic Load (λ)</label>
+                    <input type="range" id="trafficLoad" min="0.1" max="2" step="0.1" value="0.5" class="w-full" oninput="updateConfig()">
+                    <div class="text-center text-cyan-400" id="loadDisplay">0.5</div>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2">Propagation Delay (ms)</label>
+                    <input type="range" id="propDelay" min="10" max="500" value="100" class="w-full" oninput="updateConfig()">
+                    <div class="text-center text-cyan-400" id="delayDisplay">100 ms</div>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2">Packet Size (bytes)</label>
+                    <select id="packetSize" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white" onchange="updateConfig()">
+                        <option value="64">64 bytes</option>
+                        <option value="128">128 bytes</option>
+                        <option value="256" selected>256 bytes</option>
+                        <option value="512">512 bytes</option>
+                        <option value="1024">1024 bytes</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Network Visualization and Timeline -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-cyan-400"><i class="fas fa-project-diagram mr-2"></i>Network Topology</h3>
+                    <div class="flex gap-2">
+                        <button onclick="startSimulation()" id="startBtn" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 rounded-lg transition-colors">
+                            <i class="fas fa-play mr-2"></i>Start
+                        </button>
+                        <button onclick="resetSimulation()" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-lg transition-colors">
+                            <i class="fas fa-redo mr-2"></i>Reset
+                        </button>
+                    </div>
+                </div>
+                <svg id="networkSvg" viewBox="0 0 400 350" class="w-full bg-gray-900 rounded-lg"></svg>
+                <div class="mt-2 flex justify-center gap-4 text-sm">
+                    <span><span class="inline-block w-3 h-3 bg-cyan-400 rounded-full mr-1"></span>Idle</span>
+                    <span><span class="inline-block w-3 h-3 bg-green-400 rounded-full mr-1"></span>Transmitting</span>
+                    <span><span class="inline-block w-3 h-3 bg-red-400 rounded-full mr-1"></span>Collision</span>
+                    <span><span class="inline-block w-3 h-3 bg-yellow-400 rounded-full mr-1"></span>Waiting</span>
+                </div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-stream mr-2"></i>Channel Timeline</h3>
+                <div id="timelineChart" style="height: 310px;"></div>
+            </div>
+        </div>
+
+        <!-- Performance Charts -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-chart-line mr-2"></i>Throughput vs Offered Load</h3>
+                <div id="throughputChart" style="height: 300px;"></div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-clock mr-2"></i>Delay Distribution</h3>
+                <div id="delayChart" style="height: 300px;"></div>
+            </div>
+        </div>
+
+        <!-- Performance Metrics -->
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center card-hover transition-all">
+                <div class="text-3xl font-bold text-cyan-400" id="throughputMetric">0.68</div>
+                <div class="text-sm text-gray-400">Throughput (S)</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center card-hover transition-all">
+                <div class="text-3xl font-bold text-green-400" id="successRate">85%</div>
+                <div class="text-sm text-gray-400">Success Rate</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center card-hover transition-all">
+                <div class="text-3xl font-bold text-red-400" id="collisionRate">12%</div>
+                <div class="text-sm text-gray-400">Collision Rate</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center card-hover transition-all">
+                <div class="text-3xl font-bold text-yellow-400" id="avgDelay">245</div>
+                <div class="text-sm text-gray-400">Avg Delay (ms)</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center card-hover transition-all">
+                <div class="text-3xl font-bold text-purple-400" id="channelUtil">72%</div>
+                <div class="text-sm text-gray-400">Channel Util</div>
+            </div>
+        </div>
+
+        <!-- Event Log -->
+        <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6 mb-8">
+            <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-list-alt mr-2"></i>Event Log</h3>
+            <div id="eventLog" class="h-48 overflow-y-auto bg-gray-900 rounded-lg p-4 font-mono text-sm space-y-1"></div>
+        </div>
+
+        <!-- Protocol Comparison -->
+        <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+            <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-balance-scale mr-2"></i>Protocol Comparison for Underwater Networks</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-gray-700">
+                            <th class="text-left py-3 px-4 text-cyan-400">Protocol</th>
+                            <th class="text-center py-3 px-4 text-cyan-400">Max Throughput</th>
+                            <th class="text-center py-3 px-4 text-cyan-400">Delay</th>
+                            <th class="text-center py-3 px-4 text-cyan-400">Fairness</th>
+                            <th class="text-center py-3 px-4 text-cyan-400">Complexity</th>
+                            <th class="py-3 px-4 text-cyan-400">Best For</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-b border-gray-700/50 hover:bg-gray-700/30">
+                            <td class="py-3 px-4">TDMA</td>
+                            <td class="text-center py-3 px-4">1.0</td>
+                            <td class="text-center py-3 px-4 text-yellow-400">High (fixed)</td>
+                            <td class="text-center py-3 px-4 text-green-400">Excellent</td>
+                            <td class="text-center py-3 px-4 text-yellow-400">Medium</td>
+                            <td class="py-3 px-4">Synchronized networks, QoS</td>
+                        </tr>
+                        <tr class="border-b border-gray-700/50 hover:bg-gray-700/30">
+                            <td class="py-3 px-4">CSMA/CA</td>
+                            <td class="text-center py-3 px-4">~0.82</td>
+                            <td class="text-center py-3 px-4 text-green-400">Low-Medium</td>
+                            <td class="text-center py-3 px-4 text-yellow-400">Good</td>
+                            <td class="text-center py-3 px-4 text-green-400">Low</td>
+                            <td class="py-3 px-4">Bursty traffic, short ranges</td>
+                        </tr>
+                        <tr class="border-b border-gray-700/50 hover:bg-gray-700/30">
+                            <td class="py-3 px-4">Slotted ALOHA</td>
+                            <td class="text-center py-3 px-4">0.368</td>
+                            <td class="text-center py-3 px-4 text-green-400">Low</td>
+                            <td class="text-center py-3 px-4 text-yellow-400">Fair</td>
+                            <td class="text-center py-3 px-4 text-green-400">Very Low</td>
+                            <td class="py-3 px-4">Simple sensors, low traffic</td>
+                        </tr>
+                        <tr class="border-b border-gray-700/50 hover:bg-gray-700/30">
+                            <td class="py-3 px-4">Pure ALOHA</td>
+                            <td class="text-center py-3 px-4">0.184</td>
+                            <td class="text-center py-3 px-4 text-green-400">Very Low</td>
+                            <td class="text-center py-3 px-4 text-red-400">Poor</td>
+                            <td class="text-center py-3 px-4 text-green-400">Very Low</td>
+                            <td class="py-3 px-4">Sparse networks</td>
+                        </tr>
+                        <tr class="hover:bg-gray-700/30">
+                            <td class="py-3 px-4">MACA (RTS/CTS)</td>
+                            <td class="text-center py-3 px-4">~0.70</td>
+                            <td class="text-center py-3 px-4 text-yellow-400">Medium-High</td>
+                            <td class="text-center py-3 px-4 text-green-400">Good</td>
+                            <td class="text-center py-3 px-4 text-yellow-400">Medium</td>
+                            <td class="py-3 px-4">Hidden terminal problem</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const plotConfig = { displayModeBar: false, responsive: true };
+        const plotLayout = {
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(17,24,39,0.8)',
+            font: { color: '#9ca3af' },
+            margin: { t: 30, r: 30, b: 50, l: 60 }
+        };
+
+        let simRunning = false;
+        let simInterval = null;
+        let simTime = 0;
+        let nodes = [];
+        let events = [];
+        let timelineData = [];
+
+        function updateConfig() {
+            const numNodes = document.getElementById('numNodes').value;
+            const trafficLoad = document.getElementById('trafficLoad').value;
+            const propDelay = document.getElementById('propDelay').value;
+
+            document.getElementById('nodeDisplay').textContent = numNodes;
+            document.getElementById('loadDisplay').textContent = trafficLoad;
+            document.getElementById('delayDisplay').textContent = propDelay + ' ms';
+
+            initializeNetwork();
+            updateCharts();
+        }
+
+        function updateProtocol() {
+            updateConfig();
+        }
+
+        function initializeNetwork() {
+            const numNodes = parseInt(document.getElementById('numNodes').value);
+            const svg = document.getElementById('networkSvg');
+            svg.innerHTML = '';
+
+            nodes = [];
+            const centerX = 200, centerY = 175, radius = 120;
+
+            // Draw central node (base station)
+            const baseCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            baseCircle.setAttribute('cx', centerX);
+            baseCircle.setAttribute('cy', centerY);
+            baseCircle.setAttribute('r', 25);
+            baseCircle.setAttribute('fill', '#0e7490');
+            baseCircle.setAttribute('stroke', '#06b6d4');
+            baseCircle.setAttribute('stroke-width', '3');
+            svg.appendChild(baseCircle);
+
+            const baseText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            baseText.setAttribute('x', centerX);
+            baseText.setAttribute('y', centerY + 5);
+            baseText.setAttribute('text-anchor', 'middle');
+            baseText.setAttribute('fill', 'white');
+            baseText.setAttribute('font-size', '12');
+            baseText.textContent = 'BS';
+            svg.appendChild(baseText);
+
+            // Draw sensor nodes
+            for (let i = 0; i < numNodes; i++) {
+                const angle = (2 * Math.PI * i) / numNodes - Math.PI / 2;
+                const x = centerX + radius * Math.cos(angle);
+                const y = centerY + radius * Math.sin(angle);
+
+                nodes.push({ id: i, x, y, state: 'idle', queue: 0 });
+
+                // Connection line
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', centerX);
+                line.setAttribute('y1', centerY);
+                line.setAttribute('x2', x);
+                line.setAttribute('y2', y);
+                line.setAttribute('stroke', '#374151');
+                line.setAttribute('stroke-width', '1');
+                line.setAttribute('stroke-dasharray', '4,4');
+                svg.appendChild(line);
+
+                // Node circle
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', x);
+                circle.setAttribute('cy', y);
+                circle.setAttribute('r', 18);
+                circle.setAttribute('fill', '#164e63');
+                circle.setAttribute('stroke', '#06b6d4');
+                circle.setAttribute('stroke-width', '2');
+                circle.setAttribute('id', `node-${i}`);
+                circle.classList.add('node');
+                svg.appendChild(circle);
+
+                // Node label
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', x);
+                text.setAttribute('y', y + 5);
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('fill', 'white');
+                text.setAttribute('font-size', '11');
+                text.textContent = `N${i + 1}`;
+                svg.appendChild(text);
+            }
+        }
+
+        function updateCharts() {
+            const protocol = document.getElementById('protocol').value;
+            const trafficLoad = parseFloat(document.getElementById('trafficLoad').value);
+
+            // Throughput vs Load chart
+            const G = Array.from({length: 30}, (_, i) => i * 0.1);
+            const throughputCurves = {
+                tdma: G.map(g => Math.min(g, 1)),
+                csma: G.map(g => g * Math.exp(-g) / (1 + g * 0.2)),
+                aloha: G.map(g => g * Math.exp(-g)),
+                paloha: G.map(g => g * Math.exp(-2 * g)),
+                maca: G.map(g => g * Math.exp(-g * 0.8) * 0.9)
+            };
+
+            Plotly.newPlot('throughputChart', [
+                { x: G, y: throughputCurves[protocol], name: protocol.toUpperCase(), line: { color: '#06b6d4', width: 3 } },
+                { x: [trafficLoad], y: [throughputCurves[protocol][Math.round(trafficLoad * 10)]],
+                  mode: 'markers', marker: { size: 12, color: '#ef4444' }, name: 'Current' }
+            ], {
+                ...plotLayout,
+                xaxis: { title: 'Offered Load (G)', gridcolor: '#374151' },
+                yaxis: { title: 'Throughput (S)', range: [0, 1], gridcolor: '#374151' },
+                legend: { x: 0.7, y: 0.95 }
+            }, plotConfig);
+
+            // Delay distribution
+            const delays = Array.from({length: 50}, () => {
+                const base = parseFloat(document.getElementById('propDelay').value);
+                return base + Math.random() * base * trafficLoad;
+            });
+
+            Plotly.newPlot('delayChart', [{
+                x: delays,
+                type: 'histogram',
+                marker: { color: '#06b6d4' },
+                nbinsx: 20
+            }], {
+                ...plotLayout,
+                xaxis: { title: 'Delay (ms)', gridcolor: '#374151' },
+                yaxis: { title: 'Count', gridcolor: '#374151' }
+            }, plotConfig);
+
+            // Update timeline
+            updateTimeline();
+
+            // Update metrics
+            updateMetrics();
+        }
+
+        function updateTimeline() {
+            const protocol = document.getElementById('protocol').value;
+            const numNodes = parseInt(document.getElementById('numNodes').value);
+
+            const timeSlots = 20;
+            const traces = [];
+
+            for (let n = 0; n < Math.min(numNodes, 5); n++) {
+                const slots = [];
+                for (let t = 0; t < timeSlots; t++) {
+                    if (protocol === 'tdma') {
+                        slots.push(t % numNodes === n ? 1 : 0);
+                    } else {
+                        slots.push(Math.random() < 0.3 ? 1 : 0);
+                    }
+                }
+                traces.push({
+                    x: Array.from({length: timeSlots}, (_, i) => i),
+                    y: slots.map(s => s + n * 1.5),
+                    type: 'scatter',
+                    mode: 'lines',
+                    fill: 'tozeroy',
+                    name: `Node ${n + 1}`,
+                    line: { shape: 'hv' }
+                });
+            }
+
+            Plotly.newPlot('timelineChart', traces, {
+                ...plotLayout,
+                xaxis: { title: 'Time Slot', gridcolor: '#374151' },
+                yaxis: { title: 'Channel Activity', showticklabels: false, gridcolor: '#374151' },
+                showlegend: true,
+                legend: { x: 1.02, y: 0.5 }
+            }, plotConfig);
+        }
+
+        function updateMetrics() {
+            const protocol = document.getElementById('protocol').value;
+            const trafficLoad = parseFloat(document.getElementById('trafficLoad').value);
+            const propDelay = parseFloat(document.getElementById('propDelay').value);
+
+            const throughputs = { tdma: 0.95, csma: 0.75, aloha: 0.37, paloha: 0.18, maca: 0.65 };
+            const collisions = { tdma: 0, csma: 15, aloha: 35, paloha: 50, maca: 12 };
+
+            const throughput = throughputs[protocol] * Math.min(trafficLoad, 1);
+            const collision = collisions[protocol] * trafficLoad;
+            const delay = propDelay * (1 + trafficLoad);
+
+            document.getElementById('throughputMetric').textContent = throughput.toFixed(2);
+            document.getElementById('successRate').textContent = Math.round(100 - collision) + '%';
+            document.getElementById('collisionRate').textContent = Math.round(collision) + '%';
+            document.getElementById('avgDelay').textContent = Math.round(delay);
+            document.getElementById('channelUtil').textContent = Math.round(throughput * 100) + '%';
+        }
+
+        function logEvent(msg, type = 'info') {
+            const log = document.getElementById('eventLog');
+            const colors = { info: 'text-gray-400', success: 'text-green-400', error: 'text-red-400', warning: 'text-yellow-400' };
+            const timestamp = simTime.toFixed(0).padStart(5, '0');
+            log.innerHTML = `<div class="${colors[type]}">[${timestamp}ms] ${msg}</div>` + log.innerHTML;
+        }
+
+        function startSimulation() {
+            if (simRunning) {
+                simRunning = false;
+                clearInterval(simInterval);
+                document.getElementById('startBtn').innerHTML = '<i class="fas fa-play mr-2"></i>Start';
+                return;
+            }
+
+            simRunning = true;
+            simTime = 0;
+            document.getElementById('startBtn').innerHTML = '<i class="fas fa-pause mr-2"></i>Pause';
+            document.getElementById('eventLog').innerHTML = '';
+
+            logEvent('Simulation started', 'info');
+
+            simInterval = setInterval(() => {
+                simTime += 50;
+                simulateStep();
+            }, 100);
+        }
+
+        function simulateStep() {
+            const protocol = document.getElementById('protocol').value;
+            const trafficLoad = parseFloat(document.getElementById('trafficLoad').value);
+
+            nodes.forEach((node, i) => {
+                const element = document.getElementById(`node-${i}`);
+                if (!element) return;
+
+                // Random transmission attempt
+                if (Math.random() < trafficLoad * 0.1) {
+                    if (protocol === 'tdma') {
+                        const currentSlot = Math.floor(simTime / 100) % nodes.length;
+                        if (currentSlot === i) {
+                            element.setAttribute('fill', '#22c55e');
+                            logEvent(`Node ${i + 1} transmitting in slot ${currentSlot}`, 'success');
+                        } else {
+                            element.setAttribute('fill', '#eab308');
+                            logEvent(`Node ${i + 1} waiting for slot`, 'warning');
+                        }
+                    } else {
+                        // Check for collision
+                        const collision = Math.random() < trafficLoad * 0.3;
+                        if (collision) {
+                            element.setAttribute('fill', '#ef4444');
+                            logEvent(`Node ${i + 1} collision detected!`, 'error');
+                        } else {
+                            element.setAttribute('fill', '#22c55e');
+                            logEvent(`Node ${i + 1} transmission successful`, 'success');
+                        }
+                    }
+                } else {
+                    element.setAttribute('fill', '#164e63');
+                }
+            });
+
+            updateMetrics();
+        }
+
+        function resetSimulation() {
+            simRunning = false;
+            clearInterval(simInterval);
+            simTime = 0;
+            document.getElementById('startBtn').innerHTML = '<i class="fas fa-play mr-2"></i>Start';
+            document.getElementById('eventLog').innerHTML = '';
+            initializeNetwork();
+            updateCharts();
+        }
+
+        // Initialize
+        initializeNetwork();
+        updateCharts();
+    </script>
+
+    <footer class="bg-gray-800 border-t border-cyan-500/20 py-6 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center text-gray-400">
+            <p>Cross-Domain Communications - MAC Protocol Simulator</p>
+        </div>
+    </footer>
+</body>
+</html>
