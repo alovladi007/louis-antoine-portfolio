@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Export Tools - Mini-UUV Systems</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%); }
+        pre { white-space: pre-wrap; word-wrap: break-word; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-emerald-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="mini-uuv-complete-project.html" class="flex items-center text-emerald-400 hover:text-emerald-300 transition-colors">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Mini-UUV Project
+                </a>
+                <span class="text-emerald-400 font-semibold">Export Tools</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4">
+                <i class="fas fa-download mr-4 text-emerald-400"></i>Export Tools
+            </h1>
+            <p class="text-xl text-emerald-100 max-w-3xl mx-auto">
+                Multi-format data export for UUV telemetry, mission logs, and analysis results
+            </p>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <!-- Data Source Selection -->
+            <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                <h2 class="text-xl font-semibold text-emerald-400 mb-4"><i class="fas fa-database mr-2"></i>Data Source</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm text-gray-300 mb-1">Source Type</label>
+                        <select id="sourceType" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2" onchange="loadSampleData()">
+                            <option value="telemetry">Telemetry Data</option>
+                            <option value="mission">Mission Log</option>
+                            <option value="navigation">Navigation Path</option>
+                            <option value="sensor">Sensor Readings</option>
+                            <option value="simulation">Simulation Results</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-300 mb-1">Time Range</label>
+                        <select id="timeRange" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2" onchange="loadSampleData()">
+                            <option value="30">Last 30 seconds</option>
+                            <option value="60" selected>Last minute</option>
+                            <option value="300">Last 5 minutes</option>
+                            <option value="all">All data</option>
+                        </select>
+                    </div>
+                    <div class="p-3 bg-gray-700/50 rounded-lg">
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-gray-400">Records</span>
+                            <span id="recordCount" class="text-emerald-400">60</span>
+                        </div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-gray-400">Channels</span>
+                            <span id="channelCount" class="text-emerald-400">8</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-400">Size (est)</span>
+                            <span id="sizeEst" class="text-emerald-400">4.2 KB</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Export Formats -->
+            <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                <h2 class="text-xl font-semibold text-emerald-400 mb-4"><i class="fas fa-file-export mr-2"></i>Export Format</h2>
+                <div class="space-y-2">
+                    <label class="flex items-center gap-3 p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 border border-transparent has-[:checked]:border-emerald-500">
+                        <input type="radio" name="format" value="csv" checked class="w-4 h-4 text-emerald-600" onchange="updatePreview()">
+                        <i class="fas fa-file-csv text-green-400"></i>
+                        <div><span class="font-medium">CSV</span><p class="text-xs text-gray-400">Comma-separated values</p></div>
+                    </label>
+                    <label class="flex items-center gap-3 p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 border border-transparent has-[:checked]:border-emerald-500">
+                        <input type="radio" name="format" value="json" class="w-4 h-4 text-emerald-600" onchange="updatePreview()">
+                        <i class="fas fa-file-code text-yellow-400"></i>
+                        <div><span class="font-medium">JSON</span><p class="text-xs text-gray-400">JavaScript Object Notation</p></div>
+                    </label>
+                    <label class="flex items-center gap-3 p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 border border-transparent has-[:checked]:border-emerald-500">
+                        <input type="radio" name="format" value="matlab" class="w-4 h-4 text-emerald-600" onchange="updatePreview()">
+                        <i class="fas fa-file mr-2 text-orange-400"></i>
+                        <div><span class="font-medium">MATLAB</span><p class="text-xs text-gray-400">.m script format</p></div>
+                    </label>
+                    <label class="flex items-center gap-3 p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 border border-transparent has-[:checked]:border-emerald-500">
+                        <input type="radio" name="format" value="python" class="w-4 h-4 text-emerald-600" onchange="updatePreview()">
+                        <i class="fab fa-python text-blue-400"></i>
+                        <div><span class="font-medium">Python</span><p class="text-xs text-gray-400">NumPy/Pandas format</p></div>
+                    </label>
+                    <label class="flex items-center gap-3 p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 border border-transparent has-[:checked]:border-emerald-500">
+                        <input type="radio" name="format" value="ros" class="w-4 h-4 text-emerald-600" onchange="updatePreview()">
+                        <i class="fas fa-robot text-purple-400"></i>
+                        <div><span class="font-medium">ROS Bag</span><p class="text-xs text-gray-400">ROS message format</p></div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Options & Export -->
+            <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                <h2 class="text-xl font-semibold text-emerald-400 mb-4"><i class="fas fa-cog mr-2"></i>Options</h2>
+                <div class="space-y-4">
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" id="includeHeader" checked class="w-4 h-4 text-emerald-600" onchange="updatePreview()">
+                        <span class="text-sm text-gray-300">Include header/metadata</span>
+                    </label>
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" id="includeTimestamp" checked class="w-4 h-4 text-emerald-600" onchange="updatePreview()">
+                        <span class="text-sm text-gray-300">Include timestamps</span>
+                    </label>
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" id="interpolate" class="w-4 h-4 text-emerald-600">
+                        <span class="text-sm text-gray-300">Interpolate missing values</span>
+                    </label>
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" id="compress" class="w-4 h-4 text-emerald-600">
+                        <span class="text-sm text-gray-300">Compress output (gzip)</span>
+                    </label>
+                    <div>
+                        <label class="block text-sm text-gray-300 mb-1">Decimal Precision</label>
+                        <select id="precision" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2" onchange="updatePreview()">
+                            <option value="2">2 digits</option>
+                            <option value="3" selected>3 digits</option>
+                            <option value="4">4 digits</option>
+                            <option value="6">6 digits (full)</option>
+                        </select>
+                    </div>
+                    <button onclick="exportData()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-lg font-semibold mt-4">
+                        <i class="fas fa-download mr-2"></i>Export Data
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-emerald-400"><i class="fas fa-eye mr-2"></i>Preview</h3>
+                    <button onclick="copyToClipboard()" class="text-sm text-gray-400 hover:text-white">
+                        <i class="fas fa-copy mr-1"></i>Copy
+                    </button>
+                </div>
+                <pre id="preview" class="bg-gray-900 rounded-lg p-4 h-80 overflow-auto text-sm text-gray-300 font-mono"></pre>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                <h3 class="text-lg font-semibold text-emerald-400 mb-4"><i class="fas fa-chart-line mr-2"></i>Data Visualization</h3>
+                <div id="dataChart" style="height: 320px;"></div>
+            </div>
+        </div>
+
+        <!-- Quick Templates -->
+        <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+            <h3 class="text-lg font-semibold text-emerald-400 mb-4"><i class="fas fa-bookmark mr-2"></i>Quick Export Templates</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <button onclick="applyTemplate('analysis')" class="p-4 bg-gray-700/50 rounded-lg hover:bg-gray-700 text-left">
+                    <i class="fas fa-chart-bar text-2xl text-emerald-400 mb-2"></i>
+                    <div class="font-medium">Analysis Ready</div>
+                    <div class="text-xs text-gray-400">CSV + all channels</div>
+                </button>
+                <button onclick="applyTemplate('matlab')" class="p-4 bg-gray-700/50 rounded-lg hover:bg-gray-700 text-left">
+                    <i class="fas fa-square-root-alt text-2xl text-orange-400 mb-2"></i>
+                    <div class="font-medium">MATLAB Script</div>
+                    <div class="text-xs text-gray-400">Full precision .m</div>
+                </button>
+                <button onclick="applyTemplate('ros')" class="p-4 bg-gray-700/50 rounded-lg hover:bg-gray-700 text-left">
+                    <i class="fas fa-robot text-2xl text-purple-400 mb-2"></i>
+                    <div class="font-medium">ROS Compatible</div>
+                    <div class="text-xs text-gray-400">Timestamped JSON</div>
+                </button>
+                <button onclick="applyTemplate('report')" class="p-4 bg-gray-700/50 rounded-lg hover:bg-gray-700 text-left">
+                    <i class="fas fa-file-alt text-2xl text-blue-400 mb-2"></i>
+                    <div class="font-medium">Report Data</div>
+                    <div class="text-xs text-gray-400">Summary statistics</div>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let sampleData = [];
+
+        function loadSampleData() {
+            const range = parseInt(document.getElementById('timeRange').value) || 60;
+            const source = document.getElementById('sourceType').value;
+            sampleData = [];
+
+            for (let i = 0; i < range; i++) {
+                sampleData.push({
+                    timestamp: i,
+                    depth: (5 + 3 * Math.sin(i * 0.1) + (Math.random() - 0.5) * 0.3).toFixed(3),
+                    heading: ((180 + 20 * Math.sin(i * 0.05)) % 360).toFixed(1),
+                    pitch: (2 * Math.sin(i * 0.15) + (Math.random() - 0.5)).toFixed(2),
+                    roll: (1.5 * Math.sin(i * 0.2) + (Math.random() - 0.5) * 0.5).toFixed(2),
+                    speed: (1.2 + Math.random() * 0.2).toFixed(3),
+                    battery: Math.max(0, 100 - i * 0.05).toFixed(1),
+                    thruster_l: (1500 + Math.sin(i * 0.3) * 150).toFixed(0),
+                    thruster_r: (1500 + Math.sin(i * 0.3 + 0.5) * 150).toFixed(0)
+                });
+            }
+
+            document.getElementById('recordCount').textContent = sampleData.length;
+            document.getElementById('channelCount').textContent = Object.keys(sampleData[0]).length;
+            document.getElementById('sizeEst').textContent = (JSON.stringify(sampleData).length / 1024).toFixed(1) + ' KB';
+
+            updatePreview();
+            updateChart();
+        }
+
+        function updatePreview() {
+            const format = document.querySelector('input[name="format"]:checked').value;
+            const precision = parseInt(document.getElementById('precision').value);
+            const includeHeader = document.getElementById('includeHeader').checked;
+            const includeTs = document.getElementById('includeTimestamp').checked;
+
+            let preview = '';
+            const previewData = sampleData.slice(0, 10);
+
+            switch (format) {
+                case 'csv':
+                    if (includeHeader) {
+                        const cols = includeTs ? Object.keys(previewData[0]) : Object.keys(previewData[0]).filter(k => k !== 'timestamp');
+                        preview = cols.join(',') + '\n';
+                    }
+                    previewData.forEach(row => {
+                        const vals = includeTs ? Object.values(row) : Object.values(row).slice(1);
+                        preview += vals.join(',') + '\n';
+                    });
+                    preview += '... (' + (sampleData.length - 10) + ' more rows)';
+                    break;
+
+                case 'json':
+                    preview = JSON.stringify(includeHeader ? { metadata: { source: 'Mini-UUV', samples: sampleData.length }, data: previewData } : previewData, null, 2);
+                    preview += '\n... (truncated)';
+                    break;
+
+                case 'matlab':
+                    preview = '% Mini-UUV Telemetry Data\n% Generated: ' + new Date().toISOString() + '\n\n';
+                    preview += 'depth = [' + previewData.map(r => r.depth).join(', ') + ', ...];\n';
+                    preview += 'heading = [' + previewData.map(r => r.heading).join(', ') + ', ...];\n';
+                    preview += 'pitch = [' + previewData.map(r => r.pitch).join(', ') + ', ...];\n';
+                    preview += 'roll = [' + previewData.map(r => r.roll).join(', ') + ', ...];\n\n';
+                    preview += '% Plot depth profile\nfigure;\nplot(depth);\nxlabel(\'Sample\');\nylabel(\'Depth (m)\');';
+                    break;
+
+                case 'python':
+                    preview = '# Mini-UUV Telemetry Data\nimport numpy as np\nimport pandas as pd\n\n';
+                    preview += 'data = {\n';
+                    preview += '    "depth": np.array([' + previewData.map(r => r.depth).join(', ') + ', ...]),\n';
+                    preview += '    "heading": np.array([' + previewData.map(r => r.heading).join(', ') + ', ...]),\n';
+                    preview += '    "pitch": np.array([' + previewData.map(r => r.pitch).join(', ') + ', ...]),\n';
+                    preview += '}\n\ndf = pd.DataFrame(data)';
+                    break;
+
+                case 'ros':
+                    preview = '# ROS2 Message Format\n---\nheader:\n  stamp:\n    sec: ' + Math.floor(Date.now()/1000) + '\n    nanosec: 0\n  frame_id: "uuv_base"\n\n';
+                    preview += 'pose:\n  position:\n    x: 0.0\n    y: 0.0\n    z: ' + previewData[0].depth + '\n  orientation:\n    roll: ' + previewData[0].roll + '\n    pitch: ' + previewData[0].pitch + '\n    yaw: ' + previewData[0].heading;
+                    break;
+            }
+
+            document.getElementById('preview').textContent = preview;
+        }
+
+        function updateChart() {
+            const depth = sampleData.map(d => parseFloat(d.depth));
+            const heading = sampleData.map(d => parseFloat(d.heading));
+            const t = sampleData.map(d => d.timestamp);
+
+            Plotly.react('dataChart', [
+                { x: t, y: depth, name: 'Depth (m)', line: { color: '#10b981' } },
+                { x: t, y: heading.map(h => h / 36), name: 'Heading/36', yaxis: 'y2', line: { color: '#06b6d4' } }
+            ], {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#9ca3af' }, margin: { t: 20, r: 50, b: 40, l: 50 },
+                xaxis: { title: 'Time (s)', gridcolor: '#374151' },
+                yaxis: { title: 'Depth (m)', gridcolor: '#374151' },
+                yaxis2: { title: 'Heading (scaled)', overlaying: 'y', side: 'right' },
+                legend: { x: 0, y: 1.1, orientation: 'h' }
+            }, { responsive: true });
+        }
+
+        function exportData() {
+            const format = document.querySelector('input[name="format"]:checked').value;
+            const extensions = { csv: 'csv', json: 'json', matlab: 'm', python: 'py', ros: 'yaml' };
+            const mimeTypes = { csv: 'text/csv', json: 'application/json', matlab: 'text/plain', python: 'text/plain', ros: 'text/yaml' };
+
+            const content = document.getElementById('preview').textContent.replace('... (truncated)', '').replace(/\.\.\. \(\d+ more rows\)/, '');
+            const blob = new Blob([content], { type: mimeTypes[format] });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'uuv_data.' + extensions[format];
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function copyToClipboard() {
+            navigator.clipboard.writeText(document.getElementById('preview').textContent);
+            alert('Copied to clipboard!');
+        }
+
+        function applyTemplate(template) {
+            switch (template) {
+                case 'analysis':
+                    document.querySelector('input[value="csv"]').checked = true;
+                    document.getElementById('precision').value = '4';
+                    break;
+                case 'matlab':
+                    document.querySelector('input[value="matlab"]').checked = true;
+                    document.getElementById('precision').value = '6';
+                    break;
+                case 'ros':
+                    document.querySelector('input[value="ros"]').checked = true;
+                    document.getElementById('includeTimestamp').checked = true;
+                    break;
+                case 'report':
+                    document.querySelector('input[value="json"]').checked = true;
+                    document.getElementById('includeHeader').checked = true;
+                    break;
+            }
+            updatePreview();
+        }
+
+        // Initialize
+        loadSampleData();
+    </script>
+</body>
+</html>
