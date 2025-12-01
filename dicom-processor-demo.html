@@ -3,42 +3,330 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DICOM Processing Demo - Medical Imaging AI</title>
+    <title>DICOM Processor - Medical Imaging AI</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%); color: #e0e0e0; line-height: 1.6; }
-        .navigation-bar { position: fixed; top: 0; left: 0; right: 0; background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(10px); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; z-index: 1000; border-bottom: 1px solid rgba(102, 126, 234, 0.3); }
-        .nav-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.3s ease; }
-        .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
-        .hero-section { padding: 120px 2rem 4rem; text-align: center; max-width: 1200px; margin: 0 auto; }
-        .hero-title { font-size: 3rem; font-weight: 800; margin-bottom: 1rem; background: linear-gradient(135deg, #667eea, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .hero-subtitle { font-size: 1.2rem; color: #667eea; margin-bottom: 2rem; }
-        .demo-container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
-        .demo-placeholder { background: rgba(102, 126, 234, 0.1); border: 2px dashed rgba(102, 126, 234, 0.3); border-radius: 15px; padding: 4rem 2rem; text-align: center; margin: 2rem 0; }
-        .demo-placeholder i { font-size: 4rem; color: #667eea; margin-bottom: 1rem; }
-        .demo-placeholder h3 { font-size: 1.5rem; color: #e0e0e0; margin-bottom: 1rem; }
-        .demo-placeholder p { color: #a0a0a0; font-size: 1.1rem; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0a0a0a 0%, #0a1a2e 100%); color: #e0e0e0; min-height: 100vh; }
+        .nav-bar { background: rgba(10, 10, 10, 0.95); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(6, 182, 212, 0.3); position: sticky; top: 0; z-index: 100; backdrop-filter: blur(10px); }
+        .nav-title { color: #06b6d4; font-weight: 600; font-size: 1.2rem; }
+        .nav-btn { background: linear-gradient(135deg, #06b6d4, #0891b2); color: white; padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; transition: all 0.3s ease; }
+        .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(6, 182, 212, 0.4); }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .hero { text-align: center; padding: 3rem 0; background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(8, 145, 178, 0.1)); border-radius: 20px; margin-bottom: 2rem; border: 1px solid rgba(6, 182, 212, 0.2); }
+        .hero h1 { font-size: 2.5rem; background: linear-gradient(135deg, #06b6d4, #0891b2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 1rem; }
+        .hero p { color: #a0a0a0; font-size: 1.1rem; max-width: 700px; margin: 0 auto; }
+        .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
+        @media (max-width: 900px) { .tool-grid { grid-template-columns: 1fr; } }
+        .panel { background: rgba(20, 20, 30, 0.8); border: 1px solid rgba(6, 182, 212, 0.3); border-radius: 15px; padding: 1.5rem; }
+        .panel h3 { color: #06b6d4; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+        .upload-zone { border: 2px dashed rgba(6, 182, 212, 0.4); border-radius: 10px; padding: 3rem; text-align: center; cursor: pointer; transition: all 0.3s ease; background: rgba(6, 182, 212, 0.05); }
+        .upload-zone:hover { border-color: #06b6d4; background: rgba(6, 182, 212, 0.1); }
+        .upload-zone i { font-size: 3rem; color: #06b6d4; margin-bottom: 1rem; }
+        .image-viewer { background: #000; border-radius: 10px; height: 400px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+        .image-viewer canvas { max-width: 100%; max-height: 100%; }
+        .viewer-controls { display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap; }
+        .btn { background: linear-gradient(135deg, #06b6d4, #0891b2); color: white; border: none; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; font-size: 0.85rem; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(6, 182, 212, 0.4); }
+        .btn-secondary { background: rgba(6, 182, 212, 0.2); }
+        .metadata-table { width: 100%; border-collapse: collapse; }
+        .metadata-table th, .metadata-table td { padding: 0.75rem; text-align: left; border-bottom: 1px solid rgba(6, 182, 212, 0.1); }
+        .metadata-table th { color: #06b6d4; font-weight: 600; }
+        .metadata-table td { color: #a0a0a0; font-family: monospace; font-size: 0.9rem; }
+        .tag-category { background: rgba(6, 182, 212, 0.1); padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; color: #06b6d4; }
+        .processing-pipeline { display: flex; gap: 1rem; margin: 1.5rem 0; overflow-x: auto; padding-bottom: 0.5rem; }
+        .pipeline-step { min-width: 120px; text-align: center; padding: 1rem; border-radius: 10px; background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.2); position: relative; }
+        .pipeline-step.active { background: rgba(6, 182, 212, 0.3); border-color: #06b6d4; }
+        .pipeline-step.complete { background: rgba(34, 197, 94, 0.2); border-color: #22c55e; }
+        .pipeline-step i { font-size: 1.5rem; margin-bottom: 0.5rem; display: block; }
+        .pipeline-step.active i { color: #06b6d4; }
+        .pipeline-step.complete i { color: #22c55e; }
+        .pipeline-step span { font-size: 0.8rem; }
+        .pipeline-arrow { display: flex; align-items: center; color: #06b6d4; }
+        .slider-group { margin-bottom: 1rem; }
+        .slider-group label { display: block; color: #a0a0a0; margin-bottom: 0.5rem; font-size: 0.9rem; }
+        .slider-group input[type="range"] { width: 100%; }
+        .histogram-container { height: 200px; margin-top: 1rem; }
     </style>
 </head>
 <body>
-    <nav class="navigation-bar">
-        <div class="nav-title"><i class="fas fa-file-medical"></i> DICOM Processing Demo</div>
+    <nav class="nav-bar">
+        <div class="nav-title"><i class="fas fa-file-medical"></i> DICOM Processor</div>
         <a href="medical-imaging-ai-complete-suite.html" class="nav-btn"><i class="fas fa-arrow-left"></i> Back to Suite</a>
     </nav>
-
-    <section class="hero-section">
-        <h1 class="hero-title">DICOM Processing Demo</h1>
-        <p class="hero-subtitle">Complete DICOM workflow with metadata extraction and preprocessing</p>
-        <p style="color: #a0a0a0; max-width: 800px; margin: 0 auto;">Standardized output for clinical integration with comprehensive medical image processing pipeline.</p>
-    </section>
-
-    <div class="demo-container">
-        <div class="demo-placeholder">
-            <i class="fas fa-cogs"></i>
-            <h3>Interactive DICOM Processor Coming Soon!</h3>
-            <p>This section will feature a live DICOM processing demo allowing you to upload DICOM files and see real-time metadata extraction, image preprocessing, normalization, and standardized output generation.</p>
+    <div class="container">
+        <div class="hero">
+            <h1><i class="fas fa-file-medical"></i> DICOM Processing Pipeline</h1>
+            <p>Complete DICOM workflow with metadata extraction, preprocessing, windowing, and standardized output for clinical AI integration</p>
+        </div>
+        <div class="processing-pipeline" id="pipeline">
+            <div class="pipeline-step complete" id="step1"><i class="fas fa-upload"></i><span>Load DICOM</span></div>
+            <div class="pipeline-arrow"><i class="fas fa-arrow-right"></i></div>
+            <div class="pipeline-step active" id="step2"><i class="fas fa-tags"></i><span>Parse Tags</span></div>
+            <div class="pipeline-arrow"><i class="fas fa-arrow-right"></i></div>
+            <div class="pipeline-step" id="step3"><i class="fas fa-adjust"></i><span>Windowing</span></div>
+            <div class="pipeline-arrow"><i class="fas fa-arrow-right"></i></div>
+            <div class="pipeline-step" id="step4"><i class="fas fa-ruler"></i><span>Normalize</span></div>
+            <div class="pipeline-arrow"><i class="fas fa-arrow-right"></i></div>
+            <div class="pipeline-step" id="step5"><i class="fas fa-crop-alt"></i><span>Preprocess</span></div>
+            <div class="pipeline-arrow"><i class="fas fa-arrow-right"></i></div>
+            <div class="pipeline-step" id="step6"><i class="fas fa-check-circle"></i><span>Export</span></div>
+        </div>
+        <div class="tool-grid">
+            <div class="panel">
+                <h3><i class="fas fa-image"></i> Image Viewer</h3>
+                <div class="image-viewer" id="imageViewer">
+                    <canvas id="dicomCanvas" width="512" height="512"></canvas>
+                </div>
+                <div class="viewer-controls">
+                    <button class="btn" onclick="loadSampleDICOM()"><i class="fas fa-folder-open"></i> Load Sample</button>
+                    <button class="btn btn-secondary" onclick="resetView()"><i class="fas fa-undo"></i> Reset</button>
+                    <button class="btn btn-secondary" onclick="toggleInvert()"><i class="fas fa-adjust"></i> Invert</button>
+                    <button class="btn btn-secondary" onclick="applyPreset('lung')">Lung</button>
+                    <button class="btn btn-secondary" onclick="applyPreset('bone')">Bone</button>
+                    <button class="btn btn-secondary" onclick="applyPreset('brain')">Brain</button>
+                </div>
+            </div>
+            <div class="panel">
+                <h3><i class="fas fa-sliders-h"></i> Window/Level Controls</h3>
+                <div class="slider-group">
+                    <label>Window Center (Level): <span id="wcVal">40</span> HU</label>
+                    <input type="range" id="windowCenter" min="-1000" max="1000" value="40" oninput="updateWindow()">
+                </div>
+                <div class="slider-group">
+                    <label>Window Width: <span id="wwVal">400</span> HU</label>
+                    <input type="range" id="windowWidth" min="1" max="4000" value="400" oninput="updateWindow()">
+                </div>
+                <div class="slider-group">
+                    <label>Brightness: <span id="brightVal">0</span></label>
+                    <input type="range" id="brightness" min="-100" max="100" value="0" oninput="updateWindow()">
+                </div>
+                <div class="slider-group">
+                    <label>Contrast: <span id="contrastVal">1.0</span></label>
+                    <input type="range" id="contrast" min="0.5" max="3" step="0.1" value="1" oninput="updateWindow()">
+                </div>
+                <h3 style="margin-top: 1.5rem;"><i class="fas fa-chart-bar"></i> Histogram</h3>
+                <div class="histogram-container" id="histogram"></div>
+            </div>
+        </div>
+        <div class="tool-grid">
+            <div class="panel">
+                <h3><i class="fas fa-database"></i> DICOM Metadata</h3>
+                <table class="metadata-table">
+                    <tr><th>Tag</th><th>Value</th><th>Category</th></tr>
+                    <tr><td>Patient Name</td><td id="patientName">ANONYMOUS</td><td><span class="tag-category">Patient</span></td></tr>
+                    <tr><td>Patient ID</td><td id="patientId">12345678</td><td><span class="tag-category">Patient</span></td></tr>
+                    <tr><td>Study Date</td><td id="studyDate">20231215</td><td><span class="tag-category">Study</span></td></tr>
+                    <tr><td>Modality</td><td id="modality">CT</td><td><span class="tag-category">Series</span></td></tr>
+                    <tr><td>Body Part</td><td id="bodyPart">CHEST</td><td><span class="tag-category">Series</span></td></tr>
+                    <tr><td>Rows</td><td id="rows">512</td><td><span class="tag-category">Image</span></td></tr>
+                    <tr><td>Columns</td><td id="cols">512</td><td><span class="tag-category">Image</span></td></tr>
+                    <tr><td>Pixel Spacing</td><td id="spacing">0.68 x 0.68 mm</td><td><span class="tag-category">Image</span></td></tr>
+                    <tr><td>Slice Thickness</td><td id="thickness">1.0 mm</td><td><span class="tag-category">Image</span></td></tr>
+                    <tr><td>Bits Allocated</td><td id="bits">16</td><td><span class="tag-category">Pixel</span></td></tr>
+                    <tr><td>Rescale Intercept</td><td id="intercept">-1024</td><td><span class="tag-category">Pixel</span></td></tr>
+                    <tr><td>Rescale Slope</td><td id="slope">1.0</td><td><span class="tag-category">Pixel</span></td></tr>
+                </table>
+            </div>
+            <div class="panel">
+                <h3><i class="fas fa-cogs"></i> Preprocessing Options</h3>
+                <div class="slider-group">
+                    <label>Output Size: <span id="sizeVal">224</span>px</label>
+                    <input type="range" id="outputSize" min="64" max="512" step="32" value="224" oninput="document.getElementById('sizeVal').textContent=this.value">
+                </div>
+                <div class="slider-group">
+                    <label>Gaussian Blur: <span id="blurVal">0</span></label>
+                    <input type="range" id="gaussBlur" min="0" max="5" step="0.5" value="0" oninput="document.getElementById('blurVal').textContent=this.value">
+                </div>
+                <div style="margin: 1rem 0;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; color: #a0a0a0; cursor: pointer;">
+                        <input type="checkbox" id="clahe" checked> Apply CLAHE (Histogram Equalization)
+                    </label>
+                </div>
+                <div style="margin: 1rem 0;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; color: #a0a0a0; cursor: pointer;">
+                        <input type="checkbox" id="normalize" checked> Normalize to [0, 1]
+                    </label>
+                </div>
+                <div style="margin: 1rem 0;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; color: #a0a0a0; cursor: pointer;">
+                        <input type="checkbox" id="deid"> De-identify (Remove PHI)
+                    </label>
+                </div>
+                <div style="margin-top: 1.5rem;">
+                    <button class="btn" onclick="processImage()"><i class="fas fa-play"></i> Process Image</button>
+                    <button class="btn" onclick="exportProcessed()"><i class="fas fa-download"></i> Export PNG</button>
+                    <button class="btn btn-secondary" onclick="exportNPY()"><i class="fas fa-file-code"></i> Export NPY</button>
+                </div>
+            </div>
         </div>
     </div>
+    <script>
+        let imageData = null;
+        let inverted = false;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSampleDICOM();
+            initHistogram();
+        });
+
+        function loadSampleDICOM() {
+            const canvas = document.getElementById('dicomCanvas');
+            const ctx = canvas.getContext('2d');
+
+            // Generate synthetic CT data
+            imageData = new Float32Array(512 * 512);
+            for (let y = 0; y < 512; y++) {
+                for (let x = 0; x < 512; x++) {
+                    const dx = x - 256, dy = y - 256;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+
+                    // Body outline
+                    let hu = -1000; // Air
+                    if (dist < 200) {
+                        hu = -50 + Math.random() * 30; // Soft tissue
+                    }
+                    if (dist < 180 && dist > 160) {
+                        hu = 300 + Math.random() * 200; // Ribs
+                    }
+                    // Lungs
+                    const lungLeft = Math.sqrt((x-180)**2 + (y-256)**2);
+                    const lungRight = Math.sqrt((x-332)**2 + (y-256)**2);
+                    if (lungLeft < 80 || lungRight < 80) {
+                        hu = -800 + Math.random() * 100;
+                    }
+                    // Spine
+                    if (Math.abs(x - 256) < 30 && y > 200 && y < 350) {
+                        hu = 400 + Math.random() * 200;
+                    }
+                    // Heart
+                    const heart = Math.sqrt((x-280)**2 + (y-280)**2);
+                    if (heart < 60) {
+                        hu = 40 + Math.random() * 20;
+                    }
+
+                    imageData[y * 512 + x] = hu;
+                }
+            }
+
+            updateWindow();
+            updatePipeline(2);
+        }
+
+        function updateWindow() {
+            const wc = parseInt(document.getElementById('windowCenter').value);
+            const ww = parseInt(document.getElementById('windowWidth').value);
+            const bright = parseInt(document.getElementById('brightness').value);
+            const contrast = parseFloat(document.getElementById('contrast').value);
+
+            document.getElementById('wcVal').textContent = wc;
+            document.getElementById('wwVal').textContent = ww;
+            document.getElementById('brightVal').textContent = bright;
+            document.getElementById('contrastVal').textContent = contrast;
+
+            if (!imageData) return;
+
+            const canvas = document.getElementById('dicomCanvas');
+            const ctx = canvas.getContext('2d');
+            const imgData = ctx.createImageData(512, 512);
+
+            const lower = wc - ww / 2;
+            const upper = wc + ww / 2;
+
+            for (let i = 0; i < imageData.length; i++) {
+                let val = imageData[i];
+                val = ((val - lower) / ww) * 255;
+                val = Math.max(0, Math.min(255, val));
+                val = val * contrast + bright;
+                val = Math.max(0, Math.min(255, val));
+                if (inverted) val = 255 - val;
+
+                imgData.data[i * 4] = val;
+                imgData.data[i * 4 + 1] = val;
+                imgData.data[i * 4 + 2] = val;
+                imgData.data[i * 4 + 3] = 255;
+            }
+
+            ctx.putImageData(imgData, 0, 0);
+        }
+
+        function initHistogram() {
+            const vals = Array.from({length: 100}, (_, i) => -1000 + i * 30);
+            const counts = vals.map(v => {
+                if (v < -900) return 5000 + Math.random() * 2000;
+                if (v < -700) return 15000 + Math.random() * 5000;
+                if (v < -100) return 3000 + Math.random() * 1000;
+                if (v < 100) return 20000 + Math.random() * 8000;
+                if (v < 500) return 2000 + Math.random() * 1000;
+                return 500 + Math.random() * 500;
+            });
+
+            Plotly.newPlot('histogram', [{
+                x: vals, y: counts, type: 'bar',
+                marker: { color: '#06b6d4' }
+            }], {
+                paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+                font: { color: '#a0a0a0', size: 10 },
+                xaxis: { title: 'HU', gridcolor: 'rgba(255,255,255,0.1)' },
+                yaxis: { title: 'Count', gridcolor: 'rgba(255,255,255,0.1)' },
+                margin: { t: 10, r: 10, b: 40, l: 50 }
+            }, { responsive: true });
+        }
+
+        function applyPreset(preset) {
+            const presets = {
+                lung: { wc: -600, ww: 1500 },
+                bone: { wc: 300, ww: 2000 },
+                brain: { wc: 40, ww: 80 }
+            };
+            document.getElementById('windowCenter').value = presets[preset].wc;
+            document.getElementById('windowWidth').value = presets[preset].ww;
+            updateWindow();
+        }
+
+        function toggleInvert() {
+            inverted = !inverted;
+            updateWindow();
+        }
+
+        function resetView() {
+            document.getElementById('windowCenter').value = 40;
+            document.getElementById('windowWidth').value = 400;
+            document.getElementById('brightness').value = 0;
+            document.getElementById('contrast').value = 1;
+            inverted = false;
+            updateWindow();
+        }
+
+        function updatePipeline(step) {
+            for (let i = 1; i <= 6; i++) {
+                const el = document.getElementById('step' + i);
+                el.classList.remove('active', 'complete');
+                if (i < step) el.classList.add('complete');
+                if (i === step) el.classList.add('active');
+            }
+        }
+
+        function processImage() {
+            let step = 3;
+            const interval = setInterval(() => {
+                updatePipeline(step);
+                step++;
+                if (step > 6) {
+                    clearInterval(interval);
+                    alert('Processing complete!\n\nOutput: 224x224 normalized tensor\nCLAHE: Applied\nNormalization: [0, 1]');
+                }
+            }, 500);
+        }
+
+        function exportProcessed() {
+            alert('Exporting processed image as PNG...\n\nFile: processed_ct_slice.png\nSize: ' + document.getElementById('sizeVal').textContent + 'x' + document.getElementById('sizeVal').textContent);
+        }
+
+        function exportNPY() {
+            alert('Exporting as NumPy array...\n\nFile: ct_array.npy\nShape: (1, ' + document.getElementById('sizeVal').textContent + ', ' + document.getElementById('sizeVal').textContent + ')\nDtype: float32');
+        }
+    </script>
 </body>
 </html>

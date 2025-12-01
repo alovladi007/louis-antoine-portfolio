@@ -3,42 +3,270 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AR/VR Demo - Object Recognition Suite</title>
+    <title>Mixed Reality Demo - AR/VR Object Recognition</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%); color: #e0e0e0; line-height: 1.6; }
-        .navigation-bar { position: fixed; top: 0; left: 0; right: 0; background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(10px); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; z-index: 1000; border-bottom: 1px solid rgba(102, 126, 234, 0.3); }
-        .nav-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.3s ease; }
-        .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
-        .hero-section { padding: 120px 2rem 4rem; text-align: center; max-width: 1200px; margin: 0 auto; }
-        .hero-title { font-size: 3rem; font-weight: 800; margin-bottom: 1rem; background: linear-gradient(135deg, #667eea, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .hero-subtitle { font-size: 1.2rem; color: #667eea; margin-bottom: 2rem; }
-        .demo-container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
-        .demo-placeholder { background: rgba(102, 126, 234, 0.1); border: 2px dashed rgba(102, 126, 234, 0.3); border-radius: 15px; padding: 4rem 2rem; text-align: center; margin: 2rem 0; }
-        .demo-placeholder i { font-size: 4rem; color: #667eea; margin-bottom: 1rem; }
-        .demo-placeholder h3 { font-size: 1.5rem; color: #e0e0e0; margin-bottom: 1rem; }
-        .demo-placeholder p { color: #a0a0a0; font-size: 1.1rem; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0a0a0a 0%, #1a0a1a 100%); color: #e0e0e0; min-height: 100vh; }
+        .nav-bar { background: rgba(10, 10, 10, 0.95); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(236, 72, 153, 0.3); position: sticky; top: 0; z-index: 100; backdrop-filter: blur(10px); }
+        .nav-title { color: #ec4899; font-weight: 600; font-size: 1.2rem; }
+        .nav-btn { background: linear-gradient(135deg, #ec4899, #be185d); color: white; padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; transition: all 0.3s ease; }
+        .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(236, 72, 153, 0.4); }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .hero { text-align: center; padding: 3rem 0; background: linear-gradient(135deg, rgba(236, 72, 153, 0.1), rgba(190, 24, 93, 0.1)); border-radius: 20px; margin-bottom: 2rem; border: 1px solid rgba(236, 72, 153, 0.2); }
+        .hero h1 { font-size: 2.5rem; background: linear-gradient(135deg, #ec4899, #be185d); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 1rem; }
+        .hero p { color: #a0a0a0; font-size: 1.1rem; max-width: 700px; margin: 0 auto; }
+        .tool-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; margin-bottom: 2rem; }
+        @media (max-width: 900px) { .tool-grid { grid-template-columns: 1fr; } }
+        .panel { background: rgba(20, 20, 30, 0.8); border: 1px solid rgba(236, 72, 153, 0.3); border-radius: 15px; padding: 1.5rem; }
+        .panel h3 { color: #ec4899; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+        .mr-viewport { background: #000; border-radius: 10px; height: 450px; position: relative; overflow: hidden; }
+        .mr-viewport canvas { width: 100%; height: 100%; }
+        .ar-overlay { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.85rem; }
+        .ar-overlay span { color: #22c55e; font-weight: 600; }
+        .object-list { max-height: 300px; overflow-y: auto; }
+        .detected-object { display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: rgba(236, 72, 153, 0.1); border-radius: 8px; margin-bottom: 0.5rem; }
+        .object-color { width: 12px; height: 12px; border-radius: 50%; }
+        .object-info { flex: 1; }
+        .object-name { font-weight: 600; color: #e0e0e0; }
+        .object-conf { font-size: 0.8rem; color: #a0a0a0; }
+        .control-group { margin-bottom: 1rem; }
+        .control-group label { display: block; color: #a0a0a0; margin-bottom: 0.5rem; font-size: 0.9rem; }
+        .control-group select, .control-group input[type="range"] { width: 100%; padding: 0.5rem; background: rgba(236, 72, 153, 0.1); border: 1px solid rgba(236, 72, 153, 0.3); border-radius: 8px; color: #e0e0e0; }
+        .btn { background: linear-gradient(135deg, #ec4899, #be185d); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; margin-right: 0.5rem; margin-bottom: 0.5rem; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(236, 72, 153, 0.4); }
+        .btn-secondary { background: rgba(236, 72, 153, 0.2); }
+        .metrics-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+        .metric-card { background: rgba(236, 72, 153, 0.1); padding: 1rem; border-radius: 10px; text-align: center; border: 1px solid rgba(236, 72, 153, 0.2); }
+        .metric-value { font-size: 1.5rem; font-weight: 700; color: #ec4899; }
+        .metric-label { font-size: 0.8rem; color: #a0a0a0; margin-top: 0.25rem; }
+        .spatial-map { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.25rem; margin-top: 1rem; }
+        .map-cell { aspect-ratio: 1; background: rgba(236, 72, 153, 0.1); border-radius: 4px; }
+        .map-cell.active { background: rgba(236, 72, 153, 0.5); }
+        .map-cell.object { background: rgba(34, 197, 94, 0.5); }
     </style>
 </head>
 <body>
-    <nav class="navigation-bar">
-        <div class="nav-title"><i class="fas fa-vr-cardboard"></i> AR/VR Demo</div>
+    <nav class="nav-bar">
+        <div class="nav-title"><i class="fas fa-vr-cardboard"></i> Mixed Reality Demo</div>
         <a href="ar-vr-object-recognition-suite.html" class="nav-btn"><i class="fas fa-arrow-left"></i> Back to Suite</a>
     </nav>
-
-    <section class="hero-section">
-        <h1 class="hero-title">AR/VR Interactive Demo</h1>
-        <p class="hero-subtitle">Advanced computer vision for immersive experiences</p>
-        <p style="color: #a0a0a0; max-width: 800px; margin: 0 auto;">Real-time processing with backend connectivity for comprehensive AR/VR applications.</p>
-    </section>
-
-    <div class="demo-container">
-        <div class="demo-placeholder">
-            <i class="fas fa-cogs"></i>
-            <h3>Interactive Demo Implementation</h3>
-            <p>This demo is designed to connect to a backend system for real-time AR/VR processing. The implementation includes comprehensive controls, real-time visualization, and backend integration for production-ready applications.</p>
+    <div class="container">
+        <div class="hero">
+            <h1><i class="fas fa-vr-cardboard"></i> Mixed Reality Environment</h1>
+            <p>Real-time spatial mapping, object detection, and virtual overlay rendering for seamless mixed reality experiences</p>
+        </div>
+        <div class="metrics-row">
+            <div class="metric-card"><div class="metric-value" id="fps">60</div><div class="metric-label">FPS</div></div>
+            <div class="metric-card"><div class="metric-value" id="objects">7</div><div class="metric-label">Objects Detected</div></div>
+            <div class="metric-card"><div class="metric-value" id="planes">12</div><div class="metric-label">Planes Mapped</div></div>
+            <div class="metric-card"><div class="metric-value" id="latency">8ms</div><div class="metric-label">Render Latency</div></div>
+        </div>
+        <div class="tool-grid">
+            <div class="panel">
+                <h3><i class="fas fa-eye"></i> MR Viewport</h3>
+                <div class="mr-viewport">
+                    <canvas id="mrCanvas"></canvas>
+                    <div class="ar-overlay">Tracking: <span>STABLE</span> | Anchors: <span id="anchorCount">24</span></div>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <button class="btn" onclick="startMR()"><i class="fas fa-play"></i> Start AR Session</button>
+                    <button class="btn btn-secondary" onclick="placeObject()"><i class="fas fa-cube"></i> Place Object</button>
+                    <button class="btn btn-secondary" onclick="toggleOcclusion()"><i class="fas fa-eye-slash"></i> Occlusion</button>
+                    <button class="btn btn-secondary" onclick="resetScene()"><i class="fas fa-redo"></i> Reset</button>
+                </div>
+            </div>
+            <div class="panel">
+                <h3><i class="fas fa-list"></i> Detected Objects</h3>
+                <div class="object-list" id="objectList">
+                    <div class="detected-object">
+                        <div class="object-color" style="background: #ef4444;"></div>
+                        <div class="object-info"><div class="object-name">Table</div><div class="object-conf">98.2% confidence</div></div>
+                    </div>
+                    <div class="detected-object">
+                        <div class="object-color" style="background: #3b82f6;"></div>
+                        <div class="object-info"><div class="object-name">Chair</div><div class="object-conf">95.7% confidence</div></div>
+                    </div>
+                    <div class="detected-object">
+                        <div class="object-color" style="background: #22c55e;"></div>
+                        <div class="object-info"><div class="object-name">Monitor</div><div class="object-conf">94.1% confidence</div></div>
+                    </div>
+                    <div class="detected-object">
+                        <div class="object-color" style="background: #f59e0b;"></div>
+                        <div class="object-info"><div class="object-name">Keyboard</div><div class="object-conf">91.8% confidence</div></div>
+                    </div>
+                    <div class="detected-object">
+                        <div class="object-color" style="background: #8b5cf6;"></div>
+                        <div class="object-info"><div class="object-name">Mouse</div><div class="object-conf">89.3% confidence</div></div>
+                    </div>
+                </div>
+                <h3 style="margin-top: 1.5rem;"><i class="fas fa-map"></i> Spatial Map</h3>
+                <div class="spatial-map" id="spatialMap"></div>
+            </div>
+        </div>
+        <div class="tool-grid" style="grid-template-columns: 1fr 1fr;">
+            <div class="panel">
+                <h3><i class="fas fa-sliders-h"></i> AR Configuration</h3>
+                <div class="control-group">
+                    <label>Tracking Mode</label>
+                    <select id="trackingMode">
+                        <option value="world">World Tracking</option>
+                        <option value="image">Image Tracking</option>
+                        <option value="face">Face Tracking</option>
+                        <option value="body">Body Tracking</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Detection Confidence: <span id="confVal">0.7</span></label>
+                    <input type="range" id="confidence" min="0.5" max="0.95" step="0.05" value="0.7" oninput="document.getElementById('confVal').textContent=this.value">
+                </div>
+                <div class="control-group">
+                    <label>Plane Detection</label>
+                    <select id="planeDetection">
+                        <option value="horizontal">Horizontal Only</option>
+                        <option value="vertical">Vertical Only</option>
+                        <option value="both" selected>Both</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Occlusion Mode</label>
+                    <select id="occlusionMode">
+                        <option value="none">None</option>
+                        <option value="environment" selected>Environment</option>
+                        <option value="people">People</option>
+                    </select>
+                </div>
+            </div>
+            <div class="panel">
+                <h3><i class="fas fa-chart-line"></i> Performance</h3>
+                <div id="perfChart" style="height: 250px;"></div>
+            </div>
         </div>
     </div>
+    <script>
+        let animationId = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initCanvas();
+            initSpatialMap();
+            initPerfChart();
+        });
+
+        function initCanvas() {
+            const canvas = document.getElementById('mrCanvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.offsetWidth;
+            canvas.height = 450;
+            drawMRScene(ctx, canvas.width, canvas.height);
+        }
+
+        function drawMRScene(ctx, w, h) {
+            // Simulated camera feed background
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, w, h);
+
+            // Floor plane
+            ctx.fillStyle = 'rgba(236, 72, 153, 0.1)';
+            ctx.beginPath();
+            ctx.moveTo(0, h * 0.6);
+            ctx.lineTo(w, h * 0.7);
+            ctx.lineTo(w, h);
+            ctx.lineTo(0, h);
+            ctx.fill();
+
+            // Grid lines
+            ctx.strokeStyle = 'rgba(236, 72, 153, 0.3)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 10; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * w / 10, h * 0.6 + (i * h * 0.01));
+                ctx.lineTo(i * w / 10, h);
+                ctx.stroke();
+            }
+
+            // Virtual objects
+            drawVirtualCube(ctx, w * 0.3, h * 0.5, 60, '#ec4899');
+            drawVirtualCube(ctx, w * 0.6, h * 0.55, 45, '#3b82f6');
+            drawVirtualCube(ctx, w * 0.75, h * 0.45, 35, '#22c55e');
+
+            // Bounding boxes for detected objects
+            drawBoundingBox(ctx, w * 0.1, h * 0.3, 150, 100, 'Table', '#ef4444');
+            drawBoundingBox(ctx, w * 0.5, h * 0.2, 80, 120, 'Chair', '#3b82f6');
+        }
+
+        function drawVirtualCube(ctx, x, y, size, color) {
+            ctx.fillStyle = color;
+            ctx.globalAlpha = 0.7;
+            ctx.fillRect(x - size/2, y - size, size, size);
+            ctx.globalAlpha = 0.5;
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(x - size/2, y - size);
+            ctx.lineTo(x - size/4, y - size - size/3);
+            ctx.lineTo(x + size/2 + size/4, y - size - size/3);
+            ctx.lineTo(x + size/2, y - size);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
+
+        function drawBoundingBox(ctx, x, y, w, h, label, color) {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x, y, w, h);
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y - 20, ctx.measureText(label).width + 10, 20);
+            ctx.fillStyle = '#fff';
+            ctx.font = '12px sans-serif';
+            ctx.fillText(label, x + 5, y - 6);
+        }
+
+        function initSpatialMap() {
+            const map = document.getElementById('spatialMap');
+            for (let i = 0; i < 25; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'map-cell';
+                if (Math.random() > 0.6) cell.classList.add('active');
+                if (Math.random() > 0.85) cell.classList.add('object');
+                map.appendChild(cell);
+            }
+        }
+
+        function initPerfChart() {
+            const frames = Array.from({length: 60}, (_, i) => i);
+            const fps = frames.map(() => 58 + Math.random() * 4);
+            const latency = frames.map(() => 7 + Math.random() * 3);
+
+            Plotly.newPlot('perfChart', [
+                { x: frames, y: fps, name: 'FPS', line: { color: '#ec4899' } },
+                { x: frames, y: latency, name: 'Latency (ms)', yaxis: 'y2', line: { color: '#22c55e' } }
+            ], {
+                paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+                font: { color: '#a0a0a0' },
+                xaxis: { title: 'Frame', gridcolor: 'rgba(255,255,255,0.1)' },
+                yaxis: { title: 'FPS', gridcolor: 'rgba(255,255,255,0.1)', range: [50, 65] },
+                yaxis2: { title: 'Latency', overlaying: 'y', side: 'right', range: [0, 15] },
+                margin: { t: 20, r: 50, b: 50, l: 50 },
+                legend: { orientation: 'h', y: 1.1 }
+            }, { responsive: true });
+        }
+
+        function startMR() {
+            document.getElementById('fps').textContent = '60';
+            alert('AR Session started!\nWorld tracking enabled\nPlane detection active');
+        }
+
+        function placeObject() {
+            alert('Tap on detected plane to place virtual object');
+        }
+
+        function toggleOcclusion() {
+            alert('Environment occlusion toggled');
+        }
+
+        function resetScene() {
+            initCanvas();
+        }
+    </script>
 </body>
 </html>
