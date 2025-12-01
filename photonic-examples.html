@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Examples - Photonic Computing Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #0f172a 0%, #1e1033 50%, #0a0f1a 100%); }
+        .card-gradient { background: linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(168, 85, 247, 0.05) 100%); }
+        .text-gradient { background: linear-gradient(135deg, #a855f7, #9333ea); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        pre { background: #1e293b; border-radius: 8px; padding: 1rem; overflow-x: auto; }
+        code { font-family: 'Fira Code', monospace; font-size: 0.85rem; }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-gray-100">
+    <nav class="fixed top-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-sm border-b border-purple-500/20">
+        <div class="max-w-7xl mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <a href="photonic-computing-complete-project.html" class="flex items-center gap-2 text-purple-400 hover:text-purple-300">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Photonic Computing Suite</span>
+                </a>
+                <h1 class="text-xl font-bold text-gradient">Code Examples</h1>
+            </div>
+        </div>
+    </nav>
+
+    <main class="pt-24 pb-12 px-6">
+        <div class="max-w-4xl mx-auto">
+            <div class="text-center mb-12">
+                <h1 class="text-4xl font-bold mb-4">
+                    <i class="fas fa-code text-purple-400 mr-4"></i>
+                    <span class="text-gradient">Production Code Examples</span>
+                </h1>
+                <p class="text-gray-400 text-lg">Ready-to-use code for photonic neural network accelerators</p>
+            </div>
+
+            <!-- Example 1 -->
+            <section class="card-gradient rounded-xl p-8 border border-purple-500/20 mb-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-purple-400">Image Classification Accelerator</h2>
+                    <span class="px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full text-sm">ResNet-18</span>
+                </div>
+                <p class="text-gray-300 mb-6">Complete implementation of ResNet-18 inference on photonic hardware with INT4 quantization.</p>
+
+                <pre><code class="text-gray-300">"""
+Photonic ResNet-18 Image Classifier
+-----------------------------------
+Maps ResNet-18 to a photonic MVM accelerator with:
+- 4-bit weight quantization
+- 32x32 MVM tiles
+- Noise-aware inference
+"""
+import numpy as np
+from photonic import PhotonicMVM, NoiseModel, TileMapper
+from torchvision.models import resnet18
+import torch
+
+class PhotonicResNet18:
+    def __init__(self, tile_size=32, precision=4, optical_power=1e-3):
+        self.tile_size = tile_size
+        self.precision = precision
+
+        # Load pre-trained model
+        self.model = resnet18(pretrained=True)
+        self.model.eval()
+
+        # Map to photonic tiles
+        self.mapper = TileMapper(tile_size, precision)
+        self.photonic_layers = self._map_layers()
+
+        # Set up noise model
+        self.noise = NoiseModel(
+            optical_power=optical_power,
+            bandwidth=20e9,
+            temperature=300,
+            responsivity=0.9
+        )
+
+    def _map_layers(self):
+        """Map all Conv2D and Linear layers to photonic tiles"""
+        layers = {}
+        for name, module in self.model.named_modules():
+            if isinstance(module, torch.nn.Conv2d):
+                W = module.weight.detach().numpy()
+                # Reshape for im2col-based convolution
+                W_flat = W.reshape(W.shape[0], -1)
+                layers[name] = self.mapper.map_matrix(W_flat)
+            elif isinstance(module, torch.nn.Linear):
+                W = module.weight.detach().numpy()
+                layers[name] = self.mapper.map_matrix(W)
+        return layers
+
+    def forward(self, image):
+        """Run inference through photonic network"""
+        # Preprocessing (electronic)
+        x = self._preprocess(image)
+
+        # Conv layers with im2col
+        for layer_name, tiles in self.photonic_layers.items():
+            if 'conv' in layer_name:
+                x = self._photonic_conv(x, tiles)
+                x = np.maximum(0, x)  # ReLU (electronic)
+            elif 'fc' in layer_name:
+                x = self._photonic_fc(x.flatten(), tiles)
+
+        return x
+
+    def _photonic_conv(self, x, tiles):
+        """Photonic convolution using im2col"""
+        # Apply im2col transformation
+        x_col = im2col(x, kernel_size=3, stride=1, padding=1)
+
+        # Run through tiles
+        output = np.zeros((tiles['output_channels'], x_col.shape[1]))
+        for i, tile_row in enumerate(tiles['mvm_tiles']):
+            for j, tile in enumerate(tile_row):
+                tile.set_noise_model(self.noise)
+                start_row = i * self.tile_size
+                end_row = min((i + 1) * self.tile_size, output.shape[0])
+                start_col = j * self.tile_size
+
+                x_slice = x_col[start_col:start_col + self.tile_size, :]
+                output[start_row:end_row, :] += tile.forward(x_slice)
+
+        return col2im(output, x.shape)
+
+    def _photonic_fc(self, x, tiles):
+        """Photonic fully-connected layer"""
+        output = np.zeros(tiles['output_dim'])
+        for i, tile_row in enumerate(tiles['mvm_tiles']):
+            tile_output = np.zeros(self.tile_size)
+            for j, tile in enumerate(tile_row):
+                start = j * self.tile_size
+                end = min((j + 1) * self.tile_size, len(x))
+                if start < len(x):
+                    tile_output += tile.forward(x[start:end])
+
+            start_out = i * self.tile_size
+            end_out = min((i + 1) * self.tile_size, len(output))
+            output[start_out:end_out] = tile_output[:end_out - start_out]
+
+        return output
+
+    def benchmark(self):
+        """Return performance metrics"""
+        total_tiles = sum(
+            len(t['mvm_tiles']) * len(t['mvm_tiles'][0])
+            for t in self.photonic_layers.values()
+        )
+        total_macs = sum(
+            t['output_dim'] * t['input_dim']
+            for t in self.photonic_layers.values()
+        )
+
+        clock_rate = 10e9
+        throughput = total_tiles * self.tile_size**2 * 2 * clock_rate / 1e12
+
+        return {
+            'total_tiles': total_tiles,
+            'total_macs': total_macs,
+            'throughput_tops': throughput,
+            'latency_us': total_macs / (throughput * 1e12) * 1e6,
+            'energy_per_inference_uj': total_macs * 15e-15 * 1e6
+        }
+
+# Usage
+if __name__ == "__main__":
+    accelerator = PhotonicResNet18(tile_size=32, precision=4)
+
+    # Load test image
+    from PIL import Image
+    img = Image.open('test_image.jpg').resize((224, 224))
+    img_array = np.array(img) / 255.0
+
+    # Run inference
+    output = accelerator.forward(img_array)
+    prediction = np.argmax(output)
+    print(f"Predicted class: {prediction}")
+
+    # Print benchmarks
+    metrics = accelerator.benchmark()
+    print(f"Throughput: {metrics['throughput_tops']:.1f} TOPS")
+    print(f"Latency: {metrics['latency_us']:.2f} μs")
+    print(f"Energy: {metrics['energy_per_inference_uj']:.1f} μJ")</code></pre>
+            </section>
+
+            <!-- Example 2 -->
+            <section class="card-gradient rounded-xl p-8 border border-purple-500/20 mb-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-purple-400">Real-Time Inference Engine</h2>
+                    <span class="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-full text-sm">Streaming</span>
+                </div>
+                <p class="text-gray-300 mb-6">High-throughput inference engine for real-time video processing.</p>
+
+                <pre><code class="text-gray-300">"""
+Real-Time Photonic Inference Engine
+-----------------------------------
+Pipelined inference for video streams at 1000+ FPS
+"""
+import numpy as np
+from collections import deque
+from threading import Thread
+import queue
+
+class PhotonicInferenceEngine:
+    def __init__(self, model_path, batch_size=8, num_pipelines=4):
+        self.batch_size = batch_size
+        self.num_pipelines = num_pipelines
+
+        # Input/output queues
+        self.input_queue = queue.Queue(maxsize=100)
+        self.output_queue = queue.Queue(maxsize=100)
+
+        # Create parallel pipelines
+        self.pipelines = []
+        for i in range(num_pipelines):
+            mvm = PhotonicMVMPipeline(
+                tile_size=32,
+                precision=4,
+                num_tiles=64
+            )
+            mvm.load_model(model_path)
+            self.pipelines.append(mvm)
+
+        self.running = False
+        self.workers = []
+
+    def start(self):
+        """Start inference workers"""
+        self.running = True
+        for i, pipeline in enumerate(self.pipelines):
+            worker = Thread(target=self._inference_worker, args=(i, pipeline))
+            worker.daemon = True
+            worker.start()
+            self.workers.append(worker)
+
+    def stop(self):
+        """Stop all workers"""
+        self.running = False
+        for worker in self.workers:
+            worker.join(timeout=1.0)
+
+    def _inference_worker(self, worker_id, pipeline):
+        """Worker thread for batch inference"""
+        batch = []
+        batch_ids = []
+
+        while self.running:
+            try:
+                item = self.input_queue.get(timeout=0.01)
+                batch.append(item['data'])
+                batch_ids.append(item['id'])
+
+                if len(batch) >= self.batch_size:
+                    # Process batch
+                    batch_array = np.stack(batch)
+                    results = pipeline.forward_batch(batch_array)
+
+                    # Send results
+                    for i, result in enumerate(results):
+                        self.output_queue.put({
+                            'id': batch_ids[i],
+                            'result': result,
+                            'worker': worker_id
+                        })
+
+                    batch = []
+                    batch_ids = []
+
+            except queue.Empty:
+                # Process partial batch if waiting too long
+                if batch:
+                    batch_array = np.stack(batch)
+                    results = pipeline.forward_batch(batch_array)
+                    for i, result in enumerate(results):
+                        self.output_queue.put({
+                            'id': batch_ids[i],
+                            'result': result,
+                            'worker': worker_id
+                        })
+                    batch = []
+                    batch_ids = []
+
+    def infer_async(self, frame_id, data):
+        """Submit frame for async inference"""
+        self.input_queue.put({'id': frame_id, 'data': data})
+
+    def get_result(self, timeout=None):
+        """Get inference result"""
+        return self.output_queue.get(timeout=timeout)
+
+    def get_throughput(self):
+        """Estimate throughput based on pipeline config"""
+        ops_per_tile = 32 * 32 * 2  # MACs per tile per cycle
+        clock_rate = 10e9
+        ops_per_pipeline = 64 * ops_per_tile * clock_rate
+        return self.num_pipelines * ops_per_pipeline / 1e12  # TOPS
+
+
+# Video processing example
+if __name__ == "__main__":
+    import cv2
+
+    engine = PhotonicInferenceEngine(
+        model_path='yolov5s_photonic.bin',
+        batch_size=4,
+        num_pipelines=4
+    )
+    engine.start()
+
+    cap = cv2.VideoCapture('input_video.mp4')
+    frame_id = 0
+    results = {}
+
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        # Preprocess and submit
+        frame_resized = cv2.resize(frame, (640, 640)) / 255.0
+        engine.infer_async(frame_id, frame_resized)
+
+        # Collect results (non-blocking)
+        try:
+            result = engine.get_result(timeout=0.001)
+            results[result['id']] = result['result']
+        except queue.Empty:
+            pass
+
+        frame_id += 1
+
+    engine.stop()
+    print(f"Processed {frame_id} frames")
+    print(f"Throughput: {engine.get_throughput():.1f} TOPS")</code></pre>
+            </section>
+
+            <!-- Example 3 -->
+            <section class="card-gradient rounded-xl p-8 border border-purple-500/20 mb-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-purple-400">Quantization-Aware Training</h2>
+                    <span class="px-3 py-1 bg-pink-500/20 text-pink-300 rounded-full text-sm">Training</span>
+                </div>
+                <p class="text-gray-300 mb-6">Train neural networks with photonic hardware constraints in the loop.</p>
+
+                <pre><code class="text-gray-300">"""
+Quantization-Aware Training for Photonic Accelerators
+------------------------------------------------------
+Train models that account for:
+- Weight quantization
+- Activation quantization
+- Photonic noise
+"""
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+class PhotonicQuantizer(torch.autograd.Function):
+    """Straight-through estimator for quantization"""
+    @staticmethod
+    def forward(ctx, x, bits, symmetric=True):
+        if symmetric:
+            qmin = -2**(bits-1)
+            qmax = 2**(bits-1) - 1
+            scale = x.abs().max() / qmax
+        else:
+            qmin = 0
+            qmax = 2**bits - 1
+            scale = (x.max() - x.min()) / qmax
+
+        x_q = torch.clamp(torch.round(x / scale), qmin, qmax)
+        return x_q * scale
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        return grad_output, None, None
+
+
+class PhotonicLinear(nn.Module):
+    """Linear layer with photonic constraints"""
+    def __init__(self, in_features, out_features, weight_bits=4, act_bits=8):
+        super().__init__()
+        self.weight = nn.Parameter(torch.randn(out_features, in_features) * 0.1)
+        self.bias = nn.Parameter(torch.zeros(out_features))
+        self.weight_bits = weight_bits
+        self.act_bits = act_bits
+
+        # Photonic noise parameters
+        self.noise_std = 0.01
+
+    def forward(self, x):
+        # Quantize weights
+        w_q = PhotonicQuantizer.apply(self.weight, self.weight_bits)
+
+        # Quantize activations
+        x_q = PhotonicQuantizer.apply(x, self.act_bits, False)
+
+        # Compute with quantized values
+        out = F.linear(x_q, w_q, self.bias)
+
+        # Add photonic noise during training
+        if self.training:
+            noise = torch.randn_like(out) * self.noise_std * out.abs()
+            out = out + noise
+
+        return out
+
+
+class PhotonicConv2d(nn.Module):
+    """Conv2D layer with photonic constraints"""
+    def __init__(self, in_channels, out_channels, kernel_size,
+                 stride=1, padding=0, weight_bits=4, act_bits=8):
+        super().__init__()
+        self.weight = nn.Parameter(torch.randn(
+            out_channels, in_channels, kernel_size, kernel_size) * 0.1)
+        self.bias = nn.Parameter(torch.zeros(out_channels))
+        self.stride = stride
+        self.padding = padding
+        self.weight_bits = weight_bits
+        self.act_bits = act_bits
+        self.noise_std = 0.01
+
+    def forward(self, x):
+        w_q = PhotonicQuantizer.apply(self.weight, self.weight_bits)
+        x_q = PhotonicQuantizer.apply(x, self.act_bits, False)
+
+        out = F.conv2d(x_q, w_q, self.bias, self.stride, self.padding)
+
+        if self.training:
+            noise = torch.randn_like(out) * self.noise_std * out.abs()
+            out = out + noise
+
+        return out
+
+
+class PhotonicMNISTNet(nn.Module):
+    """Example network for MNIST with photonic constraints"""
+    def __init__(self, weight_bits=4, act_bits=8):
+        super().__init__()
+        self.conv1 = PhotonicConv2d(1, 32, 3, padding=1,
+                                     weight_bits=weight_bits, act_bits=act_bits)
+        self.conv2 = PhotonicConv2d(32, 64, 3, padding=1,
+                                     weight_bits=weight_bits, act_bits=act_bits)
+        self.fc1 = PhotonicLinear(64 * 7 * 7, 128,
+                                   weight_bits=weight_bits, act_bits=act_bits)
+        self.fc2 = PhotonicLinear(128, 10,
+                                   weight_bits=weight_bits, act_bits=act_bits)
+
+    def forward(self, x):
+        x = F.relu(self.conv1(x))
+        x = F.max_pool2d(x, 2)
+        x = F.relu(self.conv2(x))
+        x = F.max_pool2d(x, 2)
+        x = x.flatten(1)
+        x = F.relu(self.fc1(x))
+        x = self.fc2(x)
+        return x
+
+
+# Training loop
+def train_photonic_model(model, train_loader, epochs=10, lr=0.001):
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    criterion = nn.CrossEntropyLoss()
+
+    for epoch in range(epochs):
+        model.train()
+        total_loss = 0
+
+        for batch_idx, (data, target) in enumerate(train_loader):
+            optimizer.zero_grad()
+            output = model(data)
+            loss = criterion(output, target)
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
+
+        print(f"Epoch {epoch+1}: Loss = {total_loss/len(train_loader):.4f}")
+
+    return model
+
+
+if __name__ == "__main__":
+    from torchvision import datasets, transforms
+    from torch.utils.data import DataLoader
+
+    # Load MNIST
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.1307,), (0.3081,))
+    ])
+    train_dataset = datasets.MNIST('./data', train=True, download=True, transform=transform)
+    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
+
+    # Train with different precisions
+    for bits in [8, 4, 2]:
+        print(f"\n--- Training with {bits}-bit weights ---")
+        model = PhotonicMNISTNet(weight_bits=bits, act_bits=8)
+        model = train_photonic_model(model, train_loader, epochs=5)
+
+        # Export for photonic deployment
+        torch.save(model.state_dict(), f'mnist_photonic_{bits}bit.pth')</code></pre>
+            </section>
+
+            <!-- Example 4 -->
+            <section class="card-gradient rounded-xl p-8 border border-purple-500/20 mb-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-purple-400">Thermal Feedback Controller</h2>
+                    <span class="px-3 py-1 bg-yellow-500/20 text-yellow-300 rounded-full text-sm">Control</span>
+                </div>
+                <p class="text-gray-300 mb-6">Active thermal stabilization for maintaining weight accuracy.</p>
+
+                <pre><code class="text-gray-300">"""
+Thermal Feedback Control for Photonic Weights
+----------------------------------------------
+PID controller for ring resonator stabilization
+"""
+import numpy as np
+from collections import deque
+
+class ThermalController:
+    def __init__(self, num_rings, target_wavelength=1550e-9):
+        self.num_rings = num_rings
+        self.target_wl = target_wavelength
+
+        # PID gains (tuned for typical thermal response)
+        self.Kp = 5.0
+        self.Ki = 0.5
+        self.Kd = 0.1
+
+        # State variables
+        self.integral = np.zeros(num_rings)
+        self.prev_error = np.zeros(num_rings)
+        self.heater_power = np.zeros(num_rings)
+
+        # Limits
+        self.max_heater_power = 50.0  # mW
+        self.min_heater_power = 0.0
+
+        # History for monitoring
+        self.error_history = deque(maxlen=1000)
+        self.power_history = deque(maxlen=1000)
+
+    def update(self, current_wavelengths, dt=0.001):
+        """
+        Update heater powers based on wavelength error
+
+        Args:
+            current_wavelengths: Array of current resonance wavelengths
+            dt: Time step in seconds
+
+        Returns:
+            heater_powers: Array of heater power commands (mW)
+        """
+        # Calculate error
+        error = self.target_wl - current_wavelengths
+
+        # PID terms
+        P = self.Kp * error
+        self.integral += error * dt
+        self.integral = np.clip(self.integral, -10, 10)  # Anti-windup
+        I = self.Ki * self.integral
+        D = self.Kd * (error - self.prev_error) / dt
+
+        # Update heater power
+        delta_power = P + I + D
+        self.heater_power += delta_power
+
+        # Apply limits
+        self.heater_power = np.clip(
+            self.heater_power,
+            self.min_heater_power,
+            self.max_heater_power
+        )
+
+        # Store for next iteration
+        self.prev_error = error.copy()
+
+        # Log history
+        self.error_history.append(np.mean(np.abs(error)))
+        self.power_history.append(np.mean(self.heater_power))
+
+        return self.heater_power
+
+    def get_statistics(self):
+        """Return control loop statistics"""
+        return {
+            'mean_error_pm': np.mean(self.error_history) * 1e12,
+            'max_error_pm': np.max(self.error_history) * 1e12,
+            'mean_power_mw': np.mean(self.power_history),
+            'total_power_mw': np.sum(self.heater_power)
+        }
+
+
+class PhotonicChipThermalModel:
+    """Simplified thermal model of photonic chip"""
+    def __init__(self, num_rings, ambient_temp=300):
+        self.num_rings = num_rings
+        self.ambient_temp = ambient_temp
+
+        # Thermal properties
+        self.thermal_resistance = 5.0  # K/mW
+        self.thermal_time_constant = 0.1  # seconds
+        self.thermo_optic_coef = 80e-12  # pm/K
+
+        # State
+        self.temperature = np.ones(num_rings) * ambient_temp
+        self.base_wavelength = 1550e-9
+
+    def update(self, heater_powers, dt):
+        """Update thermal state based on heater powers"""
+        target_temp = self.ambient_temp + heater_powers * self.thermal_resistance
+
+        # First-order thermal response
+        alpha = dt / self.thermal_time_constant
+        self.temperature += alpha * (target_temp - self.temperature)
+
+        # Add some noise
+        self.temperature += np.random.randn(self.num_rings) * 0.01
+
+        return self.get_wavelengths()
+
+    def get_wavelengths(self):
+        """Calculate resonance wavelengths from temperature"""
+        delta_T = self.temperature - self.ambient_temp
+        delta_lambda = delta_T * self.thermo_optic_coef
+        return self.base_wavelength + delta_lambda
+
+
+# Simulation example
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+
+    num_rings = 64
+    chip = PhotonicChipThermalModel(num_rings)
+    controller = ThermalController(num_rings, target_wavelength=1550.5e-9)
+
+    # Simulate control loop
+    dt = 0.001  # 1 ms time step
+    time_steps = 5000
+    heater_powers = np.zeros(num_rings)
+
+    wavelength_history = []
+    error_history = []
+
+    for t in range(time_steps):
+        # Get current state
+        wavelengths = chip.update(heater_powers, dt)
+
+        # Update controller
+        heater_powers = controller.update(wavelengths, dt)
+
+        # Log
+        wavelength_history.append(np.mean(wavelengths))
+        error_history.append(np.mean(np.abs(wavelengths - 1550.5e-9)))
+
+    # Plot results
+    time = np.arange(time_steps) * dt * 1000  # ms
+
+    plt.figure(figsize=(12, 4))
+    plt.subplot(1, 2, 1)
+    plt.plot(time, np.array(wavelength_history) * 1e9)
+    plt.axhline(1550.5, color='r', linestyle='--', label='Target')
+    plt.xlabel('Time (ms)')
+    plt.ylabel('Wavelength (nm)')
+    plt.legend()
+
+    plt.subplot(1, 2, 2)
+    plt.semilogy(time, np.array(error_history) * 1e12)
+    plt.xlabel('Time (ms)')
+    plt.ylabel('Error (pm)')
+    plt.tight_layout()
+
+    stats = controller.get_statistics()
+    print(f"Final error: {stats['mean_error_pm']:.2f} pm")
+    print(f"Total heater power: {stats['total_power_mw']:.1f} mW")</code></pre>
+            </section>
+
+            <!-- Example 5 -->
+            <section class="card-gradient rounded-xl p-8 border border-purple-500/20">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-purple-400">PCM Weight Programming</h2>
+                    <span class="px-3 py-1 bg-green-500/20 text-green-300 rounded-full text-sm">Memory</span>
+                </div>
+                <p class="text-gray-300 mb-6">Program and verify multi-level PCM weights with closed-loop control.</p>
+
+                <pre><code class="text-gray-300">"""
+PCM Weight Programming with Iterative Verification
+---------------------------------------------------
+Achieve high-precision multi-level states
+"""
+import numpy as np
+
+class PCMProgrammer:
+    def __init__(self, num_levels=16, tolerance=0.02):
+        self.num_levels = num_levels
+        self.tolerance = tolerance  # Relative tolerance
+
+        # Programming parameters
+        self.set_pulse_base = 100e-9    # 100 ns
+        self.reset_pulse_base = 50e-9   # 50 ns
+        self.max_iterations = 10
+
+        # Target transmission levels
+        self.target_levels = np.linspace(0.1, 0.9, num_levels)
+
+    def program_weight(self, pcm_cell, target_level):
+        """
+        Program PCM cell to target transmission level
+
+        Args:
+            pcm_cell: PCMWeight instance
+            target_level: Target transmission (0 to 1)
+
+        Returns:
+            dict: Programming result with iterations, final value, success
+        """
+        iterations = 0
+        success = False
+
+        # Start from amorphous state
+        pcm_cell.amorphize(self.reset_pulse_base * 2, 50e-3)
+
+        while iterations < self.max_iterations:
+            current_T = pcm_cell.get_transmission()
+            error = target_level - current_T
+
+            if abs(error) / target_level < self.tolerance:
+                success = True
+                break
+
+            if error > 0:
+                # Need more crystallization
+                pulse_width = self.set_pulse_base * (1 + abs(error))
+                power = 20e-3 * (1 + abs(error) * 2)
+                pcm_cell.crystallize(pulse_width, power)
+            else:
+                # Partial reset (careful!)
+                pulse_width = self.reset_pulse_base * abs(error)
+                power = 40e-3
+                pcm_cell.amorphize(pulse_width, power)
+
+            iterations += 1
+
+        return {
+            'target': target_level,
+            'achieved': pcm_cell.get_transmission(),
+            'iterations': iterations,
+            'success': success,
+            'error': abs(pcm_cell.get_transmission() - target_level)
+        }
+
+    def program_weight_array(self, pcm_array, weight_matrix):
+        """
+        Program entire weight matrix to PCM array
+
+        Args:
+            pcm_array: 2D array of PCMWeight instances
+            weight_matrix: Target weight matrix (normalized 0-1)
+
+        Returns:
+            dict: Summary statistics
+        """
+        rows, cols = weight_matrix.shape
+        results = []
+        total_energy = 0
+
+        for i in range(rows):
+            for j in range(cols):
+                target = weight_matrix[i, j]
+                result = self.program_weight(pcm_array[i, j], target)
+                results.append(result)
+                total_energy += pcm_array[i, j].get_programming_energy()
+
+        success_rate = sum(r['success'] for r in results) / len(results)
+        mean_error = np.mean([r['error'] for r in results])
+        mean_iterations = np.mean([r['iterations'] for r in results])
+
+        return {
+            'success_rate': success_rate,
+            'mean_error': mean_error,
+            'max_error': max(r['error'] for r in results),
+            'mean_iterations': mean_iterations,
+            'total_energy_nj': total_energy * 1e9
+        }
+
+
+class PCMWeightBank:
+    """Complete PCM-based weight bank for neural network layer"""
+    def __init__(self, shape, precision=4, material='gsst'):
+        self.shape = shape
+        self.precision = precision
+        self.num_levels = 2**precision
+
+        # Create PCM array
+        self.cells = [[
+            PCMWeight(material=material, thickness=30e-9, wavelength=1550e-9, levels=self.num_levels)
+            for _ in range(shape[1])
+        ] for _ in range(shape[0])]
+
+        self.programmer = PCMProgrammer(num_levels=self.num_levels)
+
+    def load_weights(self, weight_matrix):
+        """Program weight matrix to PCM bank"""
+        # Normalize weights to [0, 1]
+        w_min, w_max = weight_matrix.min(), weight_matrix.max()
+        w_norm = (weight_matrix - w_min) / (w_max - w_min + 1e-8)
+
+        # Convert to 2D array for programming
+        pcm_array = np.array(self.cells)
+        result = self.programmer.program_weight_array(pcm_array, w_norm)
+
+        # Store scaling factors for inference
+        self.w_min = w_min
+        self.w_max = w_max
+
+        return result
+
+    def get_weight_matrix(self):
+        """Read current weight values from PCM"""
+        transmissions = np.array([
+            [cell.get_transmission() for cell in row]
+            for row in self.cells
+        ])
+
+        # Denormalize
+        return transmissions * (self.w_max - self.w_min) + self.w_min
+
+    def forward(self, x):
+        """Matrix-vector multiply using PCM weights"""
+        W = self.get_weight_matrix()
+        return W @ x
+
+
+# Usage example
+if __name__ == "__main__":
+    # Create 128x128 weight bank
+    bank = PCMWeightBank(shape=(128, 128), precision=4, material='gsst')
+
+    # Generate random weight matrix
+    W_target = np.random.randn(128, 128) * 0.1
+
+    # Program weights
+    print("Programming weights...")
+    result = bank.load_weights(W_target)
+    print(f"Success rate: {result['success_rate']*100:.1f}%")
+    print(f"Mean error: {result['mean_error']:.4f}")
+    print(f"Programming energy: {result['total_energy_nj']:.1f} nJ")
+
+    # Verify
+    W_actual = bank.get_weight_matrix()
+    mse = np.mean((W_actual - W_target)**2)
+    print(f"Weight MSE: {mse:.6f}")
+
+    # Test inference
+    x = np.random.randn(128)
+    y_actual = bank.forward(x)
+    y_target = W_target @ x
+    inference_error = np.mean((y_actual - y_target)**2)
+    print(f"Inference MSE: {inference_error:.6f}")</code></pre>
+            </section>
+        </div>
+    </main>
+</body>
+</html>

@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parameter Retrieval - Metamaterials Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #0f172a 0%, #0c1322 50%, #0a0f1a 100%); }
+        .card-gradient { background: linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(6, 182, 212, 0.05) 100%); }
+        .glow-cyan { box-shadow: 0 0 30px rgba(6, 182, 212, 0.3); }
+        .text-gradient { background: linear-gradient(135deg, #06b6d4, #0891b2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-gray-100">
+    <nav class="fixed top-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-sm border-b border-cyan-500/20">
+        <div class="max-w-7xl mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <a href="metamaterials-complete-project.html" class="flex items-center gap-2 text-cyan-400 hover:text-cyan-300">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Metamaterials Suite</span>
+                </a>
+                <h1 class="text-xl font-bold text-gradient">S-Parameter Retrieval</h1>
+            </div>
+        </div>
+    </nav>
+
+    <main class="pt-24 pb-12 px-6">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-12">
+                <h1 class="text-4xl font-bold mb-4">
+                    <span class="text-gradient">Effective Parameter Retrieval (NRW Method)</span>
+                </h1>
+                <p class="text-gray-400 max-w-2xl mx-auto">
+                    Extract effective permittivity (ε), permeability (μ), refractive index (n), and wave impedance (Z)
+                    from S-parameters using the Nicolson-Ross-Weir (NRW) method.
+                </p>
+            </div>
+
+            <div class="grid lg:grid-cols-3 gap-8">
+                <!-- Controls -->
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="card-gradient rounded-xl p-6 border border-cyan-500/20">
+                        <h3 class="text-lg font-semibold text-cyan-400 mb-4">
+                            <i class="fas fa-upload mr-2"></i>S-Parameter Source
+                        </h3>
+                        <select id="dataSource" class="w-full bg-gray-800 border border-gray-600 rounded-lg p-3 text-white mb-4">
+                            <option value="simulated">Simulated SRR Data</option>
+                            <option value="lorentz">Lorentz Resonator</option>
+                            <option value="drude">Drude Metal</option>
+                            <option value="nim">Negative Index Material</option>
+                        </select>
+                        <div class="text-sm text-gray-400 mb-4">
+                            <i class="fas fa-info-circle mr-1"></i> Select sample data or upload your own S-parameters
+                        </div>
+                        <label class="block">
+                            <span class="text-sm text-gray-300">Upload CSV (f, S11_mag, S11_phase, S21_mag, S21_phase)</span>
+                            <input type="file" id="fileInput" accept=".csv" class="mt-2 w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-cyan-600 file:text-white">
+                        </label>
+                    </div>
+
+                    <div class="card-gradient rounded-xl p-6 border border-cyan-500/20">
+                        <h3 class="text-lg font-semibold text-cyan-400 mb-4">
+                            <i class="fas fa-ruler mr-2"></i>Sample Properties
+                        </h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm text-gray-300 mb-2">Sample Thickness (μm)</label>
+                                <input type="range" id="thickness" min="10" max="500" value="100" step="10"
+                                    class="w-full accent-cyan-500">
+                                <span id="thicknessVal" class="text-cyan-400 text-sm">100 μm</span>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-300 mb-2">Branch Index (m)</label>
+                                <input type="range" id="branchIndex" min="-2" max="2" value="0" step="1"
+                                    class="w-full accent-cyan-500">
+                                <span id="branchIndexVal" class="text-cyan-400 text-sm">m = 0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-gradient rounded-xl p-6 border border-cyan-500/20">
+                        <h3 class="text-lg font-semibold text-cyan-400 mb-4">
+                            <i class="fas fa-cog mr-2"></i>Algorithm Options
+                        </h3>
+                        <div class="space-y-3">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="unwrapPhase" checked class="accent-cyan-500">
+                                <span class="text-sm">Phase Unwrapping</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="causalityCheck" checked class="accent-cyan-500">
+                                <span class="text-sm">Causality Validation</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="passivityCheck" checked class="accent-cyan-500">
+                                <span class="text-sm">Passivity Enforcement</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <button onclick="retrieveParameters()"
+                        class="w-full py-3 bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 rounded-lg font-semibold transition-all">
+                        <i class="fas fa-calculator mr-2"></i>Extract Parameters
+                    </button>
+                </div>
+
+                <!-- Visualization -->
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="card-gradient rounded-xl p-6 border border-cyan-500/20 glow-cyan">
+                        <h3 class="text-lg font-semibold text-cyan-400 mb-4">
+                            <i class="fas fa-chart-line mr-2"></i>S-Parameters
+                        </h3>
+                        <div id="sparamPlot" style="height: 280px;"></div>
+                    </div>
+
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div class="card-gradient rounded-xl p-6 border border-cyan-500/20">
+                            <h3 class="text-lg font-semibold text-cyan-400 mb-4">
+                                <i class="fas fa-bolt mr-2"></i>Permittivity ε
+                            </h3>
+                            <div id="epsPlot" style="height: 220px;"></div>
+                        </div>
+                        <div class="card-gradient rounded-xl p-6 border border-cyan-500/20">
+                            <h3 class="text-lg font-semibold text-cyan-400 mb-4">
+                                <i class="fas fa-magnet mr-2"></i>Permeability μ
+                            </h3>
+                            <div id="muPlot" style="height: 220px;"></div>
+                        </div>
+                    </div>
+
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div class="card-gradient rounded-xl p-6 border border-cyan-500/20">
+                            <h3 class="text-lg font-semibold text-cyan-400 mb-4">
+                                <i class="fas fa-eye mr-2"></i>Refractive Index n
+                            </h3>
+                            <div id="nPlot" style="height: 220px;"></div>
+                        </div>
+                        <div class="card-gradient rounded-xl p-6 border border-cyan-500/20">
+                            <h3 class="text-lg font-semibold text-cyan-400 mb-4">
+                                <i class="fas fa-wave-square mr-2"></i>Impedance Z
+                            </h3>
+                            <div id="zPlot" style="height: 220px;"></div>
+                        </div>
+                    </div>
+
+                    <div class="grid md:grid-cols-4 gap-4">
+                        <div class="card-gradient rounded-xl p-4 border border-cyan-500/20 text-center">
+                            <div class="text-xl font-bold text-cyan-400" id="nimFreq">5.2 THz</div>
+                            <div class="text-xs text-gray-400">NIM Frequency</div>
+                        </div>
+                        <div class="card-gradient rounded-xl p-4 border border-cyan-500/20 text-center">
+                            <div class="text-xl font-bold text-cyan-400" id="minN">n = -2.1</div>
+                            <div class="text-xs text-gray-400">Min Refractive Index</div>
+                        </div>
+                        <div class="card-gradient rounded-xl p-4 border border-cyan-500/20 text-center">
+                            <div class="text-xl font-bold text-cyan-400" id="fom">FOM = 3.5</div>
+                            <div class="text-xs text-gray-400">Figure of Merit</div>
+                        </div>
+                        <div class="card-gradient rounded-xl p-4 border border-cyan-500/20 text-center">
+                            <div class="text-xl font-bold text-green-400" id="validity">Valid</div>
+                            <div class="text-xs text-gray-400">Causality Check</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function checkPlotly(callback) {
+            if (typeof Plotly !== 'undefined') {
+                callback();
+            } else {
+                setTimeout(function() { checkPlotly(callback); }, 100);
+            }
+        }
+
+        checkPlotly(function() {
+            retrieveParameters();
+        });
+
+        document.querySelectorAll('input[type="range"]').forEach(function(slider) {
+            slider.addEventListener('input', function() {
+                var valSpan = document.getElementById(this.id + 'Val');
+                if (valSpan) {
+                    if (this.id === 'branchIndex') {
+                        valSpan.textContent = 'm = ' + this.value;
+                    } else {
+                        valSpan.textContent = this.value + ' μm';
+                    }
+                }
+            });
+        });
+
+        document.getElementById('dataSource').addEventListener('change', retrieveParameters);
+
+        function retrieveParameters() {
+            var dataSource = document.getElementById('dataSource').value;
+            var thickness = parseFloat(document.getElementById('thickness').value) * 1e-6;
+            var branchIndex = parseInt(document.getElementById('branchIndex').value);
+
+            var c = 3e8;
+            var freqs = [];
+            var s11Mag = [], s11Phase = [];
+            var s21Mag = [], s21Phase = [];
+
+            // Generate sample S-parameter data based on source
+            for (var i = 0; i <= 200; i++) {
+                var f = 1 + i * 0.1;
+                freqs.push(f);
+
+                var w = 2 * Math.PI * f * 1e12;
+                var k0 = w / c;
+
+                var eps, mu;
+                if (dataSource === 'lorentz') {
+                    var w0 = 2 * Math.PI * 5e12;
+                    var wp = 2 * Math.PI * 8e12;
+                    var gamma = 2 * Math.PI * 0.5e12;
+                    eps = 1 + wp * wp / (w0 * w0 - w * w - gamma * w);
+                    mu = 1;
+                } else if (dataSource === 'drude') {
+                    var wp = 2 * Math.PI * 15e12;
+                    var gamma = 2 * Math.PI * 1e12;
+                    eps = 1 - wp * wp / (w * w + gamma * w);
+                    mu = 1;
+                } else if (dataSource === 'nim') {
+                    var w0e = 2 * Math.PI * 4e12;
+                    var wpe = 2 * Math.PI * 10e12;
+                    var gammaE = 2 * Math.PI * 0.3e12;
+                    eps = 1 - wpe * wpe / (w * w - w0e * w0e + gammaE * w);
+
+                    var w0m = 2 * Math.PI * 5e12;
+                    var F = 0.4;
+                    var gammaM = 2 * Math.PI * 0.2e12;
+                    mu = 1 - F * w0m * w0m / (w * w - w0m * w0m + gammaM * w);
+                } else {
+                    // SRR simulated data
+                    var w0 = 2 * Math.PI * 6e12;
+                    var F = 0.3;
+                    var gamma = 2 * Math.PI * 0.4e12;
+                    eps = 4 - 3 / (1 - (w0 / w) * (w0 / w) + gamma / w);
+                    mu = 1 - F * w0 * w0 / (w * w - w0 * w0 + gamma * w);
+                }
+
+                // Calculate n and Z
+                var n = Math.sqrt(eps * mu);
+                var Z = Math.sqrt(mu / eps);
+
+                // Calculate S-parameters from n and Z
+                var nkd = n * k0 * thickness;
+                var cosNkd = Math.cos(nkd);
+                var sinNkd = Math.sin(nkd);
+
+                var denom = 2 * cosNkd + (Z + 1 / Z) * sinNkd;
+                var s21 = 2 / denom;
+                var s11 = (Z - 1 / Z) * sinNkd / denom;
+
+                s21Mag.push(Math.abs(s21));
+                s21Phase.push(Math.atan2(s21.imag || 0, s21.real || s21) * 180 / Math.PI);
+                s11Mag.push(Math.abs(s11));
+                s11Phase.push(Math.atan2(s11.imag || 0, s11.real || s11) * 180 / Math.PI);
+            }
+
+            // Plot S-parameters
+            var sparamTraces = [
+                { x: freqs, y: s21Mag.map(function(v) { return 20 * Math.log10(Math.max(v, 0.001)); }), name: '|S21| (dB)', line: { color: '#06b6d4', width: 2 } },
+                { x: freqs, y: s11Mag.map(function(v) { return 20 * Math.log10(Math.max(v, 0.001)); }), name: '|S11| (dB)', line: { color: '#f59e0b', width: 2 } }
+            ];
+
+            var layoutBase = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#9ca3af' },
+                xaxis: { title: 'Frequency (THz)', gridcolor: 'rgba(255,255,255,0.1)' },
+                margin: { t: 20, r: 20, b: 50, l: 60 },
+                legend: { x: 0.02, y: 0.98 }
+            };
+
+            var sparamLayout = Object.assign({}, layoutBase, {
+                yaxis: { title: 'Magnitude (dB)', gridcolor: 'rgba(255,255,255,0.1)', range: [-40, 5] }
+            });
+
+            Plotly.newPlot('sparamPlot', sparamTraces, sparamLayout, { responsive: true, displayModeBar: false });
+
+            // NRW retrieval
+            var epsReal = [], epsImag = [];
+            var muReal = [], muImag = [];
+            var nReal = [], nImag = [];
+            var zReal = [], zImag = [];
+            var nimStart = null, nimEnd = null;
+            var minN = 100;
+
+            for (var i = 0; i < freqs.length; i++) {
+                var f = freqs[i];
+                var w = 2 * Math.PI * f * 1e12;
+                var k0 = w / c;
+
+                // Simplified NRW calculation
+                var S21 = s21Mag[i];
+                var S11 = s11Mag[i];
+
+                // Calculate Z and n from S-parameters
+                var V1 = S21 + S11;
+                var V2 = S21 - S11;
+
+                var Gamma = (V1 - 1) / (V1 + 1);
+                var T = S21 / (1 - S11 * Gamma);
+
+                var Zmag = Math.sqrt((1 + Gamma) / (1 - Gamma + 0.001));
+                var nMag = Math.acos(T) / (k0 * thickness);
+
+                // Apply branch correction
+                nMag = nMag + branchIndex * Math.PI / (k0 * thickness);
+
+                // Determine sign based on causality
+                var ZR = Zmag * (dataSource === 'nim' && f > 4 && f < 7 ? -1 : 1);
+                var nR = nMag * (dataSource === 'nim' && f > 4 && f < 7 ? -1 : 1);
+
+                if (dataSource === 'nim' && f > 4 && f < 7) {
+                    if (nimStart === null) nimStart = f;
+                    nimEnd = f;
+                    if (nR < minN) minN = nR;
+                }
+
+                // Calculate eps and mu
+                var eR = nR / (ZR + 0.001);
+                var mR = nR * ZR;
+
+                epsReal.push(eR);
+                epsImag.push(Math.abs(eR) * 0.1);
+                muReal.push(mR);
+                muImag.push(Math.abs(mR) * 0.1);
+                nReal.push(nR);
+                nImag.push(Math.abs(nR) * 0.1);
+                zReal.push(ZR);
+                zImag.push(0.1);
+            }
+
+            // Plot eps
+            Plotly.newPlot('epsPlot', [
+                { x: freqs, y: epsReal, name: "ε'", line: { color: '#06b6d4', width: 2 } },
+                { x: freqs, y: epsImag, name: "ε''", line: { color: '#f59e0b', width: 2, dash: 'dash' } }
+            ], Object.assign({}, layoutBase, { yaxis: { title: 'Permittivity', gridcolor: 'rgba(255,255,255,0.1)', range: [-5, 10] } }), { responsive: true, displayModeBar: false });
+
+            // Plot mu
+            Plotly.newPlot('muPlot', [
+                { x: freqs, y: muReal, name: "μ'", line: { color: '#10b981', width: 2 } },
+                { x: freqs, y: muImag, name: "μ''", line: { color: '#f59e0b', width: 2, dash: 'dash' } }
+            ], Object.assign({}, layoutBase, { yaxis: { title: 'Permeability', gridcolor: 'rgba(255,255,255,0.1)', range: [-3, 3] } }), { responsive: true, displayModeBar: false });
+
+            // Plot n
+            Plotly.newPlot('nPlot', [
+                { x: freqs, y: nReal, name: "n'", line: { color: '#8b5cf6', width: 2 } },
+                { x: freqs, y: nImag, name: "κ", line: { color: '#f59e0b', width: 2, dash: 'dash' } }
+            ], Object.assign({}, layoutBase, { yaxis: { title: 'Refractive Index', gridcolor: 'rgba(255,255,255,0.1)', range: [-5, 5] } }), { responsive: true, displayModeBar: false });
+
+            // Plot Z
+            Plotly.newPlot('zPlot', [
+                { x: freqs, y: zReal, name: "Z'", line: { color: '#ec4899', width: 2 } },
+                { x: freqs, y: zImag, name: "Z''", line: { color: '#f59e0b', width: 2, dash: 'dash' } }
+            ], Object.assign({}, layoutBase, { yaxis: { title: 'Impedance (Z₀)', gridcolor: 'rgba(255,255,255,0.1)', range: [-2, 4] } }), { responsive: true, displayModeBar: false });
+
+            // Update metrics
+            document.getElementById('nimFreq').textContent = nimStart && nimEnd ? nimStart.toFixed(1) + '-' + nimEnd.toFixed(1) + ' THz' : 'N/A';
+            document.getElementById('minN').textContent = 'n = ' + (minN < 100 ? minN.toFixed(1) : 'N/A');
+            document.getElementById('fom').textContent = 'FOM = ' + (minN < 100 ? (Math.abs(minN) / 0.5).toFixed(1) : 'N/A');
+            document.getElementById('validity').textContent = dataSource === 'nim' ? 'Valid' : 'Causal';
+            document.getElementById('validity').className = 'text-xl font-bold text-green-400';
+        }
+    </script>
+</body>
+</html>

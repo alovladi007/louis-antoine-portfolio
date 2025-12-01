@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Examples - Metamaterials Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #0f172a 0%, #0c1322 50%, #0a0f1a 100%); }
+        .card-gradient { background: linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(6, 182, 212, 0.05) 100%); }
+        .text-gradient { background: linear-gradient(135deg, #06b6d4, #0891b2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        pre { background: #1e293b; border-radius: 8px; padding: 1rem; overflow-x: auto; }
+        code { font-family: 'Fira Code', monospace; font-size: 0.85rem; }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-gray-100">
+    <nav class="fixed top-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-sm border-b border-cyan-500/20">
+        <div class="max-w-7xl mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <a href="metamaterials-complete-project.html" class="flex items-center gap-2 text-cyan-400 hover:text-cyan-300">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Metamaterials Suite</span>
+                </a>
+                <h1 class="text-xl font-bold text-gradient">Code Examples</h1>
+            </div>
+        </div>
+    </nav>
+
+    <main class="pt-24 pb-12 px-6">
+        <div class="max-w-5xl mx-auto">
+            <div class="text-center mb-12">
+                <h1 class="text-4xl font-bold mb-4">
+                    <span class="text-gradient">Production Code Examples</span>
+                </h1>
+                <p class="text-gray-400">Ready-to-use code for common metamaterial applications</p>
+            </div>
+
+            <!-- Example 1 -->
+            <section class="card-gradient rounded-xl p-8 border border-cyan-500/20 mb-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-bold text-white">
+                        <i class="fas fa-vector-square text-cyan-400 mr-3"></i>
+                        THz SRR Array Design
+                    </h2>
+                    <span class="px-3 py-1 bg-cyan-500/20 text-cyan-300 text-sm rounded">Research</span>
+                </div>
+                <p class="text-gray-400 mb-4">Design an SRR array for THz sensing with optimized Q-factor.</p>
+
+                <pre><code class="text-gray-300">"""
+THz Split-Ring Resonator Array Design
+Target: 3 THz resonance with Q > 20
+"""
+import numpy as np
+from metamaterials import UnitCellDesigner, ArraySimulator
+
+# Physical constants
+c = 3e8
+eps_sub = 3.78  # Quartz substrate
+
+# Target frequency
+f_target = 3e12  # 3 THz
+lambda_target = c / f_target  # 100 μm
+
+# Design SRR geometry
+# Rule of thumb: ring circumference ≈ λ / (2 * sqrt(ε_eff))
+eps_eff = (1 + eps_sub) / 2
+circumference = lambda_target / (2 * np.sqrt(eps_eff))
+radius = circumference / (2 * np.pi)
+
+print(f"Initial radius estimate: {radius*1e6:.1f} μm")
+
+# Create and optimize unit cell
+srr = UnitCellDesigner(
+    cell_type='dsrr',  # Double SRR for higher Q
+    radius=15e-6,
+    track_width=2e-6,
+    gap_width=1e-6,
+    substrate='quartz',
+    metal='gold',
+    metal_thickness=200e-9
+)
+
+# Optimize for target frequency
+srr.optimize_for_frequency(f_target, tolerance=0.05)
+f_res = srr.calculate_resonance()
+Q = srr.calculate_Q_factor()
+
+print(f"Optimized resonance: {f_res/1e12:.2f} THz")
+print(f"Quality factor: Q = {Q:.1f}")
+print(f"Final geometry:")
+print(f"  Radius: {srr.radius*1e6:.1f} μm")
+print(f"  Track width: {srr.track_width*1e6:.1f} μm")
+print(f"  Gap width: {srr.gap_width*1e6:.1f} μm")
+
+# Simulate array response
+array = ArraySimulator(unit_cell=srr, nx=10, ny=10)
+freqs, transmission = array.calculate_transmission(
+    freq_range=(1e12, 6e12),
+    n_points=500
+)
+
+# Find resonance dip
+min_idx = np.argmin(transmission)
+f_dip = freqs[min_idx]
+t_dip = transmission[min_idx]
+
+print(f"\nArray transmission:")
+print(f"  Resonance dip: {f_dip/1e12:.2f} THz")
+print(f"  Min transmission: {20*np.log10(t_dip):.1f} dB")
+
+# Export for fabrication
+srr.export_gds("thz_srr_array.gds", array_size=(100, 100))</code></pre>
+            </section>
+
+            <!-- Example 2 -->
+            <section class="card-gradient rounded-xl p-8 border border-cyan-500/20 mb-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-bold text-white">
+                        <i class="fas fa-radiation text-cyan-400 mr-3"></i>
+                        Broadband IR Absorber
+                    </h2>
+                    <span class="px-3 py-1 bg-green-500/20 text-green-300 text-sm rounded">Industry</span>
+                </div>
+                <p class="text-gray-400 mb-4">Design a broadband absorber for thermal harvesting (8-14 μm LWIR).</p>
+
+                <pre><code class="text-gray-300">"""
+Broadband LWIR Perfect Absorber
+Target: >90% absorption across 8-14 μm (21-37 THz)
+"""
+import numpy as np
+from metamaterials import PerfectAbsorber, BroadbandOptimizer
+
+# Target spectral range
+lambda_min, lambda_max = 8e-6, 14e-6
+f_min, f_max = 3e8/lambda_max, 3e8/lambda_min
+
+print(f"Target band: {f_min/1e12:.1f} - {f_max/1e12:.1f} THz")
+
+# Use pyramidal structure for broadband response
+absorber = PerfectAbsorber(
+    structure='pyramidal',
+    base_period=3e-6,
+    pyramid_height=2.5e-6,
+    metal='aluminum',
+    dielectric='al2o3',
+    layers=5  # Graded impedance layers
+)
+
+# Optimize for broadband absorption
+optimizer = BroadbandOptimizer(
+    target_absorption=0.95,
+    freq_range=(f_min, f_max),
+    weights='uniform'
+)
+
+optimized_params = optimizer.optimize(absorber)
+absorber.apply_params(optimized_params)
+
+# Calculate performance
+freqs = np.linspace(f_min, f_max, 200)
+absorption = absorber.calculate_absorption(freqs)
+
+# Statistics
+avg_abs = np.mean(absorption)
+min_abs = np.min(absorption)
+bandwidth_90 = np.sum(absorption > 0.9) / len(absorption) * 100
+
+print(f"\nPerformance:")
+print(f"  Average absorption: {avg_abs*100:.1f}%")
+print(f"  Minimum absorption: {min_abs*100:.1f}%")
+print(f"  >90% bandwidth: {bandwidth_90:.0f}%")
+
+# Angular performance
+angles = [0, 30, 45, 60]
+for angle in angles:
+    abs_te, abs_tm = absorber.angular_absorption(freqs, angle)
+    print(f"  θ={angle}°: TE={np.mean(abs_te)*100:.1f}%, TM={np.mean(abs_tm)*100:.1f}%")
+
+# Thermal emission spectrum (Kirchhoff's law: ε = A)
+T = 300  # Room temperature
+emissivity = absorption
+radiance = absorber.calculate_thermal_emission(T, freqs)</code></pre>
+            </section>
+
+            <!-- Example 3 -->
+            <section class="card-gradient rounded-xl p-8 border border-cyan-500/20 mb-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-bold text-white">
+                        <i class="fas fa-satellite-dish text-cyan-400 mr-3"></i>
+                        5G mmWave Beam Steering Antenna
+                    </h2>
+                    <span class="px-3 py-1 bg-purple-500/20 text-purple-300 text-sm rounded">Telecom</span>
+                </div>
+                <p class="text-gray-400 mb-4">Phase-gradient metasurface for 28 GHz 5G beam steering.</p>
+
+                <pre><code class="text-gray-300">"""
+28 GHz 5G mmWave Beam Steering Metasurface
+Target: ±60° scan range with 25 dBi gain
+"""
+import numpy as np
+from metamaterials import MetasurfaceAntenna, PhaseProfileOptimizer
+
+# Operating parameters
+f0 = 28e9  # 28 GHz
+c = 3e8
+lambda0 = c / f0  # 10.7 mm
+
+# Array configuration
+array_size = 16  # 16x16 elements
+element_spacing = lambda0 / 2  # λ/2 spacing
+aperture = array_size * element_spacing
+
+print(f"Aperture size: {aperture*1000:.1f} mm × {aperture*1000:.1f} mm")
+
+# Create metasurface antenna
+antenna = MetasurfaceAntenna(
+    frequency=f0,
+    array_size=(array_size, array_size),
+    element_type='patch',
+    substrate='rogers_rt5880',
+    substrate_thickness=0.254e-3  # 10 mil
+)
+
+# Design phase-shifting elements
+# Each element provides 0-360° phase shift via patch dimension
+antenna.design_elements(
+    phase_resolution=8,  # 8 discrete phase states (3-bit)
+    phase_range=(0, 2*np.pi)
+)
+
+# Calculate phase profile for beam steering
+theta_steer = 30  # degrees
+phi_steer = 0     # degrees
+
+phase_profile = antenna.calculate_steering_phases(theta_steer, phi_steer)
+antenna.apply_phase_profile(phase_profile)
+
+# Simulate radiation pattern
+theta_range = np.linspace(-90, 90, 361)
+pattern_E = antenna.calculate_pattern(theta_range, phi=0)
+pattern_H = antenna.calculate_pattern(theta_range, phi=90)
+
+# Find main beam and sidelobes
+main_beam_idx = np.argmax(pattern_E)
+main_beam_angle = theta_range[main_beam_idx]
+main_beam_gain = pattern_E[main_beam_idx]
+
+# HPBW
+half_power = main_beam_gain - 3
+hpbw_indices = np.where(pattern_E >= half_power)[0]
+hpbw = theta_range[hpbw_indices[-1]] - theta_range[hpbw_indices[0]]
+
+# Sidelobe level
+main_lobe_mask = np.abs(theta_range - main_beam_angle) < 2 * hpbw
+pattern_sidelobes = pattern_E.copy()
+pattern_sidelobes[main_lobe_mask] = -100
+sll = main_beam_gain - np.max(pattern_sidelobes)
+
+print(f"\nRadiation Pattern:")
+print(f"  Main beam: {main_beam_angle:.1f}° (target: {theta_steer}°)")
+print(f"  Peak gain: {main_beam_gain:.1f} dBi")
+print(f"  HPBW: {hpbw:.1f}°")
+print(f"  Sidelobe level: {sll:.1f} dB")
+
+# Scan performance across range
+scan_angles = np.arange(-60, 61, 10)
+scan_gains = []
+
+for theta in scan_angles:
+    phase_profile = antenna.calculate_steering_phases(theta, 0)
+    antenna.apply_phase_profile(phase_profile)
+    gain = antenna.calculate_gain_at_angle(theta)
+    scan_gains.append(gain)
+
+print(f"\nScan Performance:")
+for theta, gain in zip(scan_angles, scan_gains):
+    print(f"  θ={theta:+3d}°: {gain:.1f} dBi")</code></pre>
+            </section>
+
+            <!-- Example 4 -->
+            <section class="card-gradient rounded-xl p-8 border border-cyan-500/20 mb-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-bold text-white">
+                        <i class="fas fa-search-plus text-cyan-400 mr-3"></i>
+                        Near-Field Superlens Imaging
+                    </h2>
+                    <span class="px-3 py-1 bg-cyan-500/20 text-cyan-300 text-sm rounded">Research</span>
+                </div>
+                <p class="text-gray-400 mb-4">Simulate sub-diffraction imaging with a silver superlens.</p>
+
+                <pre><code class="text-gray-300">"""
+Silver Superlens for Sub-diffraction Optical Imaging
+Demonstrates λ/6 resolution at 365 nm (i-line)
+"""
+import numpy as np
+from metamaterials import SuperlensSimulator, NearFieldImager
+
+# Operating wavelength
+lambda0 = 365e-9  # i-line UV
+diffraction_limit = lambda0 / (2 * 1.0)  # In air, NA=1
+
+print(f"Diffraction limit: {diffraction_limit*1e9:.0f} nm")
+
+# Silver optical properties at 365 nm
+eps_Ag = -2.4 + 0.24j  # From Johnson & Christy
+
+# Superlens configuration
+superlens = SuperlensSimulator(
+    wavelength=lambda0,
+    lens_material='silver',
+    lens_thickness=35e-9,
+    object_distance=40e-9,
+    substrate='pmma'
+)
+
+# Create test object (two point sources)
+separation = 60e-9  # 60 nm separation (λ/6)
+superlens.set_object('double_point', separation=separation)
+
+# Calculate image
+image_plane_distance = 40e-9  # Same as object distance for n=-1
+x_range = np.linspace(-200e-9, 200e-9, 401)
+
+# With superlens
+intensity_super = superlens.calculate_image(x_range, image_plane_distance)
+
+# Without superlens (conventional)
+intensity_conv = superlens.calculate_image_conventional(x_range, image_plane_distance)
+
+# Analyze resolution
+# Find peaks
+peaks_super = superlens.find_peaks(x_range, intensity_super)
+peaks_conv = superlens.find_peaks(x_range, intensity_conv)
+
+# Rayleigh criterion: can resolve if dip between peaks < 0.735 * peak
+def check_resolved(x, intensity, peaks):
+    if len(peaks) < 2:
+        return False
+    peak_idx = [np.argmin(np.abs(x - p)) for p in peaks]
+    mid_idx = (peak_idx[0] + peak_idx[1]) // 2
+    dip = intensity[mid_idx]
+    avg_peak = (intensity[peak_idx[0]] + intensity[peak_idx[1]]) / 2
+    return dip < 0.735 * avg_peak
+
+resolved_super = check_resolved(x_range, intensity_super, peaks_super)
+resolved_conv = check_resolved(x_range, intensity_conv, peaks_conv)
+
+print(f"\nImaging Results (separation = {separation*1e9:.0f} nm = λ/{lambda0/separation:.0f}):")
+print(f"  Superlens: {'Resolved' if resolved_super else 'Not resolved'}")
+print(f"  Conventional: {'Resolved' if resolved_conv else 'Not resolved'}")
+
+# Calculate contrast
+def calc_contrast(intensity, peaks, x):
+    if len(peaks) < 2:
+        return 0
+    peak_idx = [np.argmin(np.abs(x - p)) for p in peaks]
+    mid_idx = (peak_idx[0] + peak_idx[1]) // 2
+    I_max = (intensity[peak_idx[0]] + intensity[peak_idx[1]]) / 2
+    I_min = intensity[mid_idx]
+    return (I_max - I_min) / (I_max + I_min)
+
+contrast_super = calc_contrast(intensity_super, peaks_super, x_range)
+contrast_conv = calc_contrast(intensity_conv, peaks_conv, x_range)
+
+print(f"\nImage Contrast:")
+print(f"  Superlens: {contrast_super:.2f}")
+print(f"  Conventional: {contrast_conv:.2f}")</code></pre>
+            </section>
+
+            <!-- Example 5 -->
+            <section class="card-gradient rounded-xl p-8 border border-cyan-500/20">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-bold text-white">
+                        <i class="fas fa-calculator text-cyan-400 mr-3"></i>
+                        S-Parameter to Material Extraction
+                    </h2>
+                    <span class="px-3 py-1 bg-yellow-500/20 text-yellow-300 text-sm rounded">Characterization</span>
+                </div>
+                <p class="text-gray-400 mb-4">Extract effective ε and μ from measured S-parameters using NRW method.</p>
+
+                <pre><code class="text-gray-300">"""
+Nicolson-Ross-Weir Parameter Extraction
+Extract effective ε, μ, n, Z from S-parameter measurements
+"""
+import numpy as np
+from metamaterials import NRWRetrieval, CausalityChecker
+
+# Load S-parameter data (example: simulated metamaterial slab)
+# Format: frequency (Hz), S11_mag, S11_phase (deg), S21_mag, S21_phase (deg)
+data = np.loadtxt('measured_sparams.csv', delimiter=',', skiprows=1)
+freqs = data[:, 0]
+S11 = data[:, 1] * np.exp(1j * np.radians(data[:, 2]))
+S21 = data[:, 3] * np.exp(1j * np.radians(data[:, 4]))
+
+# Sample thickness
+d = 100e-6  # 100 μm
+
+# Initialize retrieval
+nrw = NRWRetrieval(
+    thickness=d,
+    freqs=freqs,
+    S11=S11,
+    S21=S21
+)
+
+# Extract parameters with branch selection
+# Start with branch m=0, adjust if needed
+eps, mu, n, Z = nrw.extract(branch=0, unwrap_phase=True)
+
+# Check causality (Kramers-Kronig relations)
+checker = CausalityChecker()
+kk_error_eps = checker.check_kramers_kronig(freqs, eps)
+kk_error_mu = checker.check_kramers_kronig(freqs, mu)
+
+print("Kramers-Kronig Error:")
+print(f"  ε: {kk_error_eps:.2%}")
+print(f"  μ: {kk_error_mu:.2%}")
+
+# Check passivity (Im(ε) > 0, Im(μ) > 0 for passive media)
+passivity_eps = np.all(np.imag(eps) >= -1e-10)
+passivity_mu = np.all(np.imag(mu) >= -1e-10)
+
+print(f"\nPassivity Check:")
+print(f"  ε passive: {passivity_eps}")
+print(f"  μ passive: {passivity_mu}")
+
+# Find negative index region
+nim_mask = (np.real(eps) < 0) & (np.real(mu) < 0)
+if np.any(nim_mask):
+    nim_freqs = freqs[nim_mask]
+    nim_n = n[nim_mask]
+
+    print(f"\nNegative Index Region:")
+    print(f"  Frequency range: {nim_freqs[0]/1e12:.2f} - {nim_freqs[-1]/1e12:.2f} THz")
+    print(f"  Min n': {np.min(np.real(nim_n)):.2f}")
+
+    # Figure of Merit
+    fom = np.abs(np.real(nim_n)) / np.imag(nim_n)
+    print(f"  Max FOM: {np.max(fom):.1f}")
+else:
+    print("\nNo negative index region found")
+
+# Export results
+results = np.column_stack([
+    freqs,
+    np.real(eps), np.imag(eps),
+    np.real(mu), np.imag(mu),
+    np.real(n), np.imag(n),
+    np.real(Z), np.imag(Z)
+])
+header = 'freq(Hz),eps_r,eps_i,mu_r,mu_i,n_r,n_i,Z_r,Z_i'
+np.savetxt('extracted_params.csv', results, delimiter=',', header=header)</code></pre>
+            </section>
+        </div>
+    </main>
+</body>
+</html>

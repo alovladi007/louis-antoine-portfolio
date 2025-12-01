@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thermal Model - Photonic Computing Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #0f172a 0%, #1e1033 50%, #0a0f1a 100%); }
+        .card-gradient { background: linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(168, 85, 247, 0.05) 100%); }
+        .text-gradient { background: linear-gradient(135deg, #a855f7, #9333ea); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-gray-100">
+    <nav class="fixed top-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-sm border-b border-purple-500/20">
+        <div class="max-w-7xl mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <a href="photonic-computing-complete-project.html" class="flex items-center gap-2 text-purple-400 hover:text-purple-300">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Photonic Computing Suite</span>
+                </a>
+                <h1 class="text-xl font-bold text-gradient">Thermal Model</h1>
+            </div>
+        </div>
+    </nav>
+
+    <main class="pt-24 pb-12 px-6">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-12">
+                <h1 class="text-4xl font-bold mb-4">
+                    <i class="fas fa-temperature-high text-purple-400 mr-4"></i>
+                    <span class="text-gradient">Thermal Analysis & Management</span>
+                </h1>
+                <p class="text-gray-400 text-lg">Model thermal effects on photonic resonators and design active stabilization</p>
+            </div>
+
+            <div class="grid lg:grid-cols-3 gap-8">
+                <!-- System Parameters -->
+                <div class="card-gradient rounded-xl p-6 border border-purple-500/20">
+                    <h2 class="text-xl font-bold text-purple-400 mb-6">
+                        <i class="fas fa-cog mr-2"></i>System Parameters
+                    </h2>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-gray-300 mb-2">Chip Power (W)</label>
+                            <input type="range" id="chipPower" min="0.5" max="20" value="5" step="0.5" class="w-full">
+                            <div class="text-purple-400 text-center" id="chipPowerVal">5.0 W</div>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-300 mb-2">Ambient Temperature (°C)</label>
+                            <input type="range" id="ambientTemp" min="10" max="50" value="25" class="w-full">
+                            <div class="text-purple-400 text-center" id="ambientTempVal">25 °C</div>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-300 mb-2">Number of Resonators</label>
+                            <input type="range" id="numResonators" min="16" max="256" value="64" step="16" class="w-full">
+                            <div class="text-purple-400 text-center" id="numResonatorsVal">64</div>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-300 mb-2">Heater Power per Ring (mW)</label>
+                            <input type="range" id="heaterPower" min="0" max="50" value="10" class="w-full">
+                            <div class="text-purple-400 text-center" id="heaterPowerVal">10 mW</div>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-300 mb-2">Thermal Resistance (K/W)</label>
+                            <input type="range" id="thermalR" min="1" max="20" value="5" step="0.5" class="w-full">
+                            <div class="text-purple-400 text-center" id="thermalRVal">5.0 K/W</div>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-300 mb-2">Cooling Method</label>
+                            <select id="coolingMethod" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-2">
+                                <option value="passive">Passive (Heat Sink)</option>
+                                <option value="forced" selected>Forced Air</option>
+                                <option value="liquid">Liquid Cooling</option>
+                                <option value="tec">TEC Active</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button onclick="runThermal()" class="w-full mt-6 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold transition-colors">
+                        <i class="fas fa-fire mr-2"></i>Run Analysis
+                    </button>
+                </div>
+
+                <!-- Temperature Distribution -->
+                <div class="lg:col-span-2 card-gradient rounded-xl p-6 border border-purple-500/20">
+                    <h2 class="text-xl font-bold text-purple-400 mb-4">
+                        <i class="fas fa-th mr-2"></i>Chip Temperature Distribution
+                    </h2>
+                    <div id="tempMapPlot" class="w-full h-80 bg-gray-900/50 rounded-lg"></div>
+                </div>
+
+                <!-- Thermal Summary -->
+                <div class="card-gradient rounded-xl p-6 border border-purple-500/20">
+                    <h2 class="text-xl font-bold text-purple-400 mb-6">
+                        <i class="fas fa-thermometer-half mr-2"></i>Thermal Summary
+                    </h2>
+
+                    <div class="space-y-4">
+                        <div class="bg-gray-900/50 rounded-lg p-4">
+                            <div class="text-gray-400 text-sm">Max Junction Temp</div>
+                            <div class="text-2xl font-bold" id="maxTemp">52.3 °C</div>
+                        </div>
+
+                        <div class="bg-gray-900/50 rounded-lg p-4">
+                            <div class="text-gray-400 text-sm">Min Junction Temp</div>
+                            <div class="text-2xl font-bold text-cyan-400" id="minTemp">45.1 °C</div>
+                        </div>
+
+                        <div class="bg-gray-900/50 rounded-lg p-4">
+                            <div class="text-gray-400 text-sm">Temperature Gradient</div>
+                            <div class="text-2xl font-bold text-pink-400" id="tempGradient">7.2 °C</div>
+                        </div>
+
+                        <div class="bg-gray-900/50 rounded-lg p-4">
+                            <div class="text-gray-400 text-sm">Total Heater Power</div>
+                            <div class="text-2xl font-bold text-purple-400" id="totalHeaterPower">640 mW</div>
+                        </div>
+
+                        <div class="bg-gray-900/50 rounded-lg p-4">
+                            <div class="text-gray-400 text-sm">Thermal Status</div>
+                            <div class="text-xl font-bold text-green-400" id="thermalStatus">✓ Normal</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Wavelength Drift -->
+                <div class="card-gradient rounded-xl p-6 border border-purple-500/20">
+                    <h2 class="text-xl font-bold text-purple-400 mb-4">
+                        <i class="fas fa-wave-square mr-2"></i>Resonance Wavelength Drift
+                    </h2>
+                    <div id="driftPlot" class="w-full h-64 bg-gray-900/50 rounded-lg"></div>
+                </div>
+
+                <!-- Transient Response -->
+                <div class="card-gradient rounded-xl p-6 border border-purple-500/20">
+                    <h2 class="text-xl font-bold text-purple-400 mb-4">
+                        <i class="fas fa-chart-line mr-2"></i>Thermal Transient
+                    </h2>
+                    <div id="transientPlot" class="w-full h-64 bg-gray-900/50 rounded-lg"></div>
+                </div>
+
+                <!-- Feedback Control -->
+                <div class="lg:col-span-3 card-gradient rounded-xl p-6 border border-purple-500/20">
+                    <h2 class="text-xl font-bold text-purple-400 mb-6">
+                        <i class="fas fa-sliders-h mr-2"></i>Active Thermal Stabilization
+                    </h2>
+
+                    <div class="grid md:grid-cols-4 gap-4 mb-6">
+                        <div>
+                            <label class="block text-gray-300 mb-2">Control Mode</label>
+                            <select id="controlMode" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-2">
+                                <option value="none">No Control</option>
+                                <option value="pid" selected>PID Heater</option>
+                                <option value="dither">Dither Lock</option>
+                                <option value="ml">ML Predictive</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-300 mb-2">Target Wavelength (nm)</label>
+                            <input type="number" id="targetWl" value="1550.0" step="0.1" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-2">
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-300 mb-2">P Gain</label>
+                            <input type="range" id="pGain" min="0" max="10" value="5" step="0.1" class="w-full">
+                            <div class="text-purple-400 text-center" id="pGainVal">5.0</div>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-300 mb-2">I Gain</label>
+                            <input type="range" id="iGain" min="0" max="2" value="0.5" step="0.05" class="w-full">
+                            <div class="text-purple-400 text-center" id="iGainVal">0.50</div>
+                        </div>
+                    </div>
+
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-300 mb-4">Control Response</h3>
+                            <div id="controlPlot" class="w-full h-64 bg-gray-900/50 rounded-lg"></div>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-300 mb-4">Wavelength Stability</h3>
+                            <div id="stabilityPlot" class="w-full h-64 bg-gray-900/50 rounded-lg"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Power Budget -->
+                <div class="lg:col-span-3 card-gradient rounded-xl p-6 border border-purple-500/20">
+                    <h2 class="text-xl font-bold text-purple-400 mb-6">
+                        <i class="fas fa-bolt mr-2"></i>Thermal Management Power Budget
+                    </h2>
+
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div id="powerBudgetPlot" class="w-full h-64 bg-gray-900/50 rounded-lg"></div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-300 mb-4">Optimization Suggestions</h3>
+                            <div class="space-y-3" id="suggestions">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        var thermalData = {};
+
+        ['chipPower', 'ambientTemp', 'numResonators', 'heaterPower', 'thermalR', 'pGain', 'iGain'].forEach(function(id) {
+            var el = document.getElementById(id);
+            el.addEventListener('input', function() {
+                var val = this.value;
+                var display = document.getElementById(id + 'Val');
+                if (id === 'chipPower') display.textContent = parseFloat(val).toFixed(1) + ' W';
+                else if (id === 'ambientTemp') display.textContent = val + ' °C';
+                else if (id === 'numResonators') display.textContent = val;
+                else if (id === 'heaterPower') display.textContent = val + ' mW';
+                else if (id === 'thermalR') display.textContent = parseFloat(val).toFixed(1) + ' K/W';
+                else if (id === 'pGain') display.textContent = parseFloat(val).toFixed(1);
+                else if (id === 'iGain') display.textContent = parseFloat(val).toFixed(2);
+            });
+        });
+
+        function runThermal() {
+            var P_chip = parseFloat(document.getElementById('chipPower').value);
+            var T_amb = parseFloat(document.getElementById('ambientTemp').value);
+            var N_res = parseInt(document.getElementById('numResonators').value);
+            var P_heater = parseFloat(document.getElementById('heaterPower').value) / 1000;
+            var R_th = parseFloat(document.getElementById('thermalR').value);
+            var cooling = document.getElementById('coolingMethod').value;
+
+            // Cooling effectiveness
+            var coolingFactor = { passive: 1.0, forced: 0.6, liquid: 0.3, tec: 0.2 };
+            var effectiveR = R_th * coolingFactor[cooling];
+
+            // Calculate temperature distribution
+            var gridSize = 8;
+            var tempMap = [];
+            var maxT = 0, minT = 1000;
+
+            for (var i = 0; i < gridSize; i++) {
+                tempMap[i] = [];
+                for (var j = 0; j < gridSize; j++) {
+                    // Distance from center (hotspot)
+                    var cx = gridSize / 2, cy = gridSize / 2;
+                    var dist = Math.sqrt(Math.pow(i - cx, 2) + Math.pow(j - cy, 2));
+                    var maxDist = Math.sqrt(2) * gridSize / 2;
+
+                    // Temperature with spatial gradient
+                    var localPower = P_chip * (1 - 0.3 * dist / maxDist);
+                    var T = T_amb + localPower * effectiveR + P_heater * N_res / (gridSize * gridSize) * 5;
+
+                    // Add some variation
+                    T += (Math.random() - 0.5) * 2;
+
+                    tempMap[i][j] = T;
+                    maxT = Math.max(maxT, T);
+                    minT = Math.min(minT, T);
+                }
+            }
+
+            thermalData = {
+                tempMap: tempMap,
+                maxT: maxT,
+                minT: minT,
+                P_chip: P_chip,
+                P_heater: P_heater * N_res,
+                N_res: N_res
+            };
+
+            // Update displays
+            document.getElementById('maxTemp').textContent = maxT.toFixed(1) + ' °C';
+            document.getElementById('maxTemp').className = maxT > 70 ? 'text-2xl font-bold text-red-400' : 'text-2xl font-bold text-white';
+
+            document.getElementById('minTemp').textContent = minT.toFixed(1) + ' °C';
+            document.getElementById('tempGradient').textContent = (maxT - minT).toFixed(1) + ' °C';
+            document.getElementById('totalHeaterPower').textContent = (P_heater * N_res * 1000).toFixed(0) + ' mW';
+
+            var status = maxT < 60 ? '✓ Normal' : (maxT < 80 ? '⚠ Warning' : '✗ Critical');
+            var statusColor = maxT < 60 ? 'text-green-400' : (maxT < 80 ? 'text-yellow-400' : 'text-red-400');
+            document.getElementById('thermalStatus').textContent = status;
+            document.getElementById('thermalStatus').className = 'text-xl font-bold ' + statusColor;
+
+            plotTempMap();
+            plotDrift();
+            plotTransient();
+            plotControl();
+            plotPowerBudget();
+            generateSuggestions();
+        }
+
+        function plotTempMap() {
+            Plotly.newPlot('tempMapPlot', [{
+                z: thermalData.tempMap,
+                type: 'heatmap',
+                colorscale: [
+                    [0, '#1e3a5f'],
+                    [0.3, '#06b6d4'],
+                    [0.6, '#a855f7'],
+                    [1, '#ef4444']
+                ],
+                colorbar: { title: '°C', titleside: 'right' }
+            }], {
+                paper_bgcolor: 'transparent',
+                plot_bgcolor: 'transparent',
+                font: { color: '#9ca3af' },
+                margin: { t: 30, r: 80, b: 40, l: 40 },
+                xaxis: { title: 'X Position' },
+                yaxis: { title: 'Y Position' }
+            }, { responsive: true });
+        }
+
+        function plotDrift() {
+            var temps = [];
+            var drifts = [];
+            var dndt = 80e-6; // dn/dT for silicon
+
+            for (var T = thermalData.minT; T <= thermalData.maxT; T += 0.5) {
+                temps.push(T);
+                var dT = T - 25;
+                var dlambda = 1550 * dndt / 2.4 * dT;
+                drifts.push(dlambda);
+            }
+
+            Plotly.newPlot('driftPlot', [{
+                x: temps,
+                y: drifts,
+                type: 'scatter',
+                mode: 'lines',
+                fill: 'tozeroy',
+                fillcolor: 'rgba(168, 85, 247, 0.3)',
+                line: { color: '#a855f7', width: 2 }
+            }], {
+                paper_bgcolor: 'transparent',
+                plot_bgcolor: 'rgba(0,0,0,0.3)',
+                font: { color: '#9ca3af' },
+                margin: { t: 20, r: 20, b: 50, l: 60 },
+                xaxis: { title: 'Temperature (°C)', gridcolor: 'rgba(255,255,255,0.1)' },
+                yaxis: { title: 'Wavelength Drift (nm)', gridcolor: 'rgba(255,255,255,0.1)' }
+            }, { responsive: true });
+        }
+
+        function plotTransient() {
+            var times = [];
+            var temps = [];
+            var tau = 100; // ms thermal time constant
+
+            for (var t = 0; t <= 500; t += 5) {
+                times.push(t);
+                var T = thermalData.minT + (thermalData.maxT - thermalData.minT) * (1 - Math.exp(-t / tau));
+                temps.push(T);
+            }
+
+            Plotly.newPlot('transientPlot', [{
+                x: times,
+                y: temps,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#f472b6', width: 2 }
+            }], {
+                paper_bgcolor: 'transparent',
+                plot_bgcolor: 'rgba(0,0,0,0.3)',
+                font: { color: '#9ca3af' },
+                margin: { t: 20, r: 20, b: 50, l: 60 },
+                xaxis: { title: 'Time (ms)', gridcolor: 'rgba(255,255,255,0.1)' },
+                yaxis: { title: 'Temperature (°C)', gridcolor: 'rgba(255,255,255,0.1)' }
+            }, { responsive: true });
+        }
+
+        function plotControl() {
+            var mode = document.getElementById('controlMode').value;
+            var Kp = parseFloat(document.getElementById('pGain').value);
+            var Ki = parseFloat(document.getElementById('iGain').value);
+            var target = parseFloat(document.getElementById('targetWl').value);
+
+            var times = [];
+            var wavelengths = [];
+            var heaterPowers = [];
+            var errors = [];
+
+            var wl = 1549.5;
+            var integral = 0;
+            var heater = 0;
+
+            for (var t = 0; t <= 200; t += 1) {
+                times.push(t);
+
+                // Disturbance
+                var disturbance = 0.2 * Math.sin(2 * Math.PI * t / 50) + 0.1 * (Math.random() - 0.5);
+
+                if (mode === 'none') {
+                    wl = 1549.5 + disturbance;
+                    heater = 0;
+                } else if (mode === 'pid') {
+                    var error = target - wl;
+                    integral += error * 0.001;
+                    heater = Kp * error + Ki * integral;
+                    heater = Math.max(0, Math.min(50, heater));
+                    wl = wl + heater * 0.02 + disturbance * 0.1;
+                } else if (mode === 'dither') {
+                    var error = target - wl;
+                    heater = Kp * error + 2 * Math.sin(2 * Math.PI * t * 10);
+                    heater = Math.max(0, Math.min(50, heater));
+                    wl = wl + heater * 0.015 + disturbance * 0.05;
+                } else {
+                    var error = target - wl;
+                    heater = Kp * error * 1.5 + Ki * integral * 2;
+                    heater = Math.max(0, Math.min(50, heater));
+                    wl = wl + heater * 0.025 + disturbance * 0.03;
+                }
+
+                wavelengths.push(wl);
+                heaterPowers.push(heater);
+                errors.push((wl - target) * 1000);
+            }
+
+            Plotly.newPlot('controlPlot', [
+                { x: times, y: wavelengths, name: 'Wavelength', line: { color: '#a855f7' } },
+                { x: times, y: heaterPowers, name: 'Heater (mW)', line: { color: '#f472b6' }, yaxis: 'y2' }
+            ], {
+                paper_bgcolor: 'transparent',
+                plot_bgcolor: 'rgba(0,0,0,0.3)',
+                font: { color: '#9ca3af' },
+                margin: { t: 20, r: 60, b: 50, l: 60 },
+                xaxis: { title: 'Time (ms)', gridcolor: 'rgba(255,255,255,0.1)' },
+                yaxis: { title: 'Wavelength (nm)', gridcolor: 'rgba(255,255,255,0.1)' },
+                yaxis2: { title: 'Heater (mW)', overlaying: 'y', side: 'right' },
+                legend: { x: 0.7, y: 1 },
+                shapes: [{
+                    type: 'line', x0: 0, x1: 200, y0: target, y1: target,
+                    line: { color: '#06b6d4', dash: 'dash', width: 1 }
+                }]
+            }, { responsive: true });
+
+            Plotly.newPlot('stabilityPlot', [{
+                x: errors,
+                type: 'histogram',
+                marker: { color: '#a855f7' },
+                nbinsx: 30
+            }], {
+                paper_bgcolor: 'transparent',
+                plot_bgcolor: 'rgba(0,0,0,0.3)',
+                font: { color: '#9ca3af' },
+                margin: { t: 20, r: 20, b: 50, l: 50 },
+                xaxis: { title: 'Wavelength Error (pm)', gridcolor: 'rgba(255,255,255,0.1)' },
+                yaxis: { title: 'Count', gridcolor: 'rgba(255,255,255,0.1)' }
+            }, { responsive: true });
+        }
+
+        function plotPowerBudget() {
+            var labels = ['MVM Compute', 'DAC/ADC', 'Thermal Control', 'Laser', 'Other'];
+            var values = [
+                thermalData.P_chip * 0.4,
+                thermalData.P_chip * 0.2,
+                thermalData.P_heater,
+                thermalData.P_chip * 0.25,
+                thermalData.P_chip * 0.15
+            ];
+
+            Plotly.newPlot('powerBudgetPlot', [{
+                values: values,
+                labels: labels,
+                type: 'pie',
+                marker: { colors: ['#a855f7', '#06b6d4', '#f472b6', '#22d3ee', '#818cf8'] },
+                textinfo: 'label+percent',
+                textposition: 'inside',
+                hole: 0.4
+            }], {
+                paper_bgcolor: 'transparent',
+                font: { color: '#9ca3af' },
+                margin: { t: 20, r: 20, b: 20, l: 20 },
+                showlegend: false,
+                annotations: [{ text: 'Power<br>Budget', showarrow: false, font: { size: 12, color: '#9ca3af' } }]
+            }, { responsive: true });
+        }
+
+        function generateSuggestions() {
+            var suggestions = [];
+
+            if (thermalData.maxT > 60) {
+                suggestions.push({
+                    icon: 'fas fa-fan',
+                    title: 'Upgrade Cooling',
+                    desc: 'Consider liquid cooling to reduce junction temperature by 15°C',
+                    priority: 'high'
+                });
+            }
+
+            if (thermalData.P_heater > thermalData.P_chip * 0.1) {
+                suggestions.push({
+                    icon: 'fas fa-microchip',
+                    title: 'Reduce Heater Power',
+                    desc: 'Use athermal design or better thermal isolation to cut heater power by 50%',
+                    priority: 'medium'
+                });
+            }
+
+            if ((thermalData.maxT - thermalData.minT) > 5) {
+                suggestions.push({
+                    icon: 'fas fa-equals',
+                    title: 'Improve Uniformity',
+                    desc: 'Add thermal spreader to reduce gradient from ' + (thermalData.maxT - thermalData.minT).toFixed(1) + '°C to <2°C',
+                    priority: 'medium'
+                });
+            }
+
+            suggestions.push({
+                icon: 'fas fa-brain',
+                title: 'ML-Based Control',
+                desc: 'Use predictive thermal control to reduce settling time by 3×',
+                priority: 'low'
+            });
+
+            var html = '';
+            suggestions.forEach(function(s) {
+                var borderColor = s.priority === 'high' ? 'border-red-500/50' : (s.priority === 'medium' ? 'border-yellow-500/50' : 'border-green-500/50');
+                var iconColor = s.priority === 'high' ? 'text-red-400' : (s.priority === 'medium' ? 'text-yellow-400' : 'text-green-400');
+
+                html += '<div class="bg-gray-900/50 rounded-lg p-4 border ' + borderColor + '">' +
+                    '<div class="flex items-center gap-3 mb-2">' +
+                    '<i class="' + s.icon + ' ' + iconColor + ' text-xl"></i>' +
+                    '<h4 class="font-semibold text-white">' + s.title + '</h4>' +
+                    '</div>' +
+                    '<p class="text-gray-400 text-sm">' + s.desc + '</p>' +
+                    '</div>';
+            });
+
+            document.getElementById('suggestions').innerHTML = html;
+        }
+
+        document.getElementById('controlMode').addEventListener('change', plotControl);
+
+        function checkPlotly(callback) {
+            if (typeof Plotly !== 'undefined') {
+                callback();
+            } else {
+                setTimeout(function() { checkPlotly(callback); }, 100);
+            }
+        }
+
+        checkPlotly(runThermal);
+    </script>
+</body>
+</html>

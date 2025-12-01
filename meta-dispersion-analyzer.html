@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dispersion Analyzer - Metamaterials Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #0f172a 0%, #0c1322 50%, #0a0f1a 100%); }
+        .card-gradient { background: linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(6, 182, 212, 0.05) 100%); }
+        .glow-cyan { box-shadow: 0 0 30px rgba(6, 182, 212, 0.3); }
+        .text-gradient { background: linear-gradient(135deg, #06b6d4, #0891b2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-gray-100">
+    <!-- Navigation -->
+    <nav class="fixed top-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-sm border-b border-cyan-500/20">
+        <div class="max-w-7xl mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <a href="metamaterials-complete-project.html" class="flex items-center gap-2 text-cyan-400 hover:text-cyan-300">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Metamaterials Suite</span>
+                </a>
+                <h1 class="text-xl font-bold text-gradient">Dispersion Analyzer</h1>
+            </div>
+        </div>
+    </nav>
+
+    <main class="pt-24 pb-12 px-6">
+        <div class="max-w-7xl mx-auto">
+            <!-- Header -->
+            <div class="text-center mb-12">
+                <h1 class="text-4xl font-bold mb-4">
+                    <span class="text-gradient">Effective Medium Dispersion Analyzer</span>
+                </h1>
+                <p class="text-gray-400 max-w-2xl mx-auto">
+                    Analyze permittivity ε(ω), permeability μ(ω), and refractive index n(ω) using
+                    Drude-Lorentz effective medium models for metamaterial characterization.
+                </p>
+            </div>
+
+            <div class="grid lg:grid-cols-4 gap-8">
+                <!-- Controls -->
+                <div class="lg:col-span-1 space-y-6">
+                    <!-- Model Selection -->
+                    <div class="card-gradient rounded-xl p-6 border border-cyan-500/20">
+                        <h3 class="text-lg font-semibold text-cyan-400 mb-4">
+                            <i class="fas fa-sliders-h mr-2"></i>Model Type
+                        </h3>
+                        <div class="space-y-2">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="model" value="drude" checked class="accent-cyan-500">
+                                <span>Drude (Metals)</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="model" value="lorentz" class="accent-cyan-500">
+                                <span>Lorentz (Resonant)</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="model" value="drudeLorentz" class="accent-cyan-500">
+                                <span>Drude-Lorentz</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Electric Response -->
+                    <div class="card-gradient rounded-xl p-6 border border-cyan-500/20">
+                        <h3 class="text-lg font-semibold text-cyan-400 mb-4">
+                            <i class="fas fa-bolt mr-2"></i>Electric Response (ε)
+                        </h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm text-gray-300 mb-1">ε∞ (High Freq.)</label>
+                                <input type="range" id="epsInf" min="1" max="10" value="1" step="0.1"
+                                    class="w-full accent-cyan-500">
+                                <span id="epsInfVal" class="text-cyan-400 text-sm">1.0</span>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-300 mb-1">ωp,e (Plasma, THz)</label>
+                                <input type="range" id="omegaPe" min="1" max="30" value="15" step="0.5"
+                                    class="w-full accent-cyan-500">
+                                <span id="omegaPeVal" class="text-cyan-400 text-sm">15 THz</span>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-300 mb-1">γe (Damping, THz)</label>
+                                <input type="range" id="gammaE" min="0.1" max="5" value="1" step="0.1"
+                                    class="w-full accent-cyan-500">
+                                <span id="gammaEVal" class="text-cyan-400 text-sm">1.0 THz</span>
+                            </div>
+                            <div id="lorentzEParams" class="hidden">
+                                <label class="block text-sm text-gray-300 mb-1">ω0,e (Resonance, THz)</label>
+                                <input type="range" id="omega0e" min="1" max="20" value="8" step="0.5"
+                                    class="w-full accent-cyan-500">
+                                <span id="omega0eVal" class="text-cyan-400 text-sm">8 THz</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Magnetic Response -->
+                    <div class="card-gradient rounded-xl p-6 border border-cyan-500/20">
+                        <h3 class="text-lg font-semibold text-cyan-400 mb-4">
+                            <i class="fas fa-magnet mr-2"></i>Magnetic Response (μ)
+                        </h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm text-gray-300 mb-1">F (Filling Factor)</label>
+                                <input type="range" id="fillingF" min="0" max="1" value="0.4" step="0.05"
+                                    class="w-full accent-cyan-500">
+                                <span id="fillingFVal" class="text-cyan-400 text-sm">0.4</span>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-300 mb-1">ω0,m (Resonance, THz)</label>
+                                <input type="range" id="omega0m" min="1" max="20" value="5" step="0.5"
+                                    class="w-full accent-cyan-500">
+                                <span id="omega0mVal" class="text-cyan-400 text-sm">5 THz</span>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-300 mb-1">γm (Damping, THz)</label>
+                                <input type="range" id="gammaM" min="0.1" max="3" value="0.5" step="0.1"
+                                    class="w-full accent-cyan-500">
+                                <span id="gammaMVal" class="text-cyan-400 text-sm">0.5 THz</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Visualization -->
+                <div class="lg:col-span-3 space-y-6">
+                    <!-- Tabs -->
+                    <div class="flex gap-2 flex-wrap">
+                        <button onclick="showTab('epsilon')" class="tab-btn px-4 py-2 rounded-lg bg-cyan-600 text-white" data-tab="epsilon">
+                            Permittivity ε(ω)
+                        </button>
+                        <button onclick="showTab('mu')" class="tab-btn px-4 py-2 rounded-lg bg-gray-700 text-gray-300" data-tab="mu">
+                            Permeability μ(ω)
+                        </button>
+                        <button onclick="showTab('index')" class="tab-btn px-4 py-2 rounded-lg bg-gray-700 text-gray-300" data-tab="index">
+                            Refractive Index n(ω)
+                        </button>
+                        <button onclick="showTab('impedance')" class="tab-btn px-4 py-2 rounded-lg bg-gray-700 text-gray-300" data-tab="impedance">
+                            Impedance Z(ω)
+                        </button>
+                    </div>
+
+                    <!-- Plots -->
+                    <div id="epsilonPlot" class="card-gradient rounded-xl p-6 border border-cyan-500/20 glow-cyan" style="height: 450px;"></div>
+                    <div id="muPlot" class="card-gradient rounded-xl p-6 border border-cyan-500/20 hidden" style="height: 450px;"></div>
+                    <div id="indexPlot" class="card-gradient rounded-xl p-6 border border-cyan-500/20 hidden" style="height: 450px;"></div>
+                    <div id="impedancePlot" class="card-gradient rounded-xl p-6 border border-cyan-500/20 hidden" style="height: 450px;"></div>
+
+                    <!-- Results Summary -->
+                    <div class="grid md:grid-cols-5 gap-4">
+                        <div class="card-gradient rounded-xl p-4 border border-cyan-500/20 text-center">
+                            <div class="text-xl font-bold text-cyan-400" id="nimBand">5-8 THz</div>
+                            <div class="text-xs text-gray-400">NIM Band</div>
+                        </div>
+                        <div class="card-gradient rounded-xl p-4 border border-cyan-500/20 text-center">
+                            <div class="text-xl font-bold text-cyan-400" id="minEps">-4.2</div>
+                            <div class="text-xs text-gray-400">Min ε'</div>
+                        </div>
+                        <div class="card-gradient rounded-xl p-4 border border-cyan-500/20 text-center">
+                            <div class="text-xl font-bold text-cyan-400" id="minMu">-2.1</div>
+                            <div class="text-xs text-gray-400">Min μ'</div>
+                        </div>
+                        <div class="card-gradient rounded-xl p-4 border border-cyan-500/20 text-center">
+                            <div class="text-xl font-bold text-cyan-400" id="minN">-2.8</div>
+                            <div class="text-xs text-gray-400">Min n'</div>
+                        </div>
+                        <div class="card-gradient rounded-xl p-4 border border-cyan-500/20 text-center">
+                            <div class="text-xl font-bold text-cyan-400" id="fomVal">FOM = 5.2</div>
+                            <div class="text-xs text-gray-400">Figure of Merit</div>
+                        </div>
+                    </div>
+
+                    <!-- Equations -->
+                    <div class="card-gradient rounded-xl p-6 border border-cyan-500/20">
+                        <h3 class="text-lg font-semibold text-cyan-400 mb-4">
+                            <i class="fas fa-square-root-alt mr-2"></i>Model Equations
+                        </h3>
+                        <div class="grid md:grid-cols-2 gap-4 text-sm">
+                            <div class="bg-gray-900/50 rounded-lg p-4">
+                                <div class="text-cyan-300 mb-2">Drude Model (Electric):</div>
+                                <code class="text-gray-300">ε(ω) = ε∞ - ωp²/(ω² + iγω)</code>
+                            </div>
+                            <div class="bg-gray-900/50 rounded-lg p-4">
+                                <div class="text-cyan-300 mb-2">Lorentz Model (Magnetic):</div>
+                                <code class="text-gray-300">μ(ω) = 1 - Fω0²/(ω² - ω0² + iγω)</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        var currentTab = 'epsilon';
+        var plotData = {};
+
+        function checkPlotly(callback) {
+            if (typeof Plotly !== 'undefined') {
+                callback();
+            } else {
+                setTimeout(function() { checkPlotly(callback); }, 100);
+            }
+        }
+
+        checkPlotly(function() {
+            updatePlots();
+        });
+
+        // Event listeners
+        document.querySelectorAll('input[type="range"]').forEach(function(slider) {
+            slider.addEventListener('input', function() {
+                var valSpan = document.getElementById(this.id + 'Val');
+                if (valSpan) {
+                    var unit = this.id.includes('omega') || this.id.includes('gamma') ? ' THz' : '';
+                    valSpan.textContent = this.value + unit;
+                }
+                updatePlots();
+            });
+        });
+
+        document.querySelectorAll('input[name="model"]').forEach(function(radio) {
+            radio.addEventListener('change', function() {
+                var lorentzParams = document.getElementById('lorentzEParams');
+                if (this.value === 'lorentz' || this.value === 'drudeLorentz') {
+                    lorentzParams.classList.remove('hidden');
+                } else {
+                    lorentzParams.classList.add('hidden');
+                }
+                updatePlots();
+            });
+        });
+
+        function showTab(tabName) {
+            currentTab = tabName;
+            var tabs = ['epsilon', 'mu', 'index', 'impedance'];
+            tabs.forEach(function(t) {
+                var plot = document.getElementById(t + 'Plot');
+                var btn = document.querySelector('[data-tab="' + t + '"]');
+                if (t === tabName) {
+                    plot.classList.remove('hidden');
+                    btn.classList.remove('bg-gray-700', 'text-gray-300');
+                    btn.classList.add('bg-cyan-600', 'text-white');
+                } else {
+                    plot.classList.add('hidden');
+                    btn.classList.add('bg-gray-700', 'text-gray-300');
+                    btn.classList.remove('bg-cyan-600', 'text-white');
+                }
+            });
+        }
+
+        function updatePlots() {
+            var model = document.querySelector('input[name="model"]:checked').value;
+            var epsInf = parseFloat(document.getElementById('epsInf').value);
+            var omegaPe = parseFloat(document.getElementById('omegaPe').value);
+            var gammaE = parseFloat(document.getElementById('gammaE').value);
+            var omega0e = parseFloat(document.getElementById('omega0e').value);
+            var F = parseFloat(document.getElementById('fillingF').value);
+            var omega0m = parseFloat(document.getElementById('omega0m').value);
+            var gammaM = parseFloat(document.getElementById('gammaM').value);
+
+            var freqs = [];
+            var epsReal = [], epsImag = [];
+            var muReal = [], muImag = [];
+            var nReal = [], nImag = [];
+            var zReal = [], zImag = [];
+
+            var nimStart = null, nimEnd = null;
+            var minEps = 1000, minMu = 1000, minN = 1000;
+
+            for (var i = 1; i <= 300; i++) {
+                var f = i * 0.1;
+                freqs.push(f);
+                var w = f;
+
+                // Calculate epsilon
+                var eR, eI;
+                if (model === 'drude') {
+                    var denom = w * w + gammaE * gammaE;
+                    eR = epsInf - (omegaPe * omegaPe * w * w) / (denom * w * w + 0.001);
+                    eR = epsInf - (omegaPe * omegaPe) / (w * w + gammaE * gammaE);
+                    eI = (omegaPe * omegaPe * gammaE) / (w * (w * w + gammaE * gammaE));
+                } else if (model === 'lorentz') {
+                    var diff = w * w - omega0e * omega0e;
+                    var denom = diff * diff + gammaE * gammaE * w * w;
+                    eR = epsInf + (omegaPe * omegaPe * diff) / denom;
+                    eI = (omegaPe * omegaPe * gammaE * w) / denom;
+                } else {
+                    // Drude-Lorentz
+                    var drudeDenom = w * w + gammaE * gammaE;
+                    var drudeR = -(omegaPe * omegaPe) / drudeDenom;
+                    var drudeI = (omegaPe * omegaPe * gammaE) / (w * drudeDenom);
+
+                    var lorentzDiff = w * w - omega0e * omega0e;
+                    var lorentzDenom = lorentzDiff * lorentzDiff + gammaE * gammaE * w * w;
+                    var lorentzR = (5 * omega0e * omega0e * lorentzDiff) / lorentzDenom;
+                    var lorentzI = (5 * omega0e * omega0e * gammaE * w) / lorentzDenom;
+
+                    eR = epsInf + drudeR + lorentzR;
+                    eI = drudeI + lorentzI;
+                }
+                epsReal.push(eR);
+                epsImag.push(eI);
+                if (eR < minEps) minEps = eR;
+
+                // Calculate mu (Lorentz for magnetic)
+                var muDiff = w * w - omega0m * omega0m;
+                var muDenom = muDiff * muDiff + gammaM * gammaM * w * w;
+                var mR = 1 - (F * omega0m * omega0m * muDiff) / muDenom;
+                var mI = (F * omega0m * omega0m * gammaM * w) / muDenom;
+                muReal.push(mR);
+                muImag.push(mI);
+                if (mR < minMu) minMu = mR;
+
+                // Calculate refractive index
+                var epsMu = eR * mR - eI * mI;
+                var epsMuI = eR * mI + eI * mR;
+                var mag = Math.sqrt(epsMu * epsMu + epsMuI * epsMuI);
+
+                var nR, nI;
+                if (eR < 0 && mR < 0) {
+                    nR = -Math.sqrt((mag + epsMu) / 2);
+                    if (nimStart === null) nimStart = f;
+                    nimEnd = f;
+                } else {
+                    nR = Math.sqrt((mag + epsMu) / 2);
+                }
+                nI = Math.sqrt((mag - epsMu) / 2);
+                nReal.push(nR);
+                nImag.push(nI);
+                if (nR < minN) minN = nR;
+
+                // Calculate impedance
+                var zMag = Math.sqrt((mR * mR + mI * mI) / (eR * eR + eI * eI + 0.001));
+                var zPhase = 0.5 * (Math.atan2(mI, mR) - Math.atan2(eI, eR));
+                zReal.push(zMag * Math.cos(zPhase));
+                zImag.push(zMag * Math.sin(zPhase));
+            }
+
+            // Store data
+            plotData = { freqs: freqs, epsReal: epsReal, epsImag: epsImag, muReal: muReal, muImag: muImag, nReal: nReal, nImag: nImag, zReal: zReal, zImag: zImag };
+
+            // Update summary
+            document.getElementById('nimBand').textContent = nimStart && nimEnd ? nimStart.toFixed(1) + '-' + nimEnd.toFixed(1) + ' THz' : 'None';
+            document.getElementById('minEps').textContent = minEps.toFixed(2);
+            document.getElementById('minMu').textContent = minMu.toFixed(2);
+            document.getElementById('minN').textContent = minN.toFixed(2);
+            var fom = Math.abs(minN) / gammaM;
+            document.getElementById('fomVal').textContent = 'FOM = ' + fom.toFixed(1);
+
+            // Render current plot
+            renderPlot(currentTab);
+        }
+
+        function renderPlot(tabName) {
+            var traces, title, yLabel;
+            var d = plotData;
+
+            var layoutBase = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#9ca3af' },
+                xaxis: {
+                    title: 'Frequency (THz)',
+                    gridcolor: 'rgba(255,255,255,0.1)',
+                    zerolinecolor: 'rgba(255,255,255,0.2)'
+                },
+                margin: { t: 40, r: 20, b: 50, l: 60 },
+                legend: { x: 0.02, y: 0.98 }
+            };
+
+            if (tabName === 'epsilon') {
+                traces = [
+                    { x: d.freqs, y: d.epsReal, name: "ε' (Real)", line: { color: '#06b6d4', width: 2 } },
+                    { x: d.freqs, y: d.epsImag, name: "ε'' (Imag)", line: { color: '#f59e0b', width: 2, dash: 'dash' } }
+                ];
+                layoutBase.title = { text: 'Permittivity ε(ω)', font: { color: '#06b6d4' } };
+                layoutBase.yaxis = { title: 'Permittivity', gridcolor: 'rgba(255,255,255,0.1)', range: [-10, 5] };
+            } else if (tabName === 'mu') {
+                traces = [
+                    { x: d.freqs, y: d.muReal, name: "μ' (Real)", line: { color: '#10b981', width: 2 } },
+                    { x: d.freqs, y: d.muImag, name: "μ'' (Imag)", line: { color: '#f59e0b', width: 2, dash: 'dash' } }
+                ];
+                layoutBase.title = { text: 'Permeability μ(ω)', font: { color: '#10b981' } };
+                layoutBase.yaxis = { title: 'Permeability', gridcolor: 'rgba(255,255,255,0.1)', range: [-5, 3] };
+            } else if (tabName === 'index') {
+                traces = [
+                    { x: d.freqs, y: d.nReal, name: "n' (Real)", line: { color: '#8b5cf6', width: 2 } },
+                    { x: d.freqs, y: d.nImag, name: "κ (Imag)", line: { color: '#f59e0b', width: 2, dash: 'dash' } }
+                ];
+                layoutBase.title = { text: 'Refractive Index n(ω)', font: { color: '#8b5cf6' } };
+                layoutBase.yaxis = { title: 'Refractive Index', gridcolor: 'rgba(255,255,255,0.1)', range: [-5, 5] };
+            } else if (tabName === 'impedance') {
+                traces = [
+                    { x: d.freqs, y: d.zReal, name: "Z' (Real)", line: { color: '#ec4899', width: 2 } },
+                    { x: d.freqs, y: d.zImag, name: "Z'' (Imag)", line: { color: '#f59e0b', width: 2, dash: 'dash' } }
+                ];
+                layoutBase.title = { text: 'Wave Impedance Z(ω)', font: { color: '#ec4899' } };
+                layoutBase.yaxis = { title: 'Impedance (Z/Z0)', gridcolor: 'rgba(255,255,255,0.1)', range: [-2, 4] };
+            }
+
+            Plotly.newPlot(tabName + 'Plot', traces, layoutBase, { responsive: true, displayModeBar: false });
+        }
+    </script>
+</body>
+</html>
