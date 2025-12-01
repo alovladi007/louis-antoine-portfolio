@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Object Tracker - Self-Driving Vision Module</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%); color: #e0e0e0; min-height: 100vh; }
+        .nav-bar { background: rgba(10, 10, 10, 0.95); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(59, 130, 246, 0.3); position: sticky; top: 0; z-index: 100; backdrop-filter: blur(10px); }
+        .nav-title { color: #3b82f6; font-weight: 600; font-size: 1.2rem; }
+        .nav-btn { background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; transition: all 0.3s ease; }
+        .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(59, 130, 246, 0.4); }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .hero { text-align: center; padding: 3rem 0; background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1)); border-radius: 20px; margin-bottom: 2rem; border: 1px solid rgba(59, 130, 246, 0.2); }
+        .hero h1 { font-size: 2.5rem; background: linear-gradient(135deg, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 1rem; }
+        .hero p { color: #a0a0a0; font-size: 1.1rem; max-width: 700px; margin: 0 auto; }
+        .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
+        @media (max-width: 900px) { .tool-grid { grid-template-columns: 1fr; } }
+        .panel { background: rgba(20, 20, 30, 0.8); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 15px; padding: 1.5rem; }
+        .panel h3 { color: #3b82f6; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+        .canvas-container { background: #0a0a0a; border-radius: 10px; padding: 1rem; margin-bottom: 1rem; min-height: 350px; position: relative; }
+        #trackingCanvas { width: 100%; height: 350px; border-radius: 8px; }
+        .control-group { margin-bottom: 1rem; }
+        .control-group label { display: block; color: #a0a0a0; margin-bottom: 0.5rem; font-size: 0.9rem; }
+        .control-group select, .control-group input { width: 100%; padding: 0.5rem; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px; color: #e0e0e0; }
+        .btn { background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; margin-right: 0.5rem; margin-bottom: 0.5rem; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(59, 130, 246, 0.4); }
+        .btn-secondary { background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.5); }
+        .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+        .metric-card { background: rgba(59, 130, 246, 0.1); padding: 1rem; border-radius: 10px; text-align: center; border: 1px solid rgba(59, 130, 246, 0.2); }
+        .metric-value { font-size: 1.5rem; font-weight: 700; color: #3b82f6; }
+        .metric-label { font-size: 0.8rem; color: #a0a0a0; margin-top: 0.25rem; }
+        .theory-section { background: rgba(20, 20, 30, 0.8); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 15px; padding: 2rem; margin-top: 2rem; }
+        .theory-section h3 { color: #3b82f6; margin-bottom: 1.5rem; }
+        .equation-box { background: rgba(0, 0, 0, 0.3); padding: 1.5rem; border-radius: 10px; margin: 1rem 0; text-align: center; border-left: 3px solid #3b82f6; }
+        .track-list { max-height: 200px; overflow-y: auto; }
+        .track-item { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: rgba(59, 130, 246, 0.05); border-radius: 5px; margin-bottom: 0.5rem; }
+        .track-id { font-weight: 600; color: #3b82f6; }
+        .track-class { background: rgba(59, 130, 246, 0.2); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem; }
+        .code-block { background: #0d1117; border-radius: 8px; padding: 1rem; margin: 1rem 0; overflow-x: auto; font-family: 'Fira Code', monospace; font-size: 0.85rem; border: 1px solid rgba(59, 130, 246, 0.2); }
+        .keyword { color: #ff79c6; } .string { color: #f1fa8c; } .comment { color: #6272a4; } .function { color: #50fa7b; } .number { color: #bd93f9; }
+    </style>
+</head>
+<body>
+    <nav class="nav-bar">
+        <div class="nav-title"><i class="fas fa-crosshairs"></i> Multi-Object Tracker (MOT)</div>
+        <a href="self-driving-vision-complete-suite.html" class="nav-btn"><i class="fas fa-arrow-left"></i> Back to Suite</a>
+    </nav>
+    <div class="container">
+        <div class="hero">
+            <h1><i class="fas fa-crosshairs"></i> Multi-Object Tracker</h1>
+            <p>Real-time multi-object tracking using Deep SORT with Kalman filtering, Hungarian algorithm association, and deep appearance features for robust track maintenance</p>
+        </div>
+        <div class="metrics-grid">
+            <div class="metric-card"><div class="metric-value" id="mota">76.4%</div><div class="metric-label">MOTA Score</div></div>
+            <div class="metric-card"><div class="metric-value" id="motp">82.1%</div><div class="metric-label">MOTP Score</div></div>
+            <div class="metric-card"><div class="metric-value" id="idSwitches">23</div><div class="metric-label">ID Switches</div></div>
+            <div class="metric-card"><div class="metric-value" id="trackCount">12</div><div class="metric-label">Active Tracks</div></div>
+        </div>
+        <div class="tool-grid">
+            <div class="panel">
+                <h3><i class="fas fa-video"></i> Tracking Visualization</h3>
+                <div class="canvas-container">
+                    <canvas id="trackingCanvas"></canvas>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <button class="btn" onclick="startTracking()"><i class="fas fa-play"></i> Start Tracking</button>
+                    <button class="btn btn-secondary" onclick="pauseTracking()"><i class="fas fa-pause"></i> Pause</button>
+                    <button class="btn btn-secondary" onclick="resetTracks()"><i class="fas fa-redo"></i> Reset</button>
+                </div>
+            </div>
+            <div class="panel">
+                <h3><i class="fas fa-sliders-h"></i> Tracker Settings</h3>
+                <div class="control-group">
+                    <label>Tracking Algorithm</label>
+                    <select id="algorithm">
+                        <option value="deepsort">Deep SORT</option>
+                        <option value="sort">SORT</option>
+                        <option value="bytetrack">ByteTrack</option>
+                        <option value="botsort">BoT-SORT</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Max Age (frames): <span id="maxAgeVal">30</span></label>
+                    <input type="range" id="maxAge" min="10" max="100" value="30" onchange="document.getElementById('maxAgeVal').textContent=this.value">
+                </div>
+                <div class="control-group">
+                    <label>Min Hits: <span id="minHitsVal">3</span></label>
+                    <input type="range" id="minHits" min="1" max="10" value="3" onchange="document.getElementById('minHitsVal').textContent=this.value">
+                </div>
+                <div class="control-group">
+                    <label>IOU Threshold: <span id="iouThreshVal">0.3</span></label>
+                    <input type="range" id="iouThresh" min="0.1" max="0.7" step="0.05" value="0.3" onchange="document.getElementById('iouThreshVal').textContent=this.value">
+                </div>
+                <h3 style="margin-top: 1.5rem;"><i class="fas fa-list"></i> Active Tracks</h3>
+                <div class="track-list" id="trackList"></div>
+            </div>
+        </div>
+        <div class="tool-grid">
+            <div class="panel">
+                <h3><i class="fas fa-chart-line"></i> Track Trajectories</h3>
+                <div id="trajectoryChart" style="height: 300px;"></div>
+            </div>
+            <div class="panel">
+                <h3><i class="fas fa-chart-bar"></i> Class Distribution</h3>
+                <div id="classChart" style="height: 300px;"></div>
+            </div>
+        </div>
+        <div class="theory-section">
+            <h3><i class="fas fa-book"></i> Kalman Filter State Estimation</h3>
+            <p style="color: #a0a0a0; margin-bottom: 1rem;">Deep SORT uses an 8-dimensional state vector for tracking:</p>
+            <div class="equation-box"><div id="eq1"></div></div>
+            <h4 style="color: #e0e0e0; margin-top: 1.5rem;">Prediction Step</h4>
+            <div class="equation-box"><div id="eq2"></div></div>
+            <h4 style="color: #e0e0e0; margin-top: 1.5rem;">Hungarian Algorithm Association Cost</h4>
+            <div class="equation-box"><div id="eq3"></div></div>
+            <h4 style="color: #e0e0e0; margin-top: 2rem;">Implementation</h4>
+            <div class="code-block"><code>
+<span class="keyword">class</span> <span class="function">DeepSORT</span>:
+    <span class="keyword">def</span> <span class="function">__init__</span>(self, max_age=<span class="number">30</span>, min_hits=<span class="number">3</span>, iou_threshold=<span class="number">0.3</span>):
+        self.max_age = max_age
+        self.min_hits = min_hits
+        self.iou_threshold = iou_threshold
+        self.tracks = []
+        self.track_id = <span class="number">0</span>
+        self.feature_extractor = <span class="function">ReIDNetwork</span>()
+
+    <span class="keyword">def</span> <span class="function">update</span>(self, detections, frame):
+        <span class="comment"># Extract appearance features</span>
+        features = self.feature_extractor(frame, detections)
+
+        <span class="comment"># Predict new locations of existing tracks</span>
+        <span class="keyword">for</span> track <span class="keyword">in</span> self.tracks:
+            track.predict()
+
+        <span class="comment"># Compute cost matrix (IOU + appearance)</span>
+        cost_matrix = self.<span class="function">compute_cost_matrix</span>(
+            self.tracks, detections, features
+        )
+
+        <span class="comment"># Hungarian algorithm for optimal assignment</span>
+        matches, unmatched_dets, unmatched_tracks = \
+            <span class="function">linear_assignment</span>(cost_matrix, self.iou_threshold)
+
+        <span class="comment"># Update matched tracks</span>
+        <span class="keyword">for</span> track_idx, det_idx <span class="keyword">in</span> matches:
+            self.tracks[track_idx].update(
+                detections[det_idx], features[det_idx]
+            )
+
+        <span class="comment"># Create new tracks for unmatched detections</span>
+        <span class="keyword">for</span> det_idx <span class="keyword">in</span> unmatched_dets:
+            self.<span class="function">create_track</span>(detections[det_idx], features[det_idx])
+
+        <span class="keyword">return</span> self.<span class="function">get_active_tracks</span>()
+            </code></div>
+        </div>
+    </div>
+    <script>
+        let animationId = null;
+        let tracks = [];
+        const colors = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            katex.render("\\mathbf{x} = [u, v, s, r, \\dot{u}, \\dot{v}, \\dot{s}, \\dot{r}]^T", document.getElementById('eq1'), {displayMode: true});
+            katex.render("\\hat{\\mathbf{x}}_{k|k-1} = \\mathbf{F}\\hat{\\mathbf{x}}_{k-1|k-1}, \\quad \\mathbf{P}_{k|k-1} = \\mathbf{F}\\mathbf{P}_{k-1|k-1}\\mathbf{F}^T + \\mathbf{Q}", document.getElementById('eq2'), {displayMode: true});
+            katex.render("C_{i,j} = \\lambda \\cdot d_{appearance}(i,j) + (1-\\lambda) \\cdot (1 - IoU(i,j))", document.getElementById('eq3'), {displayMode: true});
+            initTracks();
+            initCharts();
+            updateTrackList();
+        });
+
+        function initTracks() {
+            const canvas = document.getElementById('trackingCanvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.offsetWidth;
+            canvas.height = 350;
+
+            const classes = ['Car', 'Pedestrian', 'Cyclist', 'Truck'];
+            for (let i = 0; i < 8; i++) {
+                tracks.push({
+                    id: i + 1,
+                    x: 50 + Math.random() * (canvas.width - 100),
+                    y: 100 + Math.random() * (canvas.height - 150),
+                    vx: (Math.random() - 0.5) * 3,
+                    vy: (Math.random() - 0.5) * 2,
+                    width: 40 + Math.random() * 30,
+                    height: 30 + Math.random() * 20,
+                    class: classes[Math.floor(Math.random() * classes.length)],
+                    color: colors[i % colors.length],
+                    history: []
+                });
+            }
+            drawTracks(ctx, canvas.width, canvas.height);
+        }
+
+        function drawTracks(ctx, w, h) {
+            ctx.fillStyle = '#0a0a0a';
+            ctx.fillRect(0, 0, w, h);
+
+            // Draw road
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(0, h * 0.3, w, h * 0.7);
+
+            tracks.forEach(track => {
+                // Draw trajectory
+                if (track.history.length > 1) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = track.color;
+                    ctx.globalAlpha = 0.5;
+                    ctx.lineWidth = 2;
+                    ctx.moveTo(track.history[0].x, track.history[0].y);
+                    track.history.forEach(p => ctx.lineTo(p.x, p.y));
+                    ctx.stroke();
+                    ctx.globalAlpha = 1;
+                }
+
+                // Draw bounding box
+                ctx.strokeStyle = track.color;
+                ctx.lineWidth = 2;
+                ctx.strokeRect(track.x - track.width/2, track.y - track.height/2, track.width, track.height);
+
+                // Draw label
+                ctx.fillStyle = track.color;
+                ctx.fillRect(track.x - track.width/2, track.y - track.height/2 - 18, 60, 18);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '11px sans-serif';
+                ctx.fillText(`ID:${track.id} ${track.class}`, track.x - track.width/2 + 3, track.y - track.height/2 - 5);
+            });
+        }
+
+        function animate() {
+            const canvas = document.getElementById('trackingCanvas');
+            const ctx = canvas.getContext('2d');
+
+            tracks.forEach(track => {
+                track.history.push({x: track.x, y: track.y});
+                if (track.history.length > 50) track.history.shift();
+
+                track.x += track.vx;
+                track.y += track.vy;
+
+                if (track.x < 30 || track.x > canvas.width - 30) track.vx *= -1;
+                if (track.y < 80 || track.y > canvas.height - 30) track.vy *= -1;
+            });
+
+            drawTracks(ctx, canvas.width, canvas.height);
+            animationId = requestAnimationFrame(animate);
+        }
+
+        function startTracking() { if (!animationId) animate(); }
+        function pauseTracking() { if (animationId) { cancelAnimationFrame(animationId); animationId = null; } }
+        function resetTracks() { pauseTracking(); tracks = []; initTracks(); updateTrackList(); }
+
+        function updateTrackList() {
+            const list = document.getElementById('trackList');
+            list.innerHTML = tracks.map(t => `
+                <div class="track-item">
+                    <span class="track-id">ID: ${t.id}</span>
+                    <span class="track-class">${t.class}</span>
+                </div>
+            `).join('');
+        }
+
+        function initCharts() {
+            // Trajectory chart
+            const trajData = tracks.slice(0, 4).map((t, i) => ({
+                x: Array.from({length: 50}, () => Math.random() * 100),
+                y: Array.from({length: 50}, () => Math.random() * 100),
+                mode: 'lines', name: `Track ${t.id}`, line: { color: t.color }
+            }));
+            Plotly.newPlot('trajectoryChart', trajData, {
+                paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+                font: { color: '#a0a0a0' },
+                xaxis: { title: 'X Position', gridcolor: 'rgba(255,255,255,0.1)' },
+                yaxis: { title: 'Y Position', gridcolor: 'rgba(255,255,255,0.1)' },
+                margin: { t: 20, r: 20, b: 50, l: 50 },
+                showlegend: true
+            }, { responsive: true });
+
+            // Class distribution
+            Plotly.newPlot('classChart', [{
+                labels: ['Car', 'Pedestrian', 'Cyclist', 'Truck'],
+                values: [5, 3, 2, 2],
+                type: 'pie',
+                marker: { colors: ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444'] }
+            }], {
+                paper_bgcolor: 'transparent',
+                font: { color: '#a0a0a0' },
+                margin: { t: 20, r: 20, b: 20, l: 20 },
+                showlegend: true
+            }, { responsive: true });
+        }
+    </script>
+</body>
+</html>

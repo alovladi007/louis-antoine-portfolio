@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uncertainty Quantification - Bayesian Radiology Model</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0a0a0a 0%, #1a0a2e 100%); color: #e0e0e0; min-height: 100vh; }
+        .nav-bar { background: rgba(10, 10, 10, 0.95); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(139, 92, 246, 0.3); position: sticky; top: 0; z-index: 100; backdrop-filter: blur(10px); }
+        .nav-title { color: #8b5cf6; font-weight: 600; font-size: 1.2rem; }
+        .nav-btn { background: linear-gradient(135deg, #8b5cf6, #6366f1); color: white; padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; transition: all 0.3s ease; }
+        .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(139, 92, 246, 0.4); }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .hero { text-align: center; padding: 3rem 0; background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(99, 102, 241, 0.1)); border-radius: 20px; margin-bottom: 2rem; border: 1px solid rgba(139, 92, 246, 0.2); }
+        .hero h1 { font-size: 2.5rem; background: linear-gradient(135deg, #8b5cf6, #6366f1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 1rem; }
+        .hero p { color: #a0a0a0; font-size: 1.1rem; max-width: 700px; margin: 0 auto; }
+        .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
+        @media (max-width: 900px) { .tool-grid { grid-template-columns: 1fr; } }
+        .panel { background: rgba(20, 20, 30, 0.8); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 15px; padding: 1.5rem; }
+        .panel h3 { color: #8b5cf6; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+        .prediction-card { background: rgba(0, 0, 0, 0.3); border-radius: 10px; padding: 1.5rem; margin-bottom: 1rem; }
+        .prediction-class { font-size: 1.3rem; font-weight: 600; color: #e0e0e0; margin-bottom: 0.5rem; }
+        .prediction-prob { font-size: 2rem; font-weight: 700; color: #8b5cf6; }
+        .confidence-bar { height: 8px; background: rgba(139, 92, 246, 0.2); border-radius: 4px; margin: 0.5rem 0; overflow: hidden; }
+        .confidence-fill { height: 100%; background: linear-gradient(90deg, #8b5cf6, #6366f1); border-radius: 4px; transition: width 0.5s ease; }
+        .uncertainty-indicator { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; }
+        .uncertainty-badge { padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
+        .uncertainty-low { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+        .uncertainty-medium { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+        .uncertainty-high { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .control-group { margin-bottom: 1rem; }
+        .control-group label { display: block; color: #a0a0a0; margin-bottom: 0.5rem; font-size: 0.9rem; }
+        .control-group select, .control-group input { width: 100%; padding: 0.5rem; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: #e0e0e0; }
+        .btn { background: linear-gradient(135deg, #8b5cf6, #6366f1); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; margin-right: 0.5rem; margin-bottom: 0.5rem; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(139, 92, 246, 0.4); }
+        .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+        .metric-card { background: rgba(139, 92, 246, 0.1); padding: 1rem; border-radius: 10px; text-align: center; border: 1px solid rgba(139, 92, 246, 0.2); }
+        .metric-value { font-size: 1.5rem; font-weight: 700; color: #8b5cf6; }
+        .metric-label { font-size: 0.8rem; color: #a0a0a0; margin-top: 0.25rem; }
+        .theory-section { background: rgba(20, 20, 30, 0.8); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 15px; padding: 2rem; margin-top: 2rem; }
+        .equation-box { background: rgba(0, 0, 0, 0.3); padding: 1.5rem; border-radius: 10px; margin: 1rem 0; text-align: center; border-left: 3px solid #8b5cf6; }
+        .review-recommendation { background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05)); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 10px; padding: 1rem; margin-top: 1rem; display: flex; align-items: center; gap: 1rem; }
+        .review-recommendation i { font-size: 2rem; color: #ef4444; }
+        .review-recommendation .text { flex: 1; }
+        .review-recommendation .title { font-weight: 600; color: #ef4444; }
+        .review-recommendation .desc { color: #a0a0a0; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+    <nav class="nav-bar">
+        <div class="nav-title"><i class="fas fa-chart-line"></i> Uncertainty Quantification</div>
+        <a href="bayesian-radiology-complete-suite.html" class="nav-btn"><i class="fas fa-arrow-left"></i> Back to Suite</a>
+    </nav>
+    <div class="container">
+        <div class="hero">
+            <h1><i class="fas fa-chart-line"></i> Bayesian Uncertainty Quantification</h1>
+            <p>Monte Carlo Dropout inference for calibrated uncertainty estimation in medical diagnosis, enabling risk-aware clinical decisions and automated expert review prioritization</p>
+        </div>
+        <div class="metrics-grid">
+            <div class="metric-card"><div class="metric-value" id="ece">0.042</div><div class="metric-label">Expected Calibration Error</div></div>
+            <div class="metric-card"><div class="metric-value" id="nll">0.187</div><div class="metric-label">Negative Log-Likelihood</div></div>
+            <div class="metric-card"><div class="metric-value" id="brier">0.089</div><div class="metric-label">Brier Score</div></div>
+            <div class="metric-card"><div class="metric-value" id="auroc">0.967</div><div class="metric-label">AUROC</div></div>
+        </div>
+        <div class="tool-grid">
+            <div class="panel">
+                <h3><i class="fas fa-stethoscope"></i> Diagnosis Prediction</h3>
+                <div class="prediction-card">
+                    <div class="prediction-class">Pneumonia</div>
+                    <div class="prediction-prob" id="predProb">87.3%</div>
+                    <div class="confidence-bar"><div class="confidence-fill" id="confBar" style="width: 87.3%;"></div></div>
+                    <div class="uncertainty-indicator">
+                        <span style="color: #a0a0a0;">Uncertainty:</span>
+                        <span class="uncertainty-badge uncertainty-low" id="uncBadge">Low (0.08)</span>
+                    </div>
+                </div>
+                <div id="classProbsChart" style="height: 200px;"></div>
+                <button class="btn" onclick="runInference()"><i class="fas fa-play"></i> Run MC Dropout</button>
+                <button class="btn" onclick="showCalibration()"><i class="fas fa-chart-area"></i> Calibration</button>
+            </div>
+            <div class="panel">
+                <h3><i class="fas fa-sliders-h"></i> Inference Settings</h3>
+                <div class="control-group">
+                    <label>MC Dropout Samples: <span id="mcSamplesVal">50</span></label>
+                    <input type="range" id="mcSamples" min="10" max="200" value="50" onchange="document.getElementById('mcSamplesVal').textContent=this.value">
+                </div>
+                <div class="control-group">
+                    <label>Dropout Rate: <span id="dropoutVal">0.2</span></label>
+                    <input type="range" id="dropout" min="0.1" max="0.5" step="0.05" value="0.2" onchange="document.getElementById('dropoutVal').textContent=this.value">
+                </div>
+                <div class="control-group">
+                    <label>Uncertainty Threshold (Expert Review)</label>
+                    <input type="range" id="uncThreshold" min="0.05" max="0.3" step="0.01" value="0.15" onchange="updateThreshold()">
+                </div>
+                <div class="control-group">
+                    <label>Uncertainty Type</label>
+                    <select id="uncType">
+                        <option value="epistemic">Epistemic (Model)</option>
+                        <option value="aleatoric">Aleatoric (Data)</option>
+                        <option value="total">Total Uncertainty</option>
+                    </select>
+                </div>
+                <div class="review-recommendation" id="reviewRec">
+                    <i class="fas fa-user-md"></i>
+                    <div class="text">
+                        <div class="title">Expert Review Recommended</div>
+                        <div class="desc">Uncertainty exceeds threshold - prioritize for radiologist review</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="tool-grid">
+            <div class="panel">
+                <h3><i class="fas fa-chart-line"></i> Posterior Distribution</h3>
+                <div id="posteriorChart" style="height: 300px;"></div>
+            </div>
+            <div class="panel">
+                <h3><i class="fas fa-chart-area"></i> Reliability Diagram</h3>
+                <div id="reliabilityChart" style="height: 300px;"></div>
+            </div>
+        </div>
+        <div class="theory-section">
+            <h3><i class="fas fa-book"></i> Bayesian Neural Network Theory</h3>
+            <h4 style="color: #e0e0e0; margin-top: 1rem;">Monte Carlo Dropout Approximation</h4>
+            <div class="equation-box"><div id="eq1"></div></div>
+            <h4 style="color: #e0e0e0; margin-top: 1.5rem;">Predictive Uncertainty Decomposition</h4>
+            <div class="equation-box"><div id="eq2"></div></div>
+            <h4 style="color: #e0e0e0; margin-top: 1.5rem;">Expected Calibration Error</h4>
+            <div class="equation-box"><div id="eq3"></div></div>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            katex.render("p(y|x, \\mathcal{D}) \\approx \\frac{1}{T}\\sum_{t=1}^{T} p(y|x, \\hat{W}_t), \\quad \\hat{W}_t \\sim q(W)", document.getElementById('eq1'), {displayMode: true});
+            katex.render("\\underbrace{\\mathbb{V}[y|x]}_{\\text{Total}} = \\underbrace{\\mathbb{E}[\\mathbb{V}[y|x,W]]}_{\\text{Aleatoric}} + \\underbrace{\\mathbb{V}[\\mathbb{E}[y|x,W]]}_{\\text{Epistemic}}", document.getElementById('eq2'), {displayMode: true});
+            katex.render("ECE = \\sum_{m=1}^{M} \\frac{|B_m|}{n} |acc(B_m) - conf(B_m)|", document.getElementById('eq3'), {displayMode: true});
+            initCharts();
+            runInference();
+        });
+
+        function runInference() {
+            const prob = 0.7 + Math.random() * 0.25;
+            const unc = 0.03 + Math.random() * 0.15;
+
+            document.getElementById('predProb').textContent = (prob * 100).toFixed(1) + '%';
+            document.getElementById('confBar').style.width = (prob * 100) + '%';
+
+            const badge = document.getElementById('uncBadge');
+            badge.textContent = unc < 0.1 ? `Low (${unc.toFixed(2)})` : unc < 0.2 ? `Medium (${unc.toFixed(2)})` : `High (${unc.toFixed(2)})`;
+            badge.className = 'uncertainty-badge ' + (unc < 0.1 ? 'uncertainty-low' : unc < 0.2 ? 'uncertainty-medium' : 'uncertainty-high');
+
+            document.getElementById('reviewRec').style.display = unc > 0.15 ? 'flex' : 'none';
+
+            updateCharts(prob, unc);
+        }
+
+        function updateThreshold() {
+            const unc = parseFloat(document.getElementById('uncBadge').textContent.match(/[\d.]+/)[0]);
+            const thresh = parseFloat(document.getElementById('uncThreshold').value);
+            document.getElementById('reviewRec').style.display = unc > thresh ? 'flex' : 'none';
+        }
+
+        function initCharts() {
+            // Class probabilities
+            Plotly.newPlot('classProbsChart', [{
+                x: ['Pneumonia', 'Normal', 'COVID-19', 'TB'],
+                y: [0.87, 0.08, 0.03, 0.02],
+                type: 'bar',
+                marker: { color: ['#8b5cf6', '#6b7280', '#6b7280', '#6b7280'] },
+                error_y: { type: 'data', array: [0.05, 0.02, 0.01, 0.01], visible: true, color: '#a0a0a0' }
+            }], {
+                paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+                font: { color: '#a0a0a0' },
+                yaxis: { title: 'Probability', gridcolor: 'rgba(255,255,255,0.1)', range: [0, 1] },
+                margin: { t: 10, r: 20, b: 50, l: 50 }
+            }, { responsive: true });
+        }
+
+        function updateCharts(prob, unc) {
+            // Posterior distribution
+            const x = Array.from({length: 100}, (_, i) => i / 100);
+            const y = x.map(xi => Math.exp(-Math.pow(xi - prob, 2) / (2 * unc * unc)) / (unc * Math.sqrt(2 * Math.PI)));
+
+            Plotly.react('posteriorChart', [{
+                x: x, y: y, type: 'scatter', mode: 'lines', fill: 'tozeroy',
+                line: { color: '#8b5cf6' }, fillcolor: 'rgba(139, 92, 246, 0.3)'
+            }, {
+                x: [prob], y: [Math.max(...y)], type: 'scatter', mode: 'markers',
+                marker: { color: '#ef4444', size: 10 }, name: 'Mean'
+            }], {
+                paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+                font: { color: '#a0a0a0' },
+                xaxis: { title: 'Probability', gridcolor: 'rgba(255,255,255,0.1)' },
+                yaxis: { title: 'Density', gridcolor: 'rgba(255,255,255,0.1)' },
+                margin: { t: 20, r: 20, b: 50, l: 50 },
+                showlegend: false
+            }, { responsive: true });
+
+            // Reliability diagram
+            const bins = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
+            const accuracy = bins.map(b => b + (Math.random() - 0.5) * 0.08);
+
+            Plotly.react('reliabilityChart', [
+                { x: bins, y: accuracy, type: 'bar', name: 'Accuracy', marker: { color: '#8b5cf6' } },
+                { x: [0, 1], y: [0, 1], mode: 'lines', name: 'Perfect Calibration', line: { color: '#22c55e', dash: 'dash' } }
+            ], {
+                paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+                font: { color: '#a0a0a0' },
+                xaxis: { title: 'Confidence', gridcolor: 'rgba(255,255,255,0.1)' },
+                yaxis: { title: 'Accuracy', gridcolor: 'rgba(255,255,255,0.1)', range: [0, 1] },
+                margin: { t: 20, r: 20, b: 50, l: 50 },
+                barmode: 'overlay'
+            }, { responsive: true });
+        }
+
+        function showCalibration() {
+            document.getElementById('ece').textContent = (0.03 + Math.random() * 0.03).toFixed(3);
+            document.getElementById('nll').textContent = (0.15 + Math.random() * 0.08).toFixed(3);
+            document.getElementById('brier').textContent = (0.07 + Math.random() * 0.04).toFixed(3);
+        }
+    </script>
+</body>
+</html>
