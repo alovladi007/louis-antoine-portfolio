@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tuning Analyzer - Neural Interface Decoder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%); }
+        .card-gradient { background: linear-gradient(180deg, rgba(99, 102, 241, 0.1) 0%, rgba(79, 70, 229, 0.05) 100%); border: 1px solid rgba(99, 102, 241, 0.2); }
+        .nav-blur { backdrop-filter: blur(12px); background: rgba(15, 15, 35, 0.8); }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-gray-100">
+    <nav class="fixed top-0 w-full z-50 nav-blur border-b border-indigo-500/20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-4">
+                    <a href="neural-complete-project.html" class="text-indigo-400 hover:text-indigo-300"><i class="fas fa-arrow-left mr-2"></i>Back to Suite</a>
+                    <span class="text-gray-500">|</span>
+                    <span class="text-xl font-bold bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">Tuning Analyzer</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="pt-20 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold mb-4"><i class="fas fa-crosshairs text-purple-400 mr-3"></i>Tuning Analyzer</h1>
+            <p class="text-xl text-gray-400">Directional tuning curves and preferred direction analysis</p>
+        </div>
+
+        <div class="grid lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-1 space-y-6">
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-indigo-300 mb-4"><i class="fas fa-cog mr-2"></i>Analysis Settings</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Unit Selection</label>
+                            <select id="unitSelect" class="w-full bg-gray-800 border border-indigo-500/30 rounded-lg px-4 py-2 text-white">
+                                <option value="0">Unit 1 (M1)</option>
+                                <option value="1">Unit 2 (M1)</option>
+                                <option value="2">Unit 3 (PMd)</option>
+                                <option value="3">Unit 4 (PMd)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Tuning Model</label>
+                            <select id="tuningModel" class="w-full bg-gray-800 border border-indigo-500/30 rounded-lg px-4 py-2 text-white">
+                                <option value="cosine" selected>Cosine Tuning</option>
+                                <option value="vonmises">Von Mises</option>
+                                <option value="gaussian">Gaussian</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Analysis Window</label>
+                            <select id="analysisWindow" class="w-full bg-gray-800 border border-indigo-500/30 rounded-lg px-4 py-2 text-white">
+                                <option value="movement">Movement Period</option>
+                                <option value="planning">Planning Period</option>
+                                <option value="full">Full Trial</option>
+                            </select>
+                        </div>
+                        <button id="analyzeBtn" class="w-full py-3 bg-gradient-to-r from-indigo-500 to-violet-600 rounded-lg font-semibold hover:from-indigo-600 hover:to-violet-700">
+                            <i class="fas fa-play mr-2"></i>Analyze Tuning
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-indigo-300 mb-4"><i class="fas fa-compass mr-2"></i>Tuning Parameters</h3>
+                    <div class="space-y-3">
+                        <div class="bg-gray-900/50 rounded-lg p-3">
+                            <div class="text-sm text-gray-400">Preferred Direction</div>
+                            <div class="text-2xl font-bold text-green-400" id="prefDir">--°</div>
+                        </div>
+                        <div class="bg-gray-900/50 rounded-lg p-3">
+                            <div class="text-sm text-gray-400">Modulation Depth</div>
+                            <div class="text-xl font-bold text-cyan-400" id="modDepth">-- Hz</div>
+                        </div>
+                        <div class="bg-gray-900/50 rounded-lg p-3">
+                            <div class="text-sm text-gray-400">Baseline Rate</div>
+                            <div class="text-xl font-bold text-indigo-400" id="baseline">-- Hz</div>
+                        </div>
+                        <div class="bg-gray-900/50 rounded-lg p-3">
+                            <div class="text-sm text-gray-400">Tuning Width (FWHM)</div>
+                            <div class="text-xl font-bold text-violet-400" id="tuningWidth">--°</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-indigo-300 mb-4"><i class="fas fa-chart-bar mr-2"></i>Statistics</h3>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between"><span class="text-gray-400">R² (fit quality)</span><span class="text-white" id="r2">--</span></div>
+                        <div class="flex justify-between"><span class="text-gray-400">p-value</span><span class="text-white" id="pval">--</span></div>
+                        <div class="flex justify-between"><span class="text-gray-400">SNR</span><span class="text-white" id="snr">-- dB</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2 space-y-6">
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="card-gradient rounded-xl p-6">
+                        <h3 class="text-lg font-semibold text-indigo-300 mb-4"><i class="fas fa-compass mr-2"></i>Polar Tuning Curve</h3>
+                        <div id="polarPlot" style="height: 300px;"></div>
+                    </div>
+                    <div class="card-gradient rounded-xl p-6">
+                        <h3 class="text-lg font-semibold text-indigo-300 mb-4"><i class="fas fa-chart-line mr-2"></i>Cartesian Tuning</h3>
+                        <div id="cartesianPlot" style="height: 300px;"></div>
+                    </div>
+                </div>
+
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-indigo-300 mb-4"><i class="fas fa-th mr-2"></i>Population Direction Vectors</h3>
+                    <div id="populationPlot" style="height: 280px;"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="border-t border-indigo-500/20 mt-12 py-8">
+        <div class="max-w-7xl mx-auto px-4 text-center text-gray-500"><p>Tuning Analyzer - Neural Interface Decoder Suite</p></div>
+    </footer>
+
+    <script>
+        function checkPlotly(callback) {
+            if (typeof Plotly !== 'undefined') callback();
+            else setTimeout(function() { checkPlotly(callback); }, 100);
+        }
+
+        var unitSelect = document.getElementById('unitSelect');
+        var tuningModelSelect = document.getElementById('tuningModel');
+        var analyzeBtn = document.getElementById('analyzeBtn');
+
+        function gaussRandom() {
+            var u = 0, v = 0;
+            while(u === 0) u = Math.random();
+            while(v === 0) v = Math.random();
+            return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+        }
+
+        function analyzeTuning() {
+            var unitIdx = parseInt(unitSelect.value);
+            var model = tuningModelSelect.value;
+
+            // Generate tuning parameters
+            var prefDir = [45, 135, 225, 315][unitIdx] + gaussRandom() * 10;
+            var baseline = 10 + Math.random() * 10;
+            var modDepth = 20 + Math.random() * 20;
+            var tuningWidth = 90 + Math.random() * 30;
+
+            document.getElementById('prefDir').textContent = prefDir.toFixed(1) + '°';
+            document.getElementById('modDepth').textContent = modDepth.toFixed(1) + ' Hz';
+            document.getElementById('baseline').textContent = baseline.toFixed(1) + ' Hz';
+            document.getElementById('tuningWidth').textContent = tuningWidth.toFixed(0) + '°';
+
+            var r2 = 0.7 + Math.random() * 0.25;
+            var pval = Math.pow(10, -3 - Math.random() * 5);
+            var snr = 5 + Math.random() * 10;
+
+            document.getElementById('r2').textContent = r2.toFixed(3);
+            document.getElementById('pval').textContent = pval.toExponential(2);
+            document.getElementById('snr').textContent = snr.toFixed(1) + ' dB';
+
+            // Generate tuning curve data
+            var directions = [];
+            var firingRates = [];
+            var fittedRates = [];
+
+            for (var d = 0; d <= 360; d += 15) {
+                directions.push(d);
+
+                var prefRad = prefDir * Math.PI / 180;
+                var dirRad = d * Math.PI / 180;
+                var diff = dirRad - prefRad;
+
+                var fitted;
+                if (model === 'cosine') {
+                    fitted = baseline + modDepth * Math.cos(diff);
+                } else if (model === 'vonmises') {
+                    var kappa = 2;
+                    fitted = baseline + modDepth * Math.exp(kappa * (Math.cos(diff) - 1));
+                } else {
+                    var sigma = tuningWidth * Math.PI / 180 / 2.355;
+                    fitted = baseline + modDepth * Math.exp(-0.5 * Math.pow(diff / sigma, 2));
+                }
+
+                fittedRates.push(Math.max(0, fitted));
+                firingRates.push(Math.max(0, fitted + gaussRandom() * 5));
+            }
+
+            // Polar plot
+            var polarData = {
+                r: firingRates,
+                theta: directions,
+                type: 'scatterpolar',
+                mode: 'markers',
+                marker: { color: '#6366f1', size: 8 },
+                name: 'Data'
+            };
+
+            var polarFit = {
+                r: fittedRates,
+                theta: directions,
+                type: 'scatterpolar',
+                mode: 'lines',
+                line: { color: '#22c55e', width: 2 },
+                name: 'Fit'
+            };
+
+            var polarPD = {
+                r: [0, baseline + modDepth],
+                theta: [prefDir, prefDir],
+                type: 'scatterpolar',
+                mode: 'lines',
+                line: { color: '#f59e0b', width: 3 },
+                name: 'PD'
+            };
+
+            var layoutPolar = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e5e7eb' },
+                margin: { t: 30, r: 30, b: 30, l: 30 },
+                polar: {
+                    bgcolor: 'rgba(0,0,0,0)',
+                    radialaxis: { gridcolor: 'rgba(99, 102, 241, 0.2)', linecolor: 'rgba(99, 102, 241, 0.2)' },
+                    angularaxis: { gridcolor: 'rgba(99, 102, 241, 0.2)', linecolor: 'rgba(99, 102, 241, 0.2)' }
+                },
+                showlegend: false
+            };
+
+            Plotly.newPlot('polarPlot', [polarData, polarFit, polarPD], layoutPolar, {responsive: true});
+
+            // Cartesian plot
+            var cartData = {
+                x: directions,
+                y: firingRates,
+                type: 'scatter',
+                mode: 'markers',
+                marker: { color: '#6366f1', size: 8 },
+                name: 'Data'
+            };
+
+            var cartFit = {
+                x: directions,
+                y: fittedRates,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#22c55e', width: 2 },
+                name: 'Fit'
+            };
+
+            var layoutCart = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e5e7eb' },
+                margin: { t: 20, r: 30, b: 50, l: 60 },
+                xaxis: { title: 'Direction (°)', gridcolor: 'rgba(99, 102, 241, 0.1)', range: [0, 360], dtick: 45 },
+                yaxis: { title: 'Firing Rate (Hz)', gridcolor: 'rgba(99, 102, 241, 0.1)' },
+                shapes: [{
+                    type: 'line',
+                    x0: prefDir, x1: prefDir,
+                    y0: 0, y1: baseline + modDepth + 10,
+                    line: { color: '#f59e0b', width: 2, dash: 'dash' }
+                }],
+                showlegend: false
+            };
+
+            Plotly.newPlot('cartesianPlot', [cartData, cartFit], layoutCart, {responsive: true});
+
+            // Population vectors
+            var popTraces = [];
+            var colors = ['#6366f1', '#8b5cf6', '#a855f7', '#d946ef'];
+
+            for (var i = 0; i < 4; i++) {
+                var pd = [45, 135, 225, 315][i] * Math.PI / 180;
+                var strength = 0.5 + Math.random() * 0.5;
+
+                popTraces.push({
+                    x: [0, Math.cos(pd) * strength],
+                    y: [0, Math.sin(pd) * strength],
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    line: { color: colors[i], width: 3 },
+                    marker: { size: [6, 10], color: colors[i] },
+                    name: 'Unit ' + (i + 1)
+                });
+            }
+
+            // Add population vector (sum)
+            var popX = 0, popY = 0;
+            for (var i = 0; i < 4; i++) {
+                var pd = [45, 135, 225, 315][i] * Math.PI / 180;
+                var strength = 0.5 + Math.random() * 0.5;
+                popX += Math.cos(pd) * strength;
+                popY += Math.sin(pd) * strength;
+            }
+
+            popTraces.push({
+                x: [0, popX / 2],
+                y: [0, popY / 2],
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: { color: '#22c55e', width: 4 },
+                marker: { size: [8, 14], color: '#22c55e', symbol: 'arrow', angleref: 'previous' },
+                name: 'Population'
+            });
+
+            var layoutPop = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e5e7eb' },
+                margin: { t: 30, r: 30, b: 50, l: 60 },
+                xaxis: { title: 'X Component', gridcolor: 'rgba(99, 102, 241, 0.1)', range: [-1.5, 1.5], zeroline: true, zerolinecolor: 'rgba(255,255,255,0.3)' },
+                yaxis: { title: 'Y Component', gridcolor: 'rgba(99, 102, 241, 0.1)', range: [-1.5, 1.5], zeroline: true, zerolinecolor: 'rgba(255,255,255,0.3)', scaleanchor: 'x' },
+                legend: { x: 0.02, y: 0.98, bgcolor: 'rgba(0,0,0,0.5)' }
+            };
+
+            Plotly.newPlot('populationPlot', popTraces, layoutPop, {responsive: true});
+        }
+
+        analyzeBtn.addEventListener('click', analyzeTuning);
+        unitSelect.addEventListener('change', analyzeTuning);
+        tuningModelSelect.addEventListener('change', analyzeTuning);
+
+        checkPlotly(analyzeTuning);
+    </script>
+</body>
+</html>

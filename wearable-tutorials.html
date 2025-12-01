@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tutorials - Wearable Health Monitor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%); }
+        .card-gradient { background: linear-gradient(180deg, rgba(249, 115, 22, 0.1) 0%, rgba(234, 88, 12, 0.05) 100%); border: 1px solid rgba(249, 115, 22, 0.2); }
+        .nav-blur { backdrop-filter: blur(12px); background: rgba(15, 15, 35, 0.8); }
+        .code-block { background: #0d1117; border: 1px solid rgba(249, 115, 22, 0.3); }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-gray-100">
+    <nav class="fixed top-0 w-full z-50 nav-blur border-b border-orange-500/20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-4">
+                    <a href="wearable-complete-project.html" class="text-orange-400 hover:text-orange-300"><i class="fas fa-arrow-left mr-2"></i>Back to Suite</a>
+                    <span class="text-gray-500">|</span>
+                    <span class="text-xl font-bold bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent">Tutorials</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="pt-20 pb-12 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
+        <div class="text-center mb-10">
+            <h1 class="text-4xl font-bold mb-4"><i class="fas fa-graduation-cap text-orange-400 mr-3"></i>Tutorials</h1>
+            <p class="text-xl text-gray-400">Step-by-step guides for wearable health monitoring</p>
+        </div>
+
+        <!-- Tutorial 1: IMU Basics -->
+        <section class="card-gradient rounded-xl p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold text-orange-300">Tutorial 1: Reading IMU Data</h2>
+                <span class="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-sm">Beginner</span>
+            </div>
+            <p class="text-gray-400 mb-4">Learn to read and visualize accelerometer and gyroscope data from a 6-axis IMU.</p>
+            <div class="code-block rounded-lg p-4 overflow-x-auto">
+                <pre class="text-sm"><code class="text-gray-300"><span class="text-purple-400">import</span> numpy <span class="text-purple-400">as</span> np
+<span class="text-purple-400">from</span> wearable.sensors <span class="text-purple-400">import</span> IMU
+
+<span class="text-gray-500"># Initialize IMU at 50 Hz</span>
+imu = IMU(sample_rate=<span class="text-cyan-400">50</span>)
+
+<span class="text-gray-500"># Read sensor data</span>
+accel = imu.read_accelerometer()  <span class="text-gray-500"># [ax, ay, az] in m/s²</span>
+gyro = imu.read_gyroscope()       <span class="text-gray-500"># [gx, gy, gz] in rad/s</span>
+
+<span class="text-gray-500"># Compute magnitude</span>
+accel_mag = np.linalg.norm(accel)
+<span class="text-purple-400">print</span>(f<span class="text-green-400">"Acceleration: {accel_mag:.2f} m/s²"</span>)
+
+<span class="text-gray-500"># Detect orientation from gravity</span>
+pitch = np.arctan2(accel[<span class="text-cyan-400">0</span>], np.sqrt(accel[<span class="text-cyan-400">1</span>]**<span class="text-cyan-400">2</span> + accel[<span class="text-cyan-400">2</span>]**<span class="text-cyan-400">2</span>))
+roll = np.arctan2(accel[<span class="text-cyan-400">1</span>], accel[<span class="text-cyan-400">2</span>])
+<span class="text-purple-400">print</span>(f<span class="text-green-400">"Pitch: {np.degrees(pitch):.1f}°, Roll: {np.degrees(roll):.1f}°"</span>)</code></pre>
+            </div>
+        </section>
+
+        <!-- Tutorial 2: Sensor Fusion -->
+        <section class="card-gradient rounded-xl p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold text-orange-300">Tutorial 2: Madgwick Sensor Fusion</h2>
+                <span class="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full text-sm">Intermediate</span>
+            </div>
+            <p class="text-gray-400 mb-4">Implement the Madgwick filter to combine accelerometer and gyroscope for drift-free orientation.</p>
+            <div class="code-block rounded-lg p-4 overflow-x-auto">
+                <pre class="text-sm"><code class="text-gray-300"><span class="text-purple-400">from</span> wearable <span class="text-purple-400">import</span> SensorFusion
+<span class="text-purple-400">import</span> matplotlib.pyplot <span class="text-purple-400">as</span> plt
+
+<span class="text-gray-500"># Initialize Madgwick filter</span>
+fusion = SensorFusion(
+    sample_rate=<span class="text-cyan-400">50</span>,
+    filter_type=<span class="text-green-400">'madgwick'</span>,
+    beta=<span class="text-cyan-400">0.1</span>  <span class="text-gray-500"># Higher = more accelerometer trust</span>
+)
+
+euler_history = []
+
+<span class="text-gray-500"># Process 10 seconds of data</span>
+<span class="text-purple-400">for</span> i <span class="text-purple-400">in</span> range(<span class="text-cyan-400">500</span>):
+    accel, gyro = imu.read()
+
+    <span class="text-gray-500"># Update filter</span>
+    fusion.update(accel, gyro)
+
+    <span class="text-gray-500"># Get Euler angles</span>
+    roll, pitch, yaw = fusion.get_euler()
+    euler_history.append([roll, pitch, yaw])
+
+<span class="text-gray-500"># Plot orientation</span>
+euler_history = np.array(euler_history)
+plt.plot(euler_history[:, <span class="text-cyan-400">0</span>], label=<span class="text-green-400">'Roll'</span>)
+plt.plot(euler_history[:, <span class="text-cyan-400">1</span>], label=<span class="text-green-400">'Pitch'</span>)
+plt.plot(euler_history[:, <span class="text-cyan-400">2</span>], label=<span class="text-green-400">'Yaw'</span>)
+plt.legend()
+plt.show()</code></pre>
+            </div>
+        </section>
+
+        <!-- Tutorial 3: PPG Heart Rate -->
+        <section class="card-gradient rounded-xl p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold text-orange-300">Tutorial 3: PPG Heart Rate Estimation</h2>
+                <span class="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full text-sm">Intermediate</span>
+            </div>
+            <p class="text-gray-400 mb-4">Extract heart rate from photoplethysmography (PPG) signals using peak detection.</p>
+            <div class="code-block rounded-lg p-4 overflow-x-auto">
+                <pre class="text-sm"><code class="text-gray-300"><span class="text-purple-400">from</span> scipy <span class="text-purple-400">import</span> signal
+<span class="text-purple-400">import</span> numpy <span class="text-purple-400">as</span> np
+
+<span class="text-purple-400">def</span> <span class="text-yellow-400">estimate_heart_rate</span>(ppg, sample_rate=<span class="text-cyan-400">25</span>):
+    <span class="text-gray-500"># Bandpass filter: 0.5-4 Hz (30-240 BPM)</span>
+    sos = signal.butter(<span class="text-cyan-400">4</span>, [<span class="text-cyan-400">0.5</span>, <span class="text-cyan-400">4</span>], btype=<span class="text-green-400">'band'</span>,
+                        fs=sample_rate, output=<span class="text-green-400">'sos'</span>)
+    filtered = signal.sosfilt(sos, ppg)
+
+    <span class="text-gray-500"># Find peaks (systolic)</span>
+    peaks, _ = signal.find_peaks(
+        filtered,
+        distance=sample_rate * <span class="text-cyan-400">0.4</span>,  <span class="text-gray-500"># min 0.4s between beats</span>
+        prominence=np.std(filtered) * <span class="text-cyan-400">0.5</span>
+    )
+
+    <span class="text-gray-500"># Calculate RR intervals</span>
+    rr_intervals = np.diff(peaks) / sample_rate  <span class="text-gray-500"># seconds</span>
+
+    <span class="text-gray-500"># Heart rate from mean RR</span>
+    <span class="text-purple-400">if</span> len(rr_intervals) > <span class="text-cyan-400">0</span>:
+        hr = <span class="text-cyan-400">60</span> / np.mean(rr_intervals)
+        <span class="text-purple-400">return</span> hr, peaks, rr_intervals
+    <span class="text-purple-400">return</span> <span class="text-cyan-400">None</span>, peaks, []
+
+<span class="text-gray-500"># Usage</span>
+hr, peaks, rr = estimate_heart_rate(ppg_signal)
+<span class="text-purple-400">print</span>(f<span class="text-green-400">"Heart Rate: {hr:.0f} BPM"</span>)</code></pre>
+            </div>
+        </section>
+
+        <!-- Tutorial 4: Activity Recognition -->
+        <section class="card-gradient rounded-xl p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold text-orange-300">Tutorial 4: Activity Recognition with CNN</h2>
+                <span class="bg-orange-500/20 text-orange-400 px-3 py-1 rounded-full text-sm">Advanced</span>
+            </div>
+            <p class="text-gray-400 mb-4">Train a 1D CNN to classify activities from accelerometer windows.</p>
+            <div class="code-block rounded-lg p-4 overflow-x-auto">
+                <pre class="text-sm"><code class="text-gray-300"><span class="text-purple-400">import</span> tensorflow <span class="text-purple-400">as</span> tf
+<span class="text-purple-400">from</span> tensorflow.keras <span class="text-purple-400">import</span> layers, models
+
+<span class="text-purple-400">def</span> <span class="text-yellow-400">build_activity_cnn</span>(input_shape=(<span class="text-cyan-400">128</span>, <span class="text-cyan-400">6</span>), num_classes=<span class="text-cyan-400">8</span>):
+    model = models.Sequential([
+        <span class="text-gray-500"># Conv block 1</span>
+        layers.Conv1D(<span class="text-cyan-400">64</span>, <span class="text-cyan-400">5</span>, activation=<span class="text-green-400">'relu'</span>, input_shape=input_shape),
+        layers.BatchNormalization(),
+        layers.MaxPooling1D(<span class="text-cyan-400">2</span>),
+
+        <span class="text-gray-500"># Conv block 2</span>
+        layers.Conv1D(<span class="text-cyan-400">128</span>, <span class="text-cyan-400">5</span>, activation=<span class="text-green-400">'relu'</span>),
+        layers.BatchNormalization(),
+        layers.MaxPooling1D(<span class="text-cyan-400">2</span>),
+
+        <span class="text-gray-500"># Conv block 3</span>
+        layers.Conv1D(<span class="text-cyan-400">256</span>, <span class="text-cyan-400">3</span>, activation=<span class="text-green-400">'relu'</span>),
+        layers.GlobalAveragePooling1D(),
+
+        <span class="text-gray-500"># Classifier</span>
+        layers.Dense(<span class="text-cyan-400">128</span>, activation=<span class="text-green-400">'relu'</span>),
+        layers.Dropout(<span class="text-cyan-400">0.5</span>),
+        layers.Dense(num_classes, activation=<span class="text-green-400">'softmax'</span>)
+    ])
+
+    model.compile(
+        optimizer=<span class="text-green-400">'adam'</span>,
+        loss=<span class="text-green-400">'sparse_categorical_crossentropy'</span>,
+        metrics=[<span class="text-green-400">'accuracy'</span>]
+    )
+    <span class="text-purple-400">return</span> model
+
+<span class="text-gray-500"># Train model</span>
+model = build_activity_cnn()
+model.fit(X_train, y_train, epochs=<span class="text-cyan-400">50</span>, validation_split=<span class="text-cyan-400">0.2</span>)</code></pre>
+            </div>
+        </section>
+
+        <!-- Tutorial 5: Sleep Staging -->
+        <section class="card-gradient rounded-xl p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold text-orange-300">Tutorial 5: Sleep Stage Classification</h2>
+                <span class="bg-orange-500/20 text-orange-400 px-3 py-1 rounded-full text-sm">Advanced</span>
+            </div>
+            <p class="text-gray-400 mb-4">Classify sleep stages using movement and heart rate features.</p>
+            <div class="code-block rounded-lg p-4 overflow-x-auto">
+                <pre class="text-sm"><code class="text-gray-300"><span class="text-purple-400">from</span> wearable <span class="text-purple-400">import</span> SleepTracker
+<span class="text-purple-400">import</span> numpy <span class="text-purple-400">as</span> np
+
+<span class="text-purple-400">def</span> <span class="text-yellow-400">extract_sleep_features</span>(accel_epoch, hr_epoch):
+    <span class="text-green-400">"""Extract features from 30-second epoch."""</span>
+    <span class="text-gray-500"># Activity count (integrated acceleration)</span>
+    activity = np.sum(np.abs(np.diff(accel_epoch)))
+
+    <span class="text-gray-500"># HR statistics</span>
+    hr_mean = np.mean(hr_epoch)
+    hr_std = np.std(hr_epoch)
+
+    <span class="text-gray-500"># Movement intensity</span>
+    accel_var = np.var(accel_epoch, axis=<span class="text-cyan-400">0</span>).sum()
+
+    <span class="text-purple-400">return</span> [activity, hr_mean, hr_std, accel_var]
+
+<span class="text-purple-400">def</span> <span class="text-yellow-400">classify_sleep_stage</span>(features, model):
+    <span class="text-green-400">"""Classify epoch into sleep stage."""</span>
+    <span class="text-gray-500"># 0: Awake, 1: REM, 2: Light, 3: Deep</span>
+    pred = model.predict([features])
+    stages = [<span class="text-green-400">'Awake'</span>, <span class="text-green-400">'REM'</span>, <span class="text-green-400">'Light'</span>, <span class="text-green-400">'Deep'</span>]
+    <span class="text-purple-400">return</span> stages[np.argmax(pred)]
+
+<span class="text-gray-500"># Process overnight data</span>
+tracker = SleepTracker()
+result = tracker.analyze(overnight_accel, overnight_hr)
+<span class="text-purple-400">print</span>(f<span class="text-green-400">"Sleep efficiency: {result['efficiency']:.1%}"</span>)</code></pre>
+            </div>
+        </section>
+
+        <!-- Tutorial 6: TinyML Deployment -->
+        <section class="card-gradient rounded-xl p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold text-orange-300">Tutorial 6: Quantizing for Edge Deployment</h2>
+                <span class="bg-red-500/20 text-red-400 px-3 py-1 rounded-full text-sm">Expert</span>
+            </div>
+            <p class="text-gray-400 mb-4">Convert a trained model to int8 for microcontroller deployment.</p>
+            <div class="code-block rounded-lg p-4 overflow-x-auto">
+                <pre class="text-sm"><code class="text-gray-300"><span class="text-purple-400">import</span> tensorflow <span class="text-purple-400">as</span> tf
+
+<span class="text-purple-400">def</span> <span class="text-yellow-400">quantize_model</span>(model, calibration_data):
+    <span class="text-green-400">"""Convert float32 model to int8 TFLite."""</span>
+
+    <span class="text-gray-500"># Representative dataset for calibration</span>
+    <span class="text-purple-400">def</span> <span class="text-yellow-400">representative_dataset</span>():
+        <span class="text-purple-400">for</span> sample <span class="text-purple-400">in</span> calibration_data:
+            <span class="text-purple-400">yield</span> [sample.astype(np.float32)]
+
+    <span class="text-gray-500"># Convert with full integer quantization</span>
+    converter = tf.lite.TFLiteConverter.from_keras_model(model)
+    converter.optimizations = [tf.lite.Optimize.DEFAULT]
+    converter.representative_dataset = representative_dataset
+    converter.target_spec.supported_ops = [
+        tf.lite.OpsSet.TFLITE_BUILTINS_INT8
+    ]
+    converter.inference_input_type = tf.int8
+    converter.inference_output_type = tf.int8
+
+    tflite_model = converter.convert()
+
+    <span class="text-gray-500"># Save quantized model</span>
+    <span class="text-purple-400">with</span> open(<span class="text-green-400">'model_int8.tflite'</span>, <span class="text-green-400">'wb'</span>) <span class="text-purple-400">as</span> f:
+        f.write(tflite_model)
+
+    <span class="text-purple-400">print</span>(f<span class="text-green-400">"Model size: {len(tflite_model) / 1024:.1f} KB"</span>)
+    <span class="text-purple-400">return</span> tflite_model
+
+<span class="text-gray-500"># Quantize trained activity model</span>
+quantize_model(activity_model, X_train[:<span class="text-cyan-400">100</span>])</code></pre>
+            </div>
+        </section>
+
+        <!-- Tutorial 7: Real-time Pipeline -->
+        <section class="card-gradient rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold text-orange-300">Tutorial 7: Real-Time Health Monitoring Pipeline</h2>
+                <span class="bg-red-500/20 text-red-400 px-3 py-1 rounded-full text-sm">Expert</span>
+            </div>
+            <p class="text-gray-400 mb-4">Build a complete real-time pipeline combining all sensors and ML models.</p>
+            <div class="code-block rounded-lg p-4 overflow-x-auto">
+                <pre class="text-sm"><code class="text-gray-300"><span class="text-purple-400">from</span> wearable <span class="text-purple-400">import</span> (
+    SensorFusion, ActivityRecognizer,
+    HeartRateMonitor, AlertSystem
+)
+<span class="text-purple-400">import</span> asyncio
+
+<span class="text-purple-400">class</span> <span class="text-yellow-400">HealthMonitor</span>:
+    <span class="text-purple-400">def</span> <span class="text-yellow-400">__init__</span>(self):
+        self.fusion = SensorFusion(sample_rate=<span class="text-cyan-400">50</span>)
+        self.activity = ActivityRecognizer(<span class="text-green-400">'activity.tflite'</span>)
+        self.hr_monitor = HeartRateMonitor(sample_rate=<span class="text-cyan-400">25</span>)
+        self.alerts = AlertSystem()
+
+        self.accel_buffer = []
+        self.ppg_buffer = []
+
+    <span class="text-purple-400">async def</span> <span class="text-yellow-400">process_sensors</span>(self, accel, gyro, ppg):
+        <span class="text-gray-500"># Update orientation</span>
+        self.fusion.update(accel, gyro)
+        euler = self.fusion.get_euler()
+
+        <span class="text-gray-500"># Buffer for activity recognition</span>
+        self.accel_buffer.append(np.concatenate([accel, gyro]))
+        <span class="text-purple-400">if</span> len(self.accel_buffer) >= <span class="text-cyan-400">128</span>:
+            window = np.array(self.accel_buffer[-<span class="text-cyan-400">128</span>:])
+            activity, conf = self.activity.classify(window)
+            self.accel_buffer = self.accel_buffer[-<span class="text-cyan-400">64</span>:]  <span class="text-gray-500"># 50% overlap</span>
+
+        <span class="text-gray-500"># Heart rate estimation</span>
+        self.ppg_buffer.append(ppg)
+        <span class="text-purple-400">if</span> len(self.ppg_buffer) >= <span class="text-cyan-400">125</span>:  <span class="text-gray-500"># 5 seconds</span>
+            hr = self.hr_monitor.estimate(
+                np.array(self.ppg_buffer),
+                np.linalg.norm(accel)  <span class="text-gray-500"># motion ref</span>
+            )
+            self.ppg_buffer = self.ppg_buffer[-<span class="text-cyan-400">62</span>:]
+
+            <span class="text-gray-500"># Check alerts</span>
+            self.alerts.check_heart_rate(hr)
+
+        <span class="text-purple-400">return</span> {
+            <span class="text-green-400">'orientation'</span>: euler,
+            <span class="text-green-400">'activity'</span>: activity,
+            <span class="text-green-400">'heart_rate'</span>: hr
+        }
+
+<span class="text-gray-500"># Run monitor</span>
+monitor = HealthMonitor()
+<span class="text-purple-400">while</span> <span class="text-cyan-400">True</span>:
+    data = <span class="text-purple-400">await</span> monitor.process_sensors(accel, gyro, ppg)</code></pre>
+            </div>
+        </section>
+    </main>
+
+    <footer class="border-t border-orange-500/20 mt-12 py-8">
+        <div class="max-w-7xl mx-auto px-4 text-center text-gray-500"><p>Tutorials - Wearable Health Monitor Suite</p></div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Alerts - Wearable Health Monitor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%); }
+        .card-gradient { background: linear-gradient(180deg, rgba(249, 115, 22, 0.1) 0%, rgba(234, 88, 12, 0.05) 100%); border: 1px solid rgba(249, 115, 22, 0.2); }
+        .nav-blur { backdrop-filter: blur(12px); background: rgba(15, 15, 35, 0.8); }
+        .alert-critical { border-left: 4px solid #ef4444; background: rgba(239, 68, 68, 0.1); }
+        .alert-warning { border-left: 4px solid #f59e0b; background: rgba(245, 158, 11, 0.1); }
+        .alert-info { border-left: 4px solid #3b82f6; background: rgba(59, 130, 246, 0.1); }
+        .alert-success { border-left: 4px solid #22c55e; background: rgba(34, 197, 94, 0.1); }
+        .pulse-ring { animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite; }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-gray-100">
+    <nav class="fixed top-0 w-full z-50 nav-blur border-b border-orange-500/20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-4">
+                    <a href="wearable-complete-project.html" class="text-orange-400 hover:text-orange-300"><i class="fas fa-arrow-left mr-2"></i>Back to Suite</a>
+                    <span class="text-gray-500">|</span>
+                    <span class="text-xl font-bold bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">Health Alerts</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-sm"><i class="fas fa-shield-alt mr-2"></i>Monitoring Active</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="pt-20 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <!-- Alert Summary -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="card-gradient rounded-xl p-4 text-center border-l-4 border-red-500">
+                <div class="flex items-center justify-center mb-2">
+                    <div class="relative">
+                        <i class="fas fa-exclamation-circle text-3xl text-red-500"></i>
+                    </div>
+                </div>
+                <p class="text-gray-400 text-sm">Critical</p>
+                <p id="critical-count" class="text-2xl font-bold text-red-400">0</p>
+            </div>
+            <div class="card-gradient rounded-xl p-4 text-center border-l-4 border-yellow-500">
+                <i class="fas fa-exclamation-triangle text-3xl text-yellow-500 mb-2"></i>
+                <p class="text-gray-400 text-sm">Warnings</p>
+                <p id="warning-count" class="text-2xl font-bold text-yellow-400">2</p>
+            </div>
+            <div class="card-gradient rounded-xl p-4 text-center border-l-4 border-blue-500">
+                <i class="fas fa-info-circle text-3xl text-blue-500 mb-2"></i>
+                <p class="text-gray-400 text-sm">Info</p>
+                <p id="info-count" class="text-2xl font-bold text-blue-400">5</p>
+            </div>
+            <div class="card-gradient rounded-xl p-4 text-center border-l-4 border-green-500">
+                <i class="fas fa-check-circle text-3xl text-green-500 mb-2"></i>
+                <p class="text-gray-400 text-sm">Resolved</p>
+                <p id="resolved-count" class="text-2xl font-bold text-green-400">12</p>
+            </div>
+        </div>
+
+        <!-- Active Alerts -->
+        <div class="card-gradient rounded-xl p-6 mb-6">
+            <h2 class="text-xl font-bold text-orange-300 mb-4"><i class="fas fa-bell mr-2"></i>Active Alerts</h2>
+            <div id="alerts-container" class="space-y-3">
+                <div class="alert-warning rounded-lg p-4 flex items-start justify-between">
+                    <div class="flex items-start space-x-4">
+                        <i class="fas fa-exclamation-triangle text-yellow-500 mt-1"></i>
+                        <div>
+                            <p class="font-bold text-yellow-400">Elevated Resting Heart Rate</p>
+                            <p class="text-gray-400 text-sm">Resting HR averaged 78 BPM over the past 3 hours, 12% above your baseline.</p>
+                            <p class="text-gray-500 text-xs mt-1"><i class="fas fa-clock mr-1"></i>2 hours ago</p>
+                        </div>
+                    </div>
+                    <button class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="alert-warning rounded-lg p-4 flex items-start justify-between">
+                    <div class="flex items-start space-x-4">
+                        <i class="fas fa-exclamation-triangle text-yellow-500 mt-1"></i>
+                        <div>
+                            <p class="font-bold text-yellow-400">Low Sleep Quality Detected</p>
+                            <p class="text-gray-400 text-sm">Sleep efficiency was 72% last night. Consider reviewing your sleep environment.</p>
+                            <p class="text-gray-500 text-xs mt-1"><i class="fas fa-clock mr-1"></i>8 hours ago</p>
+                        </div>
+                    </div>
+                    <button class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="alert-info rounded-lg p-4 flex items-start justify-between">
+                    <div class="flex items-start space-x-4">
+                        <i class="fas fa-info-circle text-blue-500 mt-1"></i>
+                        <div>
+                            <p class="font-bold text-blue-400">Inactivity Reminder</p>
+                            <p class="text-gray-400 text-sm">You've been sedentary for 2 hours. Consider taking a short walk.</p>
+                            <p class="text-gray-500 text-xs mt-1"><i class="fas fa-clock mr-1"></i>Just now</p>
+                        </div>
+                    </div>
+                    <button class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alert Configuration -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <div class="card-gradient rounded-xl p-6">
+                <h2 class="text-xl font-bold text-orange-300 mb-4"><i class="fas fa-cog mr-2"></i>Heart Rate Thresholds</h2>
+                <div class="space-y-4">
+                    <div class="bg-gray-900/50 rounded-lg p-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-gray-300">High HR Alert</span>
+                            <span class="text-orange-300 font-bold">150 BPM</span>
+                        </div>
+                        <input type="range" min="100" max="200" value="150" class="w-full accent-orange-500">
+                        <p class="text-gray-500 text-xs mt-1">Alert when HR exceeds this during rest</p>
+                    </div>
+                    <div class="bg-gray-900/50 rounded-lg p-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-gray-300">Low HR Alert</span>
+                            <span class="text-blue-300 font-bold">45 BPM</span>
+                        </div>
+                        <input type="range" min="30" max="60" value="45" class="w-full accent-blue-500">
+                        <p class="text-gray-500 text-xs mt-1">Alert when HR drops below this</p>
+                    </div>
+                    <div class="bg-gray-900/50 rounded-lg p-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-gray-300">Irregular Rhythm Detection</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" checked class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-700 peer-checked:bg-orange-500 rounded-full peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+                            </label>
+                        </div>
+                        <p class="text-gray-500 text-xs">Detect potential atrial fibrillation patterns</p>
+                    </div>
+                </div>
+            </div>
+            <div class="card-gradient rounded-xl p-6">
+                <h2 class="text-xl font-bold text-orange-300 mb-4"><i class="fas fa-running mr-2"></i>Activity Alerts</h2>
+                <div class="space-y-4">
+                    <div class="bg-gray-900/50 rounded-lg p-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-gray-300">Inactivity Reminder</span>
+                            <span class="text-green-300 font-bold">60 min</span>
+                        </div>
+                        <input type="range" min="30" max="180" value="60" class="w-full accent-green-500">
+                        <p class="text-gray-500 text-xs mt-1">Remind to move after sitting this long</p>
+                    </div>
+                    <div class="bg-gray-900/50 rounded-lg p-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-gray-300">Step Goal Reminder</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" checked class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-700 peer-checked:bg-orange-500 rounded-full peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+                            </label>
+                        </div>
+                        <p class="text-gray-500 text-xs">Hourly progress toward daily goal</p>
+                    </div>
+                    <div class="bg-gray-900/50 rounded-lg p-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-gray-300">Fall Detection</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" checked class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-700 peer-checked:bg-red-500 rounded-full peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+                            </label>
+                        </div>
+                        <p class="text-gray-500 text-xs">Automatically detect potential falls</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alert History -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="card-gradient rounded-xl p-6">
+                <h2 class="text-xl font-bold text-orange-300 mb-4"><i class="fas fa-history mr-2"></i>Alert History (7 Days)</h2>
+                <div id="history-chart" style="height: 250px;"></div>
+            </div>
+            <div class="card-gradient rounded-xl p-6">
+                <h2 class="text-xl font-bold text-orange-300 mb-4"><i class="fas fa-chart-pie mr-2"></i>Alert Categories</h2>
+                <div id="category-chart" style="height: 250px;"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function checkPlotly(callback) {
+            if (typeof Plotly !== 'undefined') {
+                callback();
+            } else {
+                setTimeout(function() { checkPlotly(callback); }, 100);
+            }
+        }
+
+        function initCharts() {
+            // Alert history bar chart
+            var days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            var critical = [0, 1, 0, 0, 0, 1, 0];
+            var warnings = [2, 1, 3, 2, 1, 2, 2];
+            var info = [5, 4, 6, 4, 5, 3, 5];
+
+            Plotly.newPlot('history-chart', [
+                { x: days, y: critical, name: 'Critical', type: 'bar', marker: { color: '#ef4444' } },
+                { x: days, y: warnings, name: 'Warning', type: 'bar', marker: { color: '#f59e0b' } },
+                { x: days, y: info, name: 'Info', type: 'bar', marker: { color: '#3b82f6' } }
+            ], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#9ca3af' },
+                margin: { t: 20, b: 40, l: 40, r: 20 },
+                barmode: 'stack',
+                xaxis: { showgrid: false },
+                yaxis: { title: 'Count', showgrid: true, gridcolor: 'rgba(255,255,255,0.1)' },
+                legend: { orientation: 'h', y: 1.15 }
+            }, { responsive: true, displayModeBar: false });
+
+            // Category pie chart
+            Plotly.newPlot('category-chart', [{
+                values: [8, 12, 15, 5, 3],
+                labels: ['Heart Rate', 'Activity', 'Sleep', 'SpO2', 'Other'],
+                type: 'pie',
+                marker: {
+                    colors: ['#ef4444', '#f97316', '#6366f1', '#22c55e', '#8b5cf6']
+                },
+                hole: 0.4,
+                textinfo: 'label+percent',
+                textposition: 'outside'
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#9ca3af', size: 11 },
+                margin: { t: 30, b: 30, l: 30, r: 30 },
+                showlegend: false
+            }, { responsive: true, displayModeBar: false });
+        }
+
+        checkPlotly(initCharts);
+    </script>
+</body>
+</html>

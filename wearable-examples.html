@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Examples - Wearable Health Monitor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%); }
+        .card-gradient { background: linear-gradient(180deg, rgba(249, 115, 22, 0.1) 0%, rgba(234, 88, 12, 0.05) 100%); border: 1px solid rgba(249, 115, 22, 0.2); }
+        .nav-blur { backdrop-filter: blur(12px); background: rgba(15, 15, 35, 0.8); }
+        .code-block { background: #0d1117; border: 1px solid rgba(249, 115, 22, 0.3); }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-gray-100">
+    <nav class="fixed top-0 w-full z-50 nav-blur border-b border-orange-500/20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-4">
+                    <a href="wearable-complete-project.html" class="text-orange-400 hover:text-orange-300"><i class="fas fa-arrow-left mr-2"></i>Back to Suite</a>
+                    <span class="text-gray-500">|</span>
+                    <span class="text-xl font-bold bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent">Code Examples</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="pt-20 pb-12 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
+        <div class="text-center mb-10">
+            <h1 class="text-4xl font-bold mb-4"><i class="fas fa-file-code text-orange-400 mr-3"></i>Code Examples</h1>
+            <p class="text-xl text-gray-400">Production-ready implementations for wearable health monitoring</p>
+        </div>
+
+        <!-- Example 1: Complete Sensor Fusion -->
+        <section class="card-gradient rounded-xl p-6 mb-8">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold text-orange-300"><i class="fas fa-compass mr-2"></i>Example 1: Complete Sensor Fusion Pipeline</h2>
+            </div>
+            <p class="text-gray-400 mb-4">Full implementation of Madgwick filter with magnetometer integration for 9-axis fusion.</p>
+            <div class="code-block rounded-lg p-4 overflow-x-auto mb-4" style="max-height: 500px;">
+                <pre class="text-sm"><code class="text-gray-300"><span class="text-purple-400">import</span> numpy <span class="text-purple-400">as</span> np
+<span class="text-purple-400">from</span> scipy.spatial.transform <span class="text-purple-400">import</span> Rotation
+
+<span class="text-purple-400">class</span> <span class="text-yellow-400">MadgwickFilter</span>:
+    <span class="text-green-400">"""Madgwick AHRS filter for 9-axis IMU fusion."""</span>
+
+    <span class="text-purple-400">def</span> <span class="text-yellow-400">__init__</span>(self, sample_rate=<span class="text-cyan-400">50</span>, beta=<span class="text-cyan-400">0.1</span>):
+        self.sample_rate = sample_rate
+        self.beta = beta  <span class="text-gray-500"># Filter gain</span>
+        self.q = np.array([<span class="text-cyan-400">1.0</span>, <span class="text-cyan-400">0.0</span>, <span class="text-cyan-400">0.0</span>, <span class="text-cyan-400">0.0</span>])  <span class="text-gray-500"># Quaternion</span>
+
+    <span class="text-purple-400">def</span> <span class="text-yellow-400">update</span>(self, accel, gyro, mag=<span class="text-cyan-400">None</span>):
+        <span class="text-green-400">"""Update orientation with new sensor readings."""</span>
+        q = self.q
+        dt = <span class="text-cyan-400">1.0</span> / self.sample_rate
+
+        <span class="text-gray-500"># Normalize accelerometer</span>
+        a = accel / np.linalg.norm(accel)
+
+        <span class="text-gray-500"># Gradient descent step</span>
+        <span class="text-purple-400">if</span> mag <span class="text-purple-400">is not</span> <span class="text-cyan-400">None</span>:
+            <span class="text-gray-500"># 9-axis fusion with magnetometer</span>
+            m = mag / np.linalg.norm(mag)
+            h = self._quat_mult(q, self._quat_mult([<span class="text-cyan-400">0</span>, m[<span class="text-cyan-400">0</span>], m[<span class="text-cyan-400">1</span>], m[<span class="text-cyan-400">2</span>]],
+                                                   self._quat_conj(q)))
+            b = np.array([<span class="text-cyan-400">0</span>, np.sqrt(h[<span class="text-cyan-400">1</span>]**<span class="text-cyan-400">2</span> + h[<span class="text-cyan-400">2</span>]**<span class="text-cyan-400">2</span>), <span class="text-cyan-400">0</span>, h[<span class="text-cyan-400">3</span>]])
+
+            f = np.array([
+                <span class="text-cyan-400">2</span>*(q[<span class="text-cyan-400">1</span>]*q[<span class="text-cyan-400">3</span>] - q[<span class="text-cyan-400">0</span>]*q[<span class="text-cyan-400">2</span>]) - a[<span class="text-cyan-400">0</span>],
+                <span class="text-cyan-400">2</span>*(q[<span class="text-cyan-400">0</span>]*q[<span class="text-cyan-400">1</span>] + q[<span class="text-cyan-400">2</span>]*q[<span class="text-cyan-400">3</span>]) - a[<span class="text-cyan-400">1</span>],
+                <span class="text-cyan-400">2</span>*(<span class="text-cyan-400">0.5</span> - q[<span class="text-cyan-400">1</span>]**<span class="text-cyan-400">2</span> - q[<span class="text-cyan-400">2</span>]**<span class="text-cyan-400">2</span>) - a[<span class="text-cyan-400">2</span>],
+                <span class="text-cyan-400">2</span>*b[<span class="text-cyan-400">1</span>]*(<span class="text-cyan-400">0.5</span> - q[<span class="text-cyan-400">2</span>]**<span class="text-cyan-400">2</span> - q[<span class="text-cyan-400">3</span>]**<span class="text-cyan-400">2</span>) + <span class="text-cyan-400">2</span>*b[<span class="text-cyan-400">3</span>]*(q[<span class="text-cyan-400">1</span>]*q[<span class="text-cyan-400">3</span>] - q[<span class="text-cyan-400">0</span>]*q[<span class="text-cyan-400">2</span>]) - m[<span class="text-cyan-400">0</span>],
+                <span class="text-cyan-400">2</span>*b[<span class="text-cyan-400">1</span>]*(q[<span class="text-cyan-400">1</span>]*q[<span class="text-cyan-400">2</span>] - q[<span class="text-cyan-400">0</span>]*q[<span class="text-cyan-400">3</span>]) + <span class="text-cyan-400">2</span>*b[<span class="text-cyan-400">3</span>]*(q[<span class="text-cyan-400">0</span>]*q[<span class="text-cyan-400">1</span>] + q[<span class="text-cyan-400">2</span>]*q[<span class="text-cyan-400">3</span>]) - m[<span class="text-cyan-400">1</span>],
+                <span class="text-cyan-400">2</span>*b[<span class="text-cyan-400">1</span>]*(q[<span class="text-cyan-400">0</span>]*q[<span class="text-cyan-400">2</span>] + q[<span class="text-cyan-400">1</span>]*q[<span class="text-cyan-400">3</span>]) + <span class="text-cyan-400">2</span>*b[<span class="text-cyan-400">3</span>]*(<span class="text-cyan-400">0.5</span> - q[<span class="text-cyan-400">1</span>]**<span class="text-cyan-400">2</span> - q[<span class="text-cyan-400">2</span>]**<span class="text-cyan-400">2</span>) - m[<span class="text-cyan-400">2</span>]
+            ])
+            J = self._jacobian_9dof(q, b)
+        <span class="text-purple-400">else</span>:
+            <span class="text-gray-500"># 6-axis fusion</span>
+            f = np.array([
+                <span class="text-cyan-400">2</span>*(q[<span class="text-cyan-400">1</span>]*q[<span class="text-cyan-400">3</span>] - q[<span class="text-cyan-400">0</span>]*q[<span class="text-cyan-400">2</span>]) - a[<span class="text-cyan-400">0</span>],
+                <span class="text-cyan-400">2</span>*(q[<span class="text-cyan-400">0</span>]*q[<span class="text-cyan-400">1</span>] + q[<span class="text-cyan-400">2</span>]*q[<span class="text-cyan-400">3</span>]) - a[<span class="text-cyan-400">1</span>],
+                <span class="text-cyan-400">2</span>*(<span class="text-cyan-400">0.5</span> - q[<span class="text-cyan-400">1</span>]**<span class="text-cyan-400">2</span> - q[<span class="text-cyan-400">2</span>]**<span class="text-cyan-400">2</span>) - a[<span class="text-cyan-400">2</span>]
+            ])
+            J = self._jacobian_6dof(q)
+
+        <span class="text-gray-500"># Gradient step</span>
+        grad = J.T @ f
+        grad = grad / np.linalg.norm(grad)
+
+        <span class="text-gray-500"># Quaternion derivative from gyroscope</span>
+        qDot = <span class="text-cyan-400">0.5</span> * self._quat_mult(q, [<span class="text-cyan-400">0</span>, gyro[<span class="text-cyan-400">0</span>], gyro[<span class="text-cyan-400">1</span>], gyro[<span class="text-cyan-400">2</span>]])
+
+        <span class="text-gray-500"># Fuse and integrate</span>
+        qDot -= self.beta * grad
+        self.q = q + qDot * dt
+        self.q /= np.linalg.norm(self.q)
+
+        <span class="text-purple-400">return</span> self.q
+
+    <span class="text-purple-400">def</span> <span class="text-yellow-400">get_euler</span>(self):
+        <span class="text-green-400">"""Get Euler angles (roll, pitch, yaw) in degrees."""</span>
+        q = self.q
+        roll = np.arctan2(<span class="text-cyan-400">2</span>*(q[<span class="text-cyan-400">0</span>]*q[<span class="text-cyan-400">1</span>] + q[<span class="text-cyan-400">2</span>]*q[<span class="text-cyan-400">3</span>]),
+                          <span class="text-cyan-400">1</span> - <span class="text-cyan-400">2</span>*(q[<span class="text-cyan-400">1</span>]**<span class="text-cyan-400">2</span> + q[<span class="text-cyan-400">2</span>]**<span class="text-cyan-400">2</span>))
+        pitch = np.arcsin(<span class="text-cyan-400">2</span>*(q[<span class="text-cyan-400">0</span>]*q[<span class="text-cyan-400">2</span>] - q[<span class="text-cyan-400">3</span>]*q[<span class="text-cyan-400">1</span>]))
+        yaw = np.arctan2(<span class="text-cyan-400">2</span>*(q[<span class="text-cyan-400">0</span>]*q[<span class="text-cyan-400">3</span>] + q[<span class="text-cyan-400">1</span>]*q[<span class="text-cyan-400">2</span>]),
+                         <span class="text-cyan-400">1</span> - <span class="text-cyan-400">2</span>*(q[<span class="text-cyan-400">2</span>]**<span class="text-cyan-400">2</span> + q[<span class="text-cyan-400">3</span>]**<span class="text-cyan-400">2</span>))
+        <span class="text-purple-400">return</span> np.degrees([roll, pitch, yaw])
+
+    <span class="text-purple-400">def</span> <span class="text-yellow-400">_quat_mult</span>(self, q1, q2):
+        <span class="text-purple-400">return</span> np.array([
+            q1[<span class="text-cyan-400">0</span>]*q2[<span class="text-cyan-400">0</span>] - q1[<span class="text-cyan-400">1</span>]*q2[<span class="text-cyan-400">1</span>] - q1[<span class="text-cyan-400">2</span>]*q2[<span class="text-cyan-400">2</span>] - q1[<span class="text-cyan-400">3</span>]*q2[<span class="text-cyan-400">3</span>],
+            q1[<span class="text-cyan-400">0</span>]*q2[<span class="text-cyan-400">1</span>] + q1[<span class="text-cyan-400">1</span>]*q2[<span class="text-cyan-400">0</span>] + q1[<span class="text-cyan-400">2</span>]*q2[<span class="text-cyan-400">3</span>] - q1[<span class="text-cyan-400">3</span>]*q2[<span class="text-cyan-400">2</span>],
+            q1[<span class="text-cyan-400">0</span>]*q2[<span class="text-cyan-400">2</span>] - q1[<span class="text-cyan-400">1</span>]*q2[<span class="text-cyan-400">3</span>] + q1[<span class="text-cyan-400">2</span>]*q2[<span class="text-cyan-400">0</span>] + q1[<span class="text-cyan-400">3</span>]*q2[<span class="text-cyan-400">1</span>],
+            q1[<span class="text-cyan-400">0</span>]*q2[<span class="text-cyan-400">3</span>] + q1[<span class="text-cyan-400">1</span>]*q2[<span class="text-cyan-400">2</span>] - q1[<span class="text-cyan-400">2</span>]*q2[<span class="text-cyan-400">1</span>] + q1[<span class="text-cyan-400">3</span>]*q2[<span class="text-cyan-400">0</span>]
+        ])
+
+    <span class="text-purple-400">def</span> <span class="text-yellow-400">_quat_conj</span>(self, q):
+        <span class="text-purple-400">return</span> np.array([q[<span class="text-cyan-400">0</span>], -q[<span class="text-cyan-400">1</span>], -q[<span class="text-cyan-400">2</span>], -q[<span class="text-cyan-400">3</span>]])
+
+<span class="text-gray-500"># Usage</span>
+fusion = MadgwickFilter(sample_rate=<span class="text-cyan-400">50</span>, beta=<span class="text-cyan-400">0.1</span>)
+<span class="text-purple-400">for</span> accel, gyro, mag <span class="text-purple-400">in</span> sensor_stream:
+    q = fusion.update(accel, gyro, mag)
+    roll, pitch, yaw = fusion.get_euler()
+    <span class="text-purple-400">print</span>(f<span class="text-green-400">"RPY: {roll:.1f}, {pitch:.1f}, {yaw:.1f}"</span>)</code></pre>
+            </div>
+        </section>
+
+        <!-- Example 2: HRV Analysis -->
+        <section class="card-gradient rounded-xl p-6 mb-8">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold text-orange-300"><i class="fas fa-heartbeat mr-2"></i>Example 2: Complete HRV Analysis</h2>
+            </div>
+            <p class="text-gray-400 mb-4">Time and frequency domain HRV analysis from PPG-derived RR intervals.</p>
+            <div class="code-block rounded-lg p-4 overflow-x-auto mb-4" style="max-height: 500px;">
+                <pre class="text-sm"><code class="text-gray-300"><span class="text-purple-400">import</span> numpy <span class="text-purple-400">as</span> np
+<span class="text-purple-400">from</span> scipy <span class="text-purple-400">import</span> signal, interpolate
+
+<span class="text-purple-400">class</span> <span class="text-yellow-400">HRVAnalyzer</span>:
+    <span class="text-green-400">"""Complete HRV analysis from RR intervals."""</span>
+
+    <span class="text-purple-400">def</span> <span class="text-yellow-400">__init__</span>(self, rr_intervals):
+        <span class="text-green-400">"""Initialize with RR intervals in milliseconds."""</span>
+        self.rr = np.array(rr_intervals)
+        self.rr_clean = self._remove_ectopic()
+
+    <span class="text-purple-400">def</span> <span class="text-yellow-400">_remove_ectopic</span>(self, threshold=<span class="text-cyan-400">0.2</span>):
+        <span class="text-green-400">"""Remove ectopic beats using threshold method."""</span>
+        rr = self.rr.copy()
+        median_rr = np.median(rr)
+        <span class="text-purple-400">for</span> i <span class="text-purple-400">in</span> range(<span class="text-cyan-400">1</span>, len(rr) - <span class="text-cyan-400">1</span>):
+            <span class="text-purple-400">if</span> abs(rr[i] - median_rr) / median_rr > threshold:
+                rr[i] = (rr[i-<span class="text-cyan-400">1</span>] + rr[i+<span class="text-cyan-400">1</span>]) / <span class="text-cyan-400">2</span>
+        <span class="text-purple-400">return</span> rr
+
+    <span class="text-purple-400">def</span> <span class="text-yellow-400">time_domain</span>(self):
+        <span class="text-green-400">"""Calculate time-domain HRV metrics."""</span>
+        rr = self.rr_clean
+        diff_rr = np.diff(rr)
+
+        <span class="text-purple-400">return</span> {
+            <span class="text-green-400">'mean_rr'</span>: np.mean(rr),
+            <span class="text-green-400">'sdnn'</span>: np.std(rr, ddof=<span class="text-cyan-400">1</span>),
+            <span class="text-green-400">'rmssd'</span>: np.sqrt(np.mean(diff_rr**<span class="text-cyan-400">2</span>)),
+            <span class="text-green-400">'pnn50'</span>: np.sum(np.abs(diff_rr) > <span class="text-cyan-400">50</span>) / len(diff_rr) * <span class="text-cyan-400">100</span>,
+            <span class="text-green-400">'mean_hr'</span>: <span class="text-cyan-400">60000</span> / np.mean(rr),
+            <span class="text-green-400">'sdhr'</span>: np.std(<span class="text-cyan-400">60000</span> / rr)
+        }
+
+    <span class="text-purple-400">def</span> <span class="text-yellow-400">frequency_domain</span>(self, fs=<span class="text-cyan-400">4</span>):
+        <span class="text-green-400">"""Calculate frequency-domain HRV metrics using Welch method."""</span>
+        rr = self.rr_clean
+
+        <span class="text-gray-500"># Interpolate to uniform sampling</span>
+        t = np.cumsum(rr) / <span class="text-cyan-400">1000</span>  <span class="text-gray-500"># Convert to seconds</span>
+        t -= t[<span class="text-cyan-400">0</span>]
+        f_interp = interpolate.interp1d(t, rr, kind=<span class="text-green-400">'cubic'</span>)
+        t_uniform = np.arange(t[<span class="text-cyan-400">0</span>], t[-<span class="text-cyan-400">1</span>], <span class="text-cyan-400">1</span>/fs)
+        rr_uniform = f_interp(t_uniform)
+
+        <span class="text-gray-500"># Remove mean and compute PSD</span>
+        rr_uniform -= np.mean(rr_uniform)
+        freqs, psd = signal.welch(rr_uniform, fs=fs, nperseg=len(rr_uniform)//<span class="text-cyan-400">2</span>)
+
+        <span class="text-gray-500"># Frequency bands</span>
+        vlf_mask = (freqs >= <span class="text-cyan-400">0.003</span>) & (freqs < <span class="text-cyan-400">0.04</span>)
+        lf_mask = (freqs >= <span class="text-cyan-400">0.04</span>) & (freqs < <span class="text-cyan-400">0.15</span>)
+        hf_mask = (freqs >= <span class="text-cyan-400">0.15</span>) & (freqs < <span class="text-cyan-400">0.4</span>)
+
+        vlf = np.trapz(psd[vlf_mask], freqs[vlf_mask])
+        lf = np.trapz(psd[lf_mask], freqs[lf_mask])
+        hf = np.trapz(psd[hf_mask], freqs[hf_mask])
+
+        <span class="text-purple-400">return</span> {
+            <span class="text-green-400">'vlf_power'</span>: vlf,
+            <span class="text-green-400">'lf_power'</span>: lf,
+            <span class="text-green-400">'hf_power'</span>: hf,
+            <span class="text-green-400">'lf_hf_ratio'</span>: lf / hf <span class="text-purple-400">if</span> hf > <span class="text-cyan-400">0</span> <span class="text-purple-400">else</span> np.nan,
+            <span class="text-green-400">'total_power'</span>: vlf + lf + hf,
+            <span class="text-green-400">'lf_nu'</span>: lf / (lf + hf) * <span class="text-cyan-400">100</span>,
+            <span class="text-green-400">'hf_nu'</span>: hf / (lf + hf) * <span class="text-cyan-400">100</span>
+        }
+
+    <span class="text-purple-400">def</span> <span class="text-yellow-400">poincare</span>(self):
+        <span class="text-green-400">"""Calculate Poincare plot metrics."""</span>
+        rr = self.rr_clean
+        rr_n = rr[:-<span class="text-cyan-400">1</span>]
+        rr_n1 = rr[<span class="text-cyan-400">1</span>:]
+
+        sd1 = np.std(rr_n1 - rr_n) / np.sqrt(<span class="text-cyan-400">2</span>)
+        sd2 = np.std(rr_n1 + rr_n) / np.sqrt(<span class="text-cyan-400">2</span>)
+
+        <span class="text-purple-400">return</span> {
+            <span class="text-green-400">'sd1'</span>: sd1,
+            <span class="text-green-400">'sd2'</span>: sd2,
+            <span class="text-green-400">'sd_ratio'</span>: sd1 / sd2 <span class="text-purple-400">if</span> sd2 > <span class="text-cyan-400">0</span> <span class="text-purple-400">else</span> np.nan,
+            <span class="text-green-400">'ellipse_area'</span>: np.pi * sd1 * sd2
+        }
+
+<span class="text-gray-500"># Usage</span>
+rr_intervals = [<span class="text-cyan-400">820</span>, <span class="text-cyan-400">835</span>, <span class="text-cyan-400">810</span>, <span class="text-cyan-400">845</span>, <span class="text-cyan-400">825</span>, <span class="text-cyan-400">815</span>, ...]
+analyzer = HRVAnalyzer(rr_intervals)
+
+time_metrics = analyzer.time_domain()
+freq_metrics = analyzer.frequency_domain()
+poincare_metrics = analyzer.poincare()
+
+<span class="text-purple-400">print</span>(f<span class="text-green-400">"RMSSD: {time_metrics['rmssd']:.1f} ms"</span>)
+<span class="text-purple-400">print</span>(f<span class="text-green-400">"LF/HF: {freq_metrics['lf_hf_ratio']:.2f}"</span>)</code></pre>
+            </div>
+        </section>
+
+        <!-- Example 3: Activity Recognition Pipeline -->
+        <section class="card-gradient rounded-xl p-6 mb-8">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold text-orange-300"><i class="fas fa-running mr-2"></i>Example 3: Real-Time Activity Recognition</h2>
+            </div>
+            <p class="text-gray-400 mb-4">Streaming activity classification with TensorFlow Lite inference.</p>
+            <div class="code-block rounded-lg p-4 overflow-x-auto mb-4" style="max-height: 500px;">
+                <pre class="text-sm"><code class="text-gray-300"><span class="text-purple-400">import</span> numpy <span class="text-purple-400">as</span> np
+<span class="text-purple-400">import</span> tensorflow <span class="text-purple-400">as</span> tf
+<span class="text-purple-400">from</span> collections <span class="text-purple-400">import</span> deque
+
+<span class="text-purple-400">class</span> <span class="text-yellow-400">StreamingActivityClassifier</span>:
+    <span class="text-green-400">"""Real-time activity classification with sliding window."""</span>
+
+    ACTIVITIES = [
+        <span class="text-green-400">'Walking'</span>, <span class="text-green-400">'Running'</span>, <span class="text-green-400">'Sitting'</span>, <span class="text-green-400">'Standing'</span>,
+        <span class="text-green-400">'Stairs_Up'</span>, <span class="text-green-400">'Stairs_Down'</span>, <span class="text-green-400">'Cycling'</span>, <span class="text-green-400">'Sleeping'</span>
+    ]
+
+    <span class="text-purple-400">def</span> <span class="text-yellow-400">__init__</span>(self, model_path, window_size=<span class="text-cyan-400">128</span>, overlap=<span class="text-cyan-400">0.5</span>):
+        self.window_size = window_size
+        self.step_size = int(window_size * (<span class="text-cyan-400">1</span> - overlap))
+
+        <span class="text-gray-500"># Load TFLite model</span>
+        self.interpreter = tf.lite.Interpreter(model_path=model_path)
+        self.interpreter.allocate_tensors()
+        self.input_details = self.interpreter.get_input_details()
+        self.output_details = self.interpreter.get_output_details()
+
+        <span class="text-gray-500"># Sliding window buffer</span>
+        self.buffer = deque(maxlen=window_size)
+        self.sample_count = <span class="text-cyan-400">0</span>
+
+        <span class="text-gray-500"># Smoothing with moving average</span>
+        self.prediction_history = deque(maxlen=<span class="text-cyan-400">5</span>)
+
+    <span class="text-purple-400">def</span> <span class="text-yellow-400">preprocess</span>(self, accel, gyro):
+        <span class="text-green-400">"""Normalize sensor data."""</span>
+        <span class="text-gray-500"># Combine accelerometer and gyroscope</span>
+        sample = np.concatenate([accel, gyro])
+
+        <span class="text-gray-500"># Normalize (assuming ±4g accel, ±500°/s gyro)</span>
+        sample[:<span class="text-cyan-400">3</span>] /= <span class="text-cyan-400">39.2</span>  <span class="text-gray-500"># 4g in m/s²</span>
+        sample[<span class="text-cyan-400">3</span>:] /= <span class="text-cyan-400">8.73</span>  <span class="text-gray-500"># 500°/s in rad/s</span>
+
+        <span class="text-purple-400">return</span> sample
+
+    <span class="text-purple-400">def</span> <span class="text-yellow-400">add_sample</span>(self, accel, gyro):
+        <span class="text-green-400">"""Add new sensor sample and classify if window ready."""</span>
+        sample = self.preprocess(accel, gyro)
+        self.buffer.append(sample)
+        self.sample_count += <span class="text-cyan-400">1</span>
+
+        <span class="text-gray-500"># Check if we have enough samples</span>
+        <span class="text-purple-400">if</span> len(self.buffer) < self.window_size:
+            <span class="text-purple-400">return</span> <span class="text-cyan-400">None</span>
+
+        <span class="text-gray-500"># Classify every step_size samples</span>
+        <span class="text-purple-400">if</span> self.sample_count >= self.step_size:
+            self.sample_count = <span class="text-cyan-400">0</span>
+            <span class="text-purple-400">return</span> self._classify()
+
+        <span class="text-purple-400">return</span> <span class="text-cyan-400">None</span>
+
+    <span class="text-purple-400">def</span> <span class="text-yellow-400">_classify</span>(self):
+        <span class="text-green-400">"""Run inference on current window."""</span>
+        window = np.array(self.buffer, dtype=np.float32)
+        window = np.expand_dims(window, axis=<span class="text-cyan-400">0</span>)  <span class="text-gray-500"># Add batch dim</span>
+
+        <span class="text-gray-500"># Quantize if model is int8</span>
+        input_scale = self.input_details[<span class="text-cyan-400">0</span>][<span class="text-green-400">'quantization'</span>][<span class="text-cyan-400">0</span>]
+        input_zero = self.input_details[<span class="text-cyan-400">0</span>][<span class="text-green-400">'quantization'</span>][<span class="text-cyan-400">1</span>]
+
+        <span class="text-purple-400">if</span> input_scale != <span class="text-cyan-400">0</span>:
+            window = (window / input_scale + input_zero).astype(np.int8)
+
+        <span class="text-gray-500"># Run inference</span>
+        self.interpreter.set_tensor(self.input_details[<span class="text-cyan-400">0</span>][<span class="text-green-400">'index'</span>], window)
+        self.interpreter.invoke()
+        output = self.interpreter.get_tensor(self.output_details[<span class="text-cyan-400">0</span>][<span class="text-green-400">'index'</span>])
+
+        <span class="text-gray-500"># Dequantize output</span>
+        output_scale = self.output_details[<span class="text-cyan-400">0</span>][<span class="text-green-400">'quantization'</span>][<span class="text-cyan-400">0</span>]
+        output_zero = self.output_details[<span class="text-cyan-400">0</span>][<span class="text-green-400">'quantization'</span>][<span class="text-cyan-400">1</span>]
+
+        <span class="text-purple-400">if</span> output_scale != <span class="text-cyan-400">0</span>:
+            output = (output.astype(np.float32) - output_zero) * output_scale
+
+        <span class="text-gray-500"># Smooth predictions</span>
+        self.prediction_history.append(output[<span class="text-cyan-400">0</span>])
+        avg_probs = np.mean(self.prediction_history, axis=<span class="text-cyan-400">0</span>)
+
+        activity_id = np.argmax(avg_probs)
+        confidence = avg_probs[activity_id]
+
+        <span class="text-purple-400">return</span> {
+            <span class="text-green-400">'activity'</span>: self.ACTIVITIES[activity_id],
+            <span class="text-green-400">'activity_id'</span>: activity_id,
+            <span class="text-green-400">'confidence'</span>: confidence,
+            <span class="text-green-400">'probabilities'</span>: dict(zip(self.ACTIVITIES, avg_probs))
+        }
+
+<span class="text-gray-500"># Usage</span>
+classifier = StreamingActivityClassifier(<span class="text-green-400">'activity_int8.tflite'</span>)
+
+<span class="text-purple-400">while</span> <span class="text-cyan-400">True</span>:
+    accel, gyro = imu.read()
+    result = classifier.add_sample(accel, gyro)
+
+    <span class="text-purple-400">if</span> result:
+        <span class="text-purple-400">print</span>(f<span class="text-green-400">"{result['activity']}: {result['confidence']:.1%}"</span>)</code></pre>
+            </div>
+        </section>
+
+        <!-- Example 4: Sleep Staging -->
+        <section class="card-gradient rounded-xl p-6 mb-8">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold text-orange-300"><i class="fas fa-moon mr-2"></i>Example 4: Overnight Sleep Analysis</h2>
+            </div>
+            <p class="text-gray-400 mb-4">Complete sleep staging and quality assessment from overnight sensor data.</p>
+            <div class="code-block rounded-lg p-4 overflow-x-auto mb-4" style="max-height: 500px;">
+                <pre class="text-sm"><code class="text-gray-300"><span class="text-purple-400">import</span> numpy <span class="text-purple-400">as</span> np
+<span class="text-purple-400">from</span> sklearn.ensemble <span class="text-purple-400">import</span> RandomForestClassifier
+<span class="text-purple-400">from</span> datetime <span class="text-purple-400">import</span> datetime, timedelta
+
+<span class="text-purple-400">class</span> <span class="text-yellow-400">SleepAnalyzer</span>:
+    <span class="text-green-400">"""Sleep staging and quality analysis."""</span>
+
+    STAGES = [<span class="text-green-400">'Awake'</span>, <span class="text-green-400">'REM'</span>, <span class="text-green-400">'Light'</span>, <span class="text-green-400">'Deep'</span>]
+
+    <span class="text-purple-400">def</span> <span class="text-yellow-400">__init__</span>(self, model_path=<span class="text-cyan-400">None</span>, epoch_duration=<span class="text-cyan-400">30</span>):
+        self.epoch_duration = epoch_duration  <span class="text-gray-500"># seconds</span>
+        self.model = self._load_model(model_path)
+
+    <span class="text-purple-400">def</span> <span class="text-yellow-400">_load_model</span>(self, path):
+        <span class="text-purple-400">if</span> path:
+            <span class="text-purple-400">import</span> joblib
+            <span class="text-purple-400">return</span> joblib.load(path)
+        <span class="text-gray-500"># Default simple model</span>
+        <span class="text-purple-400">return</span> RandomForestClassifier(n_estimators=<span class="text-cyan-400">100</span>)
+
+    <span class="text-purple-400">def</span> <span class="text-yellow-400">extract_epoch_features</span>(self, accel_epoch, hr_epoch):
+        <span class="text-green-400">"""Extract features from single epoch."""</span>
+        <span class="text-gray-500"># Activity features</span>
+        accel_mag = np.linalg.norm(accel_epoch, axis=<span class="text-cyan-400">1</span>)
+        activity_count = np.sum(np.abs(np.diff(accel_mag)))
+        movement_var = np.var(accel_epoch)
+
+        <span class="text-gray-500"># HR features</span>
+        hr_mean = np.mean(hr_epoch)
+        hr_std = np.std(hr_epoch)
+        hr_range = np.max(hr_epoch) - np.min(hr_epoch)
+
+        <span class="text-purple-400">return</span> [
+            activity_count, movement_var,
+            hr_mean, hr_std, hr_range
+        ]
+
+    <span class="text-purple-400">def</span> <span class="text-yellow-400">analyze</span>(self, accel_data, hr_data, sample_rate_accel=<span class="text-cyan-400">50</span>,
+               sample_rate_hr=<span class="text-cyan-400">1</span>, start_time=<span class="text-cyan-400">None</span>):
+        <span class="text-green-400">"""Analyze overnight data and return sleep metrics."""</span>
+
+        samples_per_epoch_accel = self.epoch_duration * sample_rate_accel
+        samples_per_epoch_hr = self.epoch_duration * sample_rate_hr
+
+        n_epochs = min(
+            len(accel_data) // samples_per_epoch_accel,
+            len(hr_data) // samples_per_epoch_hr
+        )
+
+        stages = []
+        features_list = []
+
+        <span class="text-purple-400">for</span> i <span class="text-purple-400">in</span> range(n_epochs):
+            accel_epoch = accel_data[
+                i*samples_per_epoch_accel:(i+<span class="text-cyan-400">1</span>)*samples_per_epoch_accel
+            ]
+            hr_epoch = hr_data[
+                i*samples_per_epoch_hr:(i+<span class="text-cyan-400">1</span>)*samples_per_epoch_hr
+            ]
+
+            features = self.extract_epoch_features(accel_epoch, hr_epoch)
+            features_list.append(features)
+
+        <span class="text-gray-500"># Predict stages</span>
+        features_array = np.array(features_list)
+        stages = self.model.predict(features_array)
+
+        <span class="text-gray-500"># Compute metrics</span>
+        <span class="text-purple-400">return</span> self._compute_metrics(stages, start_time)
+
+    <span class="text-purple-400">def</span> <span class="text-yellow-400">_compute_metrics</span>(self, stages, start_time):
+        <span class="text-green-400">"""Compute sleep quality metrics."""</span>
+        n_epochs = len(stages)
+        epoch_min = self.epoch_duration / <span class="text-cyan-400">60</span>
+
+        <span class="text-gray-500"># Time in each stage</span>
+        awake_epochs = np.sum(stages == <span class="text-cyan-400">0</span>)
+        rem_epochs = np.sum(stages == <span class="text-cyan-400">1</span>)
+        light_epochs = np.sum(stages == <span class="text-cyan-400">2</span>)
+        deep_epochs = np.sum(stages == <span class="text-cyan-400">3</span>)
+
+        sleep_epochs = rem_epochs + light_epochs + deep_epochs
+        total_sleep_min = sleep_epochs * epoch_min
+
+        <span class="text-gray-500"># Sleep efficiency</span>
+        efficiency = sleep_epochs / n_epochs <span class="text-purple-400">if</span> n_epochs > <span class="text-cyan-400">0</span> <span class="text-purple-400">else</span> <span class="text-cyan-400">0</span>
+
+        <span class="text-gray-500"># Sleep latency (time to first sleep)</span>
+        sleep_onset = np.argmax(stages > <span class="text-cyan-400">0</span>) * epoch_min
+
+        <span class="text-gray-500"># WASO (Wake After Sleep Onset)</span>
+        <span class="text-purple-400">if</span> np.any(stages > <span class="text-cyan-400">0</span>):
+            first_sleep = np.argmax(stages > <span class="text-cyan-400">0</span>)
+            last_sleep = len(stages) - <span class="text-cyan-400">1</span> - np.argmax(stages[::-<span class="text-cyan-400">1</span>] > <span class="text-cyan-400">0</span>)
+            waso = np.sum(stages[first_sleep:last_sleep+<span class="text-cyan-400">1</span>] == <span class="text-cyan-400">0</span>) * epoch_min
+        <span class="text-purple-400">else</span>:
+            waso = <span class="text-cyan-400">0</span>
+
+        <span class="text-gray-500"># Sleep score (0-100)</span>
+        score = self._calculate_score(
+            total_sleep_min, efficiency, deep_epochs * epoch_min,
+            rem_epochs * epoch_min, waso
+        )
+
+        <span class="text-purple-400">return</span> {
+            <span class="text-green-400">'total_sleep_min'</span>: total_sleep_min,
+            <span class="text-green-400">'efficiency'</span>: efficiency,
+            <span class="text-green-400">'sleep_latency_min'</span>: sleep_onset,
+            <span class="text-green-400">'waso_min'</span>: waso,
+            <span class="text-green-400">'deep_min'</span>: deep_epochs * epoch_min,
+            <span class="text-green-400">'light_min'</span>: light_epochs * epoch_min,
+            <span class="text-green-400">'rem_min'</span>: rem_epochs * epoch_min,
+            <span class="text-green-400">'awake_min'</span>: awake_epochs * epoch_min,
+            <span class="text-green-400">'score'</span>: score,
+            <span class="text-green-400">'stages'</span>: stages.tolist()
+        }
+
+    <span class="text-purple-400">def</span> <span class="text-yellow-400">_calculate_score</span>(self, total, efficiency, deep, rem, waso):
+        <span class="text-green-400">"""Calculate sleep score 0-100."""</span>
+        score = <span class="text-cyan-400">0</span>
+
+        <span class="text-gray-500"># Duration (40 points max)</span>
+        <span class="text-purple-400">if</span> total >= <span class="text-cyan-400">420</span>:  <span class="text-gray-500"># 7 hours</span>
+            score += <span class="text-cyan-400">40</span>
+        <span class="text-purple-400">else</span>:
+            score += (total / <span class="text-cyan-400">420</span>) * <span class="text-cyan-400">40</span>
+
+        <span class="text-gray-500"># Efficiency (30 points max)</span>
+        score += efficiency * <span class="text-cyan-400">30</span>
+
+        <span class="text-gray-500"># Deep sleep (15 points max)</span>
+        deep_target = total * <span class="text-cyan-400">0.20</span>  <span class="text-gray-500"># 20% target</span>
+        score += min(deep / deep_target, <span class="text-cyan-400">1</span>) * <span class="text-cyan-400">15</span> <span class="text-purple-400">if</span> deep_target > <span class="text-cyan-400">0</span> <span class="text-purple-400">else</span> <span class="text-cyan-400">0</span>
+
+        <span class="text-gray-500"># REM (15 points max)</span>
+        rem_target = total * <span class="text-cyan-400">0.20</span>  <span class="text-gray-500"># 20% target</span>
+        score += min(rem / rem_target, <span class="text-cyan-400">1</span>) * <span class="text-cyan-400">15</span> <span class="text-purple-400">if</span> rem_target > <span class="text-cyan-400">0</span> <span class="text-purple-400">else</span> <span class="text-cyan-400">0</span>
+
+        <span class="text-purple-400">return</span> min(<span class="text-cyan-400">100</span>, int(score))
+
+<span class="text-gray-500"># Usage</span>
+analyzer = SleepAnalyzer()
+result = analyzer.analyze(overnight_accel, overnight_hr)
+<span class="text-purple-400">print</span>(f<span class="text-green-400">"Sleep Score: {result['score']}"</span>)
+<span class="text-purple-400">print</span>(f<span class="text-green-400">"Total Sleep: {result['total_sleep_min']:.0f} min"</span>)
+<span class="text-purple-400">print</span>(f<span class="text-green-400">"Deep Sleep: {result['deep_min']:.0f} min"</span>)</code></pre>
+            </div>
+        </section>
+
+        <!-- Example 5: Power Management -->
+        <section class="card-gradient rounded-xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold text-orange-300"><i class="fas fa-battery-half mr-2"></i>Example 5: Adaptive Power Management</h2>
+            </div>
+            <p class="text-gray-400 mb-4">Dynamic duty cycling based on activity state to maximize battery life.</p>
+            <div class="code-block rounded-lg p-4 overflow-x-auto mb-4">
+                <pre class="text-sm"><code class="text-gray-300"><span class="text-purple-400">class</span> <span class="text-yellow-400">AdaptivePowerManager</span>:
+    <span class="text-green-400">"""Adaptive power management for wearable devices."""</span>
+
+    <span class="text-purple-400">def</span> <span class="text-yellow-400">__init__</span>(self):
+        self.state = <span class="text-green-400">'idle'</span>
+        self.sample_rates = {
+            <span class="text-green-400">'sleep'</span>: {<span class="text-green-400">'imu'</span>: <span class="text-cyan-400">1</span>, <span class="text-green-400">'ppg'</span>: <span class="text-cyan-400">1</span>, <span class="text-green-400">'env'</span>: <span class="text-cyan-400">0.1</span>},
+            <span class="text-green-400">'idle'</span>: {<span class="text-green-400">'imu'</span>: <span class="text-cyan-400">10</span>, <span class="text-green-400">'ppg'</span>: <span class="text-cyan-400">5</span>, <span class="text-green-400">'env'</span>: <span class="text-cyan-400">0.5</span>},
+            <span class="text-green-400">'active'</span>: {<span class="text-green-400">'imu'</span>: <span class="text-cyan-400">50</span>, <span class="text-green-400">'ppg'</span>: <span class="text-cyan-400">25</span>, <span class="text-green-400">'env'</span>: <span class="text-cyan-400">1</span>},
+            <span class="text-green-400">'workout'</span>: {<span class="text-green-400">'imu'</span>: <span class="text-cyan-400">100</span>, <span class="text-green-400">'ppg'</span>: <span class="text-cyan-400">50</span>, <span class="text-green-400">'env'</span>: <span class="text-cyan-400">2</span>}
+        }
+
+    <span class="text-purple-400">def</span> <span class="text-yellow-400">update_state</span>(self, activity, hr):
+        <span class="text-green-400">"""Update power state based on activity and HR."""</span>
+        <span class="text-purple-400">if</span> activity <span class="text-purple-400">in</span> [<span class="text-green-400">'Sleeping'</span>]:
+            new_state = <span class="text-green-400">'sleep'</span>
+        <span class="text-purple-400">elif</span> activity <span class="text-purple-400">in</span> [<span class="text-green-400">'Sitting'</span>, <span class="text-green-400">'Standing'</span>]:
+            new_state = <span class="text-green-400">'idle'</span>
+        <span class="text-purple-400">elif</span> activity <span class="text-purple-400">in</span> [<span class="text-green-400">'Walking'</span>]:
+            new_state = <span class="text-green-400">'active'</span>
+        <span class="text-purple-400">elif</span> activity <span class="text-purple-400">in</span> [<span class="text-green-400">'Running'</span>, <span class="text-green-400">'Cycling'</span>] <span class="text-purple-400">or</span> hr > <span class="text-cyan-400">130</span>:
+            new_state = <span class="text-green-400">'workout'</span>
+        <span class="text-purple-400">else</span>:
+            new_state = <span class="text-green-400">'active'</span>
+
+        <span class="text-purple-400">if</span> new_state != self.state:
+            self.state = new_state
+            self._apply_settings()
+
+    <span class="text-purple-400">def</span> <span class="text-yellow-400">_apply_settings</span>(self):
+        <span class="text-green-400">"""Apply sample rates to hardware."""</span>
+        rates = self.sample_rates[self.state]
+        <span class="text-purple-400">print</span>(f<span class="text-green-400">"Power state: {self.state}"</span>)
+        <span class="text-purple-400">print</span>(f<span class="text-green-400">"  IMU: {rates['imu']} Hz"</span>)
+        <span class="text-purple-400">print</span>(f<span class="text-green-400">"  PPG: {rates['ppg']} Hz"</span>)
+
+    <span class="text-purple-400">def</span> <span class="text-yellow-400">get_estimated_battery_hours</span>(self, capacity_mah=<span class="text-cyan-400">200</span>):
+        <span class="text-green-400">"""Estimate remaining battery life."""</span>
+        power_draw = {  <span class="text-gray-500"># mW per state</span>
+            <span class="text-green-400">'sleep'</span>: <span class="text-cyan-400">0.3</span>,
+            <span class="text-green-400">'idle'</span>: <span class="text-cyan-400">1.5</span>,
+            <span class="text-green-400">'active'</span>: <span class="text-cyan-400">4.0</span>,
+            <span class="text-green-400">'workout'</span>: <span class="text-cyan-400">8.0</span>
+        }
+        current_ma = power_draw[self.state] / <span class="text-cyan-400">3.7</span>  <span class="text-gray-500"># At 3.7V</span>
+        <span class="text-purple-400">return</span> capacity_mah / current_ma
+
+<span class="text-gray-500"># Usage</span>
+power_mgr = AdaptivePowerManager()
+power_mgr.update_state(<span class="text-green-400">'Running'</span>, hr=<span class="text-cyan-400">145</span>)
+<span class="text-purple-400">print</span>(f<span class="text-green-400">"Battery life: {power_mgr.get_estimated_battery_hours():.0f}h"</span>)</code></pre>
+            </div>
+        </section>
+    </main>
+
+    <footer class="border-t border-orange-500/20 mt-12 py-8">
+        <div class="max-w-7xl mx-auto px-4 text-center text-gray-500"><p>Code Examples - Wearable Health Monitor Suite</p></div>
+    </footer>
+</body>
+</html>

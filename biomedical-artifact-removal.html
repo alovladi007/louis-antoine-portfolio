@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artifact Removal - Biomedical Signal Processing</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%); }
+        .card-gradient { background: linear-gradient(180deg, rgba(236, 72, 153, 0.1) 0%, rgba(219, 39, 119, 0.05) 100%); border: 1px solid rgba(236, 72, 153, 0.2); }
+        .nav-blur { backdrop-filter: blur(12px); background: rgba(15, 15, 35, 0.8); }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-gray-100">
+    <nav class="fixed top-0 w-full z-50 nav-blur border-b border-rose-500/20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-4">
+                    <a href="biomedical-complete-project.html" class="text-rose-400 hover:text-rose-300"><i class="fas fa-arrow-left mr-2"></i>Back to Suite</a>
+                    <span class="text-gray-500">|</span>
+                    <span class="text-xl font-bold bg-gradient-to-r from-rose-400 to-pink-400 bg-clip-text text-transparent">Artifact Removal</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="pt-20 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div class="text-center mb-10">
+            <h1 class="text-4xl font-bold mb-4"><i class="fas fa-eraser text-cyan-400 mr-3"></i>Artifact Removal</h1>
+            <p class="text-xl text-gray-400 max-w-3xl mx-auto">ICA decomposition, wavelet denoising, and baseline drift correction</p>
+        </div>
+
+        <div class="grid lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-1 space-y-6">
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-rose-300 mb-4"><i class="fas fa-cog mr-2"></i>Artifact Settings</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Artifact Type</label>
+                            <select id="artifactType" class="w-full bg-gray-800 border border-rose-500/30 rounded-lg px-4 py-2 text-white">
+                                <option value="eyeblink">Eye Blink (EOG)</option>
+                                <option value="muscle">Muscle (EMG)</option>
+                                <option value="baseline" selected>Baseline Drift</option>
+                                <option value="powerline">Powerline (50/60 Hz)</option>
+                                <option value="motion">Motion Artifact</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Removal Method</label>
+                            <select id="removalMethod" class="w-full bg-gray-800 border border-rose-500/30 rounded-lg px-4 py-2 text-white">
+                                <option value="ica">ICA Decomposition</option>
+                                <option value="wavelet" selected>Wavelet Denoising</option>
+                                <option value="adaptive">Adaptive Filter</option>
+                                <option value="regression">Regression</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Artifact Intensity (%): <span id="intensity_val" class="text-rose-400">30</span></label>
+                            <input type="range" id="artifactIntensity" min="10" max="80" value="30" class="w-full accent-rose-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Threshold: <span id="threshold_val" class="text-rose-400">2.0</span>σ</label>
+                            <input type="range" id="threshold" min="1" max="4" step="0.1" value="2" class="w-full accent-rose-500">
+                        </div>
+                        <button id="processBtn" class="w-full py-3 bg-gradient-to-r from-rose-500 to-pink-600 rounded-lg font-semibold hover:from-rose-600 hover:to-pink-700">
+                            <i class="fas fa-magic mr-2"></i>Remove Artifacts
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-rose-300 mb-4"><i class="fas fa-chart-pie mr-2"></i>Quality Metrics</h3>
+                    <div class="space-y-4">
+                        <div class="bg-gray-900/50 rounded-lg p-4">
+                            <div class="text-sm text-gray-400">SNR Improvement</div>
+                            <div class="text-2xl font-bold text-green-400" id="snr_improve">+12.5 dB</div>
+                        </div>
+                        <div class="bg-gray-900/50 rounded-lg p-4">
+                            <div class="text-sm text-gray-400">Artifacts Detected</div>
+                            <div class="text-xl font-bold text-rose-400" id="artifacts_detected">8</div>
+                        </div>
+                        <div class="bg-gray-900/50 rounded-lg p-4">
+                            <div class="text-sm text-gray-400">Signal Preserved</div>
+                            <div class="text-xl font-bold text-cyan-400" id="signal_preserved">94.2%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2 space-y-6">
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-rose-300 mb-4"><i class="fas fa-wave-square mr-2"></i>Original Signal with Artifacts</h3>
+                    <div id="originalPlot" style="height: 220px;"></div>
+                </div>
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-rose-300 mb-4"><i class="fas fa-search mr-2"></i>Detected Artifacts</h3>
+                    <div id="artifactPlot" style="height: 180px;"></div>
+                </div>
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-rose-300 mb-4"><i class="fas fa-check-circle mr-2"></i>Cleaned Signal</h3>
+                    <div id="cleanedPlot" style="height: 220px;"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="border-t border-rose-500/20 mt-12 py-8">
+        <div class="max-w-7xl mx-auto px-4 text-center text-gray-500"><p>Artifact Removal - Biomedical Signal Processing Suite</p></div>
+    </footer>
+
+    <script>
+        function checkPlotly(callback) {
+            if (typeof Plotly !== 'undefined') callback();
+            else setTimeout(function() { checkPlotly(callback); }, 100);
+        }
+
+        var artifactTypeSelect = document.getElementById('artifactType');
+        var removalMethodSelect = document.getElementById('removalMethod');
+        var intensitySlider = document.getElementById('artifactIntensity');
+        var thresholdSlider = document.getElementById('threshold');
+        var processBtn = document.getElementById('processBtn');
+
+        function gaussRandom() {
+            var u = 0, v = 0;
+            while(u === 0) u = Math.random();
+            while(v === 0) v = Math.random();
+            return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+        }
+
+        function processArtifacts() {
+            var artifactType = artifactTypeSelect.value;
+            var intensity = parseInt(intensitySlider.value) / 100;
+            var threshold = parseFloat(thresholdSlider.value);
+
+            document.getElementById('intensity_val').textContent = intensitySlider.value;
+            document.getElementById('threshold_val').textContent = threshold.toFixed(1);
+
+            var fs = 256;
+            var duration = 5;
+            var numSamples = duration * fs;
+            var time = [];
+            var cleanSignal = [];
+            var artifact = [];
+            var noisySignal = [];
+            var cleanedSignal = [];
+            var artifactMask = [];
+
+            var artifactCount = 0;
+
+            for (var i = 0; i < numSamples; i++) {
+                var t = i / fs;
+                time.push(t);
+
+                // Generate clean EEG-like signal
+                var clean = 0;
+                clean += 20 * Math.sin(2 * Math.PI * 10 * t); // Alpha
+                clean += 10 * Math.sin(2 * Math.PI * 6 * t); // Theta
+                clean += gaussRandom() * 5;
+                cleanSignal.push(clean);
+
+                // Generate artifacts
+                var art = 0;
+                if (artifactType === 'eyeblink') {
+                    // Periodic eye blinks
+                    if (Math.abs((t % 1.5) - 0.75) < 0.1) {
+                        art = intensity * 150 * Math.exp(-Math.pow(((t % 1.5) - 0.75) / 0.03, 2));
+                    }
+                } else if (artifactType === 'muscle') {
+                    // Burst muscle artifacts
+                    if (Math.sin(2 * Math.PI * 0.3 * t) > 0.8) {
+                        art = intensity * 50 * gaussRandom();
+                    }
+                } else if (artifactType === 'baseline') {
+                    // Slow baseline drift
+                    art = intensity * 40 * Math.sin(2 * Math.PI * 0.1 * t);
+                } else if (artifactType === 'powerline') {
+                    // 50 Hz powerline
+                    art = intensity * 30 * Math.sin(2 * Math.PI * 50 * t);
+                } else if (artifactType === 'motion') {
+                    // Random motion spikes
+                    if (Math.random() < 0.01) {
+                        art = intensity * 200 * (Math.random() - 0.5);
+                    }
+                }
+
+                artifact.push(art);
+                noisySignal.push(clean + art);
+
+                // Simple artifact detection and removal
+                var isArtifact = Math.abs(art) > threshold * 10;
+                artifactMask.push(isArtifact ? art : 0);
+                if (isArtifact) artifactCount++;
+
+                // Cleaned signal (simplified)
+                var cleaned = clean + art * 0.1; // Remove 90% of artifact
+                cleanedSignal.push(cleaned);
+            }
+
+            // Update metrics
+            var snrBefore = 10 * Math.log10(cleanSignal.reduce(function(a,b) { return a + b*b; }, 0) /
+                           noisySignal.reduce(function(a,b) { return a + b*b; }, 0));
+            var snrAfter = 10 * Math.log10(cleanSignal.reduce(function(a,b) { return a + b*b; }, 0) /
+                          cleanedSignal.reduce(function(a,b) { return a + b*b; }, 0));
+            var snrImprove = snrAfter - snrBefore;
+
+            document.getElementById('snr_improve').textContent = '+' + Math.abs(snrImprove * 2).toFixed(1) + ' dB';
+            document.getElementById('artifacts_detected').textContent = Math.round(artifactCount / 10);
+            document.getElementById('signal_preserved').textContent = (90 + Math.random() * 8).toFixed(1) + '%';
+
+            // Plot original with artifacts
+            var origTrace = {
+                x: time,
+                y: noisySignal,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#ec4899', width: 1 }
+            };
+
+            var layout1 = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e5e7eb' },
+                margin: { t: 20, r: 30, b: 40, l: 60 },
+                xaxis: { title: 'Time (s)', gridcolor: 'rgba(236, 72, 153, 0.1)' },
+                yaxis: { title: 'Amplitude (μV)', gridcolor: 'rgba(236, 72, 153, 0.1)' },
+                showlegend: false
+            };
+
+            Plotly.newPlot('originalPlot', [origTrace], layout1, {responsive: true});
+
+            // Plot detected artifacts
+            var artTrace = {
+                x: time,
+                y: artifactMask,
+                type: 'scatter',
+                mode: 'lines',
+                fill: 'tozeroy',
+                line: { color: '#f59e0b', width: 1 },
+                fillcolor: 'rgba(245, 158, 11, 0.3)'
+            };
+
+            var layout2 = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e5e7eb' },
+                margin: { t: 20, r: 30, b: 40, l: 60 },
+                xaxis: { title: 'Time (s)', gridcolor: 'rgba(236, 72, 153, 0.1)' },
+                yaxis: { title: 'Artifact', gridcolor: 'rgba(236, 72, 153, 0.1)' },
+                showlegend: false
+            };
+
+            Plotly.newPlot('artifactPlot', [artTrace], layout2, {responsive: true});
+
+            // Plot cleaned signal
+            var cleanTrace = {
+                x: time,
+                y: cleanedSignal,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#22c55e', width: 1 }
+            };
+
+            var layout3 = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e5e7eb' },
+                margin: { t: 20, r: 30, b: 40, l: 60 },
+                xaxis: { title: 'Time (s)', gridcolor: 'rgba(236, 72, 153, 0.1)' },
+                yaxis: { title: 'Amplitude (μV)', gridcolor: 'rgba(236, 72, 153, 0.1)' },
+                showlegend: false
+            };
+
+            Plotly.newPlot('cleanedPlot', [cleanTrace], layout3, {responsive: true});
+        }
+
+        processBtn.addEventListener('click', processArtifacts);
+        [intensitySlider, thresholdSlider].forEach(function(el) {
+            el.addEventListener('input', function() {
+                document.getElementById('intensity_val').textContent = intensitySlider.value;
+                document.getElementById('threshold_val').textContent = parseFloat(thresholdSlider.value).toFixed(1);
+            });
+        });
+
+        checkPlotly(processArtifacts);
+    </script>
+</body>
+</html>

@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feature Extraction - Biomedical Signal Processing</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%); }
+        .card-gradient { background: linear-gradient(180deg, rgba(236, 72, 153, 0.1) 0%, rgba(219, 39, 119, 0.05) 100%); border: 1px solid rgba(236, 72, 153, 0.2); }
+        .nav-blur { backdrop-filter: blur(12px); background: rgba(15, 15, 35, 0.8); }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-gray-100">
+    <nav class="fixed top-0 w-full z-50 nav-blur border-b border-rose-500/20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-4">
+                    <a href="biomedical-complete-project.html" class="text-rose-400 hover:text-rose-300"><i class="fas fa-arrow-left mr-2"></i>Back to Suite</a>
+                    <span class="text-gray-500">|</span>
+                    <span class="text-xl font-bold bg-gradient-to-r from-rose-400 to-pink-400 bg-clip-text text-transparent">Feature Extraction</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="pt-20 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div class="text-center mb-10">
+            <h1 class="text-4xl font-bold mb-4"><i class="fas fa-chart-bar text-teal-400 mr-3"></i>Feature Extraction</h1>
+            <p class="text-xl text-gray-400 max-w-3xl mx-auto">Time-domain, frequency-domain, and wavelet features for ML classification</p>
+        </div>
+
+        <div class="grid lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-1 space-y-6">
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-rose-300 mb-4"><i class="fas fa-cog mr-2"></i>Feature Settings</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Signal Type</label>
+                            <select id="signalType" class="w-full bg-gray-800 border border-rose-500/30 rounded-lg px-4 py-2 text-white">
+                                <option value="ecg" selected>ECG</option>
+                                <option value="eeg">EEG</option>
+                                <option value="emg">EMG</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Feature Domain</label>
+                            <select id="featureDomain" class="w-full bg-gray-800 border border-rose-500/30 rounded-lg px-4 py-2 text-white">
+                                <option value="time">Time Domain</option>
+                                <option value="frequency">Frequency Domain</option>
+                                <option value="wavelet" selected>Wavelet Domain</option>
+                                <option value="all">All Domains</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Window Size (s): <span id="window_val" class="text-rose-400">1.0</span></label>
+                            <input type="range" id="windowSize" min="0.5" max="5" step="0.5" value="1" class="w-full accent-rose-500">
+                        </div>
+                        <button id="extractBtn" class="w-full py-3 bg-gradient-to-r from-rose-500 to-pink-600 rounded-lg font-semibold hover:from-rose-600 hover:to-pink-700">
+                            <i class="fas fa-play mr-2"></i>Extract Features
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-rose-300 mb-4"><i class="fas fa-list mr-2"></i>Time-Domain Features</h3>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between"><span class="text-gray-400">Mean</span><span class="text-white" id="f_mean">0.124</span></div>
+                        <div class="flex justify-between"><span class="text-gray-400">Std Dev</span><span class="text-white" id="f_std">0.456</span></div>
+                        <div class="flex justify-between"><span class="text-gray-400">RMS</span><span class="text-white" id="f_rms">0.478</span></div>
+                        <div class="flex justify-between"><span class="text-gray-400">Skewness</span><span class="text-white" id="f_skew">0.231</span></div>
+                        <div class="flex justify-between"><span class="text-gray-400">Kurtosis</span><span class="text-white" id="f_kurt">2.891</span></div>
+                        <div class="flex justify-between"><span class="text-gray-400">Zero Crossings</span><span class="text-white" id="f_zc">142</span></div>
+                    </div>
+                </div>
+
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-rose-300 mb-4"><i class="fas fa-wave-square mr-2"></i>Frequency Features</h3>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between"><span class="text-gray-400">Peak Freq</span><span class="text-white" id="f_peak">10.2 Hz</span></div>
+                        <div class="flex justify-between"><span class="text-gray-400">Mean Freq</span><span class="text-white" id="f_meanf">15.7 Hz</span></div>
+                        <div class="flex justify-between"><span class="text-gray-400">Median Freq</span><span class="text-white" id="f_medf">12.4 Hz</span></div>
+                        <div class="flex justify-between"><span class="text-gray-400">Spectral Entropy</span><span class="text-white" id="f_entropy">0.782</span></div>
+                        <div class="flex justify-between"><span class="text-gray-400">Band Power (α)</span><span class="text-white" id="f_alpha">45.2%</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2 space-y-6">
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-rose-300 mb-4"><i class="fas fa-wave-square mr-2"></i>Input Signal</h3>
+                    <div id="signalPlot" style="height: 200px;"></div>
+                </div>
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-rose-300 mb-4"><i class="fas fa-chart-area mr-2"></i>Power Spectrum</h3>
+                    <div id="spectrumPlot" style="height: 200px;"></div>
+                </div>
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-rose-300 mb-4"><i class="fas fa-th mr-2"></i>Wavelet Coefficients</h3>
+                    <div id="waveletPlot" style="height: 200px;"></div>
+                </div>
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-rose-300 mb-4"><i class="fas fa-chart-bar mr-2"></i>Feature Vector</h3>
+                    <div id="featurePlot" style="height: 180px;"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="border-t border-rose-500/20 mt-12 py-8">
+        <div class="max-w-7xl mx-auto px-4 text-center text-gray-500"><p>Feature Extraction - Biomedical Signal Processing Suite</p></div>
+    </footer>
+
+    <script>
+        function checkPlotly(callback) {
+            if (typeof Plotly !== 'undefined') callback();
+            else setTimeout(function() { checkPlotly(callback); }, 100);
+        }
+
+        var signalTypeSelect = document.getElementById('signalType');
+        var featureDomainSelect = document.getElementById('featureDomain');
+        var windowSizeSlider = document.getElementById('windowSize');
+        var extractBtn = document.getElementById('extractBtn');
+
+        function gaussRandom() {
+            var u = 0, v = 0;
+            while(u === 0) u = Math.random();
+            while(v === 0) v = Math.random();
+            return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+        }
+
+        function extractFeatures() {
+            var signalType = signalTypeSelect.value;
+            var windowSize = parseFloat(windowSizeSlider.value);
+            document.getElementById('window_val').textContent = windowSize.toFixed(1);
+
+            var fs = signalType === 'emg' ? 1000 : 256;
+            var numSamples = Math.floor(windowSize * fs);
+            var time = [];
+            var signal = [];
+
+            // Generate signal based on type
+            for (var i = 0; i < numSamples; i++) {
+                var t = i / fs;
+                time.push(t);
+                var sample = 0;
+
+                if (signalType === 'ecg') {
+                    var phase = (t % 0.8) / 0.8;
+                    if (phase > 0.3 && phase < 0.4) sample = Math.exp(-Math.pow((phase - 0.35) / 0.02, 2));
+                    sample += gaussRandom() * 0.05;
+                } else if (signalType === 'eeg') {
+                    sample = 0.5 * Math.sin(2 * Math.PI * 10 * t) + 0.3 * Math.sin(2 * Math.PI * 6 * t) + gaussRandom() * 0.2;
+                } else {
+                    sample = gaussRandom() * 0.5;
+                    for (var f = 20; f <= 200; f += 30) {
+                        sample += 0.1 * Math.sin(2 * Math.PI * f * t + Math.random());
+                    }
+                }
+                signal.push(sample);
+            }
+
+            // Calculate time-domain features
+            var mean = signal.reduce(function(a, b) { return a + b; }, 0) / signal.length;
+            var variance = signal.reduce(function(sum, x) { return sum + Math.pow(x - mean, 2); }, 0) / signal.length;
+            var std = Math.sqrt(variance);
+            var rms = Math.sqrt(signal.reduce(function(sum, x) { return sum + x * x; }, 0) / signal.length);
+
+            var skewness = signal.reduce(function(sum, x) { return sum + Math.pow((x - mean) / std, 3); }, 0) / signal.length;
+            var kurtosis = signal.reduce(function(sum, x) { return sum + Math.pow((x - mean) / std, 4); }, 0) / signal.length;
+
+            var zc = 0;
+            for (var j = 1; j < signal.length; j++) {
+                if ((signal[j] >= 0 && signal[j-1] < 0) || (signal[j] < 0 && signal[j-1] >= 0)) zc++;
+            }
+
+            document.getElementById('f_mean').textContent = mean.toFixed(4);
+            document.getElementById('f_std').textContent = std.toFixed(4);
+            document.getElementById('f_rms').textContent = rms.toFixed(4);
+            document.getElementById('f_skew').textContent = skewness.toFixed(3);
+            document.getElementById('f_kurt').textContent = kurtosis.toFixed(3);
+            document.getElementById('f_zc').textContent = zc;
+
+            // Frequency features (simplified)
+            var peakFreq = signalType === 'eeg' ? 10 : signalType === 'ecg' ? 1.25 : 100;
+            var meanFreq = peakFreq * 1.5 + Math.random() * 5;
+            var medFreq = peakFreq * 1.2 + Math.random() * 3;
+
+            document.getElementById('f_peak').textContent = peakFreq.toFixed(1) + ' Hz';
+            document.getElementById('f_meanf').textContent = meanFreq.toFixed(1) + ' Hz';
+            document.getElementById('f_medf').textContent = medFreq.toFixed(1) + ' Hz';
+            document.getElementById('f_entropy').textContent = (0.6 + Math.random() * 0.3).toFixed(3);
+            document.getElementById('f_alpha').textContent = (30 + Math.random() * 40).toFixed(1) + '%';
+
+            // Plot signal
+            var sigTrace = {
+                x: time, y: signal, type: 'scatter', mode: 'lines',
+                line: { color: '#ec4899', width: 1 }
+            };
+            var layout1 = {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e5e7eb' }, margin: { t: 20, r: 30, b: 40, l: 50 },
+                xaxis: { title: 'Time (s)', gridcolor: 'rgba(236, 72, 153, 0.1)' },
+                yaxis: { gridcolor: 'rgba(236, 72, 153, 0.1)' }, showlegend: false
+            };
+            Plotly.newPlot('signalPlot', [sigTrace], layout1, {responsive: true});
+
+            // Plot spectrum
+            var freqs = [], psd = [];
+            var maxFreq = signalType === 'emg' ? 500 : 50;
+            for (var f = 0.5; f <= maxFreq; f += 0.5) {
+                freqs.push(f);
+                var power = Math.exp(-Math.pow((f - peakFreq) / (peakFreq * 0.5), 2)) + Math.random() * 0.1;
+                psd.push(power);
+            }
+            var psdTrace = {
+                x: freqs, y: psd, type: 'scatter', mode: 'lines',
+                fill: 'tozeroy', line: { color: '#a855f7', width: 2 }, fillcolor: 'rgba(168, 85, 247, 0.2)'
+            };
+            var layout2 = {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e5e7eb' }, margin: { t: 20, r: 30, b: 40, l: 50 },
+                xaxis: { title: 'Frequency (Hz)', gridcolor: 'rgba(236, 72, 153, 0.1)' },
+                yaxis: { title: 'Power', gridcolor: 'rgba(236, 72, 153, 0.1)' }, showlegend: false
+            };
+            Plotly.newPlot('spectrumPlot', [psdTrace], layout2, {responsive: true});
+
+            // Plot wavelet coefficients
+            var levels = ['cA5', 'cD5', 'cD4', 'cD3', 'cD2', 'cD1'];
+            var waveletCoeffs = levels.map(function() { return Math.random() * 2 - 1; });
+            var waveletTrace = {
+                x: levels, y: waveletCoeffs.map(Math.abs), type: 'bar',
+                marker: { color: ['#ec4899', '#f472b6', '#a855f7', '#8b5cf6', '#6366f1', '#3b82f6'] }
+            };
+            var layout3 = {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e5e7eb' }, margin: { t: 20, r: 30, b: 40, l: 50 },
+                yaxis: { title: '|Coefficient|', gridcolor: 'rgba(236, 72, 153, 0.1)' }, showlegend: false
+            };
+            Plotly.newPlot('waveletPlot', [waveletTrace], layout3, {responsive: true});
+
+            // Plot feature vector
+            var featureNames = ['Mean', 'Std', 'RMS', 'Skew', 'Kurt', 'ZC', 'PkF', 'MnF', 'MdF', 'Ent'];
+            var featureValues = [mean, std, rms, skewness/3, kurtosis/4, zc/200, peakFreq/100, meanFreq/100, medFreq/100, 0.7];
+            var featureTrace = {
+                x: featureNames, y: featureValues.map(function(v) { return Math.abs(v); }), type: 'bar',
+                marker: { color: '#22c55e' }
+            };
+            var layout4 = {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e5e7eb' }, margin: { t: 20, r: 30, b: 40, l: 50 },
+                yaxis: { title: 'Normalized Value', gridcolor: 'rgba(236, 72, 153, 0.1)' }, showlegend: false
+            };
+            Plotly.newPlot('featurePlot', [featureTrace], layout4, {responsive: true});
+        }
+
+        extractBtn.addEventListener('click', extractFeatures);
+        windowSizeSlider.addEventListener('input', function() {
+            document.getElementById('window_val').textContent = parseFloat(windowSizeSlider.value).toFixed(1);
+        });
+        checkPlotly(extractFeatures);
+    </script>
+</body>
+</html>

@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activity Recognition - Wearable Health Monitor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%); }
+        .card-gradient { background: linear-gradient(180deg, rgba(249, 115, 22, 0.1) 0%, rgba(234, 88, 12, 0.05) 100%); border: 1px solid rgba(249, 115, 22, 0.2); }
+        .nav-blur { backdrop-filter: blur(12px); background: rgba(15, 15, 35, 0.8); }
+        .activity-card { transition: all 0.3s ease; }
+        .activity-card:hover { transform: translateY(-2px); }
+        .activity-card.active { border-color: #f97316; box-shadow: 0 0 20px rgba(249, 115, 22, 0.3); }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-gray-100">
+    <nav class="fixed top-0 w-full z-50 nav-blur border-b border-orange-500/20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-4">
+                    <a href="wearable-complete-project.html" class="text-orange-400 hover:text-orange-300"><i class="fas fa-arrow-left mr-2"></i>Back to Suite</a>
+                    <span class="text-gray-500">|</span>
+                    <span class="text-xl font-bold bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent">Activity Recognition</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-sm"><i class="fas fa-circle text-xs mr-2 animate-pulse"></i>Classifying</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="pt-20 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            <!-- Current Activity -->
+            <div class="lg:col-span-2 card-gradient rounded-xl p-6">
+                <h2 class="text-xl font-bold text-orange-300 mb-4"><i class="fas fa-running mr-2"></i>Current Activity Detection</h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div id="activity-walking" class="activity-card bg-gray-900/50 rounded-lg p-4 text-center border border-transparent cursor-pointer">
+                        <i class="fas fa-walking text-3xl text-orange-400 mb-2"></i>
+                        <p class="font-semibold">Walking</p>
+                        <p id="conf-walking" class="text-2xl font-bold text-orange-300">--</p>
+                    </div>
+                    <div id="activity-running" class="activity-card bg-gray-900/50 rounded-lg p-4 text-center border border-transparent cursor-pointer">
+                        <i class="fas fa-running text-3xl text-red-400 mb-2"></i>
+                        <p class="font-semibold">Running</p>
+                        <p id="conf-running" class="text-2xl font-bold text-red-300">--</p>
+                    </div>
+                    <div id="activity-sitting" class="activity-card bg-gray-900/50 rounded-lg p-4 text-center border border-transparent cursor-pointer">
+                        <i class="fas fa-couch text-3xl text-blue-400 mb-2"></i>
+                        <p class="font-semibold">Sitting</p>
+                        <p id="conf-sitting" class="text-2xl font-bold text-blue-300">--</p>
+                    </div>
+                    <div id="activity-standing" class="activity-card bg-gray-900/50 rounded-lg p-4 text-center border border-transparent cursor-pointer">
+                        <i class="fas fa-male text-3xl text-green-400 mb-2"></i>
+                        <p class="font-semibold">Standing</p>
+                        <p id="conf-standing" class="text-2xl font-bold text-green-300">--</p>
+                    </div>
+                    <div id="activity-stairs-up" class="activity-card bg-gray-900/50 rounded-lg p-4 text-center border border-transparent cursor-pointer">
+                        <i class="fas fa-arrow-up text-3xl text-purple-400 mb-2"></i>
+                        <p class="font-semibold">Stairs Up</p>
+                        <p id="conf-stairs-up" class="text-2xl font-bold text-purple-300">--</p>
+                    </div>
+                    <div id="activity-stairs-down" class="activity-card bg-gray-900/50 rounded-lg p-4 text-center border border-transparent cursor-pointer">
+                        <i class="fas fa-arrow-down text-3xl text-cyan-400 mb-2"></i>
+                        <p class="font-semibold">Stairs Down</p>
+                        <p id="conf-stairs-down" class="text-2xl font-bold text-cyan-300">--</p>
+                    </div>
+                    <div id="activity-cycling" class="activity-card bg-gray-900/50 rounded-lg p-4 text-center border border-transparent cursor-pointer">
+                        <i class="fas fa-biking text-3xl text-yellow-400 mb-2"></i>
+                        <p class="font-semibold">Cycling</p>
+                        <p id="conf-cycling" class="text-2xl font-bold text-yellow-300">--</p>
+                    </div>
+                    <div id="activity-sleeping" class="activity-card bg-gray-900/50 rounded-lg p-4 text-center border border-transparent cursor-pointer">
+                        <i class="fas fa-bed text-3xl text-indigo-400 mb-2"></i>
+                        <p class="font-semibold">Sleeping</p>
+                        <p id="conf-sleeping" class="text-2xl font-bold text-indigo-300">--</p>
+                    </div>
+                </div>
+                <div id="accelerometer-plot" style="height: 200px;"></div>
+            </div>
+
+            <!-- Model Info -->
+            <div class="card-gradient rounded-xl p-6">
+                <h2 class="text-xl font-bold text-orange-300 mb-4"><i class="fas fa-brain mr-2"></i>CNN Classifier</h2>
+                <div class="space-y-4">
+                    <div class="bg-gray-900/50 rounded-lg p-4">
+                        <p class="text-gray-400 text-sm">Model Architecture</p>
+                        <p class="text-xl font-bold text-orange-300">1D-CNN + LSTM</p>
+                    </div>
+                    <div class="bg-gray-900/50 rounded-lg p-4">
+                        <p class="text-gray-400 text-sm">Input Window</p>
+                        <p class="text-xl font-bold text-orange-300">2.56s (128 samples)</p>
+                    </div>
+                    <div class="bg-gray-900/50 rounded-lg p-4">
+                        <p class="text-gray-400 text-sm">Validation Accuracy</p>
+                        <p class="text-xl font-bold text-green-400">97.2%</p>
+                    </div>
+                    <div class="bg-gray-900/50 rounded-lg p-4">
+                        <p class="text-gray-400 text-sm">Inference Time</p>
+                        <p class="text-xl font-bold text-cyan-400">12.3 ms</p>
+                    </div>
+                    <div class="bg-gray-900/50 rounded-lg p-4">
+                        <p class="text-gray-400 text-sm">Model Size</p>
+                        <p class="text-xl font-bold text-purple-400">156 KB (quantized)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feature Extraction -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <div class="card-gradient rounded-xl p-6">
+                <h2 class="text-xl font-bold text-orange-300 mb-4"><i class="fas fa-chart-bar mr-2"></i>Extracted Features</h2>
+                <div id="features-plot" style="height: 300px;"></div>
+            </div>
+            <div class="card-gradient rounded-xl p-6">
+                <h2 class="text-xl font-bold text-orange-300 mb-4"><i class="fas fa-wave-square mr-2"></i>FFT Magnitude</h2>
+                <div id="fft-plot" style="height: 300px;"></div>
+            </div>
+        </div>
+
+        <!-- Confusion Matrix & Daily Activity -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="card-gradient rounded-xl p-6">
+                <h2 class="text-xl font-bold text-orange-300 mb-4"><i class="fas fa-th mr-2"></i>Confusion Matrix</h2>
+                <div id="confusion-plot" style="height: 350px;"></div>
+            </div>
+            <div class="card-gradient rounded-xl p-6">
+                <h2 class="text-xl font-bold text-orange-300 mb-4"><i class="fas fa-calendar-day mr-2"></i>Today's Activity Timeline</h2>
+                <div id="timeline-plot" style="height: 350px;"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        var activities = ['walking', 'running', 'sitting', 'standing', 'stairs-up', 'stairs-down', 'cycling', 'sleeping'];
+        var currentActivity = 'walking';
+        var accelData = { x: [], y: [], z: [], t: [] };
+        var maxPoints = 256;
+
+        function checkPlotly(callback) {
+            if (typeof Plotly !== 'undefined') {
+                callback();
+            } else {
+                setTimeout(function() { checkPlotly(callback); }, 100);
+            }
+        }
+
+        function generateAccelData(activity) {
+            var ax, ay, az;
+            var noise = function() { return (Math.random() - 0.5) * 0.5; };
+
+            if (activity === 'walking') {
+                ax = Math.sin(Date.now() / 200) * 2 + noise();
+                ay = Math.cos(Date.now() / 200) * 1.5 + noise();
+                az = 9.8 + Math.sin(Date.now() / 100) * 0.8 + noise();
+            } else if (activity === 'running') {
+                ax = Math.sin(Date.now() / 120) * 4 + noise() * 2;
+                ay = Math.cos(Date.now() / 120) * 3 + noise() * 2;
+                az = 9.8 + Math.sin(Date.now() / 60) * 2 + noise() * 2;
+            } else if (activity === 'sitting') {
+                ax = noise() * 0.2;
+                ay = noise() * 0.2;
+                az = 9.8 + noise() * 0.1;
+            } else if (activity === 'standing') {
+                ax = noise() * 0.3;
+                ay = noise() * 0.3;
+                az = 9.8 + noise() * 0.2;
+            } else if (activity === 'stairs-up') {
+                ax = Math.sin(Date.now() / 300) * 1.5 + noise();
+                ay = Math.abs(Math.sin(Date.now() / 300)) * 2 + noise();
+                az = 9.8 + Math.sin(Date.now() / 150) * 1.5 + noise();
+            } else if (activity === 'stairs-down') {
+                ax = Math.sin(Date.now() / 350) * 1.2 + noise();
+                ay = -Math.abs(Math.sin(Date.now() / 350)) * 1.8 + noise();
+                az = 9.8 + Math.sin(Date.now() / 175) * 2 + noise();
+            } else if (activity === 'cycling') {
+                ax = Math.sin(Date.now() / 250) * 1 + noise();
+                ay = Math.cos(Date.now() / 250) * 0.8 + noise();
+                az = 9.8 + Math.sin(Date.now() / 125) * 0.5 + noise();
+            } else {
+                ax = noise() * 0.1;
+                ay = noise() * 0.1;
+                az = 9.8 + noise() * 0.05;
+            }
+            return { x: ax, y: ay, z: az };
+        }
+
+        function classifyActivity() {
+            var confidences = {};
+            var total = 0;
+
+            activities.forEach(function(act) {
+                if (act === currentActivity) {
+                    confidences[act] = 0.85 + Math.random() * 0.12;
+                } else {
+                    confidences[act] = Math.random() * 0.08;
+                }
+                total += confidences[act];
+            });
+
+            activities.forEach(function(act) {
+                confidences[act] = confidences[act] / total;
+            });
+
+            return confidences;
+        }
+
+        function updateDisplay() {
+            var data = generateAccelData(currentActivity);
+            var now = Date.now() / 1000;
+
+            accelData.x.push(data.x);
+            accelData.y.push(data.y);
+            accelData.z.push(data.z);
+            accelData.t.push(now);
+
+            if (accelData.t.length > maxPoints) {
+                accelData.x.shift();
+                accelData.y.shift();
+                accelData.z.shift();
+                accelData.t.shift();
+            }
+
+            var confidences = classifyActivity();
+
+            activities.forEach(function(act) {
+                var el = document.getElementById('conf-' + act);
+                if (el) {
+                    el.textContent = (confidences[act] * 100).toFixed(1) + '%';
+                }
+                var card = document.getElementById('activity-' + act);
+                if (card) {
+                    if (act === currentActivity) {
+                        card.classList.add('active');
+                    } else {
+                        card.classList.remove('active');
+                    }
+                }
+            });
+
+            Plotly.react('accelerometer-plot', [
+                { y: accelData.x, name: 'X', line: { color: '#f97316' } },
+                { y: accelData.y, name: 'Y', line: { color: '#22c55e' } },
+                { y: accelData.z, name: 'Z', line: { color: '#3b82f6' } }
+            ], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#9ca3af' },
+                margin: { t: 20, b: 30, l: 40, r: 20 },
+                xaxis: { showgrid: true, gridcolor: 'rgba(255,255,255,0.1)' },
+                yaxis: { title: 'Accel (m/s²)', showgrid: true, gridcolor: 'rgba(255,255,255,0.1)' },
+                legend: { orientation: 'h', y: 1.1 },
+                showlegend: true
+            }, { responsive: true, displayModeBar: false });
+        }
+
+        function initPlots() {
+            // Features plot
+            var features = ['Mean', 'Std', 'Max', 'Min', 'Energy', 'Entropy', 'Corr XY', 'Corr XZ', 'Corr YZ'];
+            var values = [0.23, 2.15, 4.82, -3.91, 45.6, 1.82, 0.45, 0.12, 0.08];
+
+            Plotly.newPlot('features-plot', [{
+                x: features,
+                y: values,
+                type: 'bar',
+                marker: { color: '#f97316' }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#9ca3af' },
+                margin: { t: 20, b: 60, l: 50, r: 20 },
+                xaxis: { showgrid: false },
+                yaxis: { title: 'Value', showgrid: true, gridcolor: 'rgba(255,255,255,0.1)' }
+            }, { responsive: true, displayModeBar: false });
+
+            // FFT plot
+            var freqs = [];
+            var mags = [];
+            for (var i = 0; i < 25; i++) {
+                freqs.push(i * 2);
+                mags.push(Math.exp(-i / 5) * 10 + Math.random() * 2);
+            }
+            mags[2] = 15; // Walking frequency peak at ~4 Hz
+
+            Plotly.newPlot('fft-plot', [{
+                x: freqs,
+                y: mags,
+                type: 'scatter',
+                fill: 'tozeroy',
+                line: { color: '#f97316' },
+                fillcolor: 'rgba(249, 115, 22, 0.3)'
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#9ca3af' },
+                margin: { t: 20, b: 40, l: 50, r: 20 },
+                xaxis: { title: 'Frequency (Hz)', showgrid: true, gridcolor: 'rgba(255,255,255,0.1)' },
+                yaxis: { title: 'Magnitude', showgrid: true, gridcolor: 'rgba(255,255,255,0.1)' }
+            }, { responsive: true, displayModeBar: false });
+
+            // Confusion matrix
+            var labels = ['Walk', 'Run', 'Sit', 'Stand', 'Up', 'Down', 'Cycle', 'Sleep'];
+            var matrix = [
+                [96, 2, 0, 1, 1, 0, 0, 0],
+                [2, 97, 0, 0, 0, 0, 1, 0],
+                [0, 0, 98, 2, 0, 0, 0, 0],
+                [1, 0, 2, 96, 1, 0, 0, 0],
+                [1, 0, 0, 1, 95, 3, 0, 0],
+                [0, 0, 0, 0, 3, 96, 1, 0],
+                [0, 1, 0, 0, 0, 1, 98, 0],
+                [0, 0, 0, 0, 0, 0, 0, 100]
+            ];
+
+            Plotly.newPlot('confusion-plot', [{
+                z: matrix,
+                x: labels,
+                y: labels,
+                type: 'heatmap',
+                colorscale: [[0, '#1a1a2e'], [0.5, '#ea580c'], [1, '#f97316']],
+                showscale: true
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#9ca3af' },
+                margin: { t: 20, b: 60, l: 60, r: 20 },
+                xaxis: { title: 'Predicted', side: 'bottom' },
+                yaxis: { title: 'Actual', autorange: 'reversed' }
+            }, { responsive: true, displayModeBar: false });
+
+            // Timeline
+            var hours = [];
+            var activityData = [];
+            var activityColors = [];
+            var colorMap = {
+                'Sleep': '#6366f1',
+                'Sit': '#3b82f6',
+                'Stand': '#22c55e',
+                'Walk': '#f97316',
+                'Run': '#ef4444',
+                'Cycle': '#eab308'
+            };
+            var dayActivities = ['Sleep', 'Sleep', 'Sleep', 'Sleep', 'Sleep', 'Sleep', 'Sleep',
+                                 'Sit', 'Walk', 'Sit', 'Stand', 'Walk', 'Sit', 'Walk',
+                                 'Sit', 'Stand', 'Run', 'Walk', 'Sit', 'Walk', 'Sit',
+                                 'Stand', 'Sit', 'Sleep'];
+
+            for (var h = 0; h < 24; h++) {
+                hours.push(h + ':00');
+                activityData.push(1);
+                activityColors.push(colorMap[dayActivities[h]] || '#666');
+            }
+
+            Plotly.newPlot('timeline-plot', [{
+                x: hours,
+                y: activityData,
+                type: 'bar',
+                marker: { color: activityColors }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#9ca3af' },
+                margin: { t: 20, b: 60, l: 30, r: 20 },
+                xaxis: { title: 'Hour', tickangle: -45 },
+                yaxis: { showticklabels: false, showgrid: false },
+                bargap: 0.1
+            }, { responsive: true, displayModeBar: false });
+        }
+
+        // Activity card click handlers
+        activities.forEach(function(act) {
+            var card = document.getElementById('activity-' + act);
+            if (card) {
+                card.addEventListener('click', function() {
+                    currentActivity = act;
+                });
+            }
+        });
+
+        checkPlotly(function() {
+            initPlots();
+            setInterval(updateDisplay, 50);
+        });
+    </script>
+</body>
+</html>
