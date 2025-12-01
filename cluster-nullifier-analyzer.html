@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nullifier Variance Analyzer - CV Cluster-State Compiler</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+        }
+        .card-gradient {
+            background: linear-gradient(180deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+        .glow-emerald {
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.3);
+        }
+        .nav-blur {
+            backdrop-filter: blur(12px);
+            background: rgba(15, 15, 35, 0.8);
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-gray-100">
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full z-50 nav-blur border-b border-emerald-500/20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-4">
+                    <a href="cluster-complete-project.html" class="text-emerald-400 hover:text-emerald-300 transition-colors">
+                        <i class="fas fa-arrow-left mr-2"></i>Back to Suite
+                    </a>
+                    <span class="text-gray-500">|</span>
+                    <span class="text-xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
+                        Nullifier Variance Analyzer
+                    </span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="cluster-graph-designer.html" class="text-gray-400 hover:text-emerald-400 transition-colors text-sm">Graph Designer</a>
+                    <a href="cluster-mesh-optimizer.html" class="text-gray-400 hover:text-emerald-400 transition-colors text-sm">Mesh Optimizer</a>
+                    <a href="cluster-loss-simulator.html" class="text-gray-400 hover:text-emerald-400 transition-colors text-sm">Loss Simulator</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="pt-20 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="text-center mb-10">
+            <h1 class="text-4xl font-bold mb-4">
+                <i class="fas fa-chart-bar text-emerald-400 mr-3"></i>
+                Nullifier Variance Analyzer
+            </h1>
+            <p class="text-xl text-gray-400 max-w-3xl mx-auto">
+                Calculate nullifier variances ⟨δ²⟩ as entanglement witnesses through covariance matrix propagation
+            </p>
+        </div>
+
+        <!-- Theory Card -->
+        <div class="card-gradient rounded-xl p-6 mb-8">
+            <h3 class="text-lg font-semibold text-emerald-300 mb-4">
+                <i class="fas fa-book mr-2"></i>Nullifier Variance Computation
+            </h3>
+            <div class="grid md:grid-cols-2 gap-6">
+                <div>
+                    <p class="text-gray-300 mb-4">
+                        The nullifier variance is computed from the covariance matrix V and the nullifier coefficient vector c:
+                    </p>
+                    <div class="bg-gray-900/50 rounded-lg p-4 font-mono text-center space-y-2">
+                        <p class="text-emerald-300">⟨δ<sub>j</sub>²⟩ = c<sup>T</sup> V c</p>
+                        <p class="text-sm text-gray-400">where c = (0,...,-A<sub>j1</sub>,...,0,1,0,...,-A<sub>jN</sub>,...)</p>
+                    </div>
+                </div>
+                <div>
+                    <p class="text-gray-300 mb-2"><strong>Entanglement Criterion:</strong></p>
+                    <ul class="text-gray-400 space-y-2 text-sm">
+                        <li><i class="fas fa-check text-green-400 mr-2"></i><strong>⟨δ²⟩ < 1 SNU:</strong> Genuine entanglement</li>
+                        <li><i class="fas fa-check text-yellow-400 mr-2"></i><strong>⟨δ²⟩ ≈ 1 SNU:</strong> Marginal / threshold</li>
+                        <li><i class="fas fa-times text-red-400 mr-2"></i><strong>⟨δ²⟩ > 1 SNU:</strong> No entanglement witness</li>
+                    </ul>
+                    <p class="text-gray-500 text-xs mt-2">SNU = Symmetrized Natural Units (shot noise = 1)</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="grid lg:grid-cols-3 gap-8">
+            <!-- Control Panel -->
+            <div class="lg:col-span-1 space-y-6">
+                <!-- Graph Selection -->
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-emerald-300 mb-4">
+                        <i class="fas fa-project-diagram mr-2"></i>Graph Configuration
+                    </h3>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Graph Topology</label>
+                            <select id="topology" class="w-full bg-gray-800 border border-emerald-500/30 rounded-lg px-4 py-2 text-white focus:border-emerald-500 focus:outline-none">
+                                <option value="square4">Square (4 modes)</option>
+                                <option value="linear6">Linear Chain (6 modes)</option>
+                                <option value="hexagonal7" selected>Hexagonal (7 modes)</option>
+                                <option value="ghz8">GHZ Rail (8 modes)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">
+                                Input Squeezing (dB): <span id="squeeze_val" class="text-emerald-400">6.0</span>
+                            </label>
+                            <input type="range" id="squeezing" min="0" max="15" step="0.5" value="6"
+                                class="w-full accent-emerald-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">
+                                CZ Gate Strength: <span id="cz_val" class="text-emerald-400">1.0</span>
+                            </label>
+                            <input type="range" id="czStrength" min="0.1" max="2" step="0.1" value="1"
+                                class="w-full accent-emerald-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mesh Configuration -->
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-emerald-300 mb-4">
+                        <i class="fas fa-sliders-h mr-2"></i>Mesh Configuration
+                    </h3>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Architecture</label>
+                            <select id="meshArch" class="w-full bg-gray-800 border border-emerald-500/30 rounded-lg px-4 py-2 text-white focus:border-emerald-500 focus:outline-none">
+                                <option value="clements">Clements (Symmetric)</option>
+                                <option value="reck">Reck (Triangular)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">
+                                Phase Noise σ<sub>φ</sub> (°): <span id="phase_noise_val" class="text-emerald-400">0.0</span>
+                            </label>
+                            <input type="range" id="phaseNoise" min="0" max="5" step="0.1" value="0"
+                                class="w-full accent-emerald-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Summary -->
+                <div class="card-gradient rounded-xl p-6 glow-emerald">
+                    <h3 class="text-lg font-semibold text-emerald-300 mb-4">
+                        <i class="fas fa-chart-pie mr-2"></i>Analysis Results
+                    </h3>
+
+                    <div class="space-y-4">
+                        <div class="bg-gray-900/50 rounded-lg p-4">
+                            <div class="text-sm text-gray-400">Average Nullifier Variance</div>
+                            <div class="text-2xl font-bold text-emerald-400" id="avg_variance">0.250 SNU</div>
+                        </div>
+
+                        <div class="bg-gray-900/50 rounded-lg p-4">
+                            <div class="text-sm text-gray-400">Maximum Variance</div>
+                            <div class="text-xl font-bold text-teal-400" id="max_variance">0.312 SNU</div>
+                        </div>
+
+                        <div class="bg-gray-900/50 rounded-lg p-4">
+                            <div class="text-sm text-gray-400">Minimum Variance</div>
+                            <div class="text-xl font-bold text-cyan-400" id="min_variance">0.188 SNU</div>
+                        </div>
+
+                        <div class="bg-gray-900/50 rounded-lg p-4">
+                            <div class="text-sm text-gray-400">Entangled Modes</div>
+                            <div class="text-xl font-bold text-green-400" id="entangled_modes">7/7</div>
+                        </div>
+
+                        <div class="bg-gray-900/50 rounded-lg p-4">
+                            <div class="text-sm text-gray-400">Entanglement Status</div>
+                            <div class="text-xl font-bold" id="status">
+                                <span class="text-green-400"><i class="fas fa-check-circle mr-2"></i>ENTANGLED</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Visualization Area -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Nullifier Variances Bar Chart -->
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-emerald-300 mb-4">
+                        <i class="fas fa-chart-bar mr-2"></i>Mode-wise Nullifier Variances
+                    </h3>
+                    <div id="variancePlot" style="height: 350px;"></div>
+                </div>
+
+                <!-- Variance vs Squeezing -->
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-emerald-300 mb-4">
+                        <i class="fas fa-chart-line mr-2"></i>Variance vs Input Squeezing
+                    </h3>
+                    <div id="squeezingPlot" style="height: 300px;"></div>
+                </div>
+
+                <!-- Covariance Matrix Heatmap -->
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-emerald-300 mb-4">
+                        <i class="fas fa-th mr-2"></i>Output Covariance Matrix
+                    </h3>
+                    <div id="covariancePlot" style="height: 350px;"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-emerald-500/20 mt-12 py-8">
+        <div class="max-w-7xl mx-auto px-4 text-center text-gray-500">
+            <p>CV Cluster-State Nullifier Analyzer</p>
+            <p class="text-sm mt-2">Part of the Quantum Photonics Suite</p>
+        </div>
+    </footer>
+
+    <script>
+        // Wait for Plotly to load
+        function checkPlotly(callback) {
+            if (typeof Plotly !== 'undefined') {
+                callback();
+            } else {
+                setTimeout(function() { checkPlotly(callback); }, 100);
+            }
+        }
+
+        // Get DOM elements
+        var topologySelect = document.getElementById('topology');
+        var squeezingSlider = document.getElementById('squeezing');
+        var czStrengthSlider = document.getElementById('czStrength');
+        var meshArchSelect = document.getElementById('meshArch');
+        var phaseNoiseSlider = document.getElementById('phaseNoise');
+
+        // Graph topologies (adjacency matrices)
+        var topologies = {
+            'square4': {
+                n: 4,
+                adj: [[0,1,0,1],[1,0,1,0],[0,1,0,1],[1,0,1,0]]
+            },
+            'linear6': {
+                n: 6,
+                adj: [[0,1,0,0,0,0],[1,0,1,0,0,0],[0,1,0,1,0,0],[0,0,1,0,1,0],[0,0,0,1,0,1],[0,0,0,0,1,0]]
+            },
+            'hexagonal7': {
+                n: 7,
+                adj: [[0,1,0,0,0,1,1],[1,0,1,0,0,0,1],[0,1,0,1,0,0,1],[0,0,1,0,1,0,1],[0,0,0,1,0,1,1],[1,0,0,0,1,0,1],[1,1,1,1,1,1,0]]
+            },
+            'ghz8': {
+                n: 8,
+                adj: [[0,1,0,0,1,0,0,0],[1,0,1,0,0,1,0,0],[0,1,0,1,0,0,1,0],[0,0,1,0,0,0,0,1],[1,0,0,0,0,1,0,0],[0,1,0,0,1,0,1,0],[0,0,1,0,0,1,0,1],[0,0,0,1,0,0,1,0]]
+            }
+        };
+
+        // Calculate nullifier variances
+        function calculateNullifierVariances(params) {
+            var topo = topologies[params.topology];
+            var n = topo.n;
+            var adj = topo.adj;
+            var r = params.squeezing / (10 * Math.log10(Math.E) * 2);
+            var g = params.czStrength;
+            var sigma_phi = params.phaseNoise * Math.PI / 180;
+
+            // Squeezed variance
+            var varSq = Math.exp(-2 * r) / 2;
+            var varAnti = Math.exp(2 * r) / 2;
+
+            // Simplified nullifier variance calculation
+            // In ideal case: <delta_j^2> = e^{-2r}/2 * (1 + sum_k A_jk^2 * e^{4r})
+            // With phase noise, add excess
+            var variances = [];
+            for (var j = 0; j < n; j++) {
+                var sumAdjSq = 0;
+                for (var k = 0; k < n; k++) {
+                    sumAdjSq += Math.pow(adj[j][k] * g, 2);
+                }
+                var baseVar = varSq * (1 + sumAdjSq * Math.exp(4 * r) * varSq);
+                // Add phase noise contribution
+                var noiseContrib = sigma_phi * sigma_phi * sumAdjSq * varAnti;
+                variances.push(baseVar + noiseContrib);
+            }
+
+            return variances;
+        }
+
+        // Generate covariance matrix (simplified model)
+        function generateCovarianceMatrix(params) {
+            var topo = topologies[params.topology];
+            var n = topo.n;
+            var r = params.squeezing / (10 * Math.log10(Math.E) * 2);
+
+            // 2N x 2N covariance matrix
+            var cov = [];
+            for (var i = 0; i < 2*n; i++) {
+                cov[i] = [];
+                for (var j = 0; j < 2*n; j++) {
+                    if (i === j) {
+                        // Diagonal: squeezed or anti-squeezed
+                        if (i < n) {
+                            cov[i][j] = Math.exp(-2*r) / 2; // x quadratures
+                        } else {
+                            cov[i][j] = Math.exp(2*r) / 2; // p quadratures
+                        }
+                    } else {
+                        // Off-diagonal correlations (simplified)
+                        cov[i][j] = 0;
+                        // Add correlations based on adjacency
+                        var mode_i = i % n;
+                        var mode_j = j % n;
+                        if (topo.adj[mode_i][mode_j] > 0) {
+                            // x-p correlations
+                            if ((i < n && j >= n) || (i >= n && j < n)) {
+                                cov[i][j] = 0.1 * params.czStrength;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return cov;
+        }
+
+        // Update all plots
+        function updatePlots() {
+            var params = {
+                topology: topologySelect.value,
+                squeezing: parseFloat(squeezingSlider.value),
+                czStrength: parseFloat(czStrengthSlider.value),
+                meshArch: meshArchSelect.value,
+                phaseNoise: parseFloat(phaseNoiseSlider.value)
+            };
+
+            // Update value displays
+            document.getElementById('squeeze_val').textContent = params.squeezing.toFixed(1);
+            document.getElementById('cz_val').textContent = params.czStrength.toFixed(1);
+            document.getElementById('phase_noise_val').textContent = params.phaseNoise.toFixed(1);
+
+            var variances = calculateNullifierVariances(params);
+            var n = variances.length;
+
+            // Calculate statistics
+            var avgVar = variances.reduce(function(a,b) { return a+b; }, 0) / n;
+            var maxVar = Math.max.apply(null, variances);
+            var minVar = Math.min.apply(null, variances);
+            var entangledCount = variances.filter(function(v) { return v < 1; }).length;
+
+            // Update results
+            document.getElementById('avg_variance').textContent = avgVar.toFixed(3) + ' SNU';
+            document.getElementById('max_variance').textContent = maxVar.toFixed(3) + ' SNU';
+            document.getElementById('min_variance').textContent = minVar.toFixed(3) + ' SNU';
+            document.getElementById('entangled_modes').textContent = entangledCount + '/' + n;
+
+            var statusEl = document.getElementById('status');
+            if (entangledCount === n) {
+                statusEl.innerHTML = '<span class="text-green-400"><i class="fas fa-check-circle mr-2"></i>FULLY ENTANGLED</span>';
+            } else if (entangledCount > 0) {
+                statusEl.innerHTML = '<span class="text-yellow-400"><i class="fas fa-exclamation-triangle mr-2"></i>PARTIAL (' + entangledCount + '/' + n + ')</span>';
+            } else {
+                statusEl.innerHTML = '<span class="text-red-400"><i class="fas fa-times-circle mr-2"></i>NO ENTANGLEMENT</span>';
+            }
+
+            // Mode labels
+            var modeLabels = [];
+            for (var i = 0; i < n; i++) {
+                modeLabels.push('Mode ' + i);
+            }
+
+            // Bar colors based on entanglement
+            var colors = variances.map(function(v) {
+                return v < 1 ? '#10b981' : '#ef4444';
+            });
+
+            // Variance bar chart
+            var barTrace = {
+                x: modeLabels,
+                y: variances,
+                type: 'bar',
+                marker: { color: colors }
+            };
+
+            var thresholdLine = {
+                x: modeLabels,
+                y: Array(n).fill(1),
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#f59e0b', width: 2, dash: 'dash' },
+                name: 'Threshold (1 SNU)'
+            };
+
+            var layout1 = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e5e7eb' },
+                margin: { t: 30, r: 30, b: 50, l: 60 },
+                xaxis: { gridcolor: 'rgba(16, 185, 129, 0.1)' },
+                yaxis: {
+                    title: 'Nullifier Variance (SNU)',
+                    gridcolor: 'rgba(16, 185, 129, 0.1)',
+                    range: [0, Math.max(1.5, maxVar * 1.2)]
+                },
+                showlegend: true,
+                legend: { x: 0.7, y: 0.98 }
+            };
+
+            Plotly.newPlot('variancePlot', [barTrace, thresholdLine], layout1, {responsive: true});
+
+            // Variance vs Squeezing plot
+            var sqRange = [];
+            var avgVarRange = [];
+            for (var sq = 0; sq <= 15; sq += 0.5) {
+                sqRange.push(sq);
+                var tempParams = Object.assign({}, params, { squeezing: sq });
+                var tempVars = calculateNullifierVariances(tempParams);
+                avgVarRange.push(tempVars.reduce(function(a,b) { return a+b; }, 0) / tempVars.length);
+            }
+
+            var sqTrace = {
+                x: sqRange,
+                y: avgVarRange,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#10b981', width: 2 },
+                name: 'Avg Variance'
+            };
+
+            var sqThreshold = {
+                x: sqRange,
+                y: Array(sqRange.length).fill(1),
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#f59e0b', width: 2, dash: 'dash' },
+                name: 'Threshold'
+            };
+
+            var currentMarker = {
+                x: [params.squeezing],
+                y: [avgVar],
+                type: 'scatter',
+                mode: 'markers',
+                marker: { color: '#ef4444', size: 12, symbol: 'diamond' },
+                name: 'Current'
+            };
+
+            var layout2 = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e5e7eb' },
+                margin: { t: 30, r: 30, b: 50, l: 60 },
+                xaxis: {
+                    title: 'Input Squeezing (dB)',
+                    gridcolor: 'rgba(16, 185, 129, 0.1)'
+                },
+                yaxis: {
+                    title: 'Avg Nullifier Variance (SNU)',
+                    gridcolor: 'rgba(16, 185, 129, 0.1)',
+                    type: 'log',
+                    range: [-2, 1]
+                },
+                showlegend: true,
+                legend: { x: 0.7, y: 0.98 }
+            };
+
+            Plotly.newPlot('squeezingPlot', [sqTrace, sqThreshold, currentMarker], layout2, {responsive: true});
+
+            // Covariance matrix heatmap
+            var cov = generateCovarianceMatrix(params);
+
+            var heatmapTrace = {
+                z: cov,
+                type: 'heatmap',
+                colorscale: [
+                    [0, '#0d1117'],
+                    [0.5, '#10b981'],
+                    [1, '#f59e0b']
+                ],
+                showscale: true
+            };
+
+            var layout3 = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e5e7eb' },
+                margin: { t: 30, r: 80, b: 50, l: 50 },
+                xaxis: {
+                    title: 'Quadrature Index',
+                    gridcolor: 'rgba(16, 185, 129, 0.1)'
+                },
+                yaxis: {
+                    title: 'Quadrature Index',
+                    gridcolor: 'rgba(16, 185, 129, 0.1)',
+                    autorange: 'reversed'
+                }
+            };
+
+            Plotly.newPlot('covariancePlot', [heatmapTrace], layout3, {responsive: true});
+        }
+
+        // Event listeners
+        [topologySelect, squeezingSlider, czStrengthSlider, meshArchSelect, phaseNoiseSlider].forEach(function(el) {
+            el.addEventListener('input', updatePlots);
+        });
+
+        // Initialize
+        checkPlotly(function() {
+            updatePlots();
+        });
+    </script>
+</body>
+</html>
