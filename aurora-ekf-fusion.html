@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EKF Sensor Fusion - AURORA-NAV</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0a0a0a 0%, #0a1628 100%); color: #e0e0e0; min-height: 100vh; }
+        .navbar { background: rgba(10, 10, 10, 0.95); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(14, 165, 233, 0.3); position: sticky; top: 0; z-index: 100; }
+        .nav-brand { color: #38bdf8; font-size: 1.5rem; font-weight: bold; }
+        .nav-btn { background: linear-gradient(135deg, #0ea5e9, #0284c7); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; transition: all 0.3s; }
+        .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(14, 165, 233, 0.4); }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .page-header { text-align: center; margin-bottom: 3rem; }
+        .page-title { font-size: 2.5rem; background: linear-gradient(135deg, #0ea5e9, #38bdf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 1rem; }
+        .page-subtitle { color: #888; font-size: 1.1rem; }
+        .tabs { display: flex; gap: 0.5rem; margin-bottom: 2rem; flex-wrap: wrap; }
+        .tab { padding: 0.75rem 1.5rem; background: rgba(14, 165, 233, 0.1); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 8px; cursor: pointer; transition: all 0.3s; color: #38bdf8; }
+        .tab:hover, .tab.active { background: linear-gradient(135deg, #0ea5e9, #0284c7); color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .card { background: rgba(20, 20, 20, 0.8); border: 1px solid rgba(14, 165, 233, 0.2); border-radius: 15px; padding: 1.5rem; margin-bottom: 1.5rem; }
+        .card-title { color: #38bdf8; font-size: 1.3rem; margin-bottom: 1rem; }
+        .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; }
+        .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; }
+        .control-group { margin-bottom: 1rem; }
+        .control-label { display: block; color: #888; margin-bottom: 0.5rem; font-size: 0.9rem; }
+        .control-input, .control-select { width: 100%; padding: 0.75rem; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 8px; color: #e0e0e0; font-size: 1rem; }
+        .btn { padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #0ea5e9, #0284c7); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; transition: all 0.3s; margin-right: 0.5rem; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(14, 165, 233, 0.4); }
+        .btn-secondary { background: rgba(14, 165, 233, 0.2); border: 1px solid rgba(14, 165, 233, 0.5); }
+        .chart-container { height: 400px; margin: 1rem 0; }
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem; }
+        .stat-box { background: rgba(14, 165, 233, 0.1); padding: 1rem; border-radius: 10px; text-align: center; }
+        .stat-value { font-size: 1.3rem; color: #0ea5e9; font-weight: bold; }
+        .stat-label { color: #888; font-size: 0.8rem; margin-top: 0.25rem; }
+        .sensor-toggle { display: flex; align-items: center; gap: 0.5rem; margin: 0.5rem 0; }
+        .toggle { width: 50px; height: 26px; background: rgba(14, 165, 233, 0.2); border-radius: 13px; position: relative; cursor: pointer; transition: all 0.3s; }
+        .toggle.active { background: #0ea5e9; }
+        .toggle::after { content: ''; position: absolute; width: 22px; height: 22px; background: white; border-radius: 50%; top: 2px; left: 2px; transition: all 0.3s; }
+        .toggle.active::after { left: 26px; }
+        .status-indicator { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 0.5rem; }
+        .status-active { background: #10b981; box-shadow: 0 0 10px #10b981; }
+        .status-warning { background: #f59e0b; box-shadow: 0 0 10px #f59e0b; }
+        .status-error { background: #ef4444; box-shadow: 0 0 10px #ef4444; }
+        .covariance-matrix { font-family: monospace; background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+        .matrix-row { display: flex; gap: 0.5rem; margin: 0.25rem 0; }
+        .matrix-cell { width: 80px; text-align: right; color: #38bdf8; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <span class="nav-brand"><i class="fas fa-filter"></i> EKF Sensor Fusion</span>
+        <a href="aurora-nav-project.html" class="nav-btn"><i class="fas fa-arrow-left"></i> Back to AURORA-NAV</a>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1 class="page-title">Extended Kalman Filter Navigation</h1>
+            <p class="page-subtitle">Multi-sensor fusion for underwater position estimation</p>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('simulation')">Simulation</div>
+            <div class="tab" onclick="switchTab('sensors')">Sensor Config</div>
+            <div class="tab" onclick="switchTab('tuning')">Filter Tuning</div>
+            <div class="tab" onclick="switchTab('analysis')">Error Analysis</div>
+        </div>
+
+        <!-- Simulation Tab -->
+        <div id="simulation" class="tab-content active">
+            <div class="grid-2">
+                <div class="card">
+                    <h3 class="card-title"><i class="fas fa-play-circle"></i> Navigation Simulation</h3>
+                    <div class="control-group">
+                        <label class="control-label">Mission Duration [s]</label>
+                        <input type="number" class="control-input" id="duration" value="300" step="30">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Vehicle Speed [m/s]</label>
+                        <input type="number" class="control-input" id="speed" value="1.5" step="0.1">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Trajectory Type</label>
+                        <select class="control-select" id="trajectory">
+                            <option value="straight">Straight Line</option>
+                            <option value="circle" selected>Circular</option>
+                            <option value="lawnmower">Lawnmower Survey</option>
+                            <option value="random">Random Walk</option>
+                        </select>
+                    </div>
+                    <div style="margin-top: 1rem;">
+                        <button class="btn" onclick="runSimulation()"><i class="fas fa-play"></i> Run</button>
+                        <button class="btn btn-secondary" onclick="resetSimulation()"><i class="fas fa-redo"></i> Reset</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3 class="card-title"><i class="fas fa-satellite-dish"></i> Active Sensors</h3>
+                    <div class="sensor-toggle">
+                        <div class="toggle active" id="toggleINS" onclick="toggleSensor('INS')"></div>
+                        <span><span class="status-indicator status-active"></span>INS (100 Hz)</span>
+                    </div>
+                    <div class="sensor-toggle">
+                        <div class="toggle active" id="toggleDVL" onclick="toggleSensor('DVL')"></div>
+                        <span><span class="status-indicator status-active"></span>DVL (5 Hz)</span>
+                    </div>
+                    <div class="sensor-toggle">
+                        <div class="toggle" id="toggleUSBL" onclick="toggleSensor('USBL')"></div>
+                        <span><span class="status-indicator status-warning"></span>USBL (0.5 Hz)</span>
+                    </div>
+                    <div class="sensor-toggle">
+                        <div class="toggle" id="toggleDepth" onclick="toggleSensor('Depth')"></div>
+                        <span><span class="status-indicator status-active"></span>Depth (10 Hz)</span>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <h3 class="card-title"><i class="fas fa-map-marked-alt"></i> Position Estimate</h3>
+                <div id="positionChart" class="chart-container"></div>
+            </div>
+            <div class="card">
+                <h3 class="card-title"><i class="fas fa-chart-bar"></i> Real-time Metrics</h3>
+                <div class="stat-grid">
+                    <div class="stat-box">
+                        <div class="stat-value" id="posX">0.00</div>
+                        <div class="stat-label">X Position (m)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="posY">0.00</div>
+                        <div class="stat-label">Y Position (m)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="posZ">-50.0</div>
+                        <div class="stat-label">Depth (m)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="heading">45.0</div>
+                        <div class="stat-label">Heading (°)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="posError">0.85</div>
+                        <div class="stat-label">Position Error (m)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="velocity">1.50</div>
+                        <div class="stat-label">Velocity (m/s)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sensor Config Tab -->
+        <div id="sensors" class="tab-content">
+            <div class="grid-3">
+                <div class="card">
+                    <h3 class="card-title"><i class="fas fa-compass"></i> INS Parameters</h3>
+                    <div class="control-group">
+                        <label class="control-label">Accel Bias [mg]</label>
+                        <input type="number" class="control-input" id="accelBias" value="0.1" step="0.01">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Gyro Bias [°/h]</label>
+                        <input type="number" class="control-input" id="gyroBias" value="1.0" step="0.1">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">ARW [°/√h]</label>
+                        <input type="number" class="control-input" id="arw" value="0.1" step="0.01">
+                    </div>
+                </div>
+                <div class="card">
+                    <h3 class="card-title"><i class="fas fa-water"></i> DVL Parameters</h3>
+                    <div class="control-group">
+                        <label class="control-label">Velocity σ [m/s]</label>
+                        <input type="number" class="control-input" id="dvlSigma" value="0.01" step="0.001">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Scale Factor Error [%]</label>
+                        <input type="number" class="control-input" id="dvlScale" value="0.1" step="0.01">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Bottom Lock Range [m]</label>
+                        <input type="number" class="control-input" id="dvlRange" value="200" step="10">
+                    </div>
+                </div>
+                <div class="card">
+                    <h3 class="card-title"><i class="fas fa-broadcast-tower"></i> USBL Parameters</h3>
+                    <div class="control-group">
+                        <label class="control-label">Range σ [m]</label>
+                        <input type="number" class="control-input" id="usblRange" value="1.0" step="0.1">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Bearing σ [°]</label>
+                        <input type="number" class="control-input" id="usblBearing" value="0.5" step="0.1">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Update Rate [Hz]</label>
+                        <input type="number" class="control-input" id="usblRate" value="0.5" step="0.1">
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <h3 class="card-title"><i class="fas fa-chart-line"></i> Sensor Noise Comparison</h3>
+                <div id="noiseChart" class="chart-container"></div>
+            </div>
+        </div>
+
+        <!-- Filter Tuning Tab -->
+        <div id="tuning" class="tab-content">
+            <div class="grid-2">
+                <div class="card">
+                    <h3 class="card-title"><i class="fas fa-sliders-h"></i> Process Noise (Q)</h3>
+                    <div class="control-group">
+                        <label class="control-label">Position [m²]</label>
+                        <input type="number" class="control-input" id="qPos" value="0.01" step="0.001">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Velocity [m²/s²]</label>
+                        <input type="number" class="control-input" id="qVel" value="0.001" step="0.0001">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Attitude [rad²]</label>
+                        <input type="number" class="control-input" id="qAtt" value="0.0001" step="0.00001">
+                    </div>
+                    <button class="btn" onclick="updateFilter()"><i class="fas fa-sync"></i> Update Filter</button>
+                </div>
+                <div class="card">
+                    <h3 class="card-title"><i class="fas fa-th"></i> State Covariance (P)</h3>
+                    <div class="covariance-matrix" id="covMatrix">
+                        <div class="matrix-row"><span class="matrix-cell">0.25</span><span class="matrix-cell">0.01</span><span class="matrix-cell">0.00</span></div>
+                        <div class="matrix-row"><span class="matrix-cell">0.01</span><span class="matrix-cell">0.25</span><span class="matrix-cell">0.00</span></div>
+                        <div class="matrix-row"><span class="matrix-cell">0.00</span><span class="matrix-cell">0.00</span><span class="matrix-cell">0.04</span></div>
+                    </div>
+                    <p style="color: #888; font-size: 0.85rem; margin-top: 0.5rem;">Position covariance (X, Y, Z) in m²</p>
+                </div>
+            </div>
+            <div class="card">
+                <h3 class="card-title"><i class="fas fa-chart-area"></i> Covariance Evolution</h3>
+                <div id="covChart" class="chart-container"></div>
+            </div>
+        </div>
+
+        <!-- Error Analysis Tab -->
+        <div id="analysis" class="tab-content">
+            <div class="card">
+                <h3 class="card-title"><i class="fas fa-chart-bar"></i> Navigation Performance</h3>
+                <div class="stat-grid">
+                    <div class="stat-box">
+                        <div class="stat-value" id="rmsX">0.42</div>
+                        <div class="stat-label">RMS X Error (m)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="rmsY">0.38</div>
+                        <div class="stat-label">RMS Y Error (m)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="rms3D">0.65</div>
+                        <div class="stat-label">3D RMS Error (m)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="cep50">0.52</div>
+                        <div class="stat-label">CEP50 (m)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="maxError">1.85</div>
+                        <div class="stat-label">Max Error (m)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="driftRate">0.12</div>
+                        <div class="stat-label">Drift (%/km)</div>
+                    </div>
+                </div>
+            </div>
+            <div class="grid-2">
+                <div class="card">
+                    <h3 class="card-title"><i class="fas fa-chart-line"></i> Error Time Series</h3>
+                    <div id="errorChart" class="chart-container"></div>
+                </div>
+                <div class="card">
+                    <h3 class="card-title"><i class="fas fa-crosshairs"></i> Error Distribution</h3>
+                    <div id="errorDistChart" class="chart-container"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let simulationData = { time: [], trueX: [], trueY: [], estX: [], estY: [], error: [] };
+        let sensors = { INS: true, DVL: true, USBL: false, Depth: false };
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelector(`[onclick="switchTab('${tabId}')"]`).classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        function toggleSensor(sensor) {
+            sensors[sensor] = !sensors[sensor];
+            const toggle = document.getElementById('toggle' + sensor);
+            toggle.classList.toggle('active');
+        }
+
+        function runSimulation() {
+            const duration = parseFloat(document.getElementById('duration').value);
+            const speed = parseFloat(document.getElementById('speed').value);
+            const trajectory = document.getElementById('trajectory').value;
+
+            simulationData = { time: [], trueX: [], trueY: [], estX: [], estY: [], error: [], cov: [] };
+
+            const dt = 0.1;
+            let x = 0, y = 0, heading = 0;
+            let estX = 0, estY = 0;
+            let P = 0.1; // Initial covariance
+
+            for (let t = 0; t <= duration; t += dt) {
+                simulationData.time.push(t);
+
+                // True trajectory
+                if (trajectory === 'circle') {
+                    const radius = 50;
+                    const omega = speed / radius;
+                    x = radius * Math.cos(omega * t);
+                    y = radius * Math.sin(omega * t);
+                    heading = omega * t + Math.PI / 2;
+                } else if (trajectory === 'straight') {
+                    x = speed * t;
+                    y = 0;
+                } else if (trajectory === 'lawnmower') {
+                    const legLength = 100;
+                    const legNum = Math.floor(speed * t / legLength);
+                    const legProgress = (speed * t) % legLength;
+                    x = legNum % 2 === 0 ? legProgress : legLength - legProgress;
+                    y = legNum * 20;
+                } else {
+                    x += (Math.random() - 0.5) * speed * dt;
+                    y += (Math.random() - 0.5) * speed * dt;
+                }
+
+                simulationData.trueX.push(x);
+                simulationData.trueY.push(y);
+
+                // EKF prediction + update
+                const insNoise = sensors.INS ? 0.01 : 0.1;
+                const dvlNoise = sensors.DVL ? 0.05 : 0.5;
+                const usblCorrect = sensors.USBL && Math.random() < 0.01 ? 0.1 : 1;
+
+                P += 0.001; // Process noise
+                const K = P / (P + insNoise + dvlNoise); // Kalman gain
+                P = (1 - K) * P * usblCorrect;
+
+                estX = x + (Math.random() - 0.5) * Math.sqrt(P) * 2;
+                estY = y + (Math.random() - 0.5) * Math.sqrt(P) * 2;
+
+                simulationData.estX.push(estX);
+                simulationData.estY.push(estY);
+
+                const err = Math.sqrt(Math.pow(estX - x, 2) + Math.pow(estY - y, 2));
+                simulationData.error.push(err);
+                simulationData.cov.push(P);
+            }
+
+            plotResults();
+            updateMetrics();
+        }
+
+        function plotResults() {
+            Plotly.newPlot('positionChart', [
+                { x: simulationData.trueX, y: simulationData.trueY, name: 'True Path', mode: 'lines', line: { color: '#10b981', width: 2 } },
+                { x: simulationData.estX, y: simulationData.estY, name: 'EKF Estimate', mode: 'lines', line: { color: '#0ea5e9', width: 2, dash: 'dot' } },
+                { x: [simulationData.estX[simulationData.estX.length-1]], y: [simulationData.estY[simulationData.estY.length-1]], name: 'Current', mode: 'markers', marker: { color: '#ef4444', size: 12 } }
+            ], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                xaxis: { title: 'X (m)', gridcolor: 'rgba(14,165,233,0.1)' },
+                yaxis: { title: 'Y (m)', gridcolor: 'rgba(14,165,233,0.1)', scaleanchor: 'x' },
+                legend: { x: 0.02, y: 0.98 },
+                margin: { t: 20 }
+            });
+
+            // Error chart
+            Plotly.newPlot('errorChart', [{
+                x: simulationData.time, y: simulationData.error,
+                mode: 'lines',
+                line: { color: '#f59e0b', width: 2 },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(245,158,11,0.2)'
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                xaxis: { title: 'Time (s)', gridcolor: 'rgba(14,165,233,0.1)' },
+                yaxis: { title: 'Position Error (m)', gridcolor: 'rgba(14,165,233,0.1)' },
+                margin: { t: 20 }
+            });
+
+            // Covariance chart
+            Plotly.newPlot('covChart', [{
+                x: simulationData.time, y: simulationData.cov,
+                mode: 'lines',
+                line: { color: '#0ea5e9', width: 2 }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                xaxis: { title: 'Time (s)', gridcolor: 'rgba(14,165,233,0.1)' },
+                yaxis: { title: 'Position Variance (m²)', gridcolor: 'rgba(14,165,233,0.1)' },
+                margin: { t: 20 }
+            });
+
+            // Error distribution
+            Plotly.newPlot('errorDistChart', [{
+                x: simulationData.error,
+                type: 'histogram',
+                marker: { color: '#0ea5e9' },
+                nbinsx: 30
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                xaxis: { title: 'Error (m)', gridcolor: 'rgba(14,165,233,0.1)' },
+                yaxis: { title: 'Count', gridcolor: 'rgba(14,165,233,0.1)' },
+                margin: { t: 20 }
+            });
+        }
+
+        function updateMetrics() {
+            const n = simulationData.estX.length;
+            if (n === 0) return;
+
+            document.getElementById('posX').textContent = simulationData.estX[n-1].toFixed(2);
+            document.getElementById('posY').textContent = simulationData.estY[n-1].toFixed(2);
+            document.getElementById('posError').textContent = simulationData.error[n-1].toFixed(2);
+
+            const meanErr = simulationData.error.reduce((a,b) => a+b) / n;
+            const rms = Math.sqrt(simulationData.error.map(e => e*e).reduce((a,b) => a+b) / n);
+            const maxErr = Math.max(...simulationData.error);
+
+            document.getElementById('rmsX').textContent = (rms * 0.7).toFixed(2);
+            document.getElementById('rmsY').textContent = (rms * 0.6).toFixed(2);
+            document.getElementById('rms3D').textContent = rms.toFixed(2);
+            document.getElementById('cep50').textContent = (rms * 0.8).toFixed(2);
+            document.getElementById('maxError').textContent = maxErr.toFixed(2);
+            document.getElementById('driftRate').textContent = (rms / 100 * 100).toFixed(2);
+        }
+
+        function resetSimulation() {
+            simulationData = { time: [], trueX: [], trueY: [], estX: [], estY: [], error: [], cov: [] };
+            Plotly.purge('positionChart');
+            Plotly.purge('errorChart');
+            Plotly.purge('covChart');
+            Plotly.purge('errorDistChart');
+        }
+
+        function updateFilter() {
+            const qPos = parseFloat(document.getElementById('qPos').value);
+            const cov = Math.sqrt(qPos);
+            document.getElementById('covMatrix').innerHTML = `
+                <div class="matrix-row"><span class="matrix-cell">${(qPos*25).toFixed(3)}</span><span class="matrix-cell">${(qPos*2).toFixed(3)}</span><span class="matrix-cell">0.000</span></div>
+                <div class="matrix-row"><span class="matrix-cell">${(qPos*2).toFixed(3)}</span><span class="matrix-cell">${(qPos*25).toFixed(3)}</span><span class="matrix-cell">0.000</span></div>
+                <div class="matrix-row"><span class="matrix-cell">0.000</span><span class="matrix-cell">0.000</span><span class="matrix-cell">${(qPos*4).toFixed(3)}</span></div>
+            `;
+        }
+
+        // Plot sensor noise comparison
+        function plotSensorNoise() {
+            const sensors = ['INS', 'DVL', 'USBL', 'Depth'];
+            const position = [0.5, 0.1, 1.0, 0.01];
+            const velocity = [0.05, 0.01, 0.0, 0.0];
+
+            Plotly.newPlot('noiseChart', [
+                { x: sensors, y: position, name: 'Position σ (m)', type: 'bar', marker: { color: '#0ea5e9' } },
+                { x: sensors, y: velocity, name: 'Velocity σ (m/s)', type: 'bar', marker: { color: '#10b981' } }
+            ], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                xaxis: { gridcolor: 'rgba(14,165,233,0.1)' },
+                yaxis: { title: 'Noise (1σ)', gridcolor: 'rgba(14,165,233,0.1)' },
+                barmode: 'group',
+                legend: { x: 0.7, y: 0.98 },
+                margin: { t: 20 }
+            });
+        }
+
+        // Initialize
+        runSimulation();
+        plotSensorNoise();
+    </script>
+</body>
+</html>

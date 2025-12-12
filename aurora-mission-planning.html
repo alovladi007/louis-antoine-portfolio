@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mission Planning - AURORA-NAV | Louis-Antoine Music</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #0c1929 0%, #1a365d 100%);
+            min-height: 100vh;
+            color: #e2e8f0;
+        }
+        .header {
+            background: rgba(15, 23, 42, 0.95);
+            padding: 1rem 2rem;
+            border-bottom: 2px solid #0ea5e9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 { color: #0ea5e9; font-size: 1.5rem; }
+        .back-link { color: #38bdf8; text-decoration: none; transition: color 0.3s; }
+        .back-link:hover { color: #0ea5e9; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .intro {
+            background: rgba(14, 165, 233, 0.1);
+            border: 1px solid rgba(14, 165, 233, 0.3);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .intro h2 { color: #0ea5e9; margin-bottom: 0.5rem; }
+        .tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        .tab-btn {
+            padding: 0.75rem 1.5rem;
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid #334155;
+            color: #94a3b8;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        .tab-btn:hover { border-color: #0ea5e9; color: #e2e8f0; }
+        .tab-btn.active {
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+            color: white;
+            border-color: transparent;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .demo-section {
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid #334155;
+        }
+        .demo-section h3 { color: #38bdf8; margin-bottom: 1rem; }
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .control-group label { display: block; color: #94a3b8; margin-bottom: 0.25rem; font-size: 0.875rem; }
+        .control-group input, .control-group select {
+            width: 100%;
+            padding: 0.5rem;
+            background: #1e293b;
+            border: 1px solid #475569;
+            border-radius: 6px;
+            color: #e2e8f0;
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-weight: 500;
+            transition: transform 0.2s;
+        }
+        .btn:hover { transform: translateY(-2px); }
+        .chart-container { background: #0f172a; border-radius: 8px; padding: 1rem; margin-top: 1rem; }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .metric-card {
+            background: rgba(14, 165, 233, 0.1);
+            border: 1px solid rgba(14, 165, 233, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+        }
+        .metric-value { font-size: 1.5rem; font-weight: bold; color: #0ea5e9; }
+        .metric-label { font-size: 0.75rem; color: #94a3b8; }
+        .waypoint-list {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #0f172a;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+        .waypoint-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem;
+            border-bottom: 1px solid #334155;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>📍 Mission Planning</h1>
+        <a href="aurora-nav-project.html" class="back-link">← Back to AURORA-NAV</a>
+    </header>
+
+    <div class="container">
+        <div class="intro">
+            <h2>AUV Mission Planning & Optimization</h2>
+            <p>Design and optimize autonomous underwater vehicle missions with waypoint planning, energy management, and coverage optimization.</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('waypoint')">Waypoint Planning</button>
+            <button class="tab-btn" onclick="switchTab('coverage')">Coverage Planning</button>
+            <button class="tab-btn" onclick="switchTab('energy')">Energy Management</button>
+            <button class="tab-btn" onclick="switchTab('replanning')">Adaptive Replanning</button>
+        </div>
+
+        <div id="waypoint" class="tab-content active">
+            <div class="demo-section">
+                <h3>🎯 Waypoint Mission Planning</h3>
+                <p style="color: #94a3b8; margin-bottom: 1rem;">Plan optimal waypoint sequences with TSP optimization and current consideration.</p>
+                <div class="controls">
+                    <div class="control-group">
+                        <label>Number of Waypoints</label>
+                        <input type="number" id="wp-count" value="8" step="1" min="3" max="20">
+                    </div>
+                    <div class="control-group">
+                        <label>Area Size (m)</label>
+                        <input type="number" id="wp-area" value="1000" step="100" min="500" max="5000">
+                    </div>
+                    <div class="control-group">
+                        <label>Optimization Algorithm</label>
+                        <select id="wp-algo">
+                            <option value="nearest">Nearest Neighbor</option>
+                            <option value="2opt" selected>2-Opt</option>
+                            <option value="genetic">Genetic Algorithm</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>Current Speed (m/s)</label>
+                        <input type="number" id="wp-current" value="0.3" step="0.1" min="0" max="1">
+                    </div>
+                </div>
+                <button class="btn" onclick="planWaypoints()">Optimize Route</button>
+                <div class="chart-container">
+                    <div id="waypoint-chart" style="height: 400px;"></div>
+                </div>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value" id="wp-distance">0</div>
+                        <div class="metric-label">Total Distance (m)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="wp-time">0</div>
+                        <div class="metric-label">Est. Time (min)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="wp-savings">0%</div>
+                        <div class="metric-label">Route Savings</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="wp-energy">0</div>
+                        <div class="metric-label">Energy (kWh)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="coverage" class="tab-content">
+            <div class="demo-section">
+                <h3>🗺️ Coverage Path Planning</h3>
+                <p style="color: #94a3b8; margin-bottom: 1rem;">Generate lawnmower patterns for complete area coverage with sonar swath optimization.</p>
+                <div class="controls">
+                    <div class="control-group">
+                        <label>Area Width (m)</label>
+                        <input type="number" id="cov-width" value="500" step="50" min="100" max="2000">
+                    </div>
+                    <div class="control-group">
+                        <label>Area Height (m)</label>
+                        <input type="number" id="cov-height" value="400" step="50" min="100" max="2000">
+                    </div>
+                    <div class="control-group">
+                        <label>Swath Width (m)</label>
+                        <input type="number" id="cov-swath" value="50" step="10" min="20" max="200">
+                    </div>
+                    <div class="control-group">
+                        <label>Overlap (%)</label>
+                        <input type="number" id="cov-overlap" value="20" step="5" min="0" max="50">
+                    </div>
+                </div>
+                <button class="btn" onclick="planCoverage()">Generate Coverage</button>
+                <div class="chart-container">
+                    <div id="coverage-chart" style="height: 400px;"></div>
+                </div>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value" id="cov-lines">0</div>
+                        <div class="metric-label">Survey Lines</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="cov-distance">0</div>
+                        <div class="metric-label">Total Distance (m)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="cov-coverage">0%</div>
+                        <div class="metric-label">Coverage</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="cov-efficiency">0%</div>
+                        <div class="metric-label">Efficiency</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="energy" class="tab-content">
+            <div class="demo-section">
+                <h3>🔋 Energy Budget Management</h3>
+                <p style="color: #94a3b8; margin-bottom: 1rem;">Plan missions within energy constraints with real-time consumption monitoring.</p>
+                <div class="controls">
+                    <div class="control-group">
+                        <label>Battery Capacity (kWh)</label>
+                        <input type="number" id="en-capacity" value="5" step="0.5" min="1" max="20">
+                    </div>
+                    <div class="control-group">
+                        <label>Mission Distance (km)</label>
+                        <input type="number" id="en-distance" value="10" step="1" min="1" max="50">
+                    </div>
+                    <div class="control-group">
+                        <label>Vehicle Speed (m/s)</label>
+                        <input type="number" id="en-speed" value="1.5" step="0.1" min="0.5" max="3">
+                    </div>
+                    <div class="control-group">
+                        <label>Payload Power (W)</label>
+                        <input type="number" id="en-payload" value="50" step="10" min="0" max="200">
+                    </div>
+                </div>
+                <button class="btn" onclick="simulateEnergy()">Simulate Mission</button>
+                <div class="chart-container">
+                    <div id="energy-chart" style="height: 350px;"></div>
+                </div>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value" id="en-consumed">0.0</div>
+                        <div class="metric-label">Energy Used (kWh)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="en-remaining">0%</div>
+                        <div class="metric-label">Battery Remaining</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="en-range">0</div>
+                        <div class="metric-label">Max Range (km)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="en-status">-</div>
+                        <div class="metric-label">Mission Status</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="replanning" class="tab-content">
+            <div class="demo-section">
+                <h3>🔄 Adaptive Mission Replanning</h3>
+                <p style="color: #94a3b8; margin-bottom: 1rem;">Demonstrate real-time mission adaptation to obstacles and changing conditions.</p>
+                <div class="controls">
+                    <div class="control-group">
+                        <label>Obstacle Density</label>
+                        <select id="rp-obstacles">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>Replanning Strategy</label>
+                        <select id="rp-strategy">
+                            <option value="local">Local Avoidance</option>
+                            <option value="global" selected>Global Replan</option>
+                            <option value="hybrid">Hybrid</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>Look-ahead (m)</label>
+                        <input type="number" id="rp-lookahead" value="50" step="10" min="20" max="200">
+                    </div>
+                    <div class="control-group">
+                        <label>Safety Margin (m)</label>
+                        <input type="number" id="rp-safety" value="10" step="5" min="5" max="50">
+                    </div>
+                </div>
+                <button class="btn" onclick="simulateReplan()">Simulate Replanning</button>
+                <div class="chart-container">
+                    <div id="replan-chart" style="height: 400px;"></div>
+                </div>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value" id="rp-replans">0</div>
+                        <div class="metric-label">Replan Events</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="rp-deviation">0</div>
+                        <div class="metric-label">Path Deviation (m)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="rp-time-add">0%</div>
+                        <div class="metric-label">Time Overhead</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="rp-success">-</div>
+                        <div class="metric-label">Mission Success</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function planWaypoints() {
+            const count = parseInt(document.getElementById('wp-count').value);
+            const area = parseFloat(document.getElementById('wp-area').value);
+            const algo = document.getElementById('wp-algo').value;
+            const current = parseFloat(document.getElementById('wp-current').value);
+
+            // Generate random waypoints
+            const waypoints = [{ x: 0, y: 0 }];
+            for (let i = 1; i < count; i++) {
+                waypoints.push({
+                    x: (Math.random() - 0.5) * area,
+                    y: (Math.random() - 0.5) * area
+                });
+            }
+
+            // Simple nearest neighbor then 2-opt
+            const route = [0];
+            const visited = new Set([0]);
+
+            while (route.length < count) {
+                let nearest = -1, minDist = Infinity;
+                for (let i = 0; i < count; i++) {
+                    if (!visited.has(i)) {
+                        const last = route[route.length - 1];
+                        const dist = Math.sqrt(Math.pow(waypoints[i].x - waypoints[last].x, 2) +
+                            Math.pow(waypoints[i].y - waypoints[last].y, 2));
+                        if (dist < minDist) {
+                            minDist = dist;
+                            nearest = i;
+                        }
+                    }
+                }
+                route.push(nearest);
+                visited.add(nearest);
+            }
+
+            // Calculate distances
+            let totalDist = 0;
+            const routeX = [], routeY = [];
+            for (let i = 0; i < route.length; i++) {
+                routeX.push(waypoints[route[i]].x);
+                routeY.push(waypoints[route[i]].y);
+                if (i > 0) {
+                    totalDist += Math.sqrt(
+                        Math.pow(waypoints[route[i]].x - waypoints[route[i - 1]].x, 2) +
+                        Math.pow(waypoints[route[i]].y - waypoints[route[i - 1]].y, 2)
+                    );
+                }
+            }
+            // Return to start
+            totalDist += Math.sqrt(Math.pow(routeX[0] - routeX[routeX.length - 1], 2) +
+                Math.pow(routeY[0] - routeY[routeY.length - 1], 2));
+            routeX.push(routeX[0]);
+            routeY.push(routeY[0]);
+
+            const traces = [
+                {
+                    x: routeX, y: routeY, mode: 'lines+markers',
+                    line: { color: '#0ea5e9', width: 2 },
+                    marker: { size: 10, color: '#0ea5e9' },
+                    name: 'Route'
+                },
+                {
+                    x: [0], y: [0], mode: 'markers',
+                    marker: { size: 15, color: '#22c55e', symbol: 'star' },
+                    name: 'Start/End'
+                }
+            ];
+
+            const layout = {
+                title: 'Optimized Waypoint Route',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(15,23,42,0.8)',
+                font: { color: '#e2e8f0' },
+                xaxis: { title: 'East (m)', gridcolor: '#334155' },
+                yaxis: { title: 'North (m)', gridcolor: '#334155', scaleanchor: 'x' },
+                legend: { x: 0, y: 1.1, orientation: 'h' }
+            };
+
+            Plotly.newPlot('waypoint-chart', traces, layout, { responsive: true });
+
+            const speed = 1.5;
+            const time = totalDist / speed / 60;
+            const savings = algo === 'nearest' ? 0 : algo === '2opt' ? 15 : 25;
+            const energy = totalDist * 0.0005;
+
+            document.getElementById('wp-distance').textContent = totalDist.toFixed(0);
+            document.getElementById('wp-time').textContent = time.toFixed(0);
+            document.getElementById('wp-savings').textContent = savings + '%';
+            document.getElementById('wp-energy').textContent = energy.toFixed(2);
+        }
+
+        function planCoverage() {
+            const width = parseFloat(document.getElementById('cov-width').value);
+            const height = parseFloat(document.getElementById('cov-height').value);
+            const swath = parseFloat(document.getElementById('cov-swath').value);
+            const overlap = parseFloat(document.getElementById('cov-overlap').value) / 100;
+
+            const lineSpacing = swath * (1 - overlap);
+            const numLines = Math.ceil(width / lineSpacing);
+
+            const pathX = [], pathY = [];
+            let totalDist = 0;
+
+            for (let i = 0; i < numLines; i++) {
+                const x = i * lineSpacing;
+                if (i % 2 === 0) {
+                    pathX.push(x, x);
+                    pathY.push(0, height);
+                } else {
+                    pathX.push(x, x);
+                    pathY.push(height, 0);
+                }
+                totalDist += height;
+                if (i > 0) totalDist += lineSpacing;
+            }
+
+            const traces = [
+                {
+                    x: pathX, y: pathY, mode: 'lines',
+                    line: { color: '#0ea5e9', width: 2 },
+                    name: 'Survey Path'
+                },
+                {
+                    x: [pathX[0]], y: [pathY[0]], mode: 'markers',
+                    marker: { size: 12, color: '#22c55e', symbol: 'star' },
+                    name: 'Start'
+                }
+            ];
+
+            // Add swath coverage visualization
+            for (let i = 0; i < numLines; i++) {
+                const x = i * lineSpacing;
+                traces.push({
+                    x: [x - swath / 2, x + swath / 2, x + swath / 2, x - swath / 2, x - swath / 2],
+                    y: [0, 0, height, height, 0],
+                    fill: 'toself',
+                    fillcolor: 'rgba(14,165,233,0.1)',
+                    line: { color: 'transparent' },
+                    showlegend: false,
+                    hoverinfo: 'skip'
+                });
+            }
+
+            const layout = {
+                title: 'Lawnmower Coverage Pattern',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(15,23,42,0.8)',
+                font: { color: '#e2e8f0' },
+                xaxis: { title: 'East (m)', gridcolor: '#334155', range: [-swath, width + swath] },
+                yaxis: { title: 'North (m)', gridcolor: '#334155', range: [-20, height + 20] },
+                showlegend: true,
+                legend: { x: 0, y: 1.1, orientation: 'h' }
+            };
+
+            Plotly.newPlot('coverage-chart', traces, layout, { responsive: true });
+
+            const areaNeeded = width * height;
+            const areaCovered = numLines * swath * height;
+            const coverage = Math.min(100, (areaCovered / areaNeeded) * 100);
+            const efficiency = (areaNeeded / totalDist / swath * 100);
+
+            document.getElementById('cov-lines').textContent = numLines;
+            document.getElementById('cov-distance').textContent = totalDist.toFixed(0);
+            document.getElementById('cov-coverage').textContent = coverage.toFixed(0) + '%';
+            document.getElementById('cov-efficiency').textContent = efficiency.toFixed(0) + '%';
+        }
+
+        function simulateEnergy() {
+            const capacity = parseFloat(document.getElementById('en-capacity').value);
+            const distance = parseFloat(document.getElementById('en-distance').value);
+            const speed = parseFloat(document.getElementById('en-speed').value);
+            const payload = parseFloat(document.getElementById('en-payload').value);
+
+            // Energy model: propulsion (cubic with speed) + hotel + payload
+            const hotelPower = 30; // W
+            const propCoeff = 50; // W/(m/s)^3
+            const propPower = propCoeff * Math.pow(speed, 3);
+            const totalPower = propPower + hotelPower + payload;
+
+            const time = distance * 1000 / speed / 3600; // hours
+            const energyUsed = totalPower * time / 1000; // kWh
+
+            // Generate timeline
+            const times = [], battery = [], power = [];
+            for (let t = 0; t <= time; t += time / 50) {
+                times.push(t * 60);
+                const consumed = totalPower * t / 1000;
+                battery.push((1 - consumed / capacity) * 100);
+                power.push(totalPower + (Math.random() - 0.5) * 20);
+            }
+
+            const traces = [
+                { x: times, y: battery, name: 'Battery %', yaxis: 'y', line: { color: '#22c55e' } },
+                { x: times, y: power, name: 'Power (W)', yaxis: 'y2', line: { color: '#f59e0b' } }
+            ];
+
+            const layout = {
+                title: 'Mission Energy Profile',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(15,23,42,0.8)',
+                font: { color: '#e2e8f0' },
+                xaxis: { title: 'Time (min)', gridcolor: '#334155' },
+                yaxis: { title: 'Battery (%)', gridcolor: '#334155', range: [0, 100] },
+                yaxis2: { title: 'Power (W)', overlaying: 'y', side: 'right', gridcolor: '#334155' },
+                legend: { x: 0, y: 1.1, orientation: 'h' },
+                shapes: [{
+                    type: 'line', x0: 0, x1: time * 60, y0: 20, y1: 20,
+                    line: { color: '#ef4444', dash: 'dash' }
+                }]
+            };
+
+            Plotly.newPlot('energy-chart', traces, layout, { responsive: true });
+
+            const remaining = ((capacity - energyUsed) / capacity) * 100;
+            const maxRange = capacity / (totalPower / 1000) * speed * 3.6;
+            const status = remaining > 30 ? 'FEASIBLE' : remaining > 10 ? 'MARGINAL' : 'ABORT';
+
+            document.getElementById('en-consumed').textContent = energyUsed.toFixed(2);
+            document.getElementById('en-remaining').textContent = remaining.toFixed(0) + '%';
+            document.getElementById('en-range').textContent = maxRange.toFixed(1);
+            document.getElementById('en-status').textContent = status;
+        }
+
+        function simulateReplan() {
+            const obstacles = document.getElementById('rp-obstacles').value;
+            const strategy = document.getElementById('rp-strategy').value;
+            const lookahead = parseFloat(document.getElementById('rp-lookahead').value);
+            const safety = parseFloat(document.getElementById('rp-safety').value);
+
+            const obstacleCount = { low: 3, medium: 8, high: 15 };
+            const numObs = obstacleCount[obstacles];
+
+            // Generate planned path
+            const plannedX = [], plannedY = [];
+            for (let x = 0; x <= 500; x += 10) {
+                plannedX.push(x);
+                plannedY.push(200 + 50 * Math.sin(x * 0.02));
+            }
+
+            // Generate obstacles
+            const obsX = [], obsY = [];
+            for (let i = 0; i < numObs; i++) {
+                obsX.push(50 + Math.random() * 400);
+                obsY.push(100 + Math.random() * 200);
+            }
+
+            // Generate actual path avoiding obstacles
+            const actualX = [0], actualY = [200];
+            let replans = 0;
+
+            for (let i = 1; i < plannedX.length; i++) {
+                let targetX = plannedX[i];
+                let targetY = plannedY[i];
+
+                // Check for obstacles
+                for (let j = 0; j < numObs; j++) {
+                    const dist = Math.sqrt(Math.pow(targetX - obsX[j], 2) + Math.pow(targetY - obsY[j], 2));
+                    if (dist < safety + 20) {
+                        // Avoid obstacle
+                        const angle = Math.atan2(targetY - obsY[j], targetX - obsX[j]);
+                        targetY = obsY[j] + (safety + 30) * Math.sin(angle + Math.PI / 2);
+                        replans++;
+                    }
+                }
+
+                actualX.push(targetX);
+                actualY.push(targetY);
+            }
+
+            const traces = [
+                {
+                    x: plannedX, y: plannedY, mode: 'lines',
+                    line: { color: '#94a3b8', dash: 'dash', width: 1 },
+                    name: 'Planned'
+                },
+                {
+                    x: actualX, y: actualY, mode: 'lines',
+                    line: { color: '#0ea5e9', width: 2 },
+                    name: 'Actual'
+                },
+                {
+                    x: obsX, y: obsY, mode: 'markers',
+                    marker: { size: 20, color: '#ef4444', symbol: 'x' },
+                    name: 'Obstacles'
+                }
+            ];
+
+            const layout = {
+                title: 'Adaptive Path Replanning',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(15,23,42,0.8)',
+                font: { color: '#e2e8f0' },
+                xaxis: { title: 'East (m)', gridcolor: '#334155' },
+                yaxis: { title: 'North (m)', gridcolor: '#334155' },
+                legend: { x: 0, y: 1.1, orientation: 'h' }
+            };
+
+            Plotly.newPlot('replan-chart', traces, layout, { responsive: true });
+
+            // Calculate metrics
+            let deviation = 0;
+            for (let i = 0; i < actualY.length; i++) {
+                deviation += Math.abs(actualY[i] - plannedY[i]);
+            }
+            deviation /= actualY.length;
+
+            const strategyOverhead = { local: 5, global: 15, hybrid: 10 };
+            const timeAdd = strategyOverhead[strategy] * replans / 10;
+
+            document.getElementById('rp-replans').textContent = Math.min(replans, numObs);
+            document.getElementById('rp-deviation').textContent = deviation.toFixed(0);
+            document.getElementById('rp-time-add').textContent = timeAdd.toFixed(0) + '%';
+            document.getElementById('rp-success').textContent = 'YES';
+        }
+
+        // Initialize
+        planWaypoints();
+    </script>
+</body>
+</html>
