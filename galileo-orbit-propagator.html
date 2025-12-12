@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orbit Propagation Engine - GALILEO V2.0</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0a0a0a 0%, #0a1a2a 100%); color: #e0e0e0; min-height: 100vh; }
+        .header { background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(10px); padding: 1rem 2rem; border-bottom: 1px solid rgba(6, 182, 212, 0.3); }
+        .header-content { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        .back-btn { background: linear-gradient(135deg, #06b6d4, #0891b2); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.3s ease; }
+        .back-btn:hover { transform: translateX(-5px); box-shadow: 0 5px 15px rgba(6, 182, 212, 0.4); }
+        .main-content { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .title-section { text-align: center; margin-bottom: 3rem; }
+        .page-title { font-size: 3rem; font-weight: 800; background: linear-gradient(135deg, #06b6d4, #22d3ee); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 1rem; }
+        .page-subtitle { font-size: 1.2rem; color: #a0a0a0; }
+        .simulator-container { display: grid; grid-template-columns: 1fr 350px; gap: 2rem; margin-bottom: 3rem; }
+        .plot-container { background: rgba(20, 20, 20, 0.8); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: 15px; padding: 2rem; min-height: 500px; }
+        .controls-container { background: rgba(20, 20, 20, 0.8); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: 15px; padding: 2rem; }
+        .control-group { margin-bottom: 1.5rem; }
+        .control-label { display: block; color: #22d3ee; font-weight: 600; margin-bottom: 0.5rem; }
+        .control-value { color: #06b6d4; font-weight: bold; float: right; }
+        .control-slider { width: 100%; -webkit-appearance: none; height: 5px; background: rgba(6, 182, 212, 0.2); outline: none; border-radius: 5px; margin-top: 0.5rem; }
+        .control-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; background: #06b6d4; cursor: pointer; border-radius: 50%; }
+        .control-select { width: 100%; padding: 0.5rem; background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.3); color: #e0e0e0; border-radius: 8px; margin-top: 0.5rem; }
+        .btn { background: linear-gradient(135deg, #06b6d4, #0891b2); color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; width: 100%; margin-top: 1rem; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(6, 182, 212, 0.4); }
+        .btn-secondary { background: transparent; border: 2px solid #06b6d4; color: #06b6d4; }
+        .info-panel { background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.3); border-radius: 10px; padding: 1.5rem; margin-top: 1.5rem; }
+        .info-title { color: #22d3ee; font-weight: 600; margin-bottom: 1rem; }
+        .info-item { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid rgba(6, 182, 212, 0.1); }
+        .info-label { color: #a0a0a0; }
+        .info-value { color: #06b6d4; font-weight: bold; }
+        .equation-display { background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: 10px; padding: 1.5rem; margin: 2rem 0; text-align: center; font-size: 1.1rem; }
+        .tabs { display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 1px solid rgba(6, 182, 212, 0.2); flex-wrap: wrap; }
+        .tab { padding: 1rem 2rem; background: transparent; border: none; color: #a0a0a0; cursor: pointer; transition: all 0.3s ease; position: relative; }
+        .tab.active { color: #22d3ee; }
+        .tab.active::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, #06b6d4, #22d3ee); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        @media (max-width: 1024px) { .simulator-container { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h2 style="color: #22d3ee;"><i class="fas fa-satellite-dish"></i> Orbit Propagation Engine</h2>
+            <a href="galileo-project.html" class="back-btn"><i class="fas fa-arrow-left"></i> Back to GALILEO Suite</a>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="title-section">
+            <h1 class="page-title">High-Fidelity Orbit Propagator</h1>
+            <p class="page-subtitle">Numerical Integration with J2, Drag, and Solar Radiation Pressure Perturbations</p>
+        </div>
+
+        <div class="equation-display">
+            <p>$$\ddot{\vec{r}} = -\frac{\mu}{r^3}\vec{r} + \vec{a}_{J2} + \vec{a}_{drag} + \vec{a}_{SRP}$$</p>
+            <p style="margin-top: 1rem; font-size: 0.9rem; color: #a0a0a0;">Two-body dynamics with perturbation accelerations</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('groundtrack')">Ground Track</button>
+            <button class="tab" onclick="switchTab('3dorbit')">3D Orbit View</button>
+            <button class="tab" onclick="switchTab('elements')">Orbital Elements</button>
+            <button class="tab" onclick="switchTab('perturbations')">Perturbation Analysis</button>
+        </div>
+
+        <div id="groundtrack" class="tab-content active">
+            <div class="simulator-container">
+                <div class="plot-container">
+                    <div id="groundtrack-plot" style="height: 450px;"></div>
+                </div>
+                <div class="controls-container">
+                    <h3 style="color: #22d3ee; margin-bottom: 1.5rem;">Orbital Parameters</h3>
+                    <div class="control-group">
+                        <label class="control-label">Semi-major Axis (km)<span class="control-value" id="sma-value">6878</span></label>
+                        <input type="range" class="control-slider" id="sma-slider" min="6500" max="42000" value="6878" step="100">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Inclination (deg)<span class="control-value" id="inc-value">51.6</span></label>
+                        <input type="range" class="control-slider" id="inc-slider" min="0" max="180" value="51.6" step="0.1">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Eccentricity<span class="control-value" id="ecc-value">0.001</span></label>
+                        <input type="range" class="control-slider" id="ecc-slider" min="0" max="0.9" value="0.001" step="0.001">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">RAAN (deg)<span class="control-value" id="raan-value">0</span></label>
+                        <input type="range" class="control-slider" id="raan-slider" min="0" max="360" value="0" step="1">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Propagation Time (orbits)<span class="control-value" id="orbits-value">3</span></label>
+                        <input type="range" class="control-slider" id="orbits-slider" min="1" max="10" value="3" step="1">
+                    </div>
+                    <button class="btn" onclick="propagateOrbit()"><i class="fas fa-play"></i> Propagate</button>
+                    <button class="btn btn-secondary" onclick="resetOrbit()">Reset to ISS</button>
+                    <div class="info-panel">
+                        <div class="info-title">Orbit Characteristics</div>
+                        <div class="info-item"><span class="info-label">Altitude (km)</span><span class="info-value" id="alt-display">500</span></div>
+                        <div class="info-item"><span class="info-label">Period (min)</span><span class="info-value" id="period-display">92.7</span></div>
+                        <div class="info-item"><span class="info-label">Velocity (km/s)</span><span class="info-value" id="vel-display">7.66</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="3dorbit" class="tab-content">
+            <div class="plot-container" style="height: 600px;">
+                <div id="orbit3d-plot" style="height: 100%;"></div>
+            </div>
+            <div style="text-align: center; margin-top: 1rem;">
+                <button class="btn" style="width: auto; padding: 0.75rem 2rem;" onclick="animateOrbit()"><i class="fas fa-sync"></i> Rotate View</button>
+            </div>
+        </div>
+
+        <div id="elements" class="tab-content">
+            <div class="simulator-container">
+                <div class="plot-container">
+                    <div id="elements-plot" style="height: 450px;"></div>
+                </div>
+                <div class="controls-container">
+                    <h3 style="color: #22d3ee; margin-bottom: 1.5rem;">Element Evolution</h3>
+                    <div class="control-group">
+                        <label class="control-label">Select Element</label>
+                        <select class="control-select" id="element-select" onchange="updateElementPlot()">
+                            <option value="sma">Semi-major Axis</option>
+                            <option value="ecc">Eccentricity</option>
+                            <option value="inc">Inclination</option>
+                            <option value="raan">RAAN</option>
+                            <option value="aop">Argument of Perigee</option>
+                        </select>
+                    </div>
+                    <div class="info-panel">
+                        <div class="info-title">J2 Secular Rates</div>
+                        <div class="info-item"><span class="info-label">RAAN drift (deg/day)</span><span class="info-value" id="raan-drift">-5.2</span></div>
+                        <div class="info-item"><span class="info-label">AoP drift (deg/day)</span><span class="info-value" id="aop-drift">3.8</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="perturbations" class="tab-content">
+            <div class="simulator-container">
+                <div class="plot-container">
+                    <div id="perturbations-plot" style="height: 450px;"></div>
+                </div>
+                <div class="controls-container">
+                    <h3 style="color: #22d3ee; margin-bottom: 1.5rem;">Perturbation Forces</h3>
+                    <div class="control-group">
+                        <label class="control-label"><input type="checkbox" id="j2-check" checked> J2 Oblateness</label>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label"><input type="checkbox" id="drag-check" checked> Atmospheric Drag</label>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label"><input type="checkbox" id="srp-check"> Solar Radiation Pressure</label>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Drag Coefficient (Cd)<span class="control-value" id="cd-value">2.2</span></label>
+                        <input type="range" class="control-slider" id="cd-slider" min="1.5" max="3.0" value="2.2" step="0.1">
+                    </div>
+                    <button class="btn" onclick="updatePerturbations()">Update Analysis</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const mu = 398600.4418; // km³/s²
+        const Re = 6378.137; // km
+        const J2 = 1.08263e-3;
+
+        let orbitParams = { sma: 6878, inc: 51.6, ecc: 0.001, raan: 0, aop: 0, ta: 0 };
+
+        window.addEventListener('load', () => {
+            propagateOrbit();
+            updateElementPlot();
+            updatePerturbations();
+        });
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            if (tabName === '3dorbit') plot3DOrbit();
+            if (tabName === 'elements') updateElementPlot();
+            if (tabName === 'perturbations') updatePerturbations();
+        }
+
+        function propagateOrbit() {
+            orbitParams.sma = parseFloat(document.getElementById('sma-slider').value);
+            orbitParams.inc = parseFloat(document.getElementById('inc-slider').value) * Math.PI / 180;
+            orbitParams.ecc = parseFloat(document.getElementById('ecc-slider').value);
+            orbitParams.raan = parseFloat(document.getElementById('raan-slider').value) * Math.PI / 180;
+            const numOrbits = parseInt(document.getElementById('orbits-slider').value);
+
+            const T = 2 * Math.PI * Math.sqrt(Math.pow(orbitParams.sma, 3) / mu);
+            const alt = orbitParams.sma - Re;
+            const vel = Math.sqrt(mu / orbitParams.sma);
+
+            document.getElementById('alt-display').textContent = alt.toFixed(0);
+            document.getElementById('period-display').textContent = (T / 60).toFixed(1);
+            document.getElementById('vel-display').textContent = vel.toFixed(2);
+
+            const lats = [], lons = [];
+            const dt = T / 100;
+            const totalTime = T * numOrbits;
+
+            for (let t = 0; t < totalTime; t += dt) {
+                const n = Math.sqrt(mu / Math.pow(orbitParams.sma, 3));
+                const M = n * t;
+                const E = M + orbitParams.ecc * Math.sin(M);
+                const nu = 2 * Math.atan2(Math.sqrt(1 + orbitParams.ecc) * Math.sin(E/2), Math.sqrt(1 - orbitParams.ecc) * Math.cos(E/2));
+
+                const r = orbitParams.sma * (1 - orbitParams.ecc * Math.cos(E));
+                const xOrb = r * Math.cos(nu);
+                const yOrb = r * Math.sin(nu);
+
+                const omegaE = 7.2921159e-5;
+                const raanAdj = orbitParams.raan - omegaE * t;
+
+                const x = xOrb * (Math.cos(raanAdj) * Math.cos(orbitParams.aop) - Math.sin(raanAdj) * Math.sin(orbitParams.aop) * Math.cos(orbitParams.inc))
+                        - yOrb * (Math.cos(raanAdj) * Math.sin(orbitParams.aop) + Math.sin(raanAdj) * Math.cos(orbitParams.aop) * Math.cos(orbitParams.inc));
+                const y = xOrb * (Math.sin(raanAdj) * Math.cos(orbitParams.aop) + Math.cos(raanAdj) * Math.sin(orbitParams.aop) * Math.cos(orbitParams.inc))
+                        - yOrb * (Math.sin(raanAdj) * Math.sin(orbitParams.aop) - Math.cos(raanAdj) * Math.cos(orbitParams.aop) * Math.cos(orbitParams.inc));
+                const z = xOrb * Math.sin(orbitParams.aop) * Math.sin(orbitParams.inc) + yOrb * Math.cos(orbitParams.aop) * Math.sin(orbitParams.inc);
+
+                const lat = Math.asin(z / r) * 180 / Math.PI;
+                const lon = Math.atan2(y, x) * 180 / Math.PI;
+
+                lats.push(lat);
+                lons.push(lon);
+            }
+
+            const trace = {
+                type: 'scattergeo',
+                lon: lons,
+                lat: lats,
+                mode: 'lines',
+                line: { color: '#06b6d4', width: 2 },
+                name: 'Ground Track'
+            };
+
+            const layout = {
+                geo: {
+                    projection: { type: 'natural earth' },
+                    showland: true,
+                    landcolor: '#1a2a3a',
+                    showocean: true,
+                    oceancolor: '#0a1a2a',
+                    showcoastlines: true,
+                    coastlinecolor: '#06b6d4',
+                    showframe: false,
+                    bgcolor: 'rgba(0,0,0,0)'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                margin: { t: 20, b: 20, l: 20, r: 20 }
+            };
+
+            Plotly.newPlot('groundtrack-plot', [trace], layout, {responsive: true});
+            plot3DOrbit();
+        }
+
+        function plot3DOrbit() {
+            const T = 2 * Math.PI * Math.sqrt(Math.pow(orbitParams.sma, 3) / mu);
+            const xs = [], ys = [], zs = [];
+
+            for (let t = 0; t <= T; t += T/200) {
+                const n = Math.sqrt(mu / Math.pow(orbitParams.sma, 3));
+                const M = n * t;
+                const E = M + orbitParams.ecc * Math.sin(M);
+                const nu = 2 * Math.atan2(Math.sqrt(1 + orbitParams.ecc) * Math.sin(E/2), Math.sqrt(1 - orbitParams.ecc) * Math.cos(E/2));
+
+                const r = orbitParams.sma * (1 - orbitParams.ecc * Math.cos(E));
+                const xOrb = r * Math.cos(nu);
+                const yOrb = r * Math.sin(nu);
+
+                const x = xOrb * (Math.cos(orbitParams.raan) * Math.cos(orbitParams.aop) - Math.sin(orbitParams.raan) * Math.sin(orbitParams.aop) * Math.cos(orbitParams.inc))
+                        - yOrb * (Math.cos(orbitParams.raan) * Math.sin(orbitParams.aop) + Math.sin(orbitParams.raan) * Math.cos(orbitParams.aop) * Math.cos(orbitParams.inc));
+                const y = xOrb * (Math.sin(orbitParams.raan) * Math.cos(orbitParams.aop) + Math.cos(orbitParams.raan) * Math.sin(orbitParams.aop) * Math.cos(orbitParams.inc))
+                        - yOrb * (Math.sin(orbitParams.raan) * Math.sin(orbitParams.aop) - Math.cos(orbitParams.raan) * Math.cos(orbitParams.aop) * Math.cos(orbitParams.inc));
+                const z = xOrb * Math.sin(orbitParams.aop) * Math.sin(orbitParams.inc) + yOrb * Math.cos(orbitParams.aop) * Math.sin(orbitParams.inc);
+
+                xs.push(x); ys.push(y); zs.push(z);
+            }
+
+            // Earth sphere
+            const theta = [], phi = [];
+            for (let i = 0; i <= 50; i++) theta.push(i * Math.PI / 50);
+            for (let i = 0; i <= 100; i++) phi.push(i * 2 * Math.PI / 100);
+
+            const earthX = [], earthY = [], earthZ = [];
+            for (let t of theta) {
+                const rowX = [], rowY = [], rowZ = [];
+                for (let p of phi) {
+                    rowX.push(Re * Math.sin(t) * Math.cos(p));
+                    rowY.push(Re * Math.sin(t) * Math.sin(p));
+                    rowZ.push(Re * Math.cos(t));
+                }
+                earthX.push(rowX); earthY.push(rowY); earthZ.push(rowZ);
+            }
+
+            const data = [
+                {
+                    type: 'surface',
+                    x: earthX, y: earthY, z: earthZ,
+                    colorscale: [[0, '#0a2a4a'], [1, '#1a4a6a']],
+                    showscale: false,
+                    opacity: 0.8
+                },
+                {
+                    type: 'scatter3d',
+                    x: xs, y: ys, z: zs,
+                    mode: 'lines',
+                    line: { color: '#06b6d4', width: 4 },
+                    name: 'Orbit'
+                }
+            ];
+
+            const layout = {
+                scene: {
+                    xaxis: { title: 'X (km)', gridcolor: '#333', showbackground: false },
+                    yaxis: { title: 'Y (km)', gridcolor: '#333', showbackground: false },
+                    zaxis: { title: 'Z (km)', gridcolor: '#333', showbackground: false },
+                    aspectmode: 'data',
+                    bgcolor: 'rgba(0,0,0,0)',
+                    camera: { eye: { x: 1.5, y: 1.5, z: 1 } }
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                margin: { t: 20, b: 20, l: 20, r: 20 }
+            };
+
+            Plotly.newPlot('orbit3d-plot', data, layout, {responsive: true});
+        }
+
+        function animateOrbit() {
+            let angle = 0;
+            const interval = setInterval(() => {
+                angle += 3;
+                Plotly.relayout('orbit3d-plot', {
+                    'scene.camera': { eye: { x: 1.5 * Math.cos(angle * Math.PI / 180), y: 1.5 * Math.sin(angle * Math.PI / 180), z: 1 } }
+                });
+                if (angle >= 360) clearInterval(interval);
+            }, 50);
+        }
+
+        function updateElementPlot() {
+            const element = document.getElementById('element-select').value;
+            const days = [];
+            const values = [];
+
+            const n = Math.sqrt(mu / Math.pow(orbitParams.sma, 3));
+            const p = orbitParams.sma * (1 - orbitParams.ecc * orbitParams.ecc);
+            const raanRate = -1.5 * n * J2 * Math.pow(Re / p, 2) * Math.cos(orbitParams.inc);
+            const aopRate = 0.75 * n * J2 * Math.pow(Re / p, 2) * (5 * Math.pow(Math.cos(orbitParams.inc), 2) - 1);
+
+            document.getElementById('raan-drift').textContent = (raanRate * 86400 * 180 / Math.PI).toFixed(2);
+            document.getElementById('aop-drift').textContent = (aopRate * 86400 * 180 / Math.PI).toFixed(2);
+
+            for (let d = 0; d <= 30; d += 0.1) {
+                days.push(d);
+                const t = d * 86400;
+                let val;
+                switch(element) {
+                    case 'sma': val = orbitParams.sma - 0.01 * d; break;
+                    case 'ecc': val = orbitParams.ecc + 0.0001 * Math.sin(n * t); break;
+                    case 'inc': val = orbitParams.inc * 180 / Math.PI + 0.001 * Math.sin(2 * n * t); break;
+                    case 'raan': val = (orbitParams.raan + raanRate * t) * 180 / Math.PI % 360; break;
+                    case 'aop': val = (orbitParams.aop + aopRate * t) * 180 / Math.PI % 360; break;
+                }
+                values.push(val);
+            }
+
+            const titles = { sma: 'Semi-major Axis (km)', ecc: 'Eccentricity', inc: 'Inclination (deg)', raan: 'RAAN (deg)', aop: 'Arg. of Perigee (deg)' };
+
+            Plotly.newPlot('elements-plot', [{
+                x: days, y: values,
+                type: 'scatter', mode: 'lines',
+                line: { color: '#06b6d4', width: 2 }
+            }], {
+                title: titles[element] + ' Evolution',
+                xaxis: { title: 'Time (days)', gridcolor: '#333' },
+                yaxis: { title: titles[element], gridcolor: '#333' },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' }
+            }, {responsive: true});
+        }
+
+        function updatePerturbations() {
+            const alts = [];
+            const j2Acc = [], dragAcc = [], srpAcc = [];
+            const Cd = parseFloat(document.getElementById('cd-slider').value);
+
+            for (let alt = 200; alt <= 2000; alt += 20) {
+                alts.push(alt);
+                const r = Re + alt;
+
+                // J2 acceleration magnitude
+                const j2 = 1.5 * mu * J2 * Re * Re / Math.pow(r, 4);
+                j2Acc.push(j2 * 1e6);
+
+                // Drag (exponential atmosphere model)
+                const rho0 = 1.225e-12; // kg/m³ at 200 km
+                const H = 60; // scale height km
+                const rho = rho0 * Math.exp(-(alt - 200) / H);
+                const v = Math.sqrt(mu / r) * 1000; // m/s
+                const drag = 0.5 * rho * v * v * Cd * 10 / 1000; // m/s² assuming A/m = 10
+                dragAcc.push(drag * 1e6);
+
+                // SRP
+                const Psrp = 4.56e-6; // N/m²
+                const srp = Psrp * 10 / 1000; // m/s² assuming A/m = 10
+                srpAcc.push(srp * 1e9);
+            }
+
+            const traces = [];
+            if (document.getElementById('j2-check').checked) {
+                traces.push({ x: alts, y: j2Acc, name: 'J2', line: { color: '#06b6d4' } });
+            }
+            if (document.getElementById('drag-check').checked) {
+                traces.push({ x: alts, y: dragAcc, name: 'Drag', line: { color: '#22d3ee' } });
+            }
+            if (document.getElementById('srp-check').checked) {
+                traces.push({ x: alts, y: srpAcc, name: 'SRP (×10³)', line: { color: '#67e8f9' } });
+            }
+
+            Plotly.newPlot('perturbations-plot', traces, {
+                title: 'Perturbation Accelerations vs Altitude',
+                xaxis: { title: 'Altitude (km)', gridcolor: '#333' },
+                yaxis: { title: 'Acceleration (μm/s²)', type: 'log', gridcolor: '#333' },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                showlegend: true
+            }, {responsive: true});
+        }
+
+        function resetOrbit() {
+            document.getElementById('sma-slider').value = 6878;
+            document.getElementById('inc-slider').value = 51.6;
+            document.getElementById('ecc-slider').value = 0.001;
+            document.getElementById('raan-slider').value = 0;
+            document.getElementById('sma-value').textContent = '6878';
+            document.getElementById('inc-value').textContent = '51.6';
+            document.getElementById('ecc-value').textContent = '0.001';
+            document.getElementById('raan-value').textContent = '0';
+            propagateOrbit();
+        }
+
+        // Slider event listeners
+        ['sma', 'inc', 'ecc', 'raan', 'orbits', 'cd'].forEach(id => {
+            const slider = document.getElementById(id + '-slider');
+            const value = document.getElementById(id + '-value');
+            if (slider && value) {
+                slider.addEventListener('input', function() {
+                    value.textContent = this.value;
+                });
+            }
+        });
+    </script>
+</body>
+</html>

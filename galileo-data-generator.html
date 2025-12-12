@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Synthetic Data Generator - GALILEO V2.0</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0a0a0a 0%, #0a1a2a 100%); color: #e0e0e0; min-height: 100vh; }
+        .header { background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(10px); padding: 1rem 2rem; border-bottom: 1px solid rgba(6, 182, 212, 0.3); }
+        .header-content { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        .back-btn { background: linear-gradient(135deg, #06b6d4, #0891b2); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.3s ease; }
+        .back-btn:hover { transform: translateX(-5px); box-shadow: 0 5px 15px rgba(6, 182, 212, 0.4); }
+        .main-content { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .title-section { text-align: center; margin-bottom: 3rem; }
+        .page-title { font-size: 3rem; font-weight: 800; background: linear-gradient(135deg, #06b6d4, #22d3ee); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 1rem; }
+        .page-subtitle { font-size: 1.2rem; color: #a0a0a0; }
+        .simulator-container { display: grid; grid-template-columns: 1fr 380px; gap: 2rem; margin-bottom: 3rem; }
+        .plot-container { background: rgba(20, 20, 20, 0.8); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: 15px; padding: 2rem; min-height: 500px; }
+        .controls-container { background: rgba(20, 20, 20, 0.8); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: 15px; padding: 2rem; }
+        .control-group { margin-bottom: 1.5rem; }
+        .control-label { display: block; color: #22d3ee; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem; }
+        .control-value { color: #06b6d4; font-weight: bold; float: right; }
+        .control-slider { width: 100%; -webkit-appearance: none; height: 5px; background: rgba(6, 182, 212, 0.2); outline: none; border-radius: 5px; margin-top: 0.5rem; }
+        .control-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; background: #06b6d4; cursor: pointer; border-radius: 50%; }
+        .control-select { width: 100%; padding: 0.5rem; background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.3); color: #e0e0e0; border-radius: 8px; margin-top: 0.5rem; }
+        .btn { background: linear-gradient(135deg, #06b6d4, #0891b2); color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; width: 100%; margin-top: 0.75rem; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(6, 182, 212, 0.4); }
+        .btn-secondary { background: transparent; border: 2px solid #06b6d4; color: #06b6d4; }
+        .info-panel { background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.3); border-radius: 10px; padding: 1rem; margin-top: 1rem; }
+        .info-title { color: #22d3ee; font-weight: 600; margin-bottom: 0.75rem; font-size: 0.95rem; }
+        .info-item { display: flex; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid rgba(6, 182, 212, 0.1); font-size: 0.85rem; }
+        .info-label { color: #a0a0a0; }
+        .info-value { color: #06b6d4; font-weight: bold; }
+        .tabs { display: flex; gap: 0.5rem; margin-bottom: 2rem; border-bottom: 1px solid rgba(6, 182, 212, 0.2); flex-wrap: wrap; }
+        .tab { padding: 0.75rem 1.5rem; background: transparent; border: none; color: #a0a0a0; cursor: pointer; transition: all 0.3s ease; position: relative; font-size: 0.9rem; }
+        .tab.active { color: #22d3ee; }
+        .tab.active::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, #06b6d4, #22d3ee); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .data-preview { background: #0a0a0a; border: 1px solid rgba(6, 182, 212, 0.2); border-radius: 8px; padding: 1rem; margin-top: 1rem; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 0.8rem; }
+        .data-row { display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid rgba(6, 182, 212, 0.1); }
+        @media (max-width: 1024px) { .simulator-container { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h2 style="color: #22d3ee;"><i class="fas fa-wave-square"></i> Synthetic Data Generator</h2>
+            <a href="galileo-project.html" class="back-btn"><i class="fas fa-arrow-left"></i> Back to GALILEO Suite</a>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="title-section">
+            <h1 class="page-title">Gravimetry Data Synthesizer</h1>
+            <p class="page-subtitle">Generate Realistic Satellite Gravity Measurements with Configurable Noise Models</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('timeseries')">Time Series</button>
+            <button class="tab" onclick="switchTab('spectrum')">Power Spectrum</button>
+            <button class="tab" onclick="switchTab('gravity')">Gravity Field</button>
+            <button class="tab" onclick="switchTab('noise')">Noise Analysis</button>
+        </div>
+
+        <div id="timeseries" class="tab-content active">
+            <div class="simulator-container">
+                <div class="plot-container">
+                    <div id="timeseries-plot" style="height: 480px;"></div>
+                </div>
+                <div class="controls-container">
+                    <h3 style="color: #22d3ee; margin-bottom: 1.5rem;">Signal Parameters</h3>
+                    <div class="control-group">
+                        <label class="control-label">Measurement Type</label>
+                        <select class="control-select" id="meas-type">
+                            <option value="range">Inter-satellite Range</option>
+                            <option value="rangerate">Range Rate</option>
+                            <option value="acc">Accelerometer</option>
+                            <option value="gps">GPS Position</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Signal Amplitude<span class="control-value" id="amp-value">1.0</span></label>
+                        <input type="range" class="control-slider" id="amp-slider" min="0.1" max="5" value="1" step="0.1">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Noise Level (σ)<span class="control-value" id="noise-value">0.1</span></label>
+                        <input type="range" class="control-slider" id="noise-slider" min="0.01" max="1" value="0.1" step="0.01">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Sample Rate (Hz)<span class="control-value" id="rate-value">1</span></label>
+                        <input type="range" class="control-slider" id="rate-slider" min="0.1" max="10" value="1" step="0.1">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Duration (orbits)<span class="control-value" id="dur-value">3</span></label>
+                        <input type="range" class="control-slider" id="dur-slider" min="1" max="10" value="3" step="1">
+                    </div>
+                    <button class="btn" onclick="generateData()"><i class="fas fa-play"></i> Generate Data</button>
+                    <button class="btn btn-secondary" onclick="downloadData()"><i class="fas fa-download"></i> Export CSV</button>
+
+                    <div class="info-panel">
+                        <div class="info-title">Data Statistics</div>
+                        <div class="info-item"><span class="info-label">Samples</span><span class="info-value" id="num-samples">--</span></div>
+                        <div class="info-item"><span class="info-label">Mean</span><span class="info-value" id="data-mean">--</span></div>
+                        <div class="info-item"><span class="info-label">Std Dev</span><span class="info-value" id="data-std">--</span></div>
+                        <div class="info-item"><span class="info-label">SNR (dB)</span><span class="info-value" id="data-snr">--</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="spectrum" class="tab-content">
+            <div class="simulator-container">
+                <div class="plot-container">
+                    <div id="spectrum-plot" style="height: 480px;"></div>
+                </div>
+                <div class="controls-container">
+                    <h3 style="color: #22d3ee; margin-bottom: 1.5rem;">Spectral Analysis</h3>
+                    <div class="control-group">
+                        <label class="control-label">Window Function</label>
+                        <select class="control-select" id="window-type">
+                            <option value="hanning">Hanning</option>
+                            <option value="hamming">Hamming</option>
+                            <option value="blackman">Blackman</option>
+                            <option value="rectangular">Rectangular</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">FFT Size<span class="control-value" id="fft-value">1024</span></label>
+                        <input type="range" class="control-slider" id="fft-slider" min="256" max="4096" value="1024" step="256">
+                    </div>
+                    <button class="btn" onclick="computeSpectrum()"><i class="fas fa-chart-area"></i> Compute PSD</button>
+
+                    <div class="info-panel">
+                        <div class="info-title">Spectral Parameters</div>
+                        <div class="info-item"><span class="info-label">Peak Frequency</span><span class="info-value" id="peak-freq">--</span></div>
+                        <div class="info-item"><span class="info-label">Bandwidth</span><span class="info-value" id="bandwidth">--</span></div>
+                        <div class="info-item"><span class="info-label">Noise Floor</span><span class="info-value" id="noise-floor">--</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="gravity" class="tab-content">
+            <div class="simulator-container">
+                <div class="plot-container">
+                    <div id="gravity-plot" style="height: 480px;"></div>
+                </div>
+                <div class="controls-container">
+                    <h3 style="color: #22d3ee; margin-bottom: 1.5rem;">Gravity Field Model</h3>
+                    <div class="control-group">
+                        <label class="control-label">Max Degree<span class="control-value" id="degree-value">60</span></label>
+                        <input type="range" class="control-slider" id="degree-slider" min="10" max="180" value="60" step="10">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Signal Type</label>
+                        <select class="control-select" id="field-type">
+                            <option value="geoid">Geoid Height</option>
+                            <option value="gravity">Gravity Anomaly</option>
+                            <option value="gradient">Gravity Gradient</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Altitude (km)<span class="control-value" id="field-alt-value">400</span></label>
+                        <input type="range" class="control-slider" id="field-alt-slider" min="200" max="800" value="400" step="50">
+                    </div>
+                    <button class="btn" onclick="generateGravityField()"><i class="fas fa-globe"></i> Generate Field</button>
+
+                    <div class="info-panel">
+                        <div class="info-title">Field Statistics</div>
+                        <div class="info-item"><span class="info-label">Resolution</span><span class="info-value" id="field-res">--</span></div>
+                        <div class="info-item"><span class="info-label">RMS Signal</span><span class="info-value" id="field-rms">--</span></div>
+                        <div class="info-item"><span class="info-label">Max Value</span><span class="info-value" id="field-max">--</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="noise" class="tab-content">
+            <div class="simulator-container">
+                <div class="plot-container">
+                    <div id="noise-plot" style="height: 480px;"></div>
+                </div>
+                <div class="controls-container">
+                    <h3 style="color: #22d3ee; margin-bottom: 1.5rem;">Noise Model</h3>
+                    <div class="control-group">
+                        <label class="control-label"><input type="checkbox" id="white-check" checked> White Noise</label>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label"><input type="checkbox" id="pink-check"> 1/f (Pink) Noise</label>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label"><input type="checkbox" id="bias-check"> Bias Drift</label>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label"><input type="checkbox" id="spike-check"> Random Spikes</label>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">White Noise σ<span class="control-value" id="white-value">1.0</span></label>
+                        <input type="range" class="control-slider" id="white-slider" min="0.1" max="5" value="1" step="0.1">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Pink Noise Power<span class="control-value" id="pink-value">0.5</span></label>
+                        <input type="range" class="control-slider" id="pink-slider" min="0" max="2" value="0.5" step="0.1">
+                    </div>
+                    <button class="btn" onclick="generateNoise()"><i class="fas fa-random"></i> Generate Noise</button>
+                    <button class="btn btn-secondary" onclick="analyzeNoise()"><i class="fas fa-chart-bar"></i> Allan Variance</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let generatedData = { time: [], signal: [], noise: [], combined: [] };
+        const orbitalPeriod = 5400; // 90 minutes in seconds
+
+        window.addEventListener('load', () => {
+            generateData();
+            computeSpectrum();
+            generateGravityField();
+            generateNoise();
+        });
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+        }
+
+        function generateData() {
+            const amplitude = parseFloat(document.getElementById('amp-slider').value);
+            const noiseLevel = parseFloat(document.getElementById('noise-slider').value);
+            const sampleRate = parseFloat(document.getElementById('rate-slider').value);
+            const numOrbits = parseInt(document.getElementById('dur-slider').value);
+            const measType = document.getElementById('meas-type').value;
+
+            const duration = orbitalPeriod * numOrbits;
+            const dt = 1 / sampleRate;
+            const n = Math.floor(duration / dt);
+
+            generatedData.time = [];
+            generatedData.signal = [];
+            generatedData.noise = [];
+            generatedData.combined = [];
+
+            const orbFreq = 2 * Math.PI / orbitalPeriod;
+
+            for (let i = 0; i < n; i++) {
+                const t = i * dt;
+                generatedData.time.push(t);
+
+                let signal;
+                switch(measType) {
+                    case 'range':
+                        signal = amplitude * (1 + 0.1 * Math.sin(orbFreq * t) + 0.05 * Math.sin(2 * orbFreq * t));
+                        break;
+                    case 'rangerate':
+                        signal = amplitude * orbFreq * (0.1 * Math.cos(orbFreq * t) + 0.1 * Math.cos(2 * orbFreq * t));
+                        break;
+                    case 'acc':
+                        signal = amplitude * 1e-6 * (Math.sin(orbFreq * t) + 0.3 * Math.sin(3 * orbFreq * t));
+                        break;
+                    case 'gps':
+                        signal = amplitude * 100 * Math.sin(orbFreq * t);
+                        break;
+                }
+
+                const noise = noiseLevel * (Math.random() - 0.5) * 2 * amplitude;
+                generatedData.signal.push(signal);
+                generatedData.noise.push(noise);
+                generatedData.combined.push(signal + noise);
+            }
+
+            // Calculate statistics
+            const mean = generatedData.combined.reduce((a, b) => a + b, 0) / n;
+            const std = Math.sqrt(generatedData.combined.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b, 0) / n);
+            const signalPower = generatedData.signal.map(x => x * x).reduce((a, b) => a + b, 0) / n;
+            const noisePower = generatedData.noise.map(x => x * x).reduce((a, b) => a + b, 0) / n;
+            const snr = 10 * Math.log10(signalPower / noisePower);
+
+            document.getElementById('num-samples').textContent = n.toLocaleString();
+            document.getElementById('data-mean').textContent = mean.toExponential(3);
+            document.getElementById('data-std').textContent = std.toExponential(3);
+            document.getElementById('data-snr').textContent = snr.toFixed(1);
+
+            // Plot
+            const traces = [
+                { x: generatedData.time.map(t => t/3600), y: generatedData.combined, name: 'Measured', line: { color: '#06b6d4', width: 1 } },
+                { x: generatedData.time.map(t => t/3600), y: generatedData.signal, name: 'True Signal', line: { color: '#22c55e', width: 2, dash: 'dash' } }
+            ];
+
+            const units = { range: 'm', rangerate: 'm/s', acc: 'm/s²', gps: 'm' };
+
+            Plotly.newPlot('timeseries-plot', traces, {
+                title: 'Synthetic Gravimetry Measurements',
+                xaxis: { title: 'Time (hours)', gridcolor: '#333' },
+                yaxis: { title: `Measurement (${units[measType]})`, gridcolor: '#333' },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                showlegend: true,
+                legend: { x: 0.02, y: 0.98 }
+            }, {responsive: true});
+        }
+
+        function computeSpectrum() {
+            if (generatedData.combined.length === 0) generateData();
+
+            const fftSize = parseInt(document.getElementById('fft-slider').value);
+            const windowType = document.getElementById('window-type').value;
+            const fs = parseFloat(document.getElementById('rate-slider').value);
+
+            // Simple DFT approximation for demo
+            const n = Math.min(generatedData.combined.length, fftSize);
+            const freqs = [], psd = [];
+
+            for (let k = 0; k < n / 2; k++) {
+                const f = k * fs / n;
+                freqs.push(f * 1000); // mHz
+
+                let real = 0, imag = 0;
+                for (let i = 0; i < n; i++) {
+                    let window = 1;
+                    switch(windowType) {
+                        case 'hanning': window = 0.5 * (1 - Math.cos(2 * Math.PI * i / n)); break;
+                        case 'hamming': window = 0.54 - 0.46 * Math.cos(2 * Math.PI * i / n); break;
+                        case 'blackman': window = 0.42 - 0.5 * Math.cos(2 * Math.PI * i / n) + 0.08 * Math.cos(4 * Math.PI * i / n); break;
+                    }
+                    const angle = -2 * Math.PI * k * i / n;
+                    real += generatedData.combined[i] * window * Math.cos(angle);
+                    imag += generatedData.combined[i] * window * Math.sin(angle);
+                }
+                psd.push(10 * Math.log10((real * real + imag * imag) / n + 1e-20));
+            }
+
+            // Find peak
+            const maxPsd = Math.max(...psd);
+            const peakIdx = psd.indexOf(maxPsd);
+            const noiseFloor = psd.slice(Math.floor(psd.length * 0.8)).reduce((a, b) => a + b, 0) / (psd.length * 0.2);
+
+            document.getElementById('peak-freq').textContent = freqs[peakIdx].toFixed(2) + ' mHz';
+            document.getElementById('bandwidth').textContent = (fs * 1000 / 2).toFixed(1) + ' mHz';
+            document.getElementById('noise-floor').textContent = noiseFloor.toFixed(1) + ' dB';
+
+            Plotly.newPlot('spectrum-plot', [{
+                x: freqs, y: psd,
+                type: 'scatter', mode: 'lines',
+                line: { color: '#06b6d4', width: 1.5 }
+            }], {
+                title: 'Power Spectral Density',
+                xaxis: { title: 'Frequency (mHz)', type: 'log', gridcolor: '#333' },
+                yaxis: { title: 'PSD (dB)', gridcolor: '#333' },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' }
+            }, {responsive: true});
+        }
+
+        function generateGravityField() {
+            const maxDegree = parseInt(document.getElementById('degree-slider').value);
+            const fieldType = document.getElementById('field-type').value;
+            const altitude = parseFloat(document.getElementById('field-alt-slider').value);
+
+            const lats = [], lons = [], values = [];
+            const Re = 6378.137;
+            const r = Re + altitude;
+
+            for (let lat = -90; lat <= 90; lat += 3) {
+                const latRow = [];
+                for (let lon = -180; lon <= 180; lon += 3) {
+                    // Simplified spherical harmonic synthesis
+                    let value = 0;
+                    const theta = (90 - lat) * Math.PI / 180;
+                    const phi = lon * Math.PI / 180;
+
+                    for (let l = 2; l <= Math.min(maxDegree, 30); l++) {
+                        const scale = Math.pow(Re / r, l + 1);
+                        value += scale * (1 / l) * Math.cos(l * phi) * Math.sin(theta) * (Math.random() - 0.5);
+                    }
+
+                    switch(fieldType) {
+                        case 'geoid': value *= 100; break; // meters
+                        case 'gravity': value *= 1000; break; // mGal
+                        case 'gradient': value *= 10000; break; // Eötvös
+                    }
+
+                    latRow.push(value);
+                }
+                lats.push(lat);
+                values.push(latRow);
+            }
+
+            for (let lon = -180; lon <= 180; lon += 3) lons.push(lon);
+
+            const flatValues = values.flat();
+            const rms = Math.sqrt(flatValues.map(x => x * x).reduce((a, b) => a + b, 0) / flatValues.length);
+            const maxVal = Math.max(...flatValues.map(Math.abs));
+
+            const units = { geoid: 'm', gravity: 'mGal', gradient: 'Eötvös' };
+            document.getElementById('field-res').textContent = (40000 / maxDegree).toFixed(0) + ' km';
+            document.getElementById('field-rms').textContent = rms.toFixed(2) + ' ' + units[fieldType];
+            document.getElementById('field-max').textContent = maxVal.toFixed(2) + ' ' + units[fieldType];
+
+            Plotly.newPlot('gravity-plot', [{
+                type: 'heatmap',
+                x: lons, y: lats, z: values,
+                colorscale: [[0, '#0a2a4a'], [0.5, '#06b6d4'], [1, '#22d3ee']],
+                colorbar: { title: units[fieldType] }
+            }], {
+                title: `Synthetic ${fieldType.charAt(0).toUpperCase() + fieldType.slice(1)} Field (L=${maxDegree})`,
+                xaxis: { title: 'Longitude (deg)', gridcolor: '#333' },
+                yaxis: { title: 'Latitude (deg)', gridcolor: '#333' },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' }
+            }, {responsive: true});
+        }
+
+        function generateNoise() {
+            const whiteEnabled = document.getElementById('white-check').checked;
+            const pinkEnabled = document.getElementById('pink-check').checked;
+            const biasEnabled = document.getElementById('bias-check').checked;
+            const spikeEnabled = document.getElementById('spike-check').checked;
+            const whiteSigma = parseFloat(document.getElementById('white-slider').value);
+            const pinkPower = parseFloat(document.getElementById('pink-slider').value);
+
+            const n = 10000;
+            const time = [], white = [], pink = [], bias = [], spikes = [], total = [];
+
+            let biasVal = 0;
+            let pinkState = 0;
+
+            for (let i = 0; i < n; i++) {
+                time.push(i);
+
+                // White noise
+                const w = whiteSigma * (Math.random() - 0.5) * 2;
+                white.push(whiteEnabled ? w : 0);
+
+                // Pink noise (1/f)
+                pinkState = 0.99 * pinkState + pinkPower * (Math.random() - 0.5);
+                pink.push(pinkEnabled ? pinkState : 0);
+
+                // Bias drift
+                biasVal += 0.001 * (Math.random() - 0.5);
+                bias.push(biasEnabled ? biasVal : 0);
+
+                // Random spikes
+                const spike = (Math.random() < 0.001) ? 10 * (Math.random() - 0.5) : 0;
+                spikes.push(spikeEnabled ? spike : 0);
+
+                total.push(white[i] + pink[i] + bias[i] + spikes[i]);
+            }
+
+            const traces = [
+                { x: time, y: total, name: 'Total', line: { color: '#06b6d4', width: 1 } }
+            ];
+            if (whiteEnabled) traces.push({ x: time, y: white, name: 'White', line: { color: '#22d3ee', width: 1 }, visible: 'legendonly' });
+            if (pinkEnabled) traces.push({ x: time, y: pink, name: 'Pink', line: { color: '#67e8f9', width: 1 }, visible: 'legendonly' });
+            if (biasEnabled) traces.push({ x: time, y: bias, name: 'Bias', line: { color: '#a5f3fc', width: 1 }, visible: 'legendonly' });
+
+            Plotly.newPlot('noise-plot', traces, {
+                title: 'Synthetic Noise Realization',
+                xaxis: { title: 'Sample', gridcolor: '#333' },
+                yaxis: { title: 'Amplitude', gridcolor: '#333' },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                showlegend: true
+            }, {responsive: true});
+        }
+
+        function analyzeNoise() {
+            alert('Allan Variance analysis would compute stability metrics over different averaging times. This requires longer time series data.');
+        }
+
+        function downloadData() {
+            let csv = 'Time(s),Signal,Noise,Combined\n';
+            for (let i = 0; i < generatedData.time.length; i++) {
+                csv += `${generatedData.time[i]},${generatedData.signal[i]},${generatedData.noise[i]},${generatedData.combined[i]}\n`;
+            }
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'synthetic_gravimetry_data.csv';
+            a.click();
+        }
+
+        // Slider listeners
+        ['amp', 'noise', 'rate', 'dur', 'fft', 'degree', 'field-alt', 'white', 'pink'].forEach(id => {
+            const slider = document.getElementById(id + '-slider');
+            const value = document.getElementById(id + '-value');
+            if (slider && value) {
+                slider.addEventListener('input', function() { value.textContent = this.value; });
+            }
+        });
+    </script>
+</body>
+</html>

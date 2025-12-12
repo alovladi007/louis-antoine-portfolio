@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workflow Automation - LUMA IP</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%); color: #fff; min-height: 100vh; }
+        .top-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(139, 92, 246, 0.3); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+        .nav-brand { font-size: 1.5rem; font-weight: 700; background: linear-gradient(135deg, #8b5cf6, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .nav-links { display: flex; gap: 2rem; }
+        .nav-links a { color: #ccc; text-decoration: none; }
+        .nav-links a:hover { color: #a78bfa; }
+        .hero { height: 50vh; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; padding-top: 60px; }
+        #hero-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        .hero-content { position: relative; z-index: 2; text-align: center; padding: 2rem; }
+        .hero h1 { font-size: 3.5rem; margin-bottom: 1rem; background: linear-gradient(135deg, #8b5cf6, #a78bfa, #c4b5fd); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero p { font-size: 1.3rem; color: #a0a0a0; max-width: 700px; margin: 0 auto; }
+        .main-content { max-width: 1600px; margin: 0 auto; padding: 2rem; }
+        .tab-nav { display: flex; gap: 0.5rem; margin-bottom: 2rem; flex-wrap: wrap; border-bottom: 1px solid rgba(139, 92, 246, 0.3); padding-bottom: 1rem; }
+        .tab-btn { padding: 0.75rem 1.5rem; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; color: #a78bfa; cursor: pointer; transition: all 0.3s; font-size: 0.95rem; }
+        .tab-btn:hover { background: rgba(139, 92, 246, 0.2); }
+        .tab-btn.active { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; border-color: #8b5cf6; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .card { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem; }
+        .card h3 { color: #a78bfa; margin-bottom: 1rem; font-size: 1.3rem; }
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+        @media (max-width: 1200px) { .grid-4 { grid-template-columns: repeat(2, 1fr); } .grid-3 { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 768px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } }
+        .plot-container { background: rgba(0, 0, 0, 0.3); border-radius: 12px; padding: 1rem; margin-top: 1rem; }
+        .back-link { display: inline-flex; align-items: center; gap: 0.5rem; color: #a78bfa; text-decoration: none; margin-bottom: 1rem; }
+        .back-link:hover { color: #c4b5fd; }
+        .stat-card { background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 12px; padding: 1.5rem; text-align: center; }
+        .stat-value { font-size: 2.5rem; font-weight: 700; color: #a78bfa; }
+        .stat-label { font-size: 0.9rem; color: #888; margin-top: 0.3rem; }
+        .btn { padding: 0.6rem 1.5rem; background: linear-gradient(135deg, #8b5cf6, #7c3aed); border: none; border-radius: 8px; color: white; cursor: pointer; transition: all 0.3s; font-size: 0.9rem; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(139, 92, 246, 0.4); }
+        .btn-outline { background: transparent; border: 1px solid rgba(139, 92, 246, 0.5); color: #a78bfa; }
+        .btn-small { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
+
+        /* Workflow Builder */
+        .workflow-canvas { background: rgba(0, 0, 0, 0.3); border-radius: 12px; padding: 2rem; min-height: 400px; position: relative; }
+        .workflow-node { background: rgba(255, 255, 255, 0.05); border: 2px solid rgba(139, 92, 246, 0.3); border-radius: 12px; padding: 1rem; width: 180px; position: absolute; cursor: move; transition: all 0.3s; }
+        .workflow-node:hover { border-color: #8b5cf6; box-shadow: 0 5px 20px rgba(139, 92, 246, 0.3); }
+        .workflow-node.trigger { border-color: #10b981; }
+        .workflow-node.action { border-color: #3b82f6; }
+        .workflow-node.condition { border-color: #f59e0b; }
+        .node-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 0.5rem; }
+        .trigger .node-icon { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+        .action .node-icon { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+        .condition .node-icon { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+        .node-title { font-weight: 600; color: #fff; font-size: 0.9rem; margin-bottom: 0.3rem; }
+        .node-desc { color: #888; font-size: 0.75rem; }
+
+        /* Workflow List */
+        .workflow-item { display: flex; align-items: center; gap: 1rem; padding: 1rem; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 10px; margin-bottom: 0.75rem; cursor: pointer; transition: all 0.3s; }
+        .workflow-item:hover { border-color: #8b5cf6; }
+        .workflow-icon { width: 50px; height: 50px; border-radius: 10px; background: rgba(139, 92, 246, 0.2); display: flex; align-items: center; justify-content: center; font-size: 1.3rem; color: #a78bfa; }
+        .workflow-info { flex: 1; }
+        .workflow-info h5 { color: #fff; margin-bottom: 0.3rem; }
+        .workflow-info p { color: #888; font-size: 0.85rem; }
+        .workflow-stats { display: flex; gap: 1.5rem; }
+        .workflow-stat { text-align: center; }
+        .workflow-stat-value { font-size: 1.1rem; font-weight: 600; color: #a78bfa; }
+        .workflow-stat-label { font-size: 0.7rem; color: #888; }
+        .status-badge { padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.75rem; font-weight: 500; }
+        .status-active { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+        .status-paused { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+        .status-draft { background: rgba(107, 114, 128, 0.2); color: #6b7280; }
+
+        /* Template Card */
+        .template-card { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 12px; padding: 1.5rem; transition: all 0.3s; cursor: pointer; }
+        .template-card:hover { border-color: #8b5cf6; transform: translateY(-3px); }
+        .template-icon { width: 50px; height: 50px; border-radius: 10px; background: rgba(139, 92, 246, 0.2); display: flex; align-items: center; justify-content: center; font-size: 1.3rem; color: #a78bfa; margin-bottom: 1rem; }
+        .template-card h4 { color: #fff; margin-bottom: 0.5rem; }
+        .template-card p { color: #888; font-size: 0.85rem; margin-bottom: 1rem; }
+        .template-tags { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .template-tag { padding: 0.2rem 0.5rem; background: rgba(139, 92, 246, 0.1); border-radius: 4px; font-size: 0.7rem; color: #a78bfa; }
+
+        /* Execution Log */
+        .log-item { display: flex; align-items: flex-start; gap: 1rem; padding: 1rem; border-bottom: 1px solid rgba(139, 92, 246, 0.1); }
+        .log-item:last-child { border-bottom: none; }
+        .log-status { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+        .log-status.success { background: #10b981; }
+        .log-status.running { background: #3b82f6; animation: pulse 1s infinite; }
+        .log-status.failed { background: #ef4444; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .log-info { flex: 1; }
+        .log-info h5 { color: #fff; font-size: 0.9rem; margin-bottom: 0.2rem; }
+        .log-info p { color: #888; font-size: 0.8rem; }
+        .log-time { color: #666; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+    <nav class="top-nav">
+        <div class="nav-brand">LUMA IP</div>
+        <div class="nav-links">
+            <a href="index.html">Home</a>
+            <a href="luma-ip-project.html">Back to LUMA IP</a>
+            <a href="#workflows">Workflows</a>
+            <a href="#builder">Builder</a>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <canvas id="hero-canvas"></canvas>
+        <div class="hero-content">
+            <h1><i class="fas fa-cogs"></i> Workflow Automation</h1>
+            <p>Intelligent workflow automation for IP processes with customizable triggers, actions, and integrations</p>
+        </div>
+    </section>
+
+    <main class="main-content">
+        <a href="luma-ip-project.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to LUMA IP Suite
+        </a>
+
+        <div class="tab-nav">
+            <button class="tab-btn active" onclick="switchTab('overview')">Overview</button>
+            <button class="tab-btn" onclick="switchTab('workflows')">My Workflows</button>
+            <button class="tab-btn" onclick="switchTab('builder')">Workflow Builder</button>
+            <button class="tab-btn" onclick="switchTab('templates')">Templates</button>
+        </div>
+
+        <!-- Overview Tab -->
+        <div id="overview" class="tab-content active">
+            <div class="grid-4">
+                <div class="stat-card">
+                    <div class="stat-value">24</div>
+                    <div class="stat-label">Active Workflows</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">3,847</div>
+                    <div class="stat-label">Executions (MTD)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">98.5%</div>
+                    <div class="stat-label">Success Rate</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">142 hrs</div>
+                    <div class="stat-label">Time Saved</div>
+                </div>
+            </div>
+
+            <div class="grid-2" style="margin-top: 2rem;">
+                <div class="card">
+                    <h3><i class="fas fa-chart-line"></i> Workflow Executions</h3>
+                    <div id="execution-chart" class="plot-container"></div>
+                </div>
+                <div class="card">
+                    <h3><i class="fas fa-chart-pie"></i> Execution by Type</h3>
+                    <div id="type-chart" class="plot-container"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3><i class="fas fa-history"></i> Recent Executions</h3>
+                <div class="log-item">
+                    <div class="log-status success"></div>
+                    <div class="log-info">
+                        <h5>Deadline Reminder - US 17/456,789</h5>
+                        <p>Sent email notification to J. Smith and client</p>
+                    </div>
+                    <div class="log-time">2 min ago</div>
+                </div>
+                <div class="log-item">
+                    <div class="log-status success"></div>
+                    <div class="log-info">
+                        <h5>Document Classification</h5>
+                        <p>Classified and filed Office_Action.pdf to matter folder</p>
+                    </div>
+                    <div class="log-time">15 min ago</div>
+                </div>
+                <div class="log-item">
+                    <div class="log-status running"></div>
+                    <div class="log-info">
+                        <h5>Prior Art Search Automation</h5>
+                        <p>Searching USPTO and EPO databases...</p>
+                    </div>
+                    <div class="log-time">Running...</div>
+                </div>
+                <div class="log-item">
+                    <div class="log-status success"></div>
+                    <div class="log-info">
+                        <h5>Invoice Generation</h5>
+                        <p>Generated and sent invoice INV-2024-0090</p>
+                    </div>
+                    <div class="log-time">1 hour ago</div>
+                </div>
+                <div class="log-item">
+                    <div class="log-status failed"></div>
+                    <div class="log-info">
+                        <h5>USPTO API Sync</h5>
+                        <p>Connection timeout - retrying in 5 minutes</p>
+                    </div>
+                    <div class="log-time">2 hours ago</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- My Workflows Tab -->
+        <div id="workflows" class="tab-content">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3><i class="fas fa-project-diagram"></i> Active Workflows</h3>
+                    <button class="btn"><i class="fas fa-plus"></i> New Workflow</button>
+                </div>
+
+                <div class="workflow-item">
+                    <div class="workflow-icon"><i class="fas fa-bell"></i></div>
+                    <div class="workflow-info">
+                        <h5>Deadline Reminder System</h5>
+                        <p>Sends automated reminders at 30, 14, 7, and 1 days before deadlines</p>
+                    </div>
+                    <div class="workflow-stats">
+                        <div class="workflow-stat">
+                            <div class="workflow-stat-value">1,245</div>
+                            <div class="workflow-stat-label">Runs</div>
+                        </div>
+                        <div class="workflow-stat">
+                            <div class="workflow-stat-value">100%</div>
+                            <div class="workflow-stat-label">Success</div>
+                        </div>
+                    </div>
+                    <span class="status-badge status-active">Active</span>
+                </div>
+                <div class="workflow-item">
+                    <div class="workflow-icon"><i class="fas fa-file-import"></i></div>
+                    <div class="workflow-info">
+                        <h5>Document Auto-Classification</h5>
+                        <p>AI-powered classification and filing of incoming documents</p>
+                    </div>
+                    <div class="workflow-stats">
+                        <div class="workflow-stat">
+                            <div class="workflow-stat-value">892</div>
+                            <div class="workflow-stat-label">Runs</div>
+                        </div>
+                        <div class="workflow-stat">
+                            <div class="workflow-stat-value">98%</div>
+                            <div class="workflow-stat-label">Success</div>
+                        </div>
+                    </div>
+                    <span class="status-badge status-active">Active</span>
+                </div>
+                <div class="workflow-item">
+                    <div class="workflow-icon"><i class="fas fa-file-invoice-dollar"></i></div>
+                    <div class="workflow-info">
+                        <h5>Monthly Invoice Generation</h5>
+                        <p>Generates invoices on the 1st of each month for billable time</p>
+                    </div>
+                    <div class="workflow-stats">
+                        <div class="workflow-stat">
+                            <div class="workflow-stat-value">48</div>
+                            <div class="workflow-stat-label">Runs</div>
+                        </div>
+                        <div class="workflow-stat">
+                            <div class="workflow-stat-value">100%</div>
+                            <div class="workflow-stat-label">Success</div>
+                        </div>
+                    </div>
+                    <span class="status-badge status-active">Active</span>
+                </div>
+                <div class="workflow-item">
+                    <div class="workflow-icon"><i class="fas fa-sync"></i></div>
+                    <div class="workflow-info">
+                        <h5>USPTO Status Sync</h5>
+                        <p>Syncs application status from USPTO PAIR daily</p>
+                    </div>
+                    <div class="workflow-stats">
+                        <div class="workflow-stat">
+                            <div class="workflow-stat-value">365</div>
+                            <div class="workflow-stat-label">Runs</div>
+                        </div>
+                        <div class="workflow-stat">
+                            <div class="workflow-stat-value">97%</div>
+                            <div class="workflow-stat-label">Success</div>
+                        </div>
+                    </div>
+                    <span class="status-badge status-active">Active</span>
+                </div>
+                <div class="workflow-item">
+                    <div class="workflow-icon"><i class="fas fa-user-plus"></i></div>
+                    <div class="workflow-info">
+                        <h5>New Client Onboarding</h5>
+                        <p>Creates portal account, sends welcome email, assigns attorney</p>
+                    </div>
+                    <div class="workflow-stats">
+                        <div class="workflow-stat">
+                            <div class="workflow-stat-value">24</div>
+                            <div class="workflow-stat-label">Runs</div>
+                        </div>
+                        <div class="workflow-stat">
+                            <div class="workflow-stat-value">100%</div>
+                            <div class="workflow-stat-label">Success</div>
+                        </div>
+                    </div>
+                    <span class="status-badge status-paused">Paused</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Workflow Builder Tab -->
+        <div id="builder" class="tab-content">
+            <div class="card">
+                <h3><i class="fas fa-drafting-compass"></i> Visual Workflow Builder</h3>
+                <p style="color: #888; margin-bottom: 1rem;">Drag and drop nodes to create your automated workflow</p>
+
+                <div class="grid-4" style="margin-bottom: 1rem;">
+                    <div style="padding: 0.5rem; background: rgba(16, 185, 129, 0.1); border: 1px dashed rgba(16, 185, 129, 0.3); border-radius: 8px; text-align: center; cursor: grab;">
+                        <i class="fas fa-play-circle" style="color: #10b981;"></i>
+                        <span style="font-size: 0.85rem; color: #10b981; margin-left: 0.5rem;">Trigger</span>
+                    </div>
+                    <div style="padding: 0.5rem; background: rgba(59, 130, 246, 0.1); border: 1px dashed rgba(59, 130, 246, 0.3); border-radius: 8px; text-align: center; cursor: grab;">
+                        <i class="fas fa-bolt" style="color: #3b82f6;"></i>
+                        <span style="font-size: 0.85rem; color: #3b82f6; margin-left: 0.5rem;">Action</span>
+                    </div>
+                    <div style="padding: 0.5rem; background: rgba(245, 158, 11, 0.1); border: 1px dashed rgba(245, 158, 11, 0.3); border-radius: 8px; text-align: center; cursor: grab;">
+                        <i class="fas fa-code-branch" style="color: #f59e0b;"></i>
+                        <span style="font-size: 0.85rem; color: #f59e0b; margin-left: 0.5rem;">Condition</span>
+                    </div>
+                    <div style="padding: 0.5rem; background: rgba(139, 92, 246, 0.1); border: 1px dashed rgba(139, 92, 246, 0.3); border-radius: 8px; text-align: center; cursor: grab;">
+                        <i class="fas fa-clock" style="color: #a78bfa;"></i>
+                        <span style="font-size: 0.85rem; color: #a78bfa; margin-left: 0.5rem;">Delay</span>
+                    </div>
+                </div>
+
+                <div class="workflow-canvas">
+                    <div class="workflow-node trigger" style="top: 50px; left: 50px;">
+                        <div class="node-icon"><i class="fas fa-calendar-alt"></i></div>
+                        <div class="node-title">Deadline Approaching</div>
+                        <div class="node-desc">7 days before due date</div>
+                    </div>
+                    <div class="workflow-node condition" style="top: 50px; left: 300px;">
+                        <div class="node-icon"><i class="fas fa-code-branch"></i></div>
+                        <div class="node-title">Check Priority</div>
+                        <div class="node-desc">If priority = high</div>
+                    </div>
+                    <div class="workflow-node action" style="top: 50px; left: 550px;">
+                        <div class="node-icon"><i class="fas fa-envelope"></i></div>
+                        <div class="node-title">Send Email</div>
+                        <div class="node-desc">To assigned attorney</div>
+                    </div>
+                    <div class="workflow-node action" style="top: 180px; left: 550px;">
+                        <div class="node-icon"><i class="fas fa-sms"></i></div>
+                        <div class="node-title">Send SMS</div>
+                        <div class="node-desc">To client contact</div>
+                    </div>
+                    <svg style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
+                        <line x1="230" y1="85" x2="300" y2="85" stroke="#8b5cf6" stroke-width="2" stroke-dasharray="5,5"/>
+                        <line x1="480" y1="75" x2="550" y2="75" stroke="#8b5cf6" stroke-width="2" stroke-dasharray="5,5"/>
+                        <line x1="480" y1="95" x2="520" y2="195" stroke="#8b5cf6" stroke-width="2" stroke-dasharray="5,5"/>
+                    </svg>
+                </div>
+
+                <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                    <button class="btn"><i class="fas fa-save"></i> Save Workflow</button>
+                    <button class="btn btn-outline"><i class="fas fa-play"></i> Test Run</button>
+                    <button class="btn btn-outline"><i class="fas fa-trash"></i> Clear</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Templates Tab -->
+        <div id="templates" class="tab-content">
+            <div class="card">
+                <h3><i class="fas fa-puzzle-piece"></i> Workflow Templates</h3>
+                <p style="color: #888; margin-bottom: 1rem;">Pre-built workflow templates for common IP processes</p>
+
+                <div class="grid-3">
+                    <div class="template-card">
+                        <div class="template-icon"><i class="fas fa-bell"></i></div>
+                        <h4>Deadline Notifications</h4>
+                        <p>Automated multi-stage deadline reminders with escalation</p>
+                        <div class="template-tags">
+                            <span class="template-tag">Deadlines</span>
+                            <span class="template-tag">Email</span>
+                            <span class="template-tag">Slack</span>
+                        </div>
+                    </div>
+                    <div class="template-card">
+                        <div class="template-icon"><i class="fas fa-file-import"></i></div>
+                        <h4>Document Processing</h4>
+                        <p>Auto-classify, extract entities, and file incoming documents</p>
+                        <div class="template-tags">
+                            <span class="template-tag">AI</span>
+                            <span class="template-tag">Documents</span>
+                            <span class="template-tag">OCR</span>
+                        </div>
+                    </div>
+                    <div class="template-card">
+                        <div class="template-icon"><i class="fas fa-user-plus"></i></div>
+                        <h4>Client Onboarding</h4>
+                        <p>Complete client setup with portal, welcome emails, and assignments</p>
+                        <div class="template-tags">
+                            <span class="template-tag">Clients</span>
+                            <span class="template-tag">Portal</span>
+                            <span class="template-tag">Email</span>
+                        </div>
+                    </div>
+                    <div class="template-card">
+                        <div class="template-icon"><i class="fas fa-gavel"></i></div>
+                        <h4>Office Action Response</h4>
+                        <p>Workflow for managing OA responses with team collaboration</p>
+                        <div class="template-tags">
+                            <span class="template-tag">Prosecution</span>
+                            <span class="template-tag">Tasks</span>
+                        </div>
+                    </div>
+                    <div class="template-card">
+                        <div class="template-icon"><i class="fas fa-sync-alt"></i></div>
+                        <h4>USPTO Status Sync</h4>
+                        <p>Automatic status updates from USPTO PAIR system</p>
+                        <div class="template-tags">
+                            <span class="template-tag">USPTO</span>
+                            <span class="template-tag">API</span>
+                            <span class="template-tag">Sync</span>
+                        </div>
+                    </div>
+                    <div class="template-card">
+                        <div class="template-icon"><i class="fas fa-file-invoice-dollar"></i></div>
+                        <h4>Billing Automation</h4>
+                        <p>Monthly invoice generation and payment reminders</p>
+                        <div class="template-tags">
+                            <span class="template-tag">Billing</span>
+                            <span class="template-tag">Invoices</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function initCharts() {
+            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+            Plotly.newPlot('execution-chart', [{
+                x: days,
+                y: [520, 580, 620, 590, 640, 280, 220],
+                type: 'bar',
+                marker: { color: '#8b5cf6' }
+            }], {
+                paper_bgcolor: 'transparent',
+                plot_bgcolor: 'transparent',
+                font: { color: '#fff' },
+                xaxis: { gridcolor: 'rgba(255,255,255,0.1)' },
+                yaxis: { gridcolor: 'rgba(255,255,255,0.1)', title: 'Executions' },
+                margin: { t: 20, b: 40, l: 50, r: 20 }
+            }, { responsive: true });
+
+            Plotly.newPlot('type-chart', [{
+                values: [1245, 892, 365, 245, 200],
+                labels: ['Notifications', 'Document Processing', 'Data Sync', 'Task Creation', 'Billing'],
+                type: 'pie',
+                marker: { colors: ['#8b5cf6', '#a78bfa', '#c4b5fd', '#7c3aed', '#6d28d9'] },
+                hole: 0.4
+            }], {
+                paper_bgcolor: 'transparent',
+                font: { color: '#fff' },
+                showlegend: true,
+                legend: { orientation: 'h', y: -0.1 },
+                margin: { t: 20, b: 50, l: 20, r: 20 }
+            }, { responsive: true });
+        }
+
+        function initHero() {
+            const canvas = document.getElementById('hero-canvas');
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, canvas.offsetWidth / canvas.offsetHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+            renderer.setSize(canvas.offsetWidth, canvas.offsetHeight);
+
+            const gears = [];
+            for (let i = 0; i < 8; i++) {
+                const geometry = new THREE.TorusGeometry(0.5 + Math.random() * 0.5, 0.1, 8, 12);
+                const material = new THREE.MeshBasicMaterial({
+                    color: new THREE.Color().setHSL(0.75, 0.7, 0.5 + Math.random() * 0.2),
+                    transparent: true,
+                    opacity: 0.3 + Math.random() * 0.3,
+                    wireframe: true
+                });
+                const gear = new THREE.Mesh(geometry, material);
+                gear.position.set(
+                    (Math.random() - 0.5) * 12,
+                    (Math.random() - 0.5) * 6,
+                    (Math.random() - 0.5) * 6
+                );
+                gear.userData = { speed: 0.01 + Math.random() * 0.02, direction: Math.random() > 0.5 ? 1 : -1 };
+                scene.add(gear);
+                gears.push(gear);
+            }
+
+            camera.position.z = 8;
+
+            function animate() {
+                requestAnimationFrame(animate);
+                gears.forEach(g => { g.rotation.z += g.userData.speed * g.userData.direction; });
+                renderer.render(scene, camera);
+            }
+            animate();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = canvas.offsetWidth / canvas.offsetHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(canvas.offsetWidth, canvas.offsetHeight);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initHero();
+            initCharts();
+        });
+    </script>
+</body>
+</html>
