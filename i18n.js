@@ -15,29 +15,35 @@
             },
             hero: {
                 greeting: "Hi, I'm",
-                title: 'Electrical Engineer & Applied Scientist',
-                subtitle: 'Transforming complex engineering challenges into innovative solutions through data-driven optimization and cutting-edge technology.',
-                cta: 'View My Work',
-                contact: 'Get In Touch'
+                name: 'Louis Antoine',
+                subtitle: 'Electrical Engineer & Applied Scientist',
+                desc1: 'Hands-on expertise in semiconductor manufacturing, optical metrology, and advanced process development. Strong foundation in materials science, device physics, and cleanroom operations.',
+                desc2: 'Passionate about applying machine learning, data analytics, and statistical methods to solve complex engineering challenges. Experienced in process optimization, yield improvement, and cross-functional collaboration in fast-paced technical environments.',
+                cta: 'View Projects',
+                contact: 'Get in Touch'
             },
             about: {
                 title: 'About Me',
                 description: 'Engineer and Applied Scientist with expertise in advanced manufacturing, data-driven optimization, machine learning, and process development across semiconductor, photonics, and emerging technologies.'
             },
             skills: {
-                title: 'Technical Skills'
+                title: 'Technical Skills',
+                learnMore: 'Learn More About Skills'
             },
             projects: {
                 title: 'Featured Projects',
                 viewProject: 'View Project',
-                viewDetails: 'View Details'
+                viewDetails: 'View Details',
+                learnMore: 'Learn More About Projects'
             },
             experience: {
-                title: 'Professional Experience'
+                title: 'Professional Experience',
+                learnMore: 'Learn More About Experience'
             },
             certifications: {
                 title: 'Certifications',
-                viewCertificate: 'View Certificate'
+                viewCertificate: 'View Certificate',
+                learnMore: 'Learn More About Certifications'
             },
             contact: {
                 title: 'Get In Touch',
@@ -52,25 +58,31 @@
                 company: 'Company/Organization',
                 subject: 'Subject',
                 message: 'Message',
-                send: 'Send Message',
-                success: 'Thank you! Your message has been sent successfully.',
-                error: 'Oops! Something went wrong. Please try again.'
+                send: 'Send Message'
             },
             newsletter: {
                 title: 'Stay Updated',
                 description: 'Get notified about new projects, technical insights, and industry updates.',
                 placeholder: 'Enter your email',
                 subscribe: 'Subscribe',
-                privacy: 'No spam, unsubscribe anytime.',
-                success: 'Thank you for subscribing!',
-                error: 'Something went wrong. Please try again.'
+                privacy: 'No spam, unsubscribe anytime.'
             },
             footer: {
-                about: 'About',
+                aboutTitle: 'About',
+                aboutDesc: 'Engineer and Applied Scientist with expertise in manufacturing, data analytics, and process optimization across multiple technical domains.',
                 quickLinks: 'Quick Links',
                 features: 'Interactive Features',
                 resources: 'Resources & Tools',
-                rights: 'All rights reserved.'
+                allProjects: 'All Projects',
+                githubProfile: 'GitHub Profile',
+                contactMe: 'Contact Me',
+                linkedinProfile: 'LinkedIn Profile',
+                downloadResume: 'Download Resume',
+                emailMe: 'Email Me',
+                rights: 'All rights reserved.',
+                privacy: 'Privacy Policy',
+                terms: 'Terms of Service',
+                sitemap: 'Sitemap'
             }
         },
         fr: {
@@ -84,10 +96,12 @@
                 contact: 'Contact'
             },
             hero: {
-                greeting: "Bonjour, je suis",
-                title: 'Ingénieur Électrique & Scientifique Appliqué',
-                subtitle: 'Transformer des défis d\'ingénierie complexes en solutions innovantes grâce à l\'optimisation basée sur les données et aux technologies de pointe.',
-                cta: 'Voir Mon Travail',
+                greeting: 'Bonjour, je suis',
+                name: 'Louis Antoine',
+                subtitle: 'Ingénieur Électrique & Scientifique Appliqué',
+                desc1: 'Expertise pratique en fabrication de semiconducteurs, métrologie optique et développement de processus avancés. Solide formation en science des matériaux, physique des dispositifs et opérations en salle blanche.',
+                desc2: 'Passionné par l\'application de l\'apprentissage automatique, l\'analyse de données et les méthodes statistiques pour résoudre des défis d\'ingénierie complexes. Expérimenté en optimisation de processus, amélioration du rendement et collaboration interfonctionnelle.',
+                cta: 'Voir les Projets',
                 contact: 'Me Contacter'
             },
             about: {
@@ -95,19 +109,23 @@
                 description: 'Ingénieur et scientifique appliqué avec expertise en fabrication avancée, optimisation basée sur les données, apprentissage automatique et développement de processus dans les semiconducteurs, la photonique et les technologies émergentes.'
             },
             skills: {
-                title: 'Compétences Techniques'
+                title: 'Compétences Techniques',
+                learnMore: 'En Savoir Plus sur les Compétences'
             },
             projects: {
                 title: 'Projets en Vedette',
                 viewProject: 'Voir le Projet',
-                viewDetails: 'Voir les Détails'
+                viewDetails: 'Voir les Détails',
+                learnMore: 'En Savoir Plus sur les Projets'
             },
             experience: {
-                title: 'Expérience Professionnelle'
+                title: 'Expérience Professionnelle',
+                learnMore: 'En Savoir Plus sur l\'Expérience'
             },
             certifications: {
                 title: 'Certifications',
-                viewCertificate: 'Voir le Certificat'
+                viewCertificate: 'Voir le Certificat',
+                learnMore: 'En Savoir Plus sur les Certifications'
             },
             contact: {
                 title: 'Me Contacter',
@@ -122,25 +140,31 @@
                 company: 'Entreprise/Organisation',
                 subject: 'Sujet',
                 message: 'Message',
-                send: 'Envoyer le Message',
-                success: 'Merci! Votre message a été envoyé avec succès.',
-                error: 'Oops! Une erreur s\'est produite. Veuillez réessayer.'
+                send: 'Envoyer le Message'
             },
             newsletter: {
                 title: 'Restez Informé',
                 description: 'Recevez des notifications sur les nouveaux projets, les insights techniques et les mises à jour de l\'industrie.',
                 placeholder: 'Entrez votre email',
                 subscribe: 'S\'abonner',
-                privacy: 'Pas de spam, désabonnez-vous à tout moment.',
-                success: 'Merci de vous être abonné!',
-                error: 'Une erreur s\'est produite. Veuillez réessayer.'
+                privacy: 'Pas de spam, désabonnez-vous à tout moment.'
             },
             footer: {
-                about: 'À Propos',
+                aboutTitle: 'À Propos',
+                aboutDesc: 'Ingénieur et scientifique appliqué avec expertise en fabrication, analyse de données et optimisation de processus dans plusieurs domaines techniques.',
                 quickLinks: 'Liens Rapides',
                 features: 'Fonctionnalités Interactives',
                 resources: 'Ressources & Outils',
-                rights: 'Tous droits réservés.'
+                allProjects: 'Tous les Projets',
+                githubProfile: 'Profil GitHub',
+                contactMe: 'Me Contacter',
+                linkedinProfile: 'Profil LinkedIn',
+                downloadResume: 'Télécharger le CV',
+                emailMe: 'M\'envoyer un Email',
+                rights: 'Tous droits réservés.',
+                privacy: 'Politique de Confidentialité',
+                terms: 'Conditions d\'Utilisation',
+                sitemap: 'Plan du Site'
             }
         },
         es: {
@@ -154,10 +178,12 @@
                 contact: 'Contacto'
             },
             hero: {
-                greeting: "Hola, soy",
-                title: 'Ingeniero Eléctrico y Científico Aplicado',
-                subtitle: 'Transformando desafíos de ingeniería complejos en soluciones innovadoras a través de optimización basada en datos y tecnología de vanguardia.',
-                cta: 'Ver Mi Trabajo',
+                greeting: 'Hola, soy',
+                name: 'Louis Antoine',
+                subtitle: 'Ingeniero Eléctrico y Científico Aplicado',
+                desc1: 'Experiencia práctica en fabricación de semiconductores, metrología óptica y desarrollo de procesos avanzados. Sólida formación en ciencia de materiales, física de dispositivos y operaciones en sala limpia.',
+                desc2: 'Apasionado por aplicar aprendizaje automático, análisis de datos y métodos estadísticos para resolver desafíos de ingeniería complejos. Experimentado en optimización de procesos, mejora del rendimiento y colaboración interfuncional.',
+                cta: 'Ver Proyectos',
                 contact: 'Contáctame'
             },
             about: {
@@ -165,19 +191,23 @@
                 description: 'Ingeniero y científico aplicado con experiencia en fabricación avanzada, optimización basada en datos, aprendizaje automático y desarrollo de procesos en semiconductores, fotónica y tecnologías emergentes.'
             },
             skills: {
-                title: 'Habilidades Técnicas'
+                title: 'Habilidades Técnicas',
+                learnMore: 'Más Información sobre Habilidades'
             },
             projects: {
                 title: 'Proyectos Destacados',
                 viewProject: 'Ver Proyecto',
-                viewDetails: 'Ver Detalles'
+                viewDetails: 'Ver Detalles',
+                learnMore: 'Más Información sobre Proyectos'
             },
             experience: {
-                title: 'Experiencia Profesional'
+                title: 'Experiencia Profesional',
+                learnMore: 'Más Información sobre Experiencia'
             },
             certifications: {
                 title: 'Certificaciones',
-                viewCertificate: 'Ver Certificado'
+                viewCertificate: 'Ver Certificado',
+                learnMore: 'Más Información sobre Certificaciones'
             },
             contact: {
                 title: 'Contáctame',
@@ -192,95 +222,31 @@
                 company: 'Empresa/Organización',
                 subject: 'Asunto',
                 message: 'Mensaje',
-                send: 'Enviar Mensaje',
-                success: '¡Gracias! Tu mensaje ha sido enviado exitosamente.',
-                error: '¡Ups! Algo salió mal. Por favor, inténtalo de nuevo.'
+                send: 'Enviar Mensaje'
             },
             newsletter: {
                 title: 'Mantente Actualizado',
                 description: 'Recibe notificaciones sobre nuevos proyectos, insights técnicos y actualizaciones de la industria.',
                 placeholder: 'Ingresa tu email',
                 subscribe: 'Suscribirse',
-                privacy: 'Sin spam, cancela cuando quieras.',
-                success: '¡Gracias por suscribirte!',
-                error: 'Algo salió mal. Por favor, inténtalo de nuevo.'
+                privacy: 'Sin spam, cancela cuando quieras.'
             },
             footer: {
-                about: 'Sobre Mí',
+                aboutTitle: 'Sobre Mí',
+                aboutDesc: 'Ingeniero y científico aplicado con experiencia en fabricación, análisis de datos y optimización de procesos en múltiples dominios técnicos.',
                 quickLinks: 'Enlaces Rápidos',
                 features: 'Funciones Interactivas',
                 resources: 'Recursos y Herramientas',
-                rights: 'Todos los derechos reservados.'
-            }
-        },
-        ht: {
-            nav: {
-                home: 'Akèy',
-                about: 'Sou Mwen',
-                skills: 'Konpetans',
-                projects: 'Pwojè',
-                experience: 'Eksperyans',
-                certifications: 'Sètifikasyon',
-                contact: 'Kontakte'
-            },
-            hero: {
-                greeting: "Bonjou, mwen se",
-                title: 'Enjenyè Elektrik & Syantis Aplike',
-                subtitle: 'Transfòme defi enjenyeri konplèks nan solisyon inovatè atravè optimize done ak teknoloji modèn.',
-                cta: 'Gade Travay Mwen',
-                contact: 'Kontakte Mwen'
-            },
-            about: {
-                title: 'Sou Mwen',
-                description: 'Enjenyè ak syantis aplike ki gen ekspètiz nan fabrikasyon avanse, optimize done, aprantisaj machin, ak devlopman pwosesis nan semi-kondiktè, fotonik, ak teknoloji emèjan.'
-            },
-            skills: {
-                title: 'Konpetans Teknik'
-            },
-            projects: {
-                title: 'Pwojè Prensipal',
-                viewProject: 'Gade Pwojè',
-                viewDetails: 'Gade Detay'
-            },
-            experience: {
-                title: 'Eksperyans Pwofesyonèl'
-            },
-            certifications: {
-                title: 'Sètifikasyon',
-                viewCertificate: 'Gade Sètifika'
-            },
-            contact: {
-                title: 'Kontakte Mwen',
-                email: 'Imèl',
-                phone: 'Telefòn',
-                location: 'Kote',
-                schedule: 'Pwograme yon Reyinyon',
-                scheduleDesc: 'Rezève yon lè dirèkteman sou kalandriye mwen',
-                bookMeeting: 'Rezève Reyinyon',
-                sendMessage: 'Voye yon mesaj ban mwen',
-                name: 'Non',
-                company: 'Konpayi/Òganizasyon',
-                subject: 'Sijè',
-                message: 'Mesaj',
-                send: 'Voye Mesaj',
-                success: 'Mèsi! Mesaj ou te voye avèk siksè.',
-                error: 'Oup! Gen yon bagay ki mal pase. Tanpri eseye ankò.'
-            },
-            newsletter: {
-                title: 'Rete Okouran',
-                description: 'Resevwa notifikasyon sou nouvo pwojè, enfòmasyon teknik, ak mizajou endistri.',
-                placeholder: 'Antre imèl ou',
-                subscribe: 'Abònman',
-                privacy: 'Pa gen spam, dezabònman nenpòt lè.',
-                success: 'Mèsi pou abònman ou!',
-                error: 'Gen yon bagay ki mal pase. Tanpri eseye ankò.'
-            },
-            footer: {
-                about: 'Sou Mwen',
-                quickLinks: 'Lyen Rapid',
-                features: 'Fonksyon Entèaktif',
-                resources: 'Resous & Zouti',
-                rights: 'Tout dwa rezève.'
+                allProjects: 'Todos los Proyectos',
+                githubProfile: 'Perfil de GitHub',
+                contactMe: 'Contáctame',
+                linkedinProfile: 'Perfil de LinkedIn',
+                downloadResume: 'Descargar CV',
+                emailMe: 'Envíame un Email',
+                rights: 'Todos los derechos reservados.',
+                privacy: 'Política de Privacidad',
+                terms: 'Términos de Servicio',
+                sitemap: 'Mapa del Sitio'
             }
         }
     };
@@ -328,6 +294,8 @@
             if (value) {
                 if (el.tagName === 'INPUT' && el.hasAttribute('placeholder')) {
                     el.placeholder = value;
+                } else if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                    // For labels, update the associated label
                 } else {
                     el.textContent = value;
                 }
