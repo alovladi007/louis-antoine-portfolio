@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Metrology Engine - Interactive Demo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #0a0a0a;
+            color: #e0e0e0;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .navigation-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .hero-section {
+            position: relative;
+            min-height: 50vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem 2rem;
+            margin-top: 60px;
+            overflow: hidden;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .hero-title {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-subtitle {
+            font-size: 1.2rem;
+            color: #a0a0a0;
+            margin-bottom: 2rem;
+        }
+
+        .section {
+            padding: 4rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            color: #fff;
+            text-align: center;
+        }
+
+        .demo-container {
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.8), rgba(30, 30, 30, 0.8));
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 15px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .control-label {
+            color: #a0a0a0;
+            font-size: 0.9rem;
+        }
+
+        .control-input {
+            background: rgba(30, 30, 30, 0.8);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            padding: 0.5rem;
+            color: #e0e0e0;
+            font-size: 1rem;
+        }
+
+        .control-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .chart-container {
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.8), rgba(30, 30, 30, 0.8));
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 15px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, rgba(20, 20, 20, 0.8), rgba(30, 30, 30, 0.8));
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            color: #a0a0a0;
+            font-size: 0.9rem;
+        }
+
+        .run-button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 1rem 0;
+        }
+
+        .run-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .run-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navigation-bar">
+        <div>
+            <a href="cross-fab-vm-r2r-project.html" class="nav-btn">
+                <i class="fas fa-arrow-left"></i> Back to Project
+            </a>
+        </div>
+        <div>
+            <a href="additional-projects.html" class="nav-btn">
+                <i class="fas fa-microchip"></i> Electronics & Photonics
+            </a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="hero-content">
+            <h1 class="hero-title">Virtual Metrology Engine</h1>
+            <p class="hero-subtitle">Interactive CatBoost-based CD and Overlay Prediction with Conformal Prediction</p>
+        </div>
+    </section>
+
+    <!-- Interactive Demo -->
+    <section class="section">
+        <div class="demo-container">
+            <h2 class="section-title">Interactive Virtual Metrology Simulation</h2>
+            
+            <!-- Controls -->
+            <div class="controls">
+                <div class="control-group">
+                    <label class="control-label">Wafer ID</label>
+                    <input type="text" class="control-input" id="waferId" value="W001" placeholder="Enter Wafer ID">
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Process Step</label>
+                    <select class="control-input" id="processStep">
+                        <option value="litho">Lithography</option>
+                        <option value="etch">Etch</option>
+                        <option value="depo">Deposition</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Feature Size (nm)</label>
+                    <input type="range" class="control-input" id="featureSize" min="20" max="100" value="50">
+                    <span id="featureSizeValue">50 nm</span>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Process Temperature (°C)</label>
+                    <input type="range" class="control-input" id="temperature" min="20" max="200" value="100">
+                    <span id="temperatureValue">100°C</span>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Pressure (mTorr)</label>
+                    <input type="range" class="control-input" id="pressure" min="1" max="100" value="10">
+                    <span id="pressureValue">10 mTorr</span>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Process Time (s)</label>
+                    <input type="range" class="control-input" id="processTime" min="10" max="300" value="60">
+                    <span id="processTimeValue">60 s</span>
+                </div>
+            </div>
+
+            <button class="run-button" onclick="runSimulation()">
+                <i class="fas fa-play"></i> Run Virtual Metrology Prediction
+            </button>
+
+            <!-- Metrics -->
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value" id="cdPrediction">--</div>
+                    <div class="metric-label">CD Prediction (nm)</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="overlayPrediction">--</div>
+                    <div class="metric-label">Overlay Prediction (nm)</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="confidence">--</div>
+                    <div class="metric-label">Confidence (%)</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="uncertainty">--</div>
+                    <div class="metric-label">Uncertainty (±nm)</div>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="chart-container">
+                <div id="predictionChart" style="height: 400px;"></div>
+            </div>
+
+            <div class="chart-container">
+                <div id="featureImportanceChart" style="height: 300px;"></div>
+            </div>
+
+            <div class="chart-container">
+                <div id="conformalPredictionChart" style="height: 400px;"></div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        // Update slider values
+        document.getElementById('featureSize').addEventListener('input', function() {
+            document.getElementById('featureSizeValue').textContent = this.value + ' nm';
+        });
+
+        document.getElementById('temperature').addEventListener('input', function() {
+            document.getElementById('temperatureValue').textContent = this.value + '°C';
+        });
+
+        document.getElementById('pressure').addEventListener('input', function() {
+            document.getElementById('pressureValue').textContent = this.value + ' mTorr';
+        });
+
+        document.getElementById('processTime').addEventListener('input', function() {
+            document.getElementById('processTimeValue').textContent = this.value + ' s';
+        });
+
+        function runSimulation() {
+            const button = document.querySelector('.run-button');
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Running Simulation...';
+
+            // Simulate processing time
+            setTimeout(() => {
+                // Generate realistic predictions based on inputs
+                const featureSize = parseFloat(document.getElementById('featureSize').value);
+                const temperature = parseFloat(document.getElementById('temperature').value);
+                const pressure = parseFloat(document.getElementById('pressure').value);
+                const processTime = parseFloat(document.getElementById('processTime').value);
+
+                // Simulate CD prediction (inversely related to feature size)
+                const cdPrediction = 45 + (100 - featureSize) * 0.3 + (Math.random() - 0.5) * 2;
+                
+                // Simulate overlay prediction (affected by temperature and pressure)
+                const overlayPrediction = 5 + (temperature - 100) * 0.02 + (pressure - 10) * 0.01 + (Math.random() - 0.5) * 0.5;
+                
+                // Simulate confidence (higher for more stable conditions)
+                const confidence = 85 + (100 - Math.abs(temperature - 100)) * 0.1 + (100 - Math.abs(pressure - 10)) * 0.05;
+                
+                // Simulate uncertainty (conformal prediction interval)
+                const uncertainty = 1.5 + Math.random() * 0.5;
+
+                // Update metrics
+                document.getElementById('cdPrediction').textContent = cdPrediction.toFixed(1);
+                document.getElementById('overlayPrediction').textContent = overlayPrediction.toFixed(2);
+                document.getElementById('confidence').textContent = Math.min(confidence, 99.5).toFixed(1);
+                document.getElementById('uncertainty').textContent = uncertainty.toFixed(1);
+
+                // Update charts
+                updatePredictionChart(cdPrediction, overlayPrediction);
+                updateFeatureImportanceChart();
+                updateConformalPredictionChart(cdPrediction, uncertainty);
+
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-play"></i> Run Virtual Metrology Prediction';
+            }, 2000);
+        }
+
+        function updatePredictionChart(cdPred, overlayPred) {
+            const data = [
+                {
+                    x: ['CD Prediction', 'Overlay Prediction'],
+                    y: [cdPred, overlayPred],
+                    type: 'bar',
+                    marker: { color: '#667eea' },
+                    name: 'Predicted Values'
+                }
+            ];
+
+            const layout = {
+                title: 'Virtual Metrology Predictions',
+                xaxis: { title: 'Metrics' },
+                yaxis: { title: 'Value (nm)' },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' }
+            };
+
+            Plotly.newPlot('predictionChart', data, layout);
+        }
+
+        function updateFeatureImportanceChart() {
+            const features = ['Feature Size', 'Temperature', 'Pressure', 'Process Time', 'Wafer Position', 'Previous CD'];
+            const importance = [0.35, 0.25, 0.15, 0.12, 0.08, 0.05];
+
+            const data = [{
+                x: importance,
+                y: features,
+                type: 'bar',
+                orientation: 'h',
+                marker: { color: '#667eea' }
+            }];
+
+            const layout = {
+                title: 'Feature Importance (CatBoost Model)',
+                xaxis: { title: 'Importance Score' },
+                yaxis: { title: 'Features' },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' }
+            };
+
+            Plotly.newPlot('featureImportanceChart', data, layout);
+        }
+
+        function updateConformalPredictionChart(prediction, uncertainty) {
+            const x = Array.from({length: 50}, (_, i) => i);
+            const y = Array.from({length: 50}, (_, i) => prediction + (Math.random() - 0.5) * uncertainty * 2);
+            const upperBound = Array.from({length: 50}, () => prediction + uncertainty);
+            const lowerBound = Array.from({length: 50}, () => prediction - uncertainty);
+
+            const data = [
+                {
+                    x: x,
+                    y: y,
+                    type: 'scatter',
+                    mode: 'markers',
+                    name: 'Predictions',
+                    marker: { color: '#667eea', size: 6 }
+                },
+                {
+                    x: x,
+                    y: upperBound,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Upper Bound',
+                    line: { color: '#ff6b6b', dash: 'dash' }
+                },
+                {
+                    x: x,
+                    y: lowerBound,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Lower Bound',
+                    line: { color: '#ff6b6b', dash: 'dash' }
+                }
+            ];
+
+            const layout = {
+                title: 'Conformal Prediction Intervals',
+                xaxis: { title: 'Sample Number' },
+                yaxis: { title: 'CD Value (nm)' },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' }
+            };
+
+            Plotly.newPlot('conformalPredictionChart', data, layout);
+        }
+
+        // Initialize charts on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updatePredictionChart(0, 0);
+            updateFeatureImportanceChart();
+            updateConformalPredictionChart(0, 0);
+        });
+    </script>
+</body>
+</html>

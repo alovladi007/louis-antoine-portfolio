@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pose Tracking Demo - AR/VR Object Recognition</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0a0a0a 0%, #1a0a1a 100%); color: #e0e0e0; min-height: 100vh; }
+        .nav-bar { background: rgba(10, 10, 10, 0.95); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(236, 72, 153, 0.3); position: sticky; top: 0; z-index: 100; backdrop-filter: blur(10px); }
+        .nav-title { color: #ec4899; font-weight: 600; font-size: 1.2rem; }
+        .nav-btn { background: linear-gradient(135deg, #ec4899, #be185d); color: white; padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; transition: all 0.3s ease; }
+        .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(236, 72, 153, 0.4); }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .hero { text-align: center; padding: 3rem 0; background: linear-gradient(135deg, rgba(236, 72, 153, 0.1), rgba(190, 24, 93, 0.1)); border-radius: 20px; margin-bottom: 2rem; border: 1px solid rgba(236, 72, 153, 0.2); }
+        .hero h1 { font-size: 2.5rem; background: linear-gradient(135deg, #ec4899, #be185d); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 1rem; }
+        .hero p { color: #a0a0a0; font-size: 1.1rem; max-width: 700px; margin: 0 auto; }
+        .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
+        @media (max-width: 900px) { .tool-grid { grid-template-columns: 1fr; } }
+        .panel { background: rgba(20, 20, 30, 0.8); border: 1px solid rgba(236, 72, 153, 0.3); border-radius: 15px; padding: 1.5rem; }
+        .panel h3 { color: #ec4899; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+        .pose-viewport { background: #000; border-radius: 10px; height: 400px; position: relative; }
+        .pose-viewport canvas { width: 100%; height: 100%; }
+        .joint-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .joint-table th, .joint-table td { padding: 0.5rem; text-align: left; border-bottom: 1px solid rgba(236, 72, 153, 0.1); }
+        .joint-table th { color: #ec4899; }
+        .joint-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 0.5rem; }
+        .control-group { margin-bottom: 1rem; }
+        .control-group label { display: block; color: #a0a0a0; margin-bottom: 0.5rem; font-size: 0.9rem; }
+        .control-group select { width: 100%; padding: 0.5rem; background: rgba(236, 72, 153, 0.1); border: 1px solid rgba(236, 72, 153, 0.3); border-radius: 8px; color: #e0e0e0; }
+        .btn { background: linear-gradient(135deg, #ec4899, #be185d); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; margin-right: 0.5rem; margin-bottom: 0.5rem; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(236, 72, 153, 0.4); }
+        .btn-secondary { background: rgba(236, 72, 153, 0.2); }
+        .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+        .metric-card { background: rgba(236, 72, 153, 0.1); padding: 1rem; border-radius: 10px; text-align: center; border: 1px solid rgba(236, 72, 153, 0.2); }
+        .metric-value { font-size: 1.5rem; font-weight: 700; color: #ec4899; }
+        .metric-label { font-size: 0.8rem; color: #a0a0a0; margin-top: 0.25rem; }
+        .pose-action { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
+        .action-standing { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+        .action-walking { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+        .action-gesture { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+    </style>
+</head>
+<body>
+    <nav class="nav-bar">
+        <div class="nav-title"><i class="fas fa-running"></i> Pose Tracking</div>
+        <a href="ar-vr-object-recognition-suite.html" class="nav-btn"><i class="fas fa-arrow-left"></i> Back to Suite</a>
+    </nav>
+    <div class="container">
+        <div class="hero">
+            <h1><i class="fas fa-running"></i> Real-Time Pose Estimation</h1>
+            <p>33-point body pose tracking with action recognition, gesture detection, and skeleton visualization for AR/VR applications</p>
+        </div>
+        <div class="metrics-grid">
+            <div class="metric-card"><div class="metric-value">33</div><div class="metric-label">Keypoints</div></div>
+            <div class="metric-card"><div class="metric-value" id="trackConf">94.7%</div><div class="metric-label">Tracking Confidence</div></div>
+            <div class="metric-card"><div class="metric-value">30 FPS</div><div class="metric-label">Processing Rate</div></div>
+            <div class="metric-card"><div class="metric-value"><span class="pose-action action-standing">Standing</span></div><div class="metric-label">Current Action</div></div>
+        </div>
+        <div class="tool-grid">
+            <div class="panel">
+                <h3><i class="fas fa-video"></i> Pose Visualization</h3>
+                <div class="pose-viewport">
+                    <canvas id="poseCanvas"></canvas>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <button class="btn" onclick="startTracking()"><i class="fas fa-play"></i> Start Tracking</button>
+                    <button class="btn btn-secondary" onclick="toggleSkeleton()"><i class="fas fa-project-diagram"></i> Skeleton</button>
+                    <button class="btn btn-secondary" onclick="togglePoints()"><i class="fas fa-circle"></i> Keypoints</button>
+                    <button class="btn btn-secondary" onclick="recordPose()"><i class="fas fa-record-vinyl"></i> Record</button>
+                </div>
+            </div>
+            <div class="panel">
+                <h3><i class="fas fa-sliders-h"></i> Tracking Configuration</h3>
+                <div class="control-group">
+                    <label>Model Complexity</label>
+                    <select id="modelComplexity">
+                        <option value="lite">Lite (Fast)</option>
+                        <option value="full" selected>Full (Balanced)</option>
+                        <option value="heavy">Heavy (Accurate)</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Detection Mode</label>
+                    <select id="detectionMode">
+                        <option value="single">Single Person</option>
+                        <option value="multi">Multi-Person</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Smoothing Factor: <span id="smoothVal">0.5</span></label>
+                    <input type="range" id="smoothing" min="0" max="1" step="0.1" value="0.5" oninput="document.getElementById('smoothVal').textContent=this.value">
+                </div>
+                <h3 style="margin-top: 1.5rem;"><i class="fas fa-hand-paper"></i> Gesture Recognition</h3>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <span class="pose-action action-gesture">Wave</span>
+                    <span class="pose-action action-gesture">Point</span>
+                    <span class="pose-action action-gesture">Thumbs Up</span>
+                    <span class="pose-action action-gesture">OK</span>
+                </div>
+            </div>
+        </div>
+        <div class="tool-grid">
+            <div class="panel">
+                <h3><i class="fas fa-bone"></i> Joint Positions</h3>
+                <table class="joint-table">
+                    <thead><tr><th>Joint</th><th>X</th><th>Y</th><th>Z</th><th>Conf</th></tr></thead>
+                    <tbody id="jointTable">
+                        <tr><td><span class="joint-dot" style="background:#ef4444;"></span>Nose</td><td>0.512</td><td>0.234</td><td>0.021</td><td>0.98</td></tr>
+                        <tr><td><span class="joint-dot" style="background:#3b82f6;"></span>L Shoulder</td><td>0.623</td><td>0.412</td><td>0.034</td><td>0.96</td></tr>
+                        <tr><td><span class="joint-dot" style="background:#3b82f6;"></span>R Shoulder</td><td>0.401</td><td>0.418</td><td>0.028</td><td>0.95</td></tr>
+                        <tr><td><span class="joint-dot" style="background:#22c55e;"></span>L Elbow</td><td>0.712</td><td>0.534</td><td>0.045</td><td>0.94</td></tr>
+                        <tr><td><span class="joint-dot" style="background:#22c55e;"></span>R Elbow</td><td>0.312</td><td>0.528</td><td>0.041</td><td>0.93</td></tr>
+                        <tr><td><span class="joint-dot" style="background:#f59e0b;"></span>L Wrist</td><td>0.789</td><td>0.623</td><td>0.058</td><td>0.91</td></tr>
+                        <tr><td><span class="joint-dot" style="background:#f59e0b;"></span>R Wrist</td><td>0.234</td><td>0.618</td><td>0.052</td><td>0.89</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="panel">
+                <h3><i class="fas fa-chart-line"></i> Pose Trajectory</h3>
+                <div id="trajectoryChart" style="height: 280px;"></div>
+            </div>
+        </div>
+    </div>
+    <script>
+        let tracking = false;
+        let showSkeleton = true;
+        let showPoints = true;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initCanvas();
+            initTrajectoryChart();
+        });
+
+        function initCanvas() {
+            const canvas = document.getElementById('poseCanvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.offsetWidth;
+            canvas.height = 400;
+            drawPose(ctx, canvas.width, canvas.height);
+        }
+
+        function drawPose(ctx, w, h) {
+            ctx.fillStyle = '#0a0a0a';
+            ctx.fillRect(0, 0, w, h);
+
+            // Silhouette background
+            ctx.fillStyle = 'rgba(236, 72, 153, 0.1)';
+            ctx.beginPath();
+            ctx.ellipse(w/2, h*0.3, 40, 50, 0, 0, Math.PI*2);
+            ctx.fill();
+            ctx.fillRect(w/2-30, h*0.35, 60, 120);
+
+            const keypoints = {
+                nose: [w/2, h*0.2],
+                leftShoulder: [w/2+50, h*0.35],
+                rightShoulder: [w/2-50, h*0.35],
+                leftElbow: [w/2+80, h*0.5],
+                rightElbow: [w/2-80, h*0.5],
+                leftWrist: [w/2+100, h*0.65],
+                rightWrist: [w/2-100, h*0.65],
+                leftHip: [w/2+30, h*0.55],
+                rightHip: [w/2-30, h*0.55],
+                leftKnee: [w/2+35, h*0.75],
+                rightKnee: [w/2-35, h*0.75],
+                leftAnkle: [w/2+40, h*0.92],
+                rightAnkle: [w/2-40, h*0.92]
+            };
+
+            if (showSkeleton) {
+                ctx.strokeStyle = '#ec4899';
+                ctx.lineWidth = 3;
+                // Torso
+                drawLine(ctx, keypoints.leftShoulder, keypoints.rightShoulder);
+                drawLine(ctx, keypoints.leftShoulder, keypoints.leftHip);
+                drawLine(ctx, keypoints.rightShoulder, keypoints.rightHip);
+                drawLine(ctx, keypoints.leftHip, keypoints.rightHip);
+                // Arms
+                drawLine(ctx, keypoints.leftShoulder, keypoints.leftElbow);
+                drawLine(ctx, keypoints.leftElbow, keypoints.leftWrist);
+                drawLine(ctx, keypoints.rightShoulder, keypoints.rightElbow);
+                drawLine(ctx, keypoints.rightElbow, keypoints.rightWrist);
+                // Legs
+                drawLine(ctx, keypoints.leftHip, keypoints.leftKnee);
+                drawLine(ctx, keypoints.leftKnee, keypoints.leftAnkle);
+                drawLine(ctx, keypoints.rightHip, keypoints.rightKnee);
+                drawLine(ctx, keypoints.rightKnee, keypoints.rightAnkle);
+                // Head
+                drawLine(ctx, keypoints.nose, [(keypoints.leftShoulder[0]+keypoints.rightShoulder[0])/2, (keypoints.leftShoulder[1]+keypoints.rightShoulder[1])/2]);
+            }
+
+            if (showPoints) {
+                Object.values(keypoints).forEach((pt, i) => {
+                    ctx.fillStyle = ['#ef4444', '#3b82f6', '#3b82f6', '#22c55e', '#22c55e', '#f59e0b', '#f59e0b', '#8b5cf6', '#8b5cf6', '#06b6d4', '#06b6d4', '#ec4899', '#ec4899'][i];
+                    ctx.beginPath();
+                    ctx.arc(pt[0], pt[1], 6, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+        }
+
+        function drawLine(ctx, p1, p2) {
+            ctx.beginPath();
+            ctx.moveTo(p1[0], p1[1]);
+            ctx.lineTo(p2[0], p2[1]);
+            ctx.stroke();
+        }
+
+        function initTrajectoryChart() {
+            const frames = Array.from({length: 100}, (_, i) => i);
+            const x = frames.map(f => 0.5 + Math.sin(f * 0.1) * 0.1);
+            const y = frames.map(f => 0.3 + Math.cos(f * 0.15) * 0.05);
+
+            Plotly.newPlot('trajectoryChart', [
+                { x: frames, y: x, name: 'X Position', line: { color: '#ec4899' } },
+                { x: frames, y: y, name: 'Y Position', line: { color: '#3b82f6' } }
+            ], {
+                paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+                font: { color: '#a0a0a0' },
+                xaxis: { title: 'Frame', gridcolor: 'rgba(255,255,255,0.1)' },
+                yaxis: { title: 'Position', gridcolor: 'rgba(255,255,255,0.1)' },
+                margin: { t: 20, r: 20, b: 50, l: 50 },
+                legend: { orientation: 'h', y: 1.1 }
+            }, { responsive: true });
+        }
+
+        function startTracking() {
+            tracking = !tracking;
+            document.getElementById('trackConf').textContent = tracking ? '94.7%' : '--';
+            alert(tracking ? 'Pose tracking started' : 'Pose tracking stopped');
+        }
+
+        function toggleSkeleton() {
+            showSkeleton = !showSkeleton;
+            initCanvas();
+        }
+
+        function togglePoints() {
+            showPoints = !showPoints;
+            initCanvas();
+        }
+
+        function recordPose() {
+            alert('Recording pose sequence...\nPress again to stop');
+        }
+    </script>
+</body>
+</html>
