@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INS Simulator - AURORA-NAV</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); min-height: 100vh; color: #e2e8f0; }
+        .navbar { background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid #0ea5e9; padding: 1rem 2rem; position: fixed; width: 100%; top: 0; z-index: 1000; }
+        .navbar-content { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 1.5rem; font-weight: 700; background: linear-gradient(135deg, #0ea5e9, #38bdf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-decoration: none; }
+        .back-btn { display: flex; align-items: center; gap: 0.5rem; color: #94a3b8; text-decoration: none; }
+        .back-btn:hover { color: #0ea5e9; }
+        .main-content { padding-top: 80px; min-height: 100vh; }
+        .hero-section { padding: 3rem 2rem; text-align: center; background: linear-gradient(180deg, rgba(14, 165, 233, 0.1) 0%, transparent 100%); }
+        .hero-section h1 { font-size: 2.5rem; margin-bottom: 1rem; background: linear-gradient(135deg, #0ea5e9, #38bdf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero-section p { font-size: 1.1rem; color: #94a3b8; max-width: 800px; margin: 0 auto; }
+        .demo-container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .tabs { display: flex; gap: 0.5rem; margin-bottom: 2rem; flex-wrap: wrap; justify-content: center; }
+        .tab-btn { padding: 0.75rem 1.5rem; background: rgba(30, 41, 59, 0.8); border: 1px solid #334155; border-radius: 8px; color: #94a3b8; cursor: pointer; }
+        .tab-btn:hover { border-color: #0ea5e9; color: #e2e8f0; }
+        .tab-btn.active { background: linear-gradient(135deg, #0ea5e9, #0284c7); border-color: #0ea5e9; color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .panel-grid { display: grid; grid-template-columns: 280px 1fr; gap: 2rem; }
+        @media (max-width: 968px) { .panel-grid { grid-template-columns: 1fr; } }
+        .control-panel { background: rgba(30, 41, 59, 0.8); border: 1px solid #334155; border-radius: 12px; padding: 1.5rem; }
+        .control-panel h3 { color: #0ea5e9; margin-bottom: 1rem; font-size: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+        .control-group { margin-bottom: 1.25rem; }
+        .control-group label { display: block; color: #94a3b8; margin-bottom: 0.5rem; font-size: 0.85rem; }
+        .control-group select, .control-group input { width: 100%; padding: 0.5rem; background: #1e293b; border: 1px solid #334155; border-radius: 6px; color: #e2e8f0; }
+        .control-group input[type="range"] { width: 100%; accent-color: #0ea5e9; }
+        .value-display { text-align: right; color: #0ea5e9; font-size: 0.85rem; margin-top: 0.25rem; }
+        .chart-container { background: rgba(30, 41, 59, 0.8); border: 1px solid #334155; border-radius: 12px; padding: 1.5rem; }
+        .chart-title { color: #e2e8f0; font-size: 1.1rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+        .chart-title i { color: #0ea5e9; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+        .stat-card { background: rgba(14, 165, 233, 0.1); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 8px; padding: 1rem; text-align: center; }
+        .stat-card .value { font-size: 1.1rem; font-weight: 600; color: #0ea5e9; }
+        .stat-card .label { font-size: 0.7rem; color: #94a3b8; margin-top: 0.25rem; }
+        .btn-primary { width: 100%; padding: 0.75rem; background: linear-gradient(135deg, #0ea5e9, #0284c7); border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(14, 165, 233, 0.4); }
+        .dual-chart { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        @media (max-width: 768px) { .dual-chart { grid-template-columns: 1fr; } }
+        .info-box { background: rgba(14, 165, 233, 0.1); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 8px; padding: 1rem; margin-top: 1rem; }
+        .info-box h4 { color: #0ea5e9; margin-bottom: 0.5rem; font-size: 0.9rem; }
+        .info-box p { color: #94a3b8; font-size: 0.85rem; line-height: 1.5; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-content">
+            <a href="aurora-nav-project.html" class="logo"><i class="fas fa-submarine"></i> AURORA-NAV</a>
+            <a href="aurora-nav-project.html" class="back-btn"><i class="fas fa-arrow-left"></i> Back to Project</a>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <section class="hero-section">
+            <h1><i class="fas fa-compass"></i> Inertial Navigation Simulator</h1>
+            <p>High-fidelity strapdown INS simulation with accelerometer and gyroscope error modeling for underwater vehicle navigation.</p>
+        </section>
+
+        <div class="demo-container">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('mechanization')">INS Mechanization</button>
+                <button class="tab-btn" onclick="switchTab('errors')">Error Modeling</button>
+                <button class="tab-btn" onclick="switchTab('alignment')">Initial Alignment</button>
+                <button class="tab-btn" onclick="switchTab('aided')">Aided Navigation</button>
+            </div>
+
+            <div id="mechanization" class="tab-content active">
+                <div class="panel-grid">
+                    <div class="control-panel">
+                        <h3><i class="fas fa-cog"></i> INS Configuration</h3>
+                        <div class="control-group">
+                            <label>IMU Grade</label>
+                            <select id="ins-grade" onchange="updateINS()">
+                                <option value="tactical">Tactical Grade</option>
+                                <option value="navigation" selected>Navigation Grade</option>
+                                <option value="strategic">Strategic Grade</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label>Update Rate (Hz)</label>
+                            <select id="ins-rate" onchange="updateINS()">
+                                <option value="100">100 Hz</option>
+                                <option value="200" selected>200 Hz</option>
+                                <option value="400">400 Hz</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label>Simulation Duration (s)</label>
+                            <input type="range" id="ins-duration" min="60" max="600" value="300" onchange="updateINS()">
+                            <div class="value-display"><span id="ins-duration-val">300</span> s</div>
+                        </div>
+                        <div class="control-group">
+                            <label>Vehicle Speed (m/s)</label>
+                            <input type="range" id="ins-speed" min="1" max="10" value="3" step="0.5" onchange="updateINS()">
+                            <div class="value-display"><span id="ins-speed-val">3.0</span> m/s</div>
+                        </div>
+                        <button class="btn-primary" onclick="runINS()"><i class="fas fa-play"></i> Run Simulation</button>
+                        <div class="info-box">
+                            <h4><i class="fas fa-info-circle"></i> IMU Specs</h4>
+                            <p id="ins-specs">Gyro bias: 0.01 °/hr<br>Accel bias: 10 μg<br>ARW: 0.003 °/√hr</p>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title"><i class="fas fa-route"></i> INS Navigation Solution</div>
+                        <div class="dual-chart">
+                            <div id="ins-trajectory" style="height: 300px;"></div>
+                            <div id="ins-error" style="height: 300px;"></div>
+                        </div>
+                        <div class="stats-grid">
+                            <div class="stat-card"><div class="value" id="ins-pos-err">12.5</div><div class="label">Position Error (m)</div></div>
+                            <div class="stat-card"><div class="value" id="ins-vel-err">0.05</div><div class="label">Velocity Error (m/s)</div></div>
+                            <div class="stat-card"><div class="value" id="ins-att-err">0.02</div><div class="label">Attitude Error (°)</div></div>
+                            <div class="stat-card"><div class="value" id="ins-drift">0.5</div><div class="label">Drift Rate (m/min)</div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="errors" class="tab-content">
+                <div class="panel-grid">
+                    <div class="control-panel">
+                        <h3><i class="fas fa-chart-line"></i> Error Parameters</h3>
+                        <div class="control-group">
+                            <label>Gyro Bias Instability (°/hr)</label>
+                            <input type="range" id="err-gyro-bias" min="0.001" max="1" value="0.01" step="0.001" onchange="updateErrors()">
+                            <div class="value-display"><span id="err-gyro-bias-val">0.010</span></div>
+                        </div>
+                        <div class="control-group">
+                            <label>Accel Bias Instability (μg)</label>
+                            <input type="range" id="err-accel-bias" min="1" max="100" value="10" onchange="updateErrors()">
+                            <div class="value-display"><span id="err-accel-bias-val">10</span></div>
+                        </div>
+                        <div class="control-group">
+                            <label>ARW (°/√hr)</label>
+                            <input type="range" id="err-arw" min="0.001" max="0.1" value="0.003" step="0.001" onchange="updateErrors()">
+                            <div class="value-display"><span id="err-arw-val">0.003</span></div>
+                        </div>
+                        <div class="control-group">
+                            <label>VRW (m/s/√hr)</label>
+                            <input type="range" id="err-vrw" min="0.01" max="1" value="0.03" step="0.01" onchange="updateErrors()">
+                            <div class="value-display"><span id="err-vrw-val">0.03</span></div>
+                        </div>
+                        <button class="btn-primary" onclick="updateErrors()"><i class="fas fa-calculator"></i> Analyze Errors</button>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title"><i class="fas fa-wave-square"></i> Allan Variance Analysis</div>
+                        <div id="allan-chart" style="height: 400px;"></div>
+                        <div class="stats-grid">
+                            <div class="stat-card"><div class="value" id="err-pos-1hr">150</div><div class="label">1hr Pos Err (m)</div></div>
+                            <div class="stat-card"><div class="value" id="err-pos-schuler">2.5</div><div class="label">Schuler Period (m)</div></div>
+                            <div class="stat-card"><div class="value" id="err-heading">0.1</div><div class="label">Heading Err (°)</div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="alignment" class="tab-content">
+                <div class="panel-grid">
+                    <div class="control-panel">
+                        <h3><i class="fas fa-crosshairs"></i> Alignment Setup</h3>
+                        <div class="control-group">
+                            <label>Alignment Mode</label>
+                            <select id="align-mode" onchange="updateAlignment()">
+                                <option value="coarse">Coarse (Leveling)</option>
+                                <option value="fine" selected>Fine (Gyrocompassing)</option>
+                                <option value="transfer">Transfer Alignment</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label>Latitude (°)</label>
+                            <input type="range" id="align-lat" min="0" max="70" value="45" onchange="updateAlignment()">
+                            <div class="value-display"><span id="align-lat-val">45</span>°N</div>
+                        </div>
+                        <div class="control-group">
+                            <label>Alignment Duration (min)</label>
+                            <input type="range" id="align-time" min="5" max="30" value="15" onchange="updateAlignment()">
+                            <div class="value-display"><span id="align-time-val">15</span> min</div>
+                        </div>
+                        <button class="btn-primary" onclick="runAlignment()"><i class="fas fa-sync"></i> Start Alignment</button>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title"><i class="fas fa-level-up-alt"></i> Alignment Convergence</div>
+                        <div id="alignment-chart" style="height: 400px;"></div>
+                        <div class="stats-grid">
+                            <div class="stat-card"><div class="value" id="align-roll">0.01</div><div class="label">Roll Error (°)</div></div>
+                            <div class="stat-card"><div class="value" id="align-pitch">0.01</div><div class="label">Pitch Error (°)</div></div>
+                            <div class="stat-card"><div class="value" id="align-heading">0.05</div><div class="label">Heading Error (°)</div></div>
+                            <div class="stat-card"><div class="value" id="align-status">Complete</div><div class="label">Status</div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="aided" class="tab-content">
+                <div class="panel-grid">
+                    <div class="control-panel">
+                        <h3><i class="fas fa-satellite"></i> Aiding Sources</h3>
+                        <div class="control-group">
+                            <label>DVL Aiding</label>
+                            <select id="aid-dvl" onchange="updateAided()">
+                                <option value="off">Disabled</option>
+                                <option value="on" selected>Enabled (0.3% accuracy)</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label>Depth Sensor</label>
+                            <select id="aid-depth" onchange="updateAided()">
+                                <option value="off">Disabled</option>
+                                <option value="on" selected>Enabled (±0.1 m)</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label>USBL Updates</label>
+                            <select id="aid-usbl" onchange="updateAided()">
+                                <option value="off" selected>Disabled</option>
+                                <option value="low">Low Rate (0.1 Hz)</option>
+                                <option value="high">High Rate (1 Hz)</option>
+                            </select>
+                        </div>
+                        <button class="btn-primary" onclick="updateAided()"><i class="fas fa-chart-area"></i> Compare Performance</button>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title"><i class="fas fa-balance-scale"></i> INS vs Aided Navigation</div>
+                        <div id="aided-chart" style="height: 400px;"></div>
+                        <div class="stats-grid">
+                            <div class="stat-card"><div class="value" id="aid-pure">150</div><div class="label">Pure INS (m)</div></div>
+                            <div class="stat-card"><div class="value" id="aid-dvl-err">5.2</div><div class="label">INS+DVL (m)</div></div>
+                            <div class="stat-card"><div class="value" id="aid-full">0.8</div><div class="label">Full Aided (m)</div></div>
+                            <div class="stat-card"><div class="value" id="aid-improve">99%</div><div class="label">Improvement</div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+            if (tabId === 'mechanization') updateINS();
+            else if (tabId === 'errors') updateErrors();
+            else if (tabId === 'alignment') updateAlignment();
+            else if (tabId === 'aided') updateAided();
+        }
+
+        function updateINS() {
+            const duration = parseFloat(document.getElementById('ins-duration').value);
+            const speed = parseFloat(document.getElementById('ins-speed').value);
+            document.getElementById('ins-duration-val').textContent = duration;
+            document.getElementById('ins-speed-val').textContent = speed.toFixed(1);
+            runINS();
+        }
+
+        function runINS() {
+            const duration = parseFloat(document.getElementById('ins-duration').value);
+            const speed = parseFloat(document.getElementById('ins-speed').value);
+            const t = [], trueX = [], trueY = [], insX = [], insY = [], errTime = [], posErr = [];
+            let drift = 0.5;
+
+            for (let i = 0; i <= duration; i += 5) {
+                t.push(i);
+                const angle = i * 0.01;
+                const tx = speed * i * Math.cos(angle) * 0.1;
+                const ty = speed * i * Math.sin(angle) * 0.1;
+                trueX.push(tx); trueY.push(ty);
+                const err = drift * i / 60 + Math.random() * 2;
+                insX.push(tx + err * Math.cos(angle + 0.5));
+                insY.push(ty + err * Math.sin(angle + 0.5));
+                errTime.push(i);
+                posErr.push(err);
+            }
+
+            Plotly.newPlot('ins-trajectory', [{
+                x: trueX, y: trueY, mode: 'lines', name: 'True', line: { color: '#0ea5e9', width: 2 }
+            }, {
+                x: insX, y: insY, mode: 'lines', name: 'INS', line: { color: '#ef4444', width: 2, dash: 'dash' }
+            }], {
+                paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: '#94a3b8' },
+                xaxis: { title: 'East (m)', gridcolor: '#334155' }, yaxis: { title: 'North (m)', gridcolor: '#334155', scaleanchor: 'x' },
+                legend: { x: 0.02, y: 0.98 }, margin: { t: 10, r: 10, b: 40, l: 50 }
+            }, { responsive: true });
+
+            Plotly.newPlot('ins-error', [{
+                x: errTime, y: posErr, type: 'scatter', mode: 'lines', line: { color: '#0ea5e9', width: 2 }, fill: 'tozeroy', fillcolor: 'rgba(14, 165, 233, 0.2)'
+            }], {
+                paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: '#94a3b8' },
+                xaxis: { title: 'Time (s)', gridcolor: '#334155' }, yaxis: { title: 'Position Error (m)', gridcolor: '#334155' },
+                margin: { t: 10, r: 10, b: 40, l: 50 }
+            }, { responsive: true });
+
+            document.getElementById('ins-pos-err').textContent = posErr[posErr.length - 1].toFixed(1);
+            document.getElementById('ins-drift').textContent = drift.toFixed(1);
+        }
+
+        function updateErrors() {
+            const gyroBias = parseFloat(document.getElementById('err-gyro-bias').value);
+            const accelBias = parseFloat(document.getElementById('err-accel-bias').value);
+            const arw = parseFloat(document.getElementById('err-arw').value);
+            document.getElementById('err-gyro-bias-val').textContent = gyroBias.toFixed(3);
+            document.getElementById('err-accel-bias-val').textContent = accelBias;
+            document.getElementById('err-arw-val').textContent = arw.toFixed(3);
+
+            const tau = [], adev = [];
+            for (let t = 0.01; t <= 1000; t *= 1.5) {
+                tau.push(t);
+                const white = arw / Math.sqrt(t);
+                const bias = gyroBias * Math.sqrt(t / 3);
+                adev.push(Math.sqrt(white * white + bias * bias));
+            }
+
+            Plotly.newPlot('allan-chart', [{
+                x: tau, y: adev, type: 'scatter', mode: 'lines+markers', line: { color: '#0ea5e9', width: 2 }, marker: { size: 6 }
+            }], {
+                paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: '#94a3b8' },
+                xaxis: { title: 'Tau (s)', type: 'log', gridcolor: '#334155' }, yaxis: { title: 'Allan Deviation (°/hr)', type: 'log', gridcolor: '#334155' },
+                margin: { t: 20, r: 20, b: 50, l: 60 }
+            }, { responsive: true });
+        }
+
+        function updateAlignment() {
+            const lat = parseFloat(document.getElementById('align-lat').value);
+            const time = parseFloat(document.getElementById('align-time').value);
+            document.getElementById('align-lat-val').textContent = lat;
+            document.getElementById('align-time-val').textContent = time;
+            runAlignment();
+        }
+
+        function runAlignment() {
+            const time = parseFloat(document.getElementById('align-time').value);
+            const t = [], roll = [], pitch = [], heading = [];
+            for (let i = 0; i <= time * 60; i += 10) {
+                t.push(i / 60);
+                roll.push(5 * Math.exp(-i / 30) + 0.01);
+                pitch.push(5 * Math.exp(-i / 30) + 0.01);
+                heading.push(10 * Math.exp(-i / 120) + 0.05);
+            }
+
+            Plotly.newPlot('alignment-chart', [
+                { x: t, y: roll, name: 'Roll', line: { color: '#0ea5e9' } },
+                { x: t, y: pitch, name: 'Pitch', line: { color: '#38bdf8' } },
+                { x: t, y: heading, name: 'Heading', line: { color: '#f59e0b' } }
+            ], {
+                paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: '#94a3b8' },
+                xaxis: { title: 'Time (min)', gridcolor: '#334155' }, yaxis: { title: 'Error (°)', type: 'log', gridcolor: '#334155' },
+                legend: { x: 0.7, y: 0.95 }, margin: { t: 20, r: 20, b: 50, l: 60 }
+            }, { responsive: true });
+
+            document.getElementById('align-roll').textContent = roll[roll.length - 1].toFixed(2);
+            document.getElementById('align-pitch').textContent = pitch[pitch.length - 1].toFixed(2);
+            document.getElementById('align-heading').textContent = heading[heading.length - 1].toFixed(2);
+        }
+
+        function updateAided() {
+            const t = [], pure = [], dvl = [], full = [];
+            for (let i = 0; i <= 60; i++) {
+                t.push(i);
+                pure.push(0.5 * i + Math.random() * 5);
+                dvl.push(5 + Math.random() * 2 + 0.02 * i);
+                full.push(0.8 + Math.random() * 0.3);
+            }
+
+            Plotly.newPlot('aided-chart', [
+                { x: t, y: pure, name: 'Pure INS', line: { color: '#ef4444', width: 2 } },
+                { x: t, y: dvl, name: 'INS+DVL', line: { color: '#f59e0b', width: 2 } },
+                { x: t, y: full, name: 'Full Aided', line: { color: '#0ea5e9', width: 2 } }
+            ], {
+                paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: '#94a3b8' },
+                xaxis: { title: 'Time (min)', gridcolor: '#334155' }, yaxis: { title: 'Position Error (m)', gridcolor: '#334155' },
+                legend: { x: 0.02, y: 0.98 }, margin: { t: 20, r: 20, b: 50, l: 60 }
+            }, { responsive: true });
+
+            document.getElementById('aid-pure').textContent = pure[pure.length - 1].toFixed(0);
+            document.getElementById('aid-dvl-err').textContent = dvl[dvl.length - 1].toFixed(1);
+            document.getElementById('aid-full').textContent = full[full.length - 1].toFixed(1);
+        }
+
+        updateINS();
+    </script>
+</body>
+</html>

@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LUMA AI Model - LUMA IP</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+            min-height: 100vh;
+            color: #e2e8f0;
+        }
+
+        .top-nav {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-brand {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #8b5cf6, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .nav-links a {
+            color: #94a3b8;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            color: #a78bfa;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(167, 139, 250, 0.05));
+            border-radius: 20px;
+            border: 1px solid rgba(139, 92, 246, 0.2);
+        }
+
+        .page-header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #8b5cf6, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .page-header p {
+            color: #94a3b8;
+            font-size: 1.1rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .tab {
+            padding: 0.75rem 1.5rem;
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 10px;
+            color: #94a3b8;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab:hover {
+            border-color: #8b5cf6;
+            color: #a78bfa;
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: white;
+            border-color: transparent;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .demo-section {
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            margin-bottom: 2rem;
+        }
+
+        .demo-section h2 {
+            color: #a78bfa;
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+        }
+
+        .model-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(167, 139, 250, 0.05));
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            text-align: center;
+        }
+
+        .stat-card .value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #a78bfa;
+            font-family: 'Consolas', monospace;
+        }
+
+        .stat-card .label {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        .architecture-viz {
+            background: rgba(15, 23, 42, 0.6);
+            padding: 2rem;
+            border-radius: 12px;
+            margin: 2rem 0;
+            overflow-x: auto;
+        }
+
+        .model-layers {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            min-width: 800px;
+        }
+
+        .layer-block {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(139, 92, 246, 0.1));
+            border: 1px solid rgba(139, 92, 246, 0.5);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+            min-width: 120px;
+        }
+
+        .layer-block h4 {
+            color: #a78bfa;
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .layer-block p {
+            color: #94a3b8;
+            font-size: 0.75rem;
+        }
+
+        .arrow {
+            color: #8b5cf6;
+            font-size: 1.5rem;
+        }
+
+        .chart-container {
+            background: rgba(15, 23, 42, 0.4);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .chart-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .info-card {
+            background: rgba(15, 23, 42, 0.6);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid rgba(139, 92, 246, 0.15);
+        }
+
+        .info-card h4 {
+            color: #a78bfa;
+            margin-bottom: 0.75rem;
+        }
+
+        .info-card p {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .benchmark-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+
+        .benchmark-table th, .benchmark-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+        }
+
+        .benchmark-table th {
+            color: #a78bfa;
+            font-weight: 600;
+        }
+
+        .benchmark-table td {
+            color: #94a3b8;
+        }
+
+        .benchmark-table .highlight {
+            color: #22c55e;
+            font-weight: 600;
+        }
+
+        .capability-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .capability-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem;
+            background: rgba(139, 92, 246, 0.1);
+            border-radius: 8px;
+        }
+
+        .capability-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .capability-text h5 {
+            color: #e2e8f0;
+            font-size: 0.95rem;
+        }
+
+        .capability-text p {
+            color: #64748b;
+            font-size: 0.8rem;
+        }
+
+        .training-progress {
+            margin-top: 1.5rem;
+        }
+
+        .progress-item {
+            margin-bottom: 1rem;
+        }
+
+        .progress-item label {
+            display: flex;
+            justify-content: space-between;
+            color: #94a3b8;
+            margin-bottom: 0.25rem;
+            font-size: 0.9rem;
+        }
+
+        .progress-bar {
+            height: 10px;
+            background: rgba(139, 92, 246, 0.2);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .progress-bar .fill {
+            height: 100%;
+            background: linear-gradient(90deg, #8b5cf6, #a78bfa);
+            border-radius: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .page-header h1 {
+                font-size: 1.75rem;
+            }
+
+            .chart-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="top-nav">
+        <div class="nav-brand">LUMA IP</div>
+        <div class="nav-links">
+            <a href="luma-ip-project.html">Back to Suite</a>
+            <a href="index.html">Portfolio</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>LUMA AI Model</h1>
+            <p>State-of-the-art transformer model fine-tuned on millions of patent documents for specialized intellectual property tasks including generation, analysis, and semantic search.</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('overview')">Model Overview</button>
+            <button class="tab" onclick="switchTab('architecture')">Architecture</button>
+            <button class="tab" onclick="switchTab('training')">Training</button>
+            <button class="tab" onclick="switchTab('benchmarks')">Benchmarks</button>
+        </div>
+
+        <!-- Overview Tab -->
+        <div id="overview" class="tab-content active">
+            <div class="demo-section">
+                <h2>Model Specifications</h2>
+
+                <div class="model-stats">
+                    <div class="stat-card">
+                        <div class="value">7B</div>
+                        <div class="label">Parameters</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="value">32K</div>
+                        <div class="label">Context Length</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="value">100M+</div>
+                        <div class="label">Training Patents</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="value">96.4%</div>
+                        <div class="label">Task Accuracy</div>
+                    </div>
+                </div>
+
+                <div class="info-grid">
+                    <div class="info-card">
+                        <h4>Specialized Capabilities</h4>
+                        <div class="capability-list">
+                            <div class="capability-item">
+                                <div class="capability-icon">📝</div>
+                                <div class="capability-text">
+                                    <h5>Patent Drafting</h5>
+                                    <p>Generate claims, specifications, abstracts</p>
+                                </div>
+                            </div>
+                            <div class="capability-item">
+                                <div class="capability-icon">🔍</div>
+                                <div class="capability-text">
+                                    <h5>Prior Art Search</h5>
+                                    <p>Semantic similarity matching</p>
+                                </div>
+                            </div>
+                            <div class="capability-item">
+                                <div class="capability-icon">📊</div>
+                                <div class="capability-text">
+                                    <h5>Document Analysis</h5>
+                                    <p>Entity extraction, summarization</p>
+                                </div>
+                            </div>
+                            <div class="capability-item">
+                                <div class="capability-icon">⚖️</div>
+                                <div class="capability-text">
+                                    <h5>Infringement Analysis</h5>
+                                    <p>Claim comparison and mapping</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="info-card">
+                        <h4>Technical Highlights</h4>
+                        <p>• <strong>Architecture:</strong> Decoder-only transformer with rotary position embeddings (RoPE)<br><br>
+                        • <strong>Attention:</strong> Multi-query attention for efficient inference<br><br>
+                        • <strong>Tokenizer:</strong> Custom BPE with 64K vocabulary including patent-specific terms<br><br>
+                        • <strong>Training:</strong> Mixed-precision (BF16) with gradient checkpointing<br><br>
+                        • <strong>Inference:</strong> Quantization support (INT8, INT4) for deployment</p>
+                    </div>
+                </div>
+
+                <div class="chart-row">
+                    <div class="chart-container">
+                        <div id="taskPerformanceChart" style="height: 350px;"></div>
+                    </div>
+                    <div class="chart-container">
+                        <div id="languageCoverageChart" style="height: 350px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Architecture Tab -->
+        <div id="architecture" class="tab-content">
+            <div class="demo-section">
+                <h2>Model Architecture</h2>
+
+                <div class="architecture-viz">
+                    <div class="model-layers">
+                        <div class="layer-block">
+                            <h4>Input</h4>
+                            <p>Patent Text</p>
+                            <p>32K tokens</p>
+                        </div>
+                        <span class="arrow">→</span>
+                        <div class="layer-block">
+                            <h4>Tokenizer</h4>
+                            <p>Custom BPE</p>
+                            <p>64K vocab</p>
+                        </div>
+                        <span class="arrow">→</span>
+                        <div class="layer-block">
+                            <h4>Embedding</h4>
+                            <p>4096 dim</p>
+                            <p>+ RoPE</p>
+                        </div>
+                        <span class="arrow">→</span>
+                        <div class="layer-block" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.5), rgba(139, 92, 246, 0.2));">
+                            <h4>Transformer</h4>
+                            <p>32 Layers</p>
+                            <p>32 Heads</p>
+                        </div>
+                        <span class="arrow">→</span>
+                        <div class="layer-block">
+                            <h4>LM Head</h4>
+                            <p>Linear</p>
+                            <p>64K output</p>
+                        </div>
+                        <span class="arrow">→</span>
+                        <div class="layer-block">
+                            <h4>Output</h4>
+                            <p>Generated</p>
+                            <p>Text</p>
+                        </div>
+                    </div>
+                </div>
+
+                <table class="benchmark-table">
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th>Specification</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Hidden Dimension</td>
+                            <td>4096</td>
+                            <td>Per-layer representation size</td>
+                        </tr>
+                        <tr>
+                            <td>Intermediate Dimension</td>
+                            <td>11008</td>
+                            <td>FFN hidden layer (SwiGLU)</td>
+                        </tr>
+                        <tr>
+                            <td>Attention Heads</td>
+                            <td>32</td>
+                            <td>Multi-head self-attention</td>
+                        </tr>
+                        <tr>
+                            <td>KV Heads</td>
+                            <td>8</td>
+                            <td>Grouped-query attention</td>
+                        </tr>
+                        <tr>
+                            <td>Layers</td>
+                            <td>32</td>
+                            <td>Transformer decoder blocks</td>
+                        </tr>
+                        <tr>
+                            <td>Vocabulary Size</td>
+                            <td>64,000</td>
+                            <td>Custom patent tokenizer</td>
+                        </tr>
+                        <tr>
+                            <td>Context Length</td>
+                            <td>32,768</td>
+                            <td>Maximum sequence length</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="chart-row">
+                    <div class="chart-container">
+                        <div id="attentionPatternChart" style="height: 350px;"></div>
+                    </div>
+                    <div class="chart-container">
+                        <div id="layerActivationChart" style="height: 350px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Training Tab -->
+        <div id="training" class="tab-content">
+            <div class="demo-section">
+                <h2>Training Pipeline</h2>
+
+                <div class="model-stats">
+                    <div class="stat-card">
+                        <div class="value">2048</div>
+                        <div class="label">A100 GPU Hours</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="value">3</div>
+                        <div class="label">Training Stages</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="value">500B</div>
+                        <div class="label">Tokens Processed</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="value">2e-4</div>
+                        <div class="label">Learning Rate</div>
+                    </div>
+                </div>
+
+                <div class="training-progress">
+                    <div class="progress-item">
+                        <label>
+                            <span>Stage 1: Pre-training on Legal Corpus</span>
+                            <span>100%</span>
+                        </label>
+                        <div class="progress-bar">
+                            <div class="fill" style="width: 100%"></div>
+                        </div>
+                    </div>
+                    <div class="progress-item">
+                        <label>
+                            <span>Stage 2: Fine-tuning on Patent Documents</span>
+                            <span>100%</span>
+                        </label>
+                        <div class="progress-bar">
+                            <div class="fill" style="width: 100%"></div>
+                        </div>
+                    </div>
+                    <div class="progress-item">
+                        <label>
+                            <span>Stage 3: Task-Specific Instruction Tuning</span>
+                            <span>100%</span>
+                        </label>
+                        <div class="progress-bar">
+                            <div class="fill" style="width: 100%"></div>
+                        </div>
+                    </div>
+                    <div class="progress-item">
+                        <label>
+                            <span>Stage 4: RLHF with Expert Feedback</span>
+                            <span>100%</span>
+                        </label>
+                        <div class="progress-bar">
+                            <div class="fill" style="width: 100%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-row">
+                    <div class="chart-container">
+                        <div id="trainingLossChart" style="height: 350px;"></div>
+                    </div>
+                    <div class="chart-container">
+                        <div id="validationMetricsChart" style="height: 350px;"></div>
+                    </div>
+                </div>
+
+                <div class="info-grid">
+                    <div class="info-card">
+                        <h4>Training Data</h4>
+                        <p>• 100M+ USPTO patents (1976-2023)<br>
+                        • 50M+ EPO, WIPO, and CNIPA patents<br>
+                        • 10M+ legal documents and case law<br>
+                        • 5M+ scientific papers<br>
+                        • Curated instruction dataset (500K examples)</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>Optimization</h4>
+                        <p>• AdamW optimizer (β1=0.9, β2=0.95)<br>
+                        • Cosine learning rate schedule<br>
+                        • Linear warmup (2000 steps)<br>
+                        • Gradient clipping (1.0)<br>
+                        • Mixed precision (BF16)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Benchmarks Tab -->
+        <div id="benchmarks" class="tab-content">
+            <div class="demo-section">
+                <h2>Performance Benchmarks</h2>
+
+                <table class="benchmark-table">
+                    <thead>
+                        <tr>
+                            <th>Task</th>
+                            <th>LUMA-7B</th>
+                            <th>GPT-4</th>
+                            <th>Claude-3</th>
+                            <th>Llama-3-70B</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Patent Claim Generation</td>
+                            <td class="highlight">94.2%</td>
+                            <td>89.1%</td>
+                            <td>87.5%</td>
+                            <td>82.3%</td>
+                        </tr>
+                        <tr>
+                            <td>Prior Art Retrieval (R@10)</td>
+                            <td class="highlight">92.8%</td>
+                            <td>85.4%</td>
+                            <td>84.2%</td>
+                            <td>78.9%</td>
+                        </tr>
+                        <tr>
+                            <td>Entity Extraction (F1)</td>
+                            <td class="highlight">96.4%</td>
+                            <td>91.2%</td>
+                            <td>90.8%</td>
+                            <td>86.5%</td>
+                        </tr>
+                        <tr>
+                            <td>Document Summarization</td>
+                            <td class="highlight">91.7%</td>
+                            <td>92.3%</td>
+                            <td>91.1%</td>
+                            <td>87.2%</td>
+                        </tr>
+                        <tr>
+                            <td>IPC Classification</td>
+                            <td class="highlight">97.1%</td>
+                            <td>88.5%</td>
+                            <td>87.9%</td>
+                            <td>83.4%</td>
+                        </tr>
+                        <tr>
+                            <td>Infringement Analysis</td>
+                            <td class="highlight">89.3%</td>
+                            <td>84.7%</td>
+                            <td>83.2%</td>
+                            <td>76.8%</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="chart-row">
+                    <div class="chart-container">
+                        <div id="benchmarkRadarChart" style="height: 400px;"></div>
+                    </div>
+                    <div class="chart-container">
+                        <div id="inferenceSpeedChart" style="height: 400px;"></div>
+                    </div>
+                </div>
+
+                <div class="model-stats">
+                    <div class="stat-card">
+                        <div class="value">45</div>
+                        <div class="label">Tokens/sec (A100)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="value">12</div>
+                        <div class="label">Tokens/sec (INT8)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="value">14GB</div>
+                        <div class="label">VRAM (BF16)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="value">4GB</div>
+                        <div class="label">VRAM (INT4)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+            event.target.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+
+            setTimeout(() => {
+                if (tabId === 'overview') updateOverviewCharts();
+                else if (tabId === 'architecture') updateArchitectureCharts();
+                else if (tabId === 'training') updateTrainingCharts();
+                else if (tabId === 'benchmarks') updateBenchmarkCharts();
+            }, 100);
+        }
+
+        const layout = {
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(15,23,42,0.6)',
+            font: { color: '#94a3b8' },
+            margin: { t: 40 }
+        };
+
+        function updateOverviewCharts() {
+            // Task performance
+            const tasks = ['Claim Gen', 'Prior Art', 'Entity Ext', 'Summarize', 'IPC Class', 'Infringe'];
+            const scores = [94.2, 92.8, 96.4, 91.7, 97.1, 89.3];
+
+            Plotly.newPlot('taskPerformanceChart', [{
+                x: tasks,
+                y: scores,
+                type: 'bar',
+                marker: {
+                    color: scores.map(s => s > 95 ? '#22c55e' : (s > 90 ? '#8b5cf6' : '#a78bfa'))
+                }
+            }], {
+                ...layout,
+                title: 'Task Performance (%)',
+                yaxis: { range: [80, 100] }
+            });
+
+            // Language coverage
+            Plotly.newPlot('languageCoverageChart', [{
+                labels: ['English', 'Chinese', 'German', 'Japanese', 'Korean', 'French'],
+                values: [60, 15, 8, 7, 5, 5],
+                type: 'pie',
+                marker: {
+                    colors: ['#8b5cf6', '#a78bfa', '#c4b5fd', '#7c3aed', '#6d28d9', '#5b21b6']
+                }
+            }], {
+                ...layout,
+                title: 'Training Data by Language'
+            });
+        }
+
+        function updateArchitectureCharts() {
+            // Attention pattern (simulated)
+            const size = 32;
+            const attention = [];
+            for (let i = 0; i < size; i++) {
+                const row = [];
+                for (let j = 0; j < size; j++) {
+                    row.push(j <= i ? Math.exp(-(i - j) / 10) : 0);
+                }
+                attention.push(row);
+            }
+
+            Plotly.newPlot('attentionPatternChart', [{
+                z: attention,
+                type: 'heatmap',
+                colorscale: [[0, '#1e1b4b'], [1, '#8b5cf6']]
+            }], {
+                ...layout,
+                title: 'Causal Attention Pattern',
+                xaxis: { title: 'Key Position' },
+                yaxis: { title: 'Query Position' }
+            });
+
+            // Layer activation
+            const layers = Array.from({length: 32}, (_, i) => i + 1);
+            const activations = layers.map(l => 1 + 0.5 * Math.sin(l * 0.3) + Math.random() * 0.2);
+
+            Plotly.newPlot('layerActivationChart', [{
+                x: layers,
+                y: activations,
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: { color: '#8b5cf6' },
+                marker: { size: 6 }
+            }], {
+                ...layout,
+                title: 'Layer Activation Magnitude',
+                xaxis: { title: 'Layer' },
+                yaxis: { title: 'Activation Norm' }
+            });
+        }
+
+        function updateTrainingCharts() {
+            // Training loss
+            const steps = Array.from({length: 100}, (_, i) => i * 1000);
+            const loss = steps.map(s => 2.5 * Math.exp(-s / 30000) + 0.8 + Math.random() * 0.05);
+
+            Plotly.newPlot('trainingLossChart', [{
+                x: steps,
+                y: loss,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#8b5cf6' }
+            }], {
+                ...layout,
+                title: 'Training Loss',
+                xaxis: { title: 'Steps' },
+                yaxis: { title: 'Loss' }
+            });
+
+            // Validation metrics
+            const epochs = Array.from({length: 20}, (_, i) => i + 1);
+            const accuracy = epochs.map(e => 0.7 + 0.25 * (1 - Math.exp(-e / 5)));
+            const perplexity = epochs.map(e => 50 * Math.exp(-e / 8) + 5);
+
+            Plotly.newPlot('validationMetricsChart', [
+                { x: epochs, y: accuracy, name: 'Accuracy', line: { color: '#8b5cf6' } },
+                { x: epochs, y: perplexity.map(p => p / 50), name: 'Perplexity (normalized)', line: { color: '#a78bfa' } }
+            ], {
+                ...layout,
+                title: 'Validation Metrics',
+                xaxis: { title: 'Epoch' },
+                yaxis: { title: 'Score' },
+                legend: { x: 0.7, y: 0.95 }
+            });
+        }
+
+        function updateBenchmarkCharts() {
+            // Radar chart
+            const categories = ['Claim Gen', 'Prior Art', 'Entity Ext', 'Summarize', 'IPC Class', 'Infringe'];
+
+            Plotly.newPlot('benchmarkRadarChart', [
+                {
+                    type: 'scatterpolar',
+                    r: [94.2, 92.8, 96.4, 91.7, 97.1, 89.3],
+                    theta: categories,
+                    fill: 'toself',
+                    fillcolor: 'rgba(139, 92, 246, 0.3)',
+                    line: { color: '#8b5cf6' },
+                    name: 'LUMA-7B'
+                },
+                {
+                    type: 'scatterpolar',
+                    r: [89.1, 85.4, 91.2, 92.3, 88.5, 84.7],
+                    theta: categories,
+                    fill: 'toself',
+                    fillcolor: 'rgba(148, 163, 184, 0.2)',
+                    line: { color: '#94a3b8' },
+                    name: 'GPT-4'
+                }
+            ], {
+                ...layout,
+                title: 'Model Comparison',
+                polar: {
+                    radialaxis: { visible: true, range: [70, 100] },
+                    bgcolor: 'rgba(15,23,42,0.6)'
+                }
+            });
+
+            // Inference speed
+            const models = ['LUMA-7B', 'GPT-4', 'Claude-3', 'Llama-3-70B'];
+            const speeds = [45, 25, 30, 35];
+            const costs = [0.01, 0.06, 0.05, 0.02];
+
+            Plotly.newPlot('inferenceSpeedChart', [{
+                x: models,
+                y: speeds,
+                type: 'bar',
+                marker: { color: ['#8b5cf6', '#94a3b8', '#94a3b8', '#94a3b8'] },
+                name: 'Tokens/sec'
+            }], {
+                ...layout,
+                title: 'Inference Speed (tokens/sec)',
+                yaxis: { title: 'Tokens per Second' }
+            });
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            updateOverviewCharts();
+        });
+    </script>
+</body>
+</html>

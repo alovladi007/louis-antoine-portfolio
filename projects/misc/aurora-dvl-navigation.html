@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DVL Navigation - AURORA-NAV | Louis-Antoine Music</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #0c1929 0%, #1a365d 100%);
+            min-height: 100vh;
+            color: #e2e8f0;
+        }
+        .header {
+            background: rgba(15, 23, 42, 0.95);
+            padding: 1rem 2rem;
+            border-bottom: 2px solid #0ea5e9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 { color: #0ea5e9; font-size: 1.5rem; }
+        .back-link {
+            color: #38bdf8;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: color 0.3s;
+        }
+        .back-link:hover { color: #0ea5e9; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .intro {
+            background: rgba(14, 165, 233, 0.1);
+            border: 1px solid rgba(14, 165, 233, 0.3);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .intro h2 { color: #0ea5e9; margin-bottom: 0.5rem; }
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        .tab-btn {
+            padding: 0.75rem 1.5rem;
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid #334155;
+            color: #94a3b8;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        .tab-btn:hover { border-color: #0ea5e9; color: #e2e8f0; }
+        .tab-btn.active {
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+            color: white;
+            border-color: transparent;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .demo-section {
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid #334155;
+        }
+        .demo-section h3 {
+            color: #38bdf8;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .control-group label {
+            display: block;
+            color: #94a3b8;
+            margin-bottom: 0.25rem;
+            font-size: 0.875rem;
+        }
+        .control-group input, .control-group select {
+            width: 100%;
+            padding: 0.5rem;
+            background: #1e293b;
+            border: 1px solid #475569;
+            border-radius: 6px;
+            color: #e2e8f0;
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-weight: 500;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.4);
+        }
+        .chart-container {
+            background: #0f172a;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .metric-card {
+            background: rgba(14, 165, 233, 0.1);
+            border: 1px solid rgba(14, 165, 233, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+        }
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #0ea5e9;
+        }
+        .metric-label { font-size: 0.75rem; color: #94a3b8; }
+        .beam-status {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        .beam-indicator {
+            padding: 0.5rem;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 0.75rem;
+            transition: all 0.3s;
+        }
+        .beam-good { background: rgba(34, 197, 94, 0.2); border: 1px solid #22c55e; color: #22c55e; }
+        .beam-weak { background: rgba(234, 179, 8, 0.2); border: 1px solid #eab308; color: #eab308; }
+        .beam-lost { background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #ef4444; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>🔊 DVL Navigation</h1>
+        <a href="aurora-nav-project.html" class="back-link">← Back to AURORA-NAV</a>
+    </header>
+
+    <div class="container">
+        <div class="intro">
+            <h2>Doppler Velocity Log Navigation</h2>
+            <p>Explore DVL bottom-track and water-track velocity measurement, beam configuration, and dead reckoning navigation for precise underwater positioning.</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('bottom-track')">Bottom Track</button>
+            <button class="tab-btn" onclick="switchTab('water-track')">Water Track</button>
+            <button class="tab-btn" onclick="switchTab('dead-reckoning')">Dead Reckoning</button>
+            <button class="tab-btn" onclick="switchTab('error-analysis')">Error Analysis</button>
+        </div>
+
+        <div id="bottom-track" class="tab-content active">
+            <div class="demo-section">
+                <h3>📡 Bottom-Track Velocity Measurement</h3>
+                <p style="color: #94a3b8; margin-bottom: 1rem;">Simulate 4-beam Janus configuration DVL measuring velocity relative to seafloor.</p>
+                <div class="controls">
+                    <div class="control-group">
+                        <label>Vehicle Velocity (m/s)</label>
+                        <input type="number" id="bt-velocity" value="1.5" step="0.1" min="0" max="5">
+                    </div>
+                    <div class="control-group">
+                        <label>Altitude (m)</label>
+                        <input type="number" id="bt-altitude" value="15" step="1" min="2" max="200">
+                    </div>
+                    <div class="control-group">
+                        <label>Beam Angle (°)</label>
+                        <input type="number" id="bt-beam-angle" value="30" step="5" min="20" max="45">
+                    </div>
+                    <div class="control-group">
+                        <label>Bottom Type</label>
+                        <select id="bt-bottom-type">
+                            <option value="hard">Hard (Rock)</option>
+                            <option value="sand" selected>Sand</option>
+                            <option value="mud">Mud</option>
+                            <option value="soft">Soft Sediment</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn" onclick="simulateBottomTrack()">Simulate Bottom Track</button>
+
+                <div class="beam-status" id="beam-status">
+                    <div class="beam-indicator beam-good">Beam 1: Good</div>
+                    <div class="beam-indicator beam-good">Beam 2: Good</div>
+                    <div class="beam-indicator beam-good">Beam 3: Good</div>
+                    <div class="beam-indicator beam-good">Beam 4: Good</div>
+                </div>
+
+                <div class="chart-container">
+                    <div id="bottom-track-chart" style="height: 350px;"></div>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value" id="bt-vx">0.00</div>
+                        <div class="metric-label">Vx (m/s)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="bt-vy">0.00</div>
+                        <div class="metric-label">Vy (m/s)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="bt-vz">0.00</div>
+                        <div class="metric-label">Vz (m/s)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="bt-accuracy">0.00</div>
+                        <div class="metric-label">Accuracy (%)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="water-track" class="tab-content">
+            <div class="demo-section">
+                <h3>🌊 Water-Track Velocity</h3>
+                <p style="color: #94a3b8; margin-bottom: 1rem;">Measure velocity through water column layers for current profiling and navigation when bottom is out of range.</p>
+                <div class="controls">
+                    <div class="control-group">
+                        <label>Vehicle Speed (m/s)</label>
+                        <input type="number" id="wt-speed" value="2.0" step="0.1" min="0" max="5">
+                    </div>
+                    <div class="control-group">
+                        <label>Water Depth (m)</label>
+                        <input type="number" id="wt-depth" value="500" step="50" min="100" max="2000">
+                    </div>
+                    <div class="control-group">
+                        <label>Current Speed (m/s)</label>
+                        <input type="number" id="wt-current" value="0.3" step="0.1" min="0" max="2">
+                    </div>
+                    <div class="control-group">
+                        <label>Number of Bins</label>
+                        <input type="number" id="wt-bins" value="20" step="5" min="5" max="50">
+                    </div>
+                </div>
+                <button class="btn" onclick="simulateWaterTrack()">Profile Water Column</button>
+                <div class="chart-container">
+                    <div id="water-track-chart" style="height: 400px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="dead-reckoning" class="tab-content">
+            <div class="demo-section">
+                <h3>🗺️ DVL Dead Reckoning</h3>
+                <p style="color: #94a3b8; margin-bottom: 1rem;">Integrate DVL velocities with heading to compute position estimate over time.</p>
+                <div class="controls">
+                    <div class="control-group">
+                        <label>Mission Duration (min)</label>
+                        <input type="number" id="dr-duration" value="30" step="5" min="5" max="120">
+                    </div>
+                    <div class="control-group">
+                        <label>Average Speed (m/s)</label>
+                        <input type="number" id="dr-speed" value="1.5" step="0.1" min="0.5" max="3">
+                    </div>
+                    <div class="control-group">
+                        <label>DVL Accuracy (%)</label>
+                        <input type="number" id="dr-accuracy" value="0.3" step="0.1" min="0.1" max="2">
+                    </div>
+                    <div class="control-group">
+                        <label>Heading Accuracy (°)</label>
+                        <input type="number" id="dr-heading-acc" value="0.5" step="0.1" min="0.1" max="2">
+                    </div>
+                </div>
+                <button class="btn" onclick="simulateDeadReckoning()">Run Dead Reckoning</button>
+                <div class="chart-container">
+                    <div id="dead-reckoning-chart" style="height: 400px;"></div>
+                </div>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value" id="dr-distance">0</div>
+                        <div class="metric-label">Distance (m)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="dr-error">0.00</div>
+                        <div class="metric-label">Position Error (m)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="dr-cep">0.00</div>
+                        <div class="metric-label">CEP (m)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="dr-drift">0.00</div>
+                        <div class="metric-label">Drift (%dist)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="error-analysis" class="tab-content">
+            <div class="demo-section">
+                <h3>📊 DVL Error Budget</h3>
+                <p style="color: #94a3b8; margin-bottom: 1rem;">Analyze error sources affecting DVL measurement accuracy.</p>
+                <div class="controls">
+                    <div class="control-group">
+                        <label>Speed of Sound Error (m/s)</label>
+                        <input type="number" id="err-sos" value="2" step="0.5" min="0" max="10">
+                    </div>
+                    <div class="control-group">
+                        <label>Beam Misalignment (°)</label>
+                        <input type="number" id="err-align" value="0.2" step="0.05" min="0" max="1">
+                    </div>
+                    <div class="control-group">
+                        <label>Scale Factor Error (%)</label>
+                        <input type="number" id="err-scale" value="0.1" step="0.05" min="0" max="1">
+                    </div>
+                    <div class="control-group">
+                        <label>Random Noise (mm/s)</label>
+                        <input type="number" id="err-noise" value="5" step="1" min="1" max="20">
+                    </div>
+                </div>
+                <button class="btn" onclick="analyzeErrors()">Analyze Error Budget</button>
+                <div class="chart-container">
+                    <div id="error-chart" style="height: 350px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function simulateBottomTrack() {
+            const velocity = parseFloat(document.getElementById('bt-velocity').value);
+            const altitude = parseFloat(document.getElementById('bt-altitude').value);
+            const beamAngle = parseFloat(document.getElementById('bt-beam-angle').value) * Math.PI / 180;
+            const bottomType = document.getElementById('bt-bottom-type').value;
+
+            const reflectivity = { hard: 0.95, sand: 0.8, mud: 0.6, soft: 0.4 };
+            const reflect = reflectivity[bottomType];
+
+            // Simulate beam returns
+            const time = [];
+            const beam1 = [], beam2 = [], beam3 = [], beam4 = [];
+
+            for (let t = 0; t < 100; t++) {
+                time.push(t);
+                const noise = () => (Math.random() - 0.5) * 0.02 * (1 - reflect);
+                const doppler1 = velocity * Math.cos(beamAngle) + noise();
+                const doppler2 = velocity * Math.cos(beamAngle) + noise();
+                const doppler3 = velocity * Math.sin(beamAngle) * 0.1 + noise();
+                const doppler4 = velocity * Math.sin(beamAngle) * 0.1 + noise();
+
+                beam1.push(doppler1);
+                beam2.push(-doppler2);
+                beam3.push(doppler3);
+                beam4.push(-doppler4);
+            }
+
+            // Update beam status
+            const beamStatuses = document.querySelectorAll('.beam-indicator');
+            beamStatuses.forEach((status, i) => {
+                const quality = reflect > 0.7 ? 'good' : reflect > 0.5 ? 'weak' : 'lost';
+                status.className = `beam-indicator beam-${quality}`;
+                status.textContent = `Beam ${i + 1}: ${quality.charAt(0).toUpperCase() + quality.slice(1)}`;
+            });
+
+            const traces = [
+                { x: time, y: beam1, name: 'Beam 1 (Fwd)', line: { color: '#0ea5e9' } },
+                { x: time, y: beam2, name: 'Beam 2 (Aft)', line: { color: '#38bdf8' } },
+                { x: time, y: beam3, name: 'Beam 3 (Port)', line: { color: '#22c55e' } },
+                { x: time, y: beam4, name: 'Beam 4 (Stbd)', line: { color: '#f59e0b' } }
+            ];
+
+            const layout = {
+                title: 'DVL Beam Doppler Velocities',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(15,23,42,0.8)',
+                font: { color: '#e2e8f0' },
+                xaxis: { title: 'Sample', gridcolor: '#334155' },
+                yaxis: { title: 'Doppler Velocity (m/s)', gridcolor: '#334155' },
+                legend: { x: 0, y: 1.1, orientation: 'h' }
+            };
+
+            Plotly.newPlot('bottom-track-chart', traces, layout, { responsive: true });
+
+            // Update metrics
+            const vx = velocity * 0.98 + (Math.random() - 0.5) * 0.01;
+            const vy = (Math.random() - 0.5) * 0.02;
+            const vz = (Math.random() - 0.5) * 0.01;
+
+            document.getElementById('bt-vx').textContent = vx.toFixed(3);
+            document.getElementById('bt-vy').textContent = vy.toFixed(3);
+            document.getElementById('bt-vz').textContent = vz.toFixed(3);
+            document.getElementById('bt-accuracy').textContent = (reflect * 100 * 0.997).toFixed(1);
+        }
+
+        function simulateWaterTrack() {
+            const speed = parseFloat(document.getElementById('wt-speed').value);
+            const depth = parseFloat(document.getElementById('wt-depth').value);
+            const current = parseFloat(document.getElementById('wt-current').value);
+            const bins = parseInt(document.getElementById('wt-bins').value);
+
+            const binDepths = [];
+            const uVelocity = [], vVelocity = [];
+            const binSize = Math.min(depth / bins, 20);
+
+            for (let i = 0; i < bins; i++) {
+                const d = (i + 1) * binSize;
+                binDepths.push(d);
+
+                // Ekman spiral approximation
+                const ekmanDecay = Math.exp(-d / 50);
+                const angle = d * 0.02;
+                uVelocity.push(current * ekmanDecay * Math.cos(angle) + (Math.random() - 0.5) * 0.02);
+                vVelocity.push(current * ekmanDecay * Math.sin(angle) + (Math.random() - 0.5) * 0.02);
+            }
+
+            const traces = [
+                {
+                    x: uVelocity,
+                    y: binDepths,
+                    name: 'U (East)',
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    line: { color: '#0ea5e9' }
+                },
+                {
+                    x: vVelocity,
+                    y: binDepths,
+                    name: 'V (North)',
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    line: { color: '#22c55e' }
+                }
+            ];
+
+            const layout = {
+                title: 'Water Column Current Profile',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(15,23,42,0.8)',
+                font: { color: '#e2e8f0' },
+                xaxis: { title: 'Velocity (m/s)', gridcolor: '#334155' },
+                yaxis: { title: 'Depth (m)', autorange: 'reversed', gridcolor: '#334155' },
+                legend: { x: 1, y: 1 }
+            };
+
+            Plotly.newPlot('water-track-chart', traces, layout, { responsive: true });
+        }
+
+        function simulateDeadReckoning() {
+            const duration = parseFloat(document.getElementById('dr-duration').value) * 60;
+            const speed = parseFloat(document.getElementById('dr-speed').value);
+            const dvlAcc = parseFloat(document.getElementById('dr-accuracy').value) / 100;
+            const headingAcc = parseFloat(document.getElementById('dr-heading-acc').value) * Math.PI / 180;
+
+            const dt = 1;
+            const trueX = [], trueY = [], estX = [], estY = [];
+            let tx = 0, ty = 0, ex = 0, ey = 0;
+            let heading = 0;
+
+            for (let t = 0; t < duration; t += dt) {
+                // Lawnmower pattern
+                if (t % 600 < 300) {
+                    heading = 0;
+                } else if (t % 600 < 310) {
+                    heading = Math.PI / 2;
+                } else if (t % 600 < 590) {
+                    heading = Math.PI;
+                } else {
+                    heading = Math.PI / 2;
+                }
+
+                // True position
+                tx += speed * Math.cos(heading) * dt;
+                ty += speed * Math.sin(heading) * dt;
+                trueX.push(tx);
+                trueY.push(ty);
+
+                // Estimated position with errors
+                const speedError = speed * (1 + (Math.random() - 0.5) * dvlAcc * 2);
+                const headingError = heading + (Math.random() - 0.5) * headingAcc;
+                ex += speedError * Math.cos(headingError) * dt;
+                ey += speedError * Math.sin(headingError) * dt;
+                estX.push(ex);
+                estY.push(ey);
+            }
+
+            const traces = [
+                { x: trueX, y: trueY, name: 'True Path', mode: 'lines', line: { color: '#22c55e', width: 2 } },
+                { x: estX, y: estY, name: 'DR Estimate', mode: 'lines', line: { color: '#0ea5e9', width: 2, dash: 'dot' } },
+                { x: [trueX[0]], y: [trueY[0]], name: 'Start', mode: 'markers', marker: { color: '#f59e0b', size: 12, symbol: 'star' } },
+                { x: [trueX[trueX.length-1]], y: [trueY[trueY.length-1]], name: 'End', mode: 'markers', marker: { color: '#ef4444', size: 12, symbol: 'x' } }
+            ];
+
+            const layout = {
+                title: 'Dead Reckoning Navigation',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(15,23,42,0.8)',
+                font: { color: '#e2e8f0' },
+                xaxis: { title: 'East (m)', gridcolor: '#334155', scaleanchor: 'y' },
+                yaxis: { title: 'North (m)', gridcolor: '#334155' },
+                legend: { x: 0, y: 1.1, orientation: 'h' }
+            };
+
+            Plotly.newPlot('dead-reckoning-chart', traces, layout, { responsive: true });
+
+            // Calculate metrics
+            const finalError = Math.sqrt(Math.pow(tx - ex, 2) + Math.pow(ty - ey, 2));
+            const totalDist = speed * duration;
+
+            document.getElementById('dr-distance').textContent = totalDist.toFixed(0);
+            document.getElementById('dr-error').textContent = finalError.toFixed(1);
+            document.getElementById('dr-cep').textContent = (finalError * 0.67).toFixed(1);
+            document.getElementById('dr-drift').textContent = ((finalError / totalDist) * 100).toFixed(2);
+        }
+
+        function analyzeErrors() {
+            const sosError = parseFloat(document.getElementById('err-sos').value);
+            const alignError = parseFloat(document.getElementById('err-align').value);
+            const scaleError = parseFloat(document.getElementById('err-scale').value);
+            const noiseError = parseFloat(document.getElementById('err-noise').value);
+
+            // Calculate velocity errors
+            const sosVelError = sosError / 1500 * 100;
+            const alignVelError = Math.tan(alignError * Math.PI / 180) * 100;
+            const totalError = Math.sqrt(Math.pow(sosVelError, 2) + Math.pow(alignVelError, 2) + Math.pow(scaleError, 2) + Math.pow(noiseError / 10, 2));
+
+            const errors = ['Sound Speed', 'Alignment', 'Scale Factor', 'Random Noise'];
+            const contributions = [sosVelError, alignVelError, scaleError, noiseError / 10];
+
+            const trace = {
+                x: errors,
+                y: contributions,
+                type: 'bar',
+                marker: {
+                    color: ['#0ea5e9', '#38bdf8', '#22c55e', '#f59e0b']
+                },
+                text: contributions.map(v => v.toFixed(3) + '%'),
+                textposition: 'outside'
+            };
+
+            const layout = {
+                title: `DVL Error Budget (Total: ${totalError.toFixed(3)}% velocity error)`,
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(15,23,42,0.8)',
+                font: { color: '#e2e8f0' },
+                xaxis: { gridcolor: '#334155' },
+                yaxis: { title: 'Velocity Error (%)', gridcolor: '#334155' },
+                showlegend: false
+            };
+
+            Plotly.newPlot('error-chart', [trace], layout, { responsive: true });
+        }
+
+        // Initialize
+        simulateBottomTrack();
+    </script>
+</body>
+</html>

@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terrain-Aided Navigation - AURORA-NAV | Louis-Antoine Music</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #0c1929 0%, #1a365d 100%);
+            min-height: 100vh;
+            color: #e2e8f0;
+        }
+        .header {
+            background: rgba(15, 23, 42, 0.95);
+            padding: 1rem 2rem;
+            border-bottom: 2px solid #0ea5e9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 { color: #0ea5e9; font-size: 1.5rem; }
+        .back-link {
+            color: #38bdf8;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: color 0.3s;
+        }
+        .back-link:hover { color: #0ea5e9; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .intro {
+            background: rgba(14, 165, 233, 0.1);
+            border: 1px solid rgba(14, 165, 233, 0.3);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .intro h2 { color: #0ea5e9; margin-bottom: 0.5rem; }
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        .tab-btn {
+            padding: 0.75rem 1.5rem;
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid #334155;
+            color: #94a3b8;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        .tab-btn:hover { border-color: #0ea5e9; color: #e2e8f0; }
+        .tab-btn.active {
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+            color: white;
+            border-color: transparent;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .demo-section {
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid #334155;
+        }
+        .demo-section h3 {
+            color: #38bdf8;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .control-group label {
+            display: block;
+            color: #94a3b8;
+            margin-bottom: 0.25rem;
+            font-size: 0.875rem;
+        }
+        .control-group input, .control-group select {
+            width: 100%;
+            padding: 0.5rem;
+            background: #1e293b;
+            border: 1px solid #475569;
+            border-radius: 6px;
+            color: #e2e8f0;
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-weight: 500;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.4);
+        }
+        .chart-container {
+            background: #0f172a;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .metric-card {
+            background: rgba(14, 165, 233, 0.1);
+            border: 1px solid rgba(14, 165, 233, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+        }
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #0ea5e9;
+        }
+        .metric-label { font-size: 0.75rem; color: #94a3b8; }
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            margin-left: 0.5rem;
+        }
+        .status-good { background: rgba(34, 197, 94, 0.2); color: #22c55e; border: 1px solid #22c55e; }
+        .status-warn { background: rgba(234, 179, 8, 0.2); color: #eab308; border: 1px solid #eab308; }
+        .status-poor { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>🏔️ Terrain-Aided Navigation</h1>
+        <a href="aurora-nav-project.html" class="back-link">← Back to AURORA-NAV</a>
+    </header>
+
+    <div class="container">
+        <div class="intro">
+            <h2>Bathymetric Terrain Matching</h2>
+            <p>Explore terrain-aided navigation using bathymetric correlation, particle filters, and map matching algorithms for absolute position fixes in GPS-denied environments.</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('terrain-map')">Terrain Database</button>
+            <button class="tab-btn" onclick="switchTab('correlation')">Correlation Matching</button>
+            <button class="tab-btn" onclick="switchTab('particle-filter')">Particle Filter TAN</button>
+            <button class="tab-btn" onclick="switchTab('suitability')">Terrain Suitability</button>
+        </div>
+
+        <div id="terrain-map" class="tab-content active">
+            <div class="demo-section">
+                <h3>🗺️ Bathymetric Terrain Database</h3>
+                <p style="color: #94a3b8; margin-bottom: 1rem;">Generate and visualize bathymetric terrain maps for navigation reference.</p>
+                <div class="controls">
+                    <div class="control-group">
+                        <label>Grid Size (m)</label>
+                        <input type="number" id="tm-grid" value="1000" step="100" min="500" max="5000">
+                    </div>
+                    <div class="control-group">
+                        <label>Resolution (m)</label>
+                        <input type="number" id="tm-resolution" value="10" step="5" min="5" max="50">
+                    </div>
+                    <div class="control-group">
+                        <label>Terrain Type</label>
+                        <select id="tm-type">
+                            <option value="continental">Continental Shelf</option>
+                            <option value="slope">Continental Slope</option>
+                            <option value="abyssal">Abyssal Plain</option>
+                            <option value="ridge">Mid-Ocean Ridge</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>Base Depth (m)</label>
+                        <input type="number" id="tm-depth" value="200" step="50" min="50" max="4000">
+                    </div>
+                </div>
+                <button class="btn" onclick="generateTerrain()">Generate Terrain Map</button>
+                <div class="chart-container">
+                    <div id="terrain-chart" style="height: 450px;"></div>
+                </div>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value" id="tm-min">0</div>
+                        <div class="metric-label">Min Depth (m)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="tm-max">0</div>
+                        <div class="metric-label">Max Depth (m)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="tm-roughness">0.0</div>
+                        <div class="metric-label">Roughness (m)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="tm-slope">0.0</div>
+                        <div class="metric-label">Avg Slope (°)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="correlation" class="tab-content">
+            <div class="demo-section">
+                <h3>📊 Terrain Correlation Matching</h3>
+                <p style="color: #94a3b8; margin-bottom: 1rem;">Match measured bathymetry profile against reference database using correlation.</p>
+                <div class="controls">
+                    <div class="control-group">
+                        <label>Profile Length (m)</label>
+                        <input type="number" id="corr-length" value="500" step="100" min="200" max="2000">
+                    </div>
+                    <div class="control-group">
+                        <label>Measurement Noise (m)</label>
+                        <input type="number" id="corr-noise" value="1" step="0.5" min="0.5" max="5">
+                    </div>
+                    <div class="control-group">
+                        <label>Search Area (m)</label>
+                        <input type="number" id="corr-search" value="100" step="25" min="50" max="500">
+                    </div>
+                    <div class="control-group">
+                        <label>Initial Error (m)</label>
+                        <input type="number" id="corr-error" value="50" step="10" min="10" max="200">
+                    </div>
+                </div>
+                <button class="btn" onclick="runCorrelation()">Run Correlation Match</button>
+                <div class="chart-container">
+                    <div id="correlation-chart" style="height: 350px;"></div>
+                </div>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value" id="corr-peak">0.00</div>
+                        <div class="metric-label">Peak Correlation</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="corr-offset">0.0</div>
+                        <div class="metric-label">Position Offset (m)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="corr-confidence">0%</div>
+                        <div class="metric-label">Confidence</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="corr-status">-</div>
+                        <div class="metric-label">Match Status</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="particle-filter" class="tab-content">
+            <div class="demo-section">
+                <h3>🎯 Particle Filter TAN</h3>
+                <p style="color: #94a3b8; margin-bottom: 1rem;">Track position using particle filter with terrain measurements.</p>
+                <div class="controls">
+                    <div class="control-group">
+                        <label>Number of Particles</label>
+                        <input type="number" id="pf-particles" value="500" step="100" min="100" max="2000">
+                    </div>
+                    <div class="control-group">
+                        <label>Simulation Steps</label>
+                        <input type="number" id="pf-steps" value="50" step="10" min="20" max="100">
+                    </div>
+                    <div class="control-group">
+                        <label>Process Noise (m)</label>
+                        <input type="number" id="pf-process" value="2" step="0.5" min="0.5" max="5">
+                    </div>
+                    <div class="control-group">
+                        <label>Measurement Noise (m)</label>
+                        <input type="number" id="pf-measure" value="1" step="0.5" min="0.5" max="5">
+                    </div>
+                </div>
+                <button class="btn" onclick="runParticleFilter()">Run Particle Filter</button>
+                <div class="chart-container">
+                    <div id="particle-chart" style="height: 400px;"></div>
+                </div>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value" id="pf-rmse">0.0</div>
+                        <div class="metric-label">RMSE (m)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="pf-neff">0</div>
+                        <div class="metric-label">Effective Particles</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="pf-converged">-</div>
+                        <div class="metric-label">Convergence</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="pf-resamples">0</div>
+                        <div class="metric-label">Resampling Events</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="suitability" class="tab-content">
+            <div class="demo-section">
+                <h3>📈 Terrain Navigation Suitability</h3>
+                <p style="color: #94a3b8; margin-bottom: 1rem;">Analyze terrain characteristics for TAN performance prediction.</p>
+                <div class="controls">
+                    <div class="control-group">
+                        <label>Analysis Window (m)</label>
+                        <input type="number" id="suit-window" value="500" step="100" min="200" max="2000">
+                    </div>
+                    <div class="control-group">
+                        <label>Sonar Resolution (m)</label>
+                        <input type="number" id="suit-resolution" value="5" step="1" min="1" max="20">
+                    </div>
+                    <div class="control-group">
+                        <label>INS Drift Rate (m/hr)</label>
+                        <input type="number" id="suit-drift" value="50" step="10" min="10" max="200">
+                    </div>
+                    <div class="control-group">
+                        <label>Update Rate (Hz)</label>
+                        <input type="number" id="suit-rate" value="1" step="0.5" min="0.5" max="5">
+                    </div>
+                </div>
+                <button class="btn" onclick="analyzeSuitability()">Analyze Suitability</button>
+                <div class="chart-container">
+                    <div id="suitability-chart" style="height: 350px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let terrainData = null;
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function generateTerrain() {
+            const gridSize = parseFloat(document.getElementById('tm-grid').value);
+            const resolution = parseFloat(document.getElementById('tm-resolution').value);
+            const terrainType = document.getElementById('tm-type').value;
+            const baseDepth = parseFloat(document.getElementById('tm-depth').value);
+
+            const n = Math.floor(gridSize / resolution);
+            const x = [], y = [], z = [];
+
+            // Terrain parameters by type
+            const params = {
+                continental: { scale: 30, freq: 0.008, slope: 0.02 },
+                slope: { scale: 100, freq: 0.005, slope: 0.15 },
+                abyssal: { scale: 10, freq: 0.003, slope: 0.005 },
+                ridge: { scale: 200, freq: 0.01, slope: 0.1 }
+            };
+
+            const p = params[terrainType];
+
+            for (let i = 0; i < n; i++) {
+                const row = [];
+                for (let j = 0; j < n; j++) {
+                    const xi = i * resolution;
+                    const yi = j * resolution;
+
+                    // Fractal-like terrain
+                    let depth = baseDepth;
+                    depth += p.slope * xi;
+                    depth += p.scale * Math.sin(xi * p.freq) * Math.cos(yi * p.freq);
+                    depth += p.scale * 0.5 * Math.sin(xi * p.freq * 2.3) * Math.sin(yi * p.freq * 1.7);
+                    depth += p.scale * 0.25 * Math.cos(xi * p.freq * 4.1 + yi * p.freq * 3.2);
+                    depth += (Math.random() - 0.5) * p.scale * 0.1;
+
+                    row.push(depth);
+                }
+                z.push(row);
+                x.push(Array.from({ length: n }, (_, j) => j * resolution));
+                y.push(Array(n).fill(i * resolution));
+            }
+
+            terrainData = { x, y, z, resolution, gridSize };
+
+            const trace = {
+                z: z,
+                type: 'surface',
+                colorscale: [
+                    [0, '#0ea5e9'],
+                    [0.25, '#22c55e'],
+                    [0.5, '#eab308'],
+                    [0.75, '#f97316'],
+                    [1, '#ef4444']
+                ],
+                colorbar: { title: 'Depth (m)' }
+            };
+
+            const layout = {
+                title: 'Bathymetric Terrain Database',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e2e8f0' },
+                scene: {
+                    xaxis: { title: 'East (m)', gridcolor: '#334155' },
+                    yaxis: { title: 'North (m)', gridcolor: '#334155' },
+                    zaxis: { title: 'Depth (m)', gridcolor: '#334155', autorange: 'reversed' },
+                    bgcolor: 'rgba(15,23,42,0.8)'
+                }
+            };
+
+            Plotly.newPlot('terrain-chart', [trace], layout, { responsive: true });
+
+            // Calculate metrics
+            const flat = z.flat();
+            const minD = Math.min(...flat);
+            const maxD = Math.max(...flat);
+
+            // Roughness (standard deviation)
+            const mean = flat.reduce((a, b) => a + b) / flat.length;
+            const roughness = Math.sqrt(flat.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / flat.length);
+
+            // Average slope
+            let totalSlope = 0, count = 0;
+            for (let i = 1; i < n; i++) {
+                for (let j = 1; j < n; j++) {
+                    const dx = (z[i][j] - z[i - 1][j]) / resolution;
+                    const dy = (z[i][j] - z[i][j - 1]) / resolution;
+                    totalSlope += Math.atan(Math.sqrt(dx * dx + dy * dy)) * 180 / Math.PI;
+                    count++;
+                }
+            }
+
+            document.getElementById('tm-min').textContent = minD.toFixed(0);
+            document.getElementById('tm-max').textContent = maxD.toFixed(0);
+            document.getElementById('tm-roughness').textContent = roughness.toFixed(1);
+            document.getElementById('tm-slope').textContent = (totalSlope / count).toFixed(1);
+        }
+
+        function runCorrelation() {
+            const length = parseFloat(document.getElementById('corr-length').value);
+            const noise = parseFloat(document.getElementById('corr-noise').value);
+            const searchArea = parseFloat(document.getElementById('corr-search').value);
+            const initError = parseFloat(document.getElementById('corr-error').value);
+
+            // Generate reference and measured profiles
+            const n = 100;
+            const trueOffset = (Math.random() - 0.5) * initError;
+            const x = [], reference = [], measured = [];
+
+            for (let i = 0; i < n; i++) {
+                const xi = i * length / n;
+                x.push(xi);
+                const depth = 100 + 20 * Math.sin(xi * 0.02) + 10 * Math.cos(xi * 0.05) + 5 * Math.sin(xi * 0.1);
+                reference.push(depth);
+
+                const shiftedX = xi + trueOffset;
+                const measuredDepth = 100 + 20 * Math.sin(shiftedX * 0.02) + 10 * Math.cos(shiftedX * 0.05) + 5 * Math.sin(shiftedX * 0.1);
+                measured.push(measuredDepth + (Math.random() - 0.5) * noise * 2);
+            }
+
+            // Compute correlation
+            const offsets = [], correlations = [];
+            let maxCorr = -1, bestOffset = 0;
+
+            for (let offset = -searchArea; offset <= searchArea; offset += 2) {
+                let sum = 0, n1 = 0, n2 = 0;
+                for (let i = 0; i < n; i++) {
+                    const j = Math.round(i + offset / (length / n));
+                    if (j >= 0 && j < n) {
+                        sum += reference[i] * measured[j];
+                        n1 += reference[i] * reference[i];
+                        n2 += measured[j] * measured[j];
+                    }
+                }
+                const corr = sum / Math.sqrt(n1 * n2);
+                offsets.push(offset);
+                correlations.push(corr);
+
+                if (corr > maxCorr) {
+                    maxCorr = corr;
+                    bestOffset = offset;
+                }
+            }
+
+            const traces = [
+                { x: offsets, y: correlations, type: 'scatter', mode: 'lines', fill: 'tozeroy', fillcolor: 'rgba(14,165,233,0.3)', line: { color: '#0ea5e9' }, name: 'Correlation' },
+                { x: [bestOffset], y: [maxCorr], mode: 'markers', marker: { color: '#22c55e', size: 12, symbol: 'star' }, name: 'Peak' }
+            ];
+
+            const layout = {
+                title: 'Terrain Correlation Surface',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(15,23,42,0.8)',
+                font: { color: '#e2e8f0' },
+                xaxis: { title: 'Position Offset (m)', gridcolor: '#334155' },
+                yaxis: { title: 'Correlation Coefficient', gridcolor: '#334155' },
+                legend: { x: 0, y: 1.1, orientation: 'h' }
+            };
+
+            Plotly.newPlot('correlation-chart', traces, layout, { responsive: true });
+
+            const confidence = maxCorr > 0.9 ? 'High' : maxCorr > 0.7 ? 'Medium' : 'Low';
+            const status = Math.abs(bestOffset - trueOffset) < 10 ? 'VALID' : 'CHECK';
+
+            document.getElementById('corr-peak').textContent = maxCorr.toFixed(3);
+            document.getElementById('corr-offset').textContent = bestOffset.toFixed(1);
+            document.getElementById('corr-confidence').textContent = (maxCorr * 100).toFixed(0) + '%';
+            document.getElementById('corr-status').textContent = status;
+        }
+
+        function runParticleFilter() {
+            const nParticles = parseInt(document.getElementById('pf-particles').value);
+            const steps = parseInt(document.getElementById('pf-steps').value);
+            const processNoise = parseFloat(document.getElementById('pf-process').value);
+            const measureNoise = parseFloat(document.getElementById('pf-measure').value);
+
+            // True trajectory
+            const trueX = [], trueY = [], estX = [], estY = [];
+            let tx = 250, ty = 250;
+
+            // Initialize particles
+            let particles = [];
+            for (let i = 0; i < nParticles; i++) {
+                particles.push({
+                    x: tx + (Math.random() - 0.5) * 100,
+                    y: ty + (Math.random() - 0.5) * 100,
+                    w: 1 / nParticles
+                });
+            }
+
+            let resamples = 0, errors = [];
+
+            for (let step = 0; step < steps; step++) {
+                // Move true position
+                tx += 5 + (Math.random() - 0.5) * 2;
+                ty += 3 * Math.sin(step * 0.2) + (Math.random() - 0.5) * 2;
+                trueX.push(tx);
+                trueY.push(ty);
+
+                // Predict particles
+                particles.forEach(p => {
+                    p.x += 5 + (Math.random() - 0.5) * processNoise * 2;
+                    p.y += 3 * Math.sin(step * 0.2) + (Math.random() - 0.5) * processNoise * 2;
+                });
+
+                // Simulated terrain measurement
+                const trueTerrain = 100 + 20 * Math.sin(tx * 0.01) + 10 * Math.cos(ty * 0.01);
+                const measuredTerrain = trueTerrain + (Math.random() - 0.5) * measureNoise * 2;
+
+                // Update weights
+                let sumW = 0;
+                particles.forEach(p => {
+                    const predictedTerrain = 100 + 20 * Math.sin(p.x * 0.01) + 10 * Math.cos(p.y * 0.01);
+                    const error = measuredTerrain - predictedTerrain;
+                    p.w *= Math.exp(-error * error / (2 * measureNoise * measureNoise));
+                    sumW += p.w;
+                });
+
+                // Normalize
+                particles.forEach(p => p.w /= sumW);
+
+                // Estimate
+                let ex = 0, ey = 0;
+                particles.forEach(p => {
+                    ex += p.x * p.w;
+                    ey += p.y * p.w;
+                });
+                estX.push(ex);
+                estY.push(ey);
+                errors.push(Math.sqrt(Math.pow(tx - ex, 2) + Math.pow(ty - ey, 2)));
+
+                // Effective particles
+                let sumW2 = 0;
+                particles.forEach(p => sumW2 += p.w * p.w);
+                const nEff = 1 / sumW2;
+
+                // Resample if needed
+                if (nEff < nParticles / 2) {
+                    resamples++;
+                    const newParticles = [];
+                    for (let i = 0; i < nParticles; i++) {
+                        let r = Math.random();
+                        let cumSum = 0;
+                        for (const p of particles) {
+                            cumSum += p.w;
+                            if (r <= cumSum) {
+                                newParticles.push({ x: p.x + (Math.random() - 0.5) * 2, y: p.y + (Math.random() - 0.5) * 2, w: 1 / nParticles });
+                                break;
+                            }
+                        }
+                    }
+                    particles = newParticles;
+                }
+            }
+
+            const traces = [
+                { x: trueX, y: trueY, mode: 'lines', name: 'True Path', line: { color: '#22c55e', width: 2 } },
+                { x: estX, y: estY, mode: 'lines', name: 'PF Estimate', line: { color: '#0ea5e9', width: 2, dash: 'dot' } },
+                { x: particles.map(p => p.x), y: particles.map(p => p.y), mode: 'markers', name: 'Final Particles', marker: { color: '#f59e0b', size: 3, opacity: 0.5 } }
+            ];
+
+            const layout = {
+                title: 'Particle Filter Terrain-Aided Navigation',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(15,23,42,0.8)',
+                font: { color: '#e2e8f0' },
+                xaxis: { title: 'East (m)', gridcolor: '#334155' },
+                yaxis: { title: 'North (m)', gridcolor: '#334155' },
+                legend: { x: 0, y: 1.1, orientation: 'h' }
+            };
+
+            Plotly.newPlot('particle-chart', traces, layout, { responsive: true });
+
+            const rmse = Math.sqrt(errors.reduce((a, b) => a + b * b, 0) / errors.length);
+            let sumW2 = 0;
+            particles.forEach(p => sumW2 += p.w * p.w);
+            const nEff = Math.round(1 / sumW2);
+
+            document.getElementById('pf-rmse').textContent = rmse.toFixed(1);
+            document.getElementById('pf-neff').textContent = nEff;
+            document.getElementById('pf-converged').textContent = rmse < 10 ? 'YES' : 'NO';
+            document.getElementById('pf-resamples').textContent = resamples;
+        }
+
+        function analyzeSuitability() {
+            const window = parseFloat(document.getElementById('suit-window').value);
+            const resolution = parseFloat(document.getElementById('suit-resolution').value);
+            const drift = parseFloat(document.getElementById('suit-drift').value);
+            const rate = parseFloat(document.getElementById('suit-rate').value);
+
+            // Generate suitability metrics across different terrain types
+            const terrainTypes = ['Flat', 'Rolling', 'Moderate', 'Rugged', 'Complex'];
+            const roughnessValues = [2, 10, 25, 50, 100];
+
+            const suitability = [], observability = [], accuracy = [];
+
+            roughnessValues.forEach((roughness, i) => {
+                const suit = Math.min(1, roughness / 30) * Math.min(1, window / 300);
+                const obs = Math.min(1, roughness / resolution / 5);
+                const acc = Math.max(1, resolution * 2 / Math.sqrt(roughness));
+
+                suitability.push(suit * 100);
+                observability.push(obs * 100);
+                accuracy.push(acc);
+            });
+
+            const traces = [
+                { x: terrainTypes, y: suitability, name: 'TAN Suitability', type: 'bar', marker: { color: '#0ea5e9' } },
+                { x: terrainTypes, y: observability, name: 'Observability', type: 'bar', marker: { color: '#22c55e' } }
+            ];
+
+            const layout = {
+                title: 'Terrain Navigation Suitability Analysis',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(15,23,42,0.8)',
+                font: { color: '#e2e8f0' },
+                xaxis: { title: 'Terrain Type', gridcolor: '#334155' },
+                yaxis: { title: 'Score (%)', gridcolor: '#334155' },
+                barmode: 'group',
+                legend: { x: 0, y: 1.1, orientation: 'h' }
+            };
+
+            Plotly.newPlot('suitability-chart', traces, layout, { responsive: true });
+        }
+
+        // Initialize
+        generateTerrain();
+    </script>
+</body>
+</html>
