@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scaling Analysis - Distributed ML</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>.gradient-bg { background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #fcd34d 100%); }</style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-amber-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="distributed-ml-complete-project.html" class="flex items-center text-amber-400 hover:text-amber-300">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Distributed ML
+                </a>
+                <span class="text-amber-400 font-semibold">Scaling Analysis</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4 text-gray-900"><i class="fas fa-chart-line mr-4"></i>Scaling Analysis</h1>
+            <p class="text-xl text-amber-900">Visualize throughput scaling from 1 to 128+ GPUs</p>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid lg:grid-cols-4 gap-6">
+            <div class="space-y-6">
+                <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-amber-400 mb-4"><i class="fas fa-cog mr-2"></i>Configuration</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Model</label>
+                            <select id="model" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white">
+                                <option value="resnet50">ResNet-50</option>
+                                <option value="bert">BERT-Large</option>
+                                <option value="gpt2">GPT-2 (1.5B)</option>
+                                <option value="llama">LLaMA-7B</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Batch Size / GPU: <span id="batchValue">32</span></label>
+                            <input type="range" id="batchSize" min="8" max="256" step="8" value="32" class="w-full accent-amber-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Max GPUs: <span id="maxGpuValue">128</span></label>
+                            <input type="range" id="maxGpus" min="8" max="256" step="8" value="128" class="w-full accent-amber-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Network</label>
+                            <select id="network" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white">
+                                <option value="nvlink">NVLink (600 GB/s)</option>
+                                <option value="pcie">PCIe 4.0 (64 GB/s)</option>
+                                <option value="infiniband">InfiniBand (200 Gb/s)</option>
+                                <option value="ethernet">100GbE</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button onclick="analyze()" class="w-full mt-4 bg-amber-600 hover:bg-amber-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors">
+                        <i class="fas fa-play mr-2"></i>Analyze Scaling
+                    </button>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-amber-400 mb-4"><i class="fas fa-tachometer-alt mr-2"></i>Key Metrics</h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Scaling Efficiency</span>
+                            <span class="text-amber-400 font-semibold" id="efficiency">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Max Throughput</span>
+                            <span class="text-white font-semibold" id="maxThroughput">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Communication %</span>
+                            <span class="text-white font-semibold" id="commOverhead">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Time to Train</span>
+                            <span class="text-white font-semibold" id="trainTime">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-3 space-y-6">
+                <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-amber-400 mb-4"><i class="fas fa-chart-line mr-2"></i>Strong Scaling</h3>
+                    <div id="strongScalingChart" style="height: 300px;"></div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-6">
+                        <h3 class="text-lg font-semibold text-amber-400 mb-4"><i class="fas fa-chart-bar mr-2"></i>Weak Scaling</h3>
+                        <div id="weakScalingChart" style="height: 250px;"></div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-6">
+                        <h3 class="text-lg font-semibold text-amber-400 mb-4"><i class="fas fa-percentage mr-2"></i>Efficiency vs GPUs</h3>
+                        <div id="efficiencyChart" style="height: 250px;"></div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-amber-400 mb-4"><i class="fas fa-clock mr-2"></i>Time Breakdown</h3>
+                    <div id="breakdownChart" style="height: 250px;"></div>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-amber-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-amber-400 mb-4"><i class="fas fa-table mr-2"></i>Scaling Data</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm" id="scalingTable">
+                            <thead>
+                                <tr class="border-b border-gray-700">
+                                    <th class="text-left py-2 px-3">GPUs</th>
+                                    <th class="text-right py-2 px-3">Throughput</th>
+                                    <th class="text-right py-2 px-3">Speedup</th>
+                                    <th class="text-right py-2 px-3">Efficiency</th>
+                                    <th class="text-right py-2 px-3">Comm Time</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const batchSize = document.getElementById('batchSize');
+        const batchValue = document.getElementById('batchValue');
+        const maxGpus = document.getElementById('maxGpus');
+        const maxGpuValue = document.getElementById('maxGpuValue');
+
+        batchSize.addEventListener('input', () => { batchValue.textContent = batchSize.value; analyze(); });
+        maxGpus.addEventListener('input', () => { maxGpuValue.textContent = maxGpus.value; analyze(); });
+        document.getElementById('model').addEventListener('change', analyze);
+        document.getElementById('network').addEventListener('change', analyze);
+
+        function analyze() {
+            const model = document.getElementById('model').value;
+            const batch = parseInt(batchSize.value);
+            const maxG = parseInt(maxGpus.value);
+            const network = document.getElementById('network').value;
+
+            // Base throughput per GPU depends on model
+            const baseThroughput = { resnet50: 800, bert: 120, gpt2: 45, llama: 12 }[model];
+
+            // Network bandwidth affects communication overhead
+            const commFactor = { nvlink: 0.02, pcie: 0.08, infiniband: 0.05, ethernet: 0.12 }[network];
+
+            // Generate GPU counts
+            const gpuCounts = [];
+            for (let g = 1; g <= maxG; g *= 2) gpuCounts.push(g);
+
+            // Strong scaling (fixed global batch)
+            const strongIdeal = gpuCounts.map(g => baseThroughput * g);
+            const strongActual = gpuCounts.map(g => {
+                const overhead = commFactor * Math.log2(g + 1);
+                return baseThroughput * g * (1 - overhead);
+            });
+
+            // Weak scaling (fixed batch per GPU)
+            const weakIdeal = gpuCounts.map(() => baseThroughput);
+            const weakActual = gpuCounts.map(g => {
+                const overhead = commFactor * Math.log2(g + 1);
+                return baseThroughput * (1 - overhead);
+            });
+
+            // Efficiency
+            const efficiencies = gpuCounts.map((g, i) => (strongActual[i] / strongIdeal[i]) * 100);
+
+            // Update metrics
+            const maxEff = efficiencies[efficiencies.length - 1];
+            const maxThru = strongActual[strongActual.length - 1];
+            const commPct = (1 - maxThru / strongIdeal[strongIdeal.length - 1]) * 100;
+
+            document.getElementById('efficiency').textContent = maxEff.toFixed(1) + '%';
+            document.getElementById('maxThroughput').textContent = Math.round(maxThru) + ' samples/s';
+            document.getElementById('commOverhead').textContent = commPct.toFixed(1) + '%';
+            document.getElementById('trainTime').textContent = (1000000 / maxThru / 3600).toFixed(1) + ' hours';
+
+            // Strong scaling chart
+            Plotly.newPlot('strongScalingChart', [
+                { x: gpuCounts, y: strongIdeal, name: 'Linear (Ideal)', mode: 'lines', line: { color: '#9ca3af', dash: 'dash' } },
+                { x: gpuCounts, y: strongActual, name: 'Actual', mode: 'lines+markers', line: { color: '#f59e0b' }, marker: { size: 8 } }
+            ], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 60, r: 20, t: 20, b: 50 },
+                xaxis: { title: 'Number of GPUs', type: 'log', gridcolor: '#374151' },
+                yaxis: { title: 'Throughput (samples/s)', type: 'log', gridcolor: '#374151' },
+                legend: { x: 0, y: 1, bgcolor: 'rgba(0,0,0,0)' }
+            }, {responsive: true});
+
+            // Weak scaling chart
+            Plotly.newPlot('weakScalingChart', [
+                { x: gpuCounts, y: weakIdeal, name: 'Ideal', mode: 'lines', line: { color: '#9ca3af', dash: 'dash' } },
+                { x: gpuCounts, y: weakActual, name: 'Actual', mode: 'lines+markers', line: { color: '#10b981' }, marker: { size: 8 } }
+            ], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 60, r: 20, t: 20, b: 50 },
+                xaxis: { title: 'GPUs', type: 'log', gridcolor: '#374151' },
+                yaxis: { title: 'Throughput/GPU', gridcolor: '#374151' },
+                legend: { x: 0, y: 1, bgcolor: 'rgba(0,0,0,0)' }
+            }, {responsive: true});
+
+            // Efficiency chart
+            Plotly.newPlot('efficiencyChart', [{
+                x: gpuCounts,
+                y: efficiencies,
+                mode: 'lines+markers',
+                line: { color: '#f59e0b' },
+                marker: { size: 8 },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(245, 158, 11, 0.2)'
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 60, r: 20, t: 20, b: 50 },
+                xaxis: { title: 'GPUs', type: 'log', gridcolor: '#374151' },
+                yaxis: { title: 'Efficiency (%)', gridcolor: '#374151', range: [0, 100] }
+            }, {responsive: true});
+
+            // Time breakdown
+            const compute = gpuCounts.map(g => 100 * (1 - commFactor * Math.log2(g + 1)));
+            const comm = gpuCounts.map(g => 100 * commFactor * Math.log2(g + 1));
+
+            Plotly.newPlot('breakdownChart', [
+                { x: gpuCounts, y: compute, name: 'Compute', type: 'bar', marker: { color: '#10b981' } },
+                { x: gpuCounts, y: comm, name: 'Communication', type: 'bar', marker: { color: '#ef4444' } }
+            ], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 60, r: 20, t: 20, b: 50 },
+                barmode: 'stack',
+                xaxis: { title: 'GPUs', type: 'category', gridcolor: '#374151' },
+                yaxis: { title: 'Time (%)', gridcolor: '#374151' },
+                legend: { x: 0, y: 1, bgcolor: 'rgba(0,0,0,0)' }
+            }, {responsive: true});
+
+            // Update table
+            document.getElementById('tableBody').innerHTML = gpuCounts.map((g, i) => `
+                <tr class="border-b border-gray-800">
+                    <td class="py-2 px-3">${g}</td>
+                    <td class="text-right py-2 px-3">${Math.round(strongActual[i])}</td>
+                    <td class="text-right py-2 px-3">${(strongActual[i] / strongActual[0]).toFixed(1)}x</td>
+                    <td class="text-right py-2 px-3 ${efficiencies[i] > 90 ? 'text-green-400' : efficiencies[i] > 80 ? 'text-yellow-400' : 'text-red-400'}">${efficiencies[i].toFixed(1)}%</td>
+                    <td class="text-right py-2 px-3">${(commFactor * Math.log2(g + 1) * 100).toFixed(1)}%</td>
+                </tr>
+            `).join('');
+        }
+
+        analyze();
+    </script>
+</body>
+</html>
