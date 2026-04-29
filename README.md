@@ -1,80 +1,114 @@
-# Self-Driving Vision Module (Demo)
+# Louis Antoine — Engineering Portfolio
 
-A minimal, self-contained full‑stack demo replicating the portfolio project description: real‑time lane detection, object detection (YOLO via OpenCV DNN), and simple collision risk prediction.
+The source for [alovladi007.github.io/louis-antoine-portfolio](https://alovladi007.github.io/louis-antoine-portfolio/) — a multi-section portfolio covering semiconductor process engineering, photonics, quantum optics, machine learning, autonomy, and adjacent applied-physics work.
 
-## Structure
+The site is a static HTML/CSS/JS app deployed via GitHub Pages, with hundreds of interactive simulators, tools, and project write-ups organized by domain.
 
-```
-backend/
-  app.py            # Flask app with /process-image
-  model/            # Place YOLO files here (see below)
-frontend/
-  index.html        # UI: upload image, draw results
-  app.js            # Client-side logic and canvas drawing
-requirements.txt
-```
+## Live site
 
-## Setup
+- **Homepage** — [`index.html`](index.html)
+- **Electronics projects** — [`electronics-projects.html`](electronics-projects.html)
+- **Photonics projects** — [`photonics-projects.html`](photonics-projects.html)
+- **Machine Learning & Data Science** — [`machine-learning-projects.html`](machine-learning-projects.html)
+- **Innovation projects** — [`innovation-projects.html`](innovation-projects.html)
 
-1) Create and activate a Python 3.8+ environment.
-
-2) Install dependencies:
+## Repository layout
 
 ```
+.
+├── index.html                       # Homepage
+├── electronics-projects.html        # Hub: electronics
+├── photonics-projects.html          # Hub: photonics
+├── machine-learning-projects.html   # Hub: ML/DS
+├── innovation-projects.html         # Hub: innovation
+│
+├── projects/                        # All project pages, grouped by domain
+│   ├── cmp/                         # Chemical-mechanical polishing (23)
+│   ├── semiconductor/               # Process, lithography, deposition, etching (~240)
+│   ├── photonics/                   # Metamaterials & integrated photonics (~14)
+│   ├── comms/                       # Communications & RF (~51)
+│   ├── navigation/                  # GNSS, autonomy, undersea (~70)
+│   ├── computer-vision/             # CV, AR/VR, self-driving (~44)
+│   ├── ml-ai/                       # ML/DL/RL/generative (~136)
+│   ├── medical/                     # Biomedical, imaging, clinical (~46)
+│   ├── quantum/                     # CV-QKD, squeezing, nonlinear (~34)
+│   ├── power-electronics/           # GaN, RISC-V SoC, hardware (~33)
+│   ├── finance/                     # Trading, backtesting, risk (~16)
+│   ├── iot/                         # IoT, distributed, cluster (~34)
+│   ├── climate/                     # Climate/energy/sensors (~19)
+│   └── misc/                        # Themed multi-domain projects (~31)
+│
+├── about/                           # Bio: ASML, coursework, research, skills, certs
+├── blog/                            # Blog (CV-quantum, GaN-SiC, transformers)
+├── research/                        # Research hubs + algorithm simulators
+├── demos/                           # Standalone demos and showcase pages
+├── pages/                           # Site utilities (FAQ, sitemap, legal, dashboards)
+├── tests/                           # Dev/debug pages
+│
+├── assets/
+│   ├── images/                      # Photos, illustrations, backgrounds
+│   ├── pdfs/                        # Resume, diplomas, certifications
+│   └── data/                        # Datasets, captions
+│
+├── docs/                            # Status notes, READMEs, project guides, notebooks
+├── scripts/                         # Helper scripts (.py, .sh, .mac, .jsl, .sql)
+├── archives/                        # Old project bundles (.zip, .tar.gz)
+├── logs/                            # Server log files
+│
+├── styles.css, styles-advanced.css  # Site-wide CSS
+├── script.js, script-advanced.js, enhance.js, i18n.js  # Site-wide JS
+├── service-worker.js, manifest.json # PWA config (must stay at root)
+├── package.json, requirements.txt   # Dependencies
+└── .nojekyll                        # Disable Jekyll on GitHub Pages
+```
+
+## Tech stack
+
+- **Build**: Vite (configured via [`package.json`](package.json))
+- **3D / visualization**: Three.js, Plotly.js
+- **Animation**: GSAP, Lottie-web, AOS, Particles.js
+- **ML in-browser**: TensorFlow.js
+- **PWA**: `manifest.json` + `service-worker.js`
+- **Internationalization**: [`i18n.js`](i18n.js) (EN / FR / ES)
+
+## Local development
+
+```bash
+# Static-server preview (no build step required)
+python3 -m http.server 8765
+# then open http://localhost:8765/
+
+# Vite dev server (with HMR)
+npm install
+npm run dev
+
+# Production build
+npm run build
+```
+
+## Self-driving demo (Flask backend)
+
+Inside [`backend/`](backend/) is a standalone Flask app implementing the self-driving vision project page — real-time lane detection (Canny + probabilistic Hough), object detection (YOLOv3-tiny via OpenCV DNN), and collision risk scoring.
+
+```bash
 pip install -r requirements.txt
-```
-
-3) Download YOLOv3-tiny files and place them under `backend/model/`:
-
-- `yolov3-tiny.cfg`
-- `yolov3-tiny.weights`
-- `coco.names`
-
-You can obtain them from the official sources:
-
-- Config: `https://raw.githubusercontent.com/pjreddie/darknet/master/cfg/yolov3-tiny.cfg`
-- Weights: `https://pjreddie.com/media/files/yolov3-tiny.weights`
-- COCO names: `https://raw.githubusercontent.com/pjreddie/darknet/master/data/coco.names`
-
-If these files are not present, the backend will still run but object detection will return an empty list.
-
-## Run
-
-In one terminal (backend):
-
-```
 python backend/app.py
+# then open frontend/index.html in a browser
 ```
 
-In a static file server (frontend), open `frontend/index.html` in a browser. You can also open the file directly.
+YOLO weights/config/labels go in `backend/model/` — see [`backend/`](backend/) for sources.
 
-The default endpoint is `http://localhost:5000/process-image`. Change it in the page if your backend runs elsewhere.
+## Recovery
 
-## API
+Every reorganization in this repo's history is committed in small, revertible commits. To roll back any single migration:
 
-POST `/process-image`
-
-Form field: `image` (file)
-
-Response JSON:
-
-```
-{
-  "lanes": [{"x1": int, "y1": int, "x2": int, "y2": int}, ...],
-  "objects": [
-    {"bbox": [x, y, w, h], "label": str, "confidence": float, "area_ratio": float, "high_risk": bool},
-    ...
-  ],
-  "yolo_model_loaded": bool
-}
+```bash
+git log --oneline | head -20            # find the commit
+git revert <commit-sha>                  # safely undo it
 ```
 
-Collision risk is flagged when a detection's bounding box area is ≥ 30% of the image area.
+Project content moves through git history are preserved with rename detection (`git log --follow path/to/file`).
 
-## Notes
+## License & attribution
 
-- Lane detection uses Gaussian blur, Canny edges, ROI masking, and probabilistic Hough transform.
-- Object detection uses OpenCV DNN with YOLOv3-tiny; NMS applied.
-- This is a demo and not optimized for production or real-time constraints.
-
-# GitHub Pages Site
+Personal portfolio. Project pages credit upstream papers and reference implementations where applicable.
