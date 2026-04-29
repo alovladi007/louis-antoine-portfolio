@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RF SiP PDN Z(f) & VRM Step Demo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background:#0f0f1e; color:#e5e7eb; margin:0; }
+        .container { max-width:1100px; margin:0 auto; padding:1.5rem; }
+        .back { display:inline-flex; align-items:center; gap:8px; color:#cbd5e1; text-decoration:none; margin-bottom:1rem; }
+        .hero { text-align:center; padding:1.2rem 0; border-bottom:1px solid rgba(255,255,255,.12); margin-bottom:1.2rem; }
+        .title { font-size:2rem; background:linear-gradient(135deg,#34d399,#a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+        .subtitle { color:#94a3b8; margin-top:6px; }
+        .grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); gap:1rem; margin:1rem 0 1.25rem 0; }
+        .card { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:1rem; }
+        .label { display:flex; justify-content:space-between; color:#94a3b8; margin-bottom:6px; font-size:.95rem; }
+        .value { color:#e5e7eb; }
+        .btns { display:flex; gap:.6rem; flex-wrap:wrap; margin:.5rem 0 0 0; }
+        .btn { padding:.55rem .95rem; border-radius:8px; border:1px solid rgba(99,102,241,.35); background:linear-gradient(135deg,rgba(99,102,241,.18),rgba(168,85,247,.18)); color:#e5e7eb; cursor:pointer; }
+        .chart { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:.5rem; margin-bottom:1rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a class="back" href="rf-sip-codesign.html"><i class="fas fa-arrow-left"></i> Back to RF SiP Project</a>
+        <div class="hero">
+            <div class="title">PDN Impedance & VRM Step Response</div>
+            <div class="subtitle">Decap bank tuning • Target impedance • Transient droop</div>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <div class="label">VRM (Ω) <span class="value" id="vrmVal">0.02</span></div>
+                <input id="vrm" type="range" min="0.005" max="0.05" step="0.005" value="0.02" oninput="vrmVal.textContent=this.value; update()">
+            </div>
+            <div class="card">
+                <div class="label">Decap (μF) <span class="value" id="cVal">200</span></div>
+                <input id="c" type="range" min="50" max="500" step="10" value="200" oninput="cVal.textContent=this.value; update()">
+            </div>
+            <div class="card">
+                <div class="label">ESR (mΩ) <span class="value" id="esrVal">5</span></div>
+                <input id="esr" type="range" min="1" max="20" step="1" value="5" oninput="esrVal.textContent=this.value; update()">
+            </div>
+        </div>
+
+        <div class="btns">
+            <button class="btn" onclick="run(event)">Run</button>
+            <button class="btn" onclick="resetAll()">Reset</button>
+        </div>
+
+        <div class="chart"><div id="zChart" style="height:360px"></div></div>
+        <div class="chart"><div id="stepChart" style="height:360px"></div></div>
+    </div>
+
+    <script>
+        function modelZ(vrm, C, esr){
+            const f=Array.from({length:181},(_,i)=> 1e3*Math.pow(10,i/60));
+            const w=f.map(x=>2*Math.PI*x);
+            const cap=C*1e-6, r=esr*1e-3; // SI
+            const z=[]; for(let i=0;i<f.length;i++){ const jw=w[i]; const zc=1/(jw*cap); const zpar = (r*zc)/(r+zc); const zout = vrm + zpar; z.push(Math.abs(zout)); }
+            return {f,z};
+        }
+        function stepDroop(vrm,C,esr){
+            const iStep=1; // 1A step
+            const cap=C*1e-6; const r=esr*1e-3;
+            const x=Array.from({length:201},(_,i)=> i*1e-6*200); // 0..200us
+            const y=x.map(t=> 1.0 - (iStep*(vrm + r*(1-Math.exp(-t/(cap*r)))))); // normalized Vout
+            return {x,y};
+        }
+        function fmtHz(v){ if(v<1e3) return v.toFixed(0)+' Hz'; if(v<1e6) return (v/1e3).toFixed(0)+' kHz'; if(v<1e9) return (v/1e6).toFixed(1)+' MHz'; return (v/1e9).toFixed(1)+' GHz'; }
+        function update(){ const vr=parseFloat(vrm.value), C=parseFloat(c.value), R=parseFloat(esr.value); const {f,z}=modelZ(vr,C,R); Plotly.react('zChart',[{x:f,y:z.map(v=>20*Math.log10(v)),type:'scatter',mode:'lines',line:{color:'#34d399'}}],{title:'PDN Impedance (|Z| in dBΩ)',xaxis:{title:'Frequency', tickvals:[1e3,1e4,1e5,1e6,1e7,1e8,1e9], ticktext:['1k','10k','100k','1M','10M','100M','1G'], type:'log'}, yaxis:{title:'dBΩ'}});
+            const s=stepDroop(vr,C,R); Plotly.react('stepChart',[{x:s.x,y:s.y,type:'scatter',mode:'lines',line:{color:'#60a5fa'}}],{title:'VRM Step Response (normalized Vout)',xaxis:{title:'Time (μs)', tickformat:'.1f'}, yaxis:{title:'V/V'}}); }
+        function run(e){ const b=e.target,t=b.textContent; b.disabled=true; let p=0; const id=setInterval(()=>{ p+=14; b.textContent=`Running... ${Math.min(100,p)}%`; c.value=Math.max(50,Math.min(500, parseFloat(c.value) + (Math.random()-0.5)*10)); cVal.textContent=c.value; update(); if(p>=100){ clearInterval(id); b.disabled=false; b.textContent=t; } },150); }
+        function resetAll(){ vrm.value=0.02; vrmVal.textContent='0.02'; c.value=200; cVal.textContent='200'; esr.value=5; esrVal.textContent='5'; update(); }
+        // Wait for Plotly to load
+        function init() {
+            if (typeof Plotly === 'undefined') { setTimeout(init, 50); return; }
+            update();
+        }
+        init();
+    </script>
+</body>
+</html>
+

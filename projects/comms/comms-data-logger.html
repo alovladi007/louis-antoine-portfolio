@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Logger - Cross-Domain Comms</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #164e63 0%, #0e7490 50%, #06b6d4 100%); }
+        .card { background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(6, 182, 212, 0.3); }
+        .stat-card { background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(6, 182, 212, 0.05)); }
+        .log-entry { font-family: 'Courier New', monospace; font-size: 12px; }
+        .recording { animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-cyan-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="cross-domain-comms-complete-project.html" class="flex items-center text-cyan-400 hover:text-cyan-300 transition-colors">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Cross-Domain Comms
+                </a>
+                <span class="text-cyan-400 font-semibold">Data Logger</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4">
+                <i class="fas fa-database mr-4 text-cyan-300"></i>Communication Data Logger
+            </h1>
+            <p class="text-xl text-cyan-100 max-w-3xl mx-auto">
+                Real-time telemetry logging and visualization for underwater communication systems
+            </p>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="bg-cyan-900/30 border-l-4 border-cyan-500 p-4 rounded-r-lg mb-8">
+            <h3 class="text-cyan-400 font-semibold mb-2"><i class="fas fa-info-circle mr-2"></i>About Data Logging</h3>
+            <p class="text-gray-300">
+                The data logger captures real-time telemetry from acoustic, optical, and RF communication links. It records
+                SNR, BER, throughput, latency, and environmental parameters for post-mission analysis and system optimization.
+            </p>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="card rounded-xl p-6 mb-8">
+            <h2 class="text-xl font-semibold text-cyan-400 mb-6"><i class="fas fa-sliders-h mr-2"></i>Logger Configuration</h2>
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div>
+                    <label class="block text-gray-300 mb-2">Sample Rate (Hz): <span id="rate-val" class="text-cyan-400">10</span></label>
+                    <input type="range" id="sample-rate" min="1" max="100" value="10" class="w-full h-2 bg-gray-700 rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-gray-300 mb-2">Link Channel</label>
+                    <select id="channel" class="w-full bg-gray-800 border border-cyan-500/30 rounded-lg p-3 text-white">
+                        <option value="acoustic">Acoustic Modem</option>
+                        <option value="optical">Optical Link</option>
+                        <option value="rf">RF Relay</option>
+                        <option value="all">All Channels</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-300 mb-2">Buffer Size: <span id="buffer-val" class="text-cyan-400">500</span></label>
+                    <input type="range" id="buffer-size" min="100" max="2000" step="100" value="500" class="w-full h-2 bg-gray-700 rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-gray-300 mb-2">Trigger Mode</label>
+                    <select id="trigger" class="w-full bg-gray-800 border border-cyan-500/30 rounded-lg p-3 text-white">
+                        <option value="continuous">Continuous</option>
+                        <option value="threshold">Threshold</option>
+                        <option value="event">Event-Based</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex gap-4 mt-6">
+                <button onclick="startLogging()" id="start-btn" class="bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 px-6 py-3 rounded-lg font-semibold transition-all">
+                    <i class="fas fa-play mr-2"></i>Start Logging
+                </button>
+                <button onclick="stopLogging()" id="stop-btn" class="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 px-6 py-3 rounded-lg font-semibold transition-all" disabled>
+                    <i class="fas fa-stop mr-2"></i>Stop
+                </button>
+                <button onclick="clearData()" class="bg-gray-700 hover:bg-gray-600 px-6 py-3 rounded-lg font-semibold transition-all">
+                    <i class="fas fa-trash mr-2"></i>Clear
+                </button>
+                <button onclick="exportData()" class="bg-cyan-700 hover:bg-cyan-600 px-6 py-3 rounded-lg font-semibold transition-all">
+                    <i class="fas fa-download mr-2"></i>Export CSV
+                </button>
+            </div>
+        </div>
+
+        <!-- Status Bar -->
+        <div id="status-bar" class="card rounded-xl p-4 mb-8">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div id="status-indicator" class="w-4 h-4 rounded-full bg-gray-500"></div>
+                    <span id="status-text" class="text-gray-400">Idle</span>
+                </div>
+                <div class="flex gap-8 text-sm">
+                    <span class="text-gray-400">Samples: <span id="sample-count" class="text-cyan-400">0</span></span>
+                    <span class="text-gray-400">Duration: <span id="duration" class="text-cyan-400">0:00</span></span>
+                    <span class="text-gray-400">Buffer: <span id="buffer-usage" class="text-cyan-400">0%</span></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="grid md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+            <div class="stat-card rounded-xl p-4 text-center border border-cyan-500/20">
+                <div class="text-2xl font-bold text-cyan-400" id="snr-stat">--</div>
+                <div class="text-gray-400 text-sm">Current SNR (dB)</div>
+            </div>
+            <div class="stat-card rounded-xl p-4 text-center border border-cyan-500/20">
+                <div class="text-2xl font-bold text-green-400" id="ber-stat">--</div>
+                <div class="text-gray-400 text-sm">BER</div>
+            </div>
+            <div class="stat-card rounded-xl p-4 text-center border border-cyan-500/20">
+                <div class="text-2xl font-bold text-yellow-400" id="throughput-stat">--</div>
+                <div class="text-gray-400 text-sm">Throughput (bps)</div>
+            </div>
+            <div class="stat-card rounded-xl p-4 text-center border border-cyan-500/20">
+                <div class="text-2xl font-bold text-purple-400" id="latency-stat">--</div>
+                <div class="text-gray-400 text-sm">Latency (ms)</div>
+            </div>
+            <div class="stat-card rounded-xl p-4 text-center border border-cyan-500/20">
+                <div class="text-2xl font-bold text-red-400" id="packets-stat">--</div>
+                <div class="text-gray-400 text-sm">Packets/sec</div>
+            </div>
+            <div class="stat-card rounded-xl p-4 text-center border border-cyan-500/20">
+                <div class="text-2xl font-bold text-orange-400" id="errors-stat">--</div>
+                <div class="text-gray-400 text-sm">Errors</div>
+            </div>
+        </div>
+
+        <!-- Real-time Charts -->
+        <div class="grid lg:grid-cols-2 gap-8 mb-8">
+            <div class="card rounded-xl p-6">
+                <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-chart-line mr-2"></i>SNR Time Series</h3>
+                <div id="snr-plot" class="h-64"></div>
+            </div>
+            <div class="card rounded-xl p-6">
+                <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-chart-area mr-2"></i>Throughput Monitor</h3>
+                <div id="throughput-plot" class="h-64"></div>
+            </div>
+            <div class="card rounded-xl p-6">
+                <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-chart-bar mr-2"></i>Latency Distribution</h3>
+                <div id="latency-plot" class="h-64"></div>
+            </div>
+            <div class="card rounded-xl p-6">
+                <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-signal mr-2"></i>Channel Quality</h3>
+                <div id="quality-plot" class="h-64"></div>
+            </div>
+        </div>
+
+        <!-- Log Console -->
+        <div class="card rounded-xl p-6 mb-8">
+            <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-terminal mr-2"></i>Event Log</h3>
+            <div id="log-console" class="bg-gray-950 rounded-lg p-4 h-48 overflow-y-auto log-entry text-gray-300">
+                <div class="text-gray-500">[SYSTEM] Data logger initialized. Ready to start recording.</div>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="card rounded-xl p-6">
+            <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-table mr-2"></i>Recent Samples</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="bg-cyan-900/30">
+                            <th class="px-3 py-2 text-left text-cyan-400">Timestamp</th>
+                            <th class="px-3 py-2 text-left text-cyan-400">Channel</th>
+                            <th class="px-3 py-2 text-left text-cyan-400">SNR (dB)</th>
+                            <th class="px-3 py-2 text-left text-cyan-400">BER</th>
+                            <th class="px-3 py-2 text-left text-cyan-400">Throughput</th>
+                            <th class="px-3 py-2 text-left text-cyan-400">Latency</th>
+                            <th class="px-3 py-2 text-left text-cyan-400">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="data-table" class="text-gray-300">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-800 border-t border-cyan-500/20 py-6 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center text-gray-400">
+            <p>Cross-Domain Undersea Communications - Data Logging Tools</p>
+        </div>
+    </footer>
+
+    <script>
+        let logging = false;
+        let logInterval = null;
+        let sampleCount = 0;
+        let startTime = null;
+        let dataBuffer = [];
+        let snrData = [], throughputData = [], latencyData = [], timeData = [];
+
+        const sliders = { 'sample-rate': 'rate-val', 'buffer-size': 'buffer-val' };
+        Object.keys(sliders).forEach(id => {
+            document.getElementById(id).addEventListener('input', function(e) {
+                document.getElementById(sliders[id]).textContent = e.target.value;
+            });
+        });
+
+        function addLogEntry(type, message) {
+            const console = document.getElementById('log-console');
+            const time = new Date().toLocaleTimeString();
+            const colors = { INFO: 'text-cyan-400', WARN: 'text-yellow-400', ERROR: 'text-red-400', DATA: 'text-green-400' };
+            console.innerHTML += `<div class="${colors[type] || 'text-gray-300'}">[${time}] [${type}] ${message}</div>`;
+            console.scrollTop = console.scrollHeight;
+        }
+
+        function generateSample() {
+            const channel = document.getElementById('channel').value;
+            const channels = channel === 'all' ? ['Acoustic', 'Optical', 'RF'] : [channel.charAt(0).toUpperCase() + channel.slice(1)];
+            const samples = [];
+
+            channels.forEach(ch => {
+                const baseSNR = ch === 'Acoustic' ? 15 : ch === 'Optical' ? 25 : 20;
+                const snr = baseSNR + (Math.random() - 0.5) * 6;
+                const ber = Math.pow(10, -3 - snr / 5);
+                const throughput = ch === 'Acoustic' ? 500 + Math.random() * 400 : ch === 'Optical' ? 2000000 + Math.random() * 500000 : 10000 + Math.random() * 5000;
+                const latency = ch === 'Acoustic' ? 100 + Math.random() * 50 : ch === 'Optical' ? 5 + Math.random() * 3 : 50 + Math.random() * 20;
+
+                samples.push({ channel: ch, snr, ber, throughput, latency, timestamp: new Date(), status: snr > 10 ? 'OK' : 'LOW' });
+            });
+            return samples;
+        }
+
+        function updatePlots() {
+            const plotLayout = {
+                plot_bgcolor: 'rgba(15,23,42,0.8)', paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' }, margin: { t: 30, r: 20, b: 40, l: 50 },
+                xaxis: { gridcolor: '#333', color: '#e0e0e0' }, yaxis: { gridcolor: '#333', color: '#e0e0e0' }
+            };
+
+            Plotly.newPlot('snr-plot', [{ y: snrData.slice(-100), mode: 'lines', line: { color: '#06b6d4', width: 2 } }],
+                { ...plotLayout, yaxis: { ...plotLayout.yaxis, title: 'SNR (dB)' } }, { responsive: true });
+
+            Plotly.newPlot('throughput-plot', [{ y: throughputData.slice(-100), mode: 'lines', fill: 'tozeroy', line: { color: '#10b981' }, fillcolor: 'rgba(16, 185, 129, 0.2)' }],
+                { ...plotLayout, yaxis: { ...plotLayout.yaxis, title: 'bps' } }, { responsive: true });
+
+            Plotly.newPlot('latency-plot', [{ x: latencyData.slice(-100), type: 'histogram', marker: { color: '#f59e0b' } }],
+                { ...plotLayout, xaxis: { ...plotLayout.xaxis, title: 'Latency (ms)' }, yaxis: { ...plotLayout.yaxis, title: 'Count' } }, { responsive: true });
+
+            const quality = snrData.slice(-20).map((s, i) => ({ x: i, y: s > 15 ? 3 : s > 10 ? 2 : 1 }));
+            Plotly.newPlot('quality-plot', [{ x: quality.map(q => q.x), y: quality.map(q => q.y), type: 'bar', marker: { color: quality.map(q => q.y === 3 ? '#10b981' : q.y === 2 ? '#f59e0b' : '#ef4444') } }],
+                { ...plotLayout, yaxis: { ...plotLayout.yaxis, title: 'Quality Level', tickvals: [1, 2, 3], ticktext: ['Poor', 'Fair', 'Good'] } }, { responsive: true });
+        }
+
+        function updateTable(samples) {
+            const tbody = document.getElementById('data-table');
+            samples.forEach(s => {
+                const row = document.createElement('tr');
+                row.className = 'border-b border-gray-700';
+                row.innerHTML = `
+                    <td class="px-3 py-2">${s.timestamp.toLocaleTimeString()}</td>
+                    <td class="px-3 py-2">${s.channel}</td>
+                    <td class="px-3 py-2">${s.snr.toFixed(1)}</td>
+                    <td class="px-3 py-2">${s.ber.toExponential(2)}</td>
+                    <td class="px-3 py-2">${s.throughput.toFixed(0)}</td>
+                    <td class="px-3 py-2">${s.latency.toFixed(1)} ms</td>
+                    <td class="px-3 py-2"><span class="px-2 py-1 rounded text-xs ${s.status === 'OK' ? 'bg-green-900 text-green-400' : 'bg-red-900 text-red-400'}">${s.status}</span></td>
+                `;
+                tbody.insertBefore(row, tbody.firstChild);
+                if (tbody.children.length > 20) tbody.removeChild(tbody.lastChild);
+            });
+        }
+
+        function startLogging() {
+            logging = true;
+            startTime = Date.now();
+            document.getElementById('start-btn').disabled = true;
+            document.getElementById('stop-btn').disabled = false;
+            document.getElementById('status-indicator').className = 'w-4 h-4 rounded-full bg-green-500 recording';
+            document.getElementById('status-text').textContent = 'Recording...';
+            document.getElementById('status-text').className = 'text-green-400';
+            addLogEntry('INFO', 'Logging started');
+
+            const rate = parseInt(document.getElementById('sample-rate').value);
+            logInterval = setInterval(() => {
+                const samples = generateSample();
+                samples.forEach(s => {
+                    dataBuffer.push(s);
+                    snrData.push(s.snr);
+                    throughputData.push(s.throughput);
+                    latencyData.push(s.latency);
+                    sampleCount++;
+                });
+
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                document.getElementById('sample-count').textContent = sampleCount;
+                document.getElementById('duration').textContent = `${Math.floor(elapsed / 60)}:${(elapsed % 60).toString().padStart(2, '0')}`;
+                document.getElementById('buffer-usage').textContent = Math.min(100, (dataBuffer.length / parseInt(document.getElementById('buffer-size').value) * 100)).toFixed(0) + '%';
+
+                const latest = samples[0];
+                document.getElementById('snr-stat').textContent = latest.snr.toFixed(1);
+                document.getElementById('ber-stat').textContent = latest.ber.toExponential(1);
+                document.getElementById('throughput-stat').textContent = latest.throughput.toFixed(0);
+                document.getElementById('latency-stat').textContent = latest.latency.toFixed(1);
+                document.getElementById('packets-stat').textContent = rate;
+                document.getElementById('errors-stat').textContent = dataBuffer.filter(d => d.status !== 'OK').length;
+
+                updateTable(samples);
+                updatePlots();
+            }, 1000 / rate);
+        }
+
+        function stopLogging() {
+            logging = false;
+            clearInterval(logInterval);
+            document.getElementById('start-btn').disabled = false;
+            document.getElementById('stop-btn').disabled = true;
+            document.getElementById('status-indicator').className = 'w-4 h-4 rounded-full bg-yellow-500';
+            document.getElementById('status-text').textContent = 'Stopped';
+            document.getElementById('status-text').className = 'text-yellow-400';
+            addLogEntry('INFO', `Logging stopped. ${sampleCount} samples recorded.`);
+        }
+
+        function clearData() {
+            dataBuffer = [];
+            snrData = [];
+            throughputData = [];
+            latencyData = [];
+            sampleCount = 0;
+            document.getElementById('sample-count').textContent = '0';
+            document.getElementById('duration').textContent = '0:00';
+            document.getElementById('buffer-usage').textContent = '0%';
+            document.getElementById('data-table').innerHTML = '';
+            updatePlots();
+            addLogEntry('INFO', 'Data buffer cleared');
+        }
+
+        function exportData() {
+            if (dataBuffer.length === 0) { addLogEntry('WARN', 'No data to export'); return; }
+            let csv = 'Timestamp,Channel,SNR,BER,Throughput,Latency,Status\n';
+            dataBuffer.forEach(d => {
+                csv += `${d.timestamp.toISOString()},${d.channel},${d.snr.toFixed(2)},${d.ber.toExponential(4)},${d.throughput.toFixed(0)},${d.latency.toFixed(2)},${d.status}\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `comms_log_${new Date().toISOString().slice(0, 10)}.csv`;
+            a.click();
+            addLogEntry('INFO', `Exported ${dataBuffer.length} samples to CSV`);
+        }
+
+        window.addEventListener('load', updatePlots);
+    </script>
+</body>
+</html>

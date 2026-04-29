@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spectrum Sensing - Cross-Domain Comms</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #164e63 0%, #155e75 50%, #0e7490 100%); }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 40px rgba(6, 182, 212, 0.3); }
+        .spectrum-bar { transition: height 0.1s ease-out; }
+        @keyframes scan { 0% { left: 0; } 100% { left: calc(100% - 4px); } }
+        .scan-line { animation: scan 2s linear infinite; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-cyan-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="cross-domain-comms-complete-project.html" class="flex items-center text-cyan-400 hover:text-cyan-300 transition-colors">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Cross-Domain Comms
+                </a>
+                <span class="text-cyan-400 font-semibold">Spectrum Sensing</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4">
+                <i class="fas fa-broadcast-tower mr-4 text-cyan-400"></i>Cognitive Radio Spectrum Sensing
+            </h1>
+            <p class="text-xl text-cyan-100 max-w-3xl mx-auto">
+                Real-time spectrum monitoring with energy detection, cyclostationary, and matched filter techniques
+            </p>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Spectrum Analyzer Controls -->
+        <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6 mb-8">
+            <h2 class="text-xl font-semibold text-cyan-400 mb-4"><i class="fas fa-sliders-h mr-2"></i>Spectrum Analyzer Configuration</h2>
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2">Center Frequency (MHz)</label>
+                    <input type="number" id="centerFreq" value="915" min="100" max="6000" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white" onchange="updateSpectrum()">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2">Span (MHz)</label>
+                    <select id="span" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white" onchange="updateSpectrum()">
+                        <option value="10">10 MHz</option>
+                        <option value="25" selected>25 MHz</option>
+                        <option value="50">50 MHz</option>
+                        <option value="100">100 MHz</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2">Detection Method</label>
+                    <select id="detectionMethod" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white" onchange="updateSpectrum()">
+                        <option value="energy">Energy Detection</option>
+                        <option value="cyclo">Cyclostationary</option>
+                        <option value="matched">Matched Filter</option>
+                        <option value="covariance">Covariance</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2">Threshold (dB)</label>
+                    <input type="range" id="threshold" min="-120" max="-60" value="-90" class="w-full" oninput="updateThreshold()">
+                    <div class="text-center text-cyan-400" id="thresholdDisplay">-90 dBm</div>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2">Noise Floor (dB)</label>
+                    <input type="range" id="noiseFloor" min="-130" max="-90" value="-110" class="w-full" oninput="updateSpectrum()">
+                    <div class="text-center text-cyan-400" id="noiseDisplay">-110 dBm</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Spectrum Display -->
+        <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6 mb-8">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-cyan-400"><i class="fas fa-chart-area mr-2"></i>Live Spectrum Analysis</h3>
+                <div class="flex gap-4">
+                    <button onclick="toggleScan()" id="scanBtn" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 rounded-lg transition-colors">
+                        <i class="fas fa-play mr-2"></i>Start Scan
+                    </button>
+                    <button onclick="clearDetections()" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-lg transition-colors">
+                        <i class="fas fa-eraser mr-2"></i>Clear
+                    </button>
+                </div>
+            </div>
+            <div id="spectrumChart" style="height: 400px;"></div>
+        </div>
+
+        <!-- Waterfall and Detection Stats -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-water mr-2"></i>Waterfall Display</h3>
+                <div id="waterfallChart" style="height: 300px;"></div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-chart-pie mr-2"></i>Detection Statistics</h3>
+                <div id="detectionStats" style="height: 300px;"></div>
+            </div>
+        </div>
+
+        <!-- ROC Curve and Detection Performance -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-bullseye mr-2"></i>ROC Curve</h3>
+                <div id="rocChart" style="height: 300px;"></div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-wave-square mr-2"></i>Detection Probability vs SNR</h3>
+                <div id="pdSnrChart" style="height: 300px;"></div>
+            </div>
+        </div>
+
+        <!-- Detected Signals Table -->
+        <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6 mb-8">
+            <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-list mr-2"></i>Detected Signals</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-gray-700">
+                            <th class="text-left py-3 px-4 text-cyan-400">Frequency</th>
+                            <th class="text-center py-3 px-4 text-cyan-400">Power</th>
+                            <th class="text-center py-3 px-4 text-cyan-400">Bandwidth</th>
+                            <th class="text-center py-3 px-4 text-cyan-400">SNR</th>
+                            <th class="text-center py-3 px-4 text-cyan-400">Status</th>
+                            <th class="text-center py-3 px-4 text-cyan-400">Classification</th>
+                        </tr>
+                    </thead>
+                    <tbody id="signalTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Performance Metrics -->
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center card-hover transition-all">
+                <div class="text-3xl font-bold text-cyan-400" id="pdMetric">92.5%</div>
+                <div class="text-sm text-gray-400">Detection Prob</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center card-hover transition-all">
+                <div class="text-3xl font-bold text-green-400" id="pfaMetric">3.2%</div>
+                <div class="text-sm text-gray-400">False Alarm</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center card-hover transition-all">
+                <div class="text-3xl font-bold text-yellow-400" id="activeChannels">4</div>
+                <div class="text-sm text-gray-400">Active Channels</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center card-hover transition-all">
+                <div class="text-3xl font-bold text-purple-400" id="spectralEfficiency">68%</div>
+                <div class="text-sm text-gray-400">Spectrum Efficiency</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center card-hover transition-all">
+                <div class="text-3xl font-bold text-red-400" id="interferenceCount">2</div>
+                <div class="text-sm text-gray-400">Interference Sources</div>
+            </div>
+        </div>
+
+        <!-- Detection Method Comparison -->
+        <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+            <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-balance-scale mr-2"></i>Detection Method Comparison</h3>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="bg-gray-700/50 rounded-lg p-4">
+                    <h4 class="text-cyan-300 font-semibold mb-2">Energy Detection</h4>
+                    <ul class="text-gray-400 text-sm space-y-1">
+                        <li>+ Simple implementation</li>
+                        <li>+ No prior signal knowledge</li>
+                        <li>- Poor in low SNR</li>
+                        <li>- Noise uncertainty</li>
+                    </ul>
+                </div>
+                <div class="bg-gray-700/50 rounded-lg p-4">
+                    <h4 class="text-cyan-300 font-semibold mb-2">Cyclostationary</h4>
+                    <ul class="text-gray-400 text-sm space-y-1">
+                        <li>+ Noise robust</li>
+                        <li>+ Signal classification</li>
+                        <li>- High complexity</li>
+                        <li>- Longer sensing time</li>
+                    </ul>
+                </div>
+                <div class="bg-gray-700/50 rounded-lg p-4">
+                    <h4 class="text-cyan-300 font-semibold mb-2">Matched Filter</h4>
+                    <ul class="text-gray-400 text-sm space-y-1">
+                        <li>+ Optimal detection</li>
+                        <li>+ Short sensing time</li>
+                        <li>- Requires pilot/preamble</li>
+                        <li>- Dedicated receiver</li>
+                    </ul>
+                </div>
+                <div class="bg-gray-700/50 rounded-lg p-4">
+                    <h4 class="text-cyan-300 font-semibold mb-2">Covariance</h4>
+                    <ul class="text-gray-400 text-sm space-y-1">
+                        <li>+ No noise floor needed</li>
+                        <li>+ Multi-antenna benefit</li>
+                        <li>- Moderate complexity</li>
+                        <li>- Sample dependent</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const plotConfig = { displayModeBar: false, responsive: true };
+        const plotLayout = {
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(17,24,39,0.8)',
+            font: { color: '#9ca3af' },
+            margin: { t: 30, r: 30, b: 50, l: 60 }
+        };
+
+        let scanning = false;
+        let scanInterval = null;
+        let waterfallData = [];
+        let detectedSignals = [];
+
+        // Simulated signal sources
+        const signalSources = [
+            { freq: 905, power: -70, bw: 2, type: 'WiFi' },
+            { freq: 912, power: -85, bw: 1, type: 'LoRa' },
+            { freq: 920, power: -75, bw: 5, type: 'LTE' },
+            { freq: 928, power: -95, bw: 0.5, type: 'Unknown' }
+        ];
+
+        function generateSpectrum() {
+            const centerFreq = parseFloat(document.getElementById('centerFreq').value);
+            const span = parseFloat(document.getElementById('span').value);
+            const noiseFloor = parseFloat(document.getElementById('noiseFloor').value);
+            const threshold = parseFloat(document.getElementById('threshold').value);
+
+            const numPoints = 512;
+            const freqStep = span / numPoints;
+            const frequencies = Array.from({length: numPoints}, (_, i) => centerFreq - span/2 + i * freqStep);
+
+            // Generate noise
+            const spectrum = frequencies.map(() => noiseFloor + (Math.random() - 0.5) * 6);
+
+            // Add signals
+            signalSources.forEach(signal => {
+                frequencies.forEach((freq, i) => {
+                    const dist = Math.abs(freq - signal.freq);
+                    if (dist < signal.bw * 2) {
+                        const signalPower = signal.power - (dist / signal.bw) * 10 + (Math.random() - 0.5) * 3;
+                        spectrum[i] = Math.max(spectrum[i], signalPower);
+                    }
+                });
+            });
+
+            return { frequencies, spectrum, threshold };
+        }
+
+        function updateSpectrum() {
+            const { frequencies, spectrum, threshold } = generateSpectrum();
+
+            document.getElementById('noiseDisplay').textContent = document.getElementById('noiseFloor').value + ' dBm';
+
+            // Update spectrum chart
+            Plotly.newPlot('spectrumChart', [
+                { x: frequencies, y: spectrum, type: 'scatter', mode: 'lines', fill: 'tozeroy',
+                  line: { color: '#06b6d4', width: 1 }, fillcolor: 'rgba(6, 182, 212, 0.3)', name: 'Spectrum' },
+                { x: [frequencies[0], frequencies[frequencies.length-1]], y: [threshold, threshold],
+                  type: 'scatter', mode: 'lines', line: { color: '#ef4444', dash: 'dash', width: 2 }, name: 'Threshold' }
+            ], {
+                ...plotLayout,
+                xaxis: { title: 'Frequency (MHz)', gridcolor: '#374151' },
+                yaxis: { title: 'Power (dBm)', range: [-130, -50], gridcolor: '#374151' },
+                showlegend: true,
+                legend: { x: 0.02, y: 0.98 }
+            }, plotConfig);
+
+            updateWaterfall(spectrum);
+            updateROC();
+            updatePdSnr();
+            updateDetectionStats();
+            updateSignalTable();
+        }
+
+        function updateThreshold() {
+            const threshold = document.getElementById('threshold').value;
+            document.getElementById('thresholdDisplay').textContent = threshold + ' dBm';
+            updateSpectrum();
+        }
+
+        function updateWaterfall(spectrum) {
+            waterfallData.unshift(spectrum);
+            if (waterfallData.length > 50) waterfallData.pop();
+
+            Plotly.newPlot('waterfallChart', [{
+                z: waterfallData,
+                type: 'heatmap',
+                colorscale: [
+                    [0, '#1e3a5f'],
+                    [0.3, '#06b6d4'],
+                    [0.6, '#22c55e'],
+                    [0.8, '#eab308'],
+                    [1, '#ef4444']
+                ],
+                showscale: true,
+                colorbar: { title: 'dBm', titleside: 'right' }
+            }], {
+                ...plotLayout,
+                xaxis: { title: 'Frequency Bin' },
+                yaxis: { title: 'Time (sweeps ago)', autorange: 'reversed' }
+            }, plotConfig);
+        }
+
+        function updateROC() {
+            const method = document.getElementById('detectionMethod').value;
+            const pfa = Array.from({length: 100}, (_, i) => i / 100);
+
+            const rocCurves = {
+                energy: pfa.map(p => Math.pow(p, 0.3)),
+                cyclo: pfa.map(p => Math.pow(p, 0.2)),
+                matched: pfa.map(p => Math.pow(p, 0.15)),
+                covariance: pfa.map(p => Math.pow(p, 0.25))
+            };
+
+            Plotly.newPlot('rocChart', [
+                { x: pfa, y: rocCurves[method], name: method.toUpperCase(), line: { color: '#06b6d4', width: 3 } },
+                { x: [0, 1], y: [0, 1], name: 'Random', line: { color: '#6b7280', dash: 'dash' } }
+            ], {
+                ...plotLayout,
+                xaxis: { title: 'Probability of False Alarm (Pfa)', range: [0, 1], gridcolor: '#374151' },
+                yaxis: { title: 'Probability of Detection (Pd)', range: [0, 1], gridcolor: '#374151' },
+                legend: { x: 0.6, y: 0.1 }
+            }, plotConfig);
+        }
+
+        function updatePdSnr() {
+            const snr = Array.from({length: 40}, (_, i) => i - 20);
+            const method = document.getElementById('detectionMethod').value;
+
+            const pdCurves = {
+                energy: snr.map(s => 1 / (1 + Math.exp(-(s + 5) / 3))),
+                cyclo: snr.map(s => 1 / (1 + Math.exp(-(s + 10) / 3))),
+                matched: snr.map(s => 1 / (1 + Math.exp(-(s + 15) / 3))),
+                covariance: snr.map(s => 1 / (1 + Math.exp(-(s + 8) / 3)))
+            };
+
+            Plotly.newPlot('pdSnrChart', [{
+                x: snr, y: pdCurves[method],
+                line: { color: '#22c55e', width: 3 }
+            }], {
+                ...plotLayout,
+                xaxis: { title: 'SNR (dB)', gridcolor: '#374151' },
+                yaxis: { title: 'Detection Probability', range: [0, 1], gridcolor: '#374151' }
+            }, plotConfig);
+        }
+
+        function updateDetectionStats() {
+            const occupied = signalSources.filter(s => s.power > parseFloat(document.getElementById('threshold').value)).length;
+            const total = 10;
+
+            Plotly.newPlot('detectionStats', [{
+                values: [occupied, total - occupied],
+                labels: ['Occupied', 'Free'],
+                type: 'pie',
+                marker: { colors: ['#ef4444', '#22c55e'] },
+                hole: 0.4
+            }], {
+                ...plotLayout,
+                showlegend: true,
+                legend: { x: 0.8, y: 0.5 }
+            }, plotConfig);
+
+            document.getElementById('activeChannels').textContent = occupied;
+            document.getElementById('spectralEfficiency').textContent = Math.round((1 - occupied/total) * 100) + '%';
+        }
+
+        function updateSignalTable() {
+            const threshold = parseFloat(document.getElementById('threshold').value);
+            const tbody = document.getElementById('signalTable');
+
+            tbody.innerHTML = signalSources.map(signal => {
+                const detected = signal.power > threshold;
+                const snr = signal.power - parseFloat(document.getElementById('noiseFloor').value);
+                return `
+                    <tr class="border-b border-gray-700/50 hover:bg-gray-700/30">
+                        <td class="py-3 px-4">${signal.freq.toFixed(1)} MHz</td>
+                        <td class="text-center py-3 px-4">${signal.power} dBm</td>
+                        <td class="text-center py-3 px-4">${signal.bw} MHz</td>
+                        <td class="text-center py-3 px-4">${snr.toFixed(1)} dB</td>
+                        <td class="text-center py-3 px-4">
+                            <span class="px-2 py-1 rounded ${detected ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}">
+                                ${detected ? 'Detected' : 'Below Threshold'}
+                            </span>
+                        </td>
+                        <td class="text-center py-3 px-4 text-cyan-400">${signal.type}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function toggleScan() {
+            scanning = !scanning;
+            const btn = document.getElementById('scanBtn');
+
+            if (scanning) {
+                btn.innerHTML = '<i class="fas fa-pause mr-2"></i>Pause Scan';
+                btn.classList.remove('bg-cyan-600');
+                btn.classList.add('bg-red-600');
+                scanInterval = setInterval(() => {
+                    // Randomize signal powers slightly
+                    signalSources.forEach(s => {
+                        s.power += (Math.random() - 0.5) * 2;
+                    });
+                    updateSpectrum();
+                }, 500);
+            } else {
+                btn.innerHTML = '<i class="fas fa-play mr-2"></i>Start Scan';
+                btn.classList.remove('bg-red-600');
+                btn.classList.add('bg-cyan-600');
+                clearInterval(scanInterval);
+            }
+        }
+
+        function clearDetections() {
+            waterfallData = [];
+            updateSpectrum();
+        }
+
+        // Initialize
+        updateSpectrum();
+    </script>
+
+    <footer class="bg-gray-800 border-t border-cyan-500/20 py-6 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center text-gray-400">
+            <p>Cross-Domain Communications - Cognitive Radio Spectrum Sensing</p>
+        </div>
+    </footer>
+</body>
+</html>

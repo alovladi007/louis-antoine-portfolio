@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RF Relay Buoy Simulator - Cross-Domain Comms</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #164e63 0%, #155e75 50%, #0e7490 100%); }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 40px rgba(6, 182, 212, 0.3); }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        .floating { animation: float 3s ease-in-out infinite; }
+        @keyframes wave { 0% { d: path('M0,50 Q50,30 100,50 T200,50 T300,50 T400,50'); } 50% { d: path('M0,50 Q50,70 100,50 T200,50 T300,50 T400,50'); } 100% { d: path('M0,50 Q50,30 100,50 T200,50 T300,50 T400,50'); } }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-cyan-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="cross-domain-comms-complete-project.html" class="flex items-center text-cyan-400 hover:text-cyan-300 transition-colors">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Cross-Domain Comms
+                </a>
+                <span class="text-cyan-400 font-semibold">RF Relay Buoy Simulator</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4">
+                <i class="fas fa-satellite-dish mr-4 text-cyan-400"></i>RF Relay Buoy System
+            </h1>
+            <p class="text-xl text-cyan-100 max-w-3xl mx-auto">
+                Surface relay buoy simulation bridging underwater acoustic and RF satellite communications
+            </p>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- System Configuration -->
+        <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6 mb-8">
+            <h2 class="text-xl font-semibold text-cyan-400 mb-4"><i class="fas fa-cogs mr-2"></i>Relay Buoy Configuration</h2>
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2">UUV Depth (m)</label>
+                    <input type="range" id="uuvDepth" min="10" max="500" value="100" class="w-full" oninput="updateSystem()">
+                    <div class="text-center text-cyan-400" id="depthDisplay">100 m</div>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2">Horizontal Range (km)</label>
+                    <input type="range" id="hRange" min="0.5" max="10" step="0.5" value="2" class="w-full" oninput="updateSystem()">
+                    <div class="text-center text-cyan-400" id="rangeDisplay">2 km</div>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2">Acoustic Frequency (kHz)</label>
+                    <select id="acousticFreq" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white" onchange="updateSystem()">
+                        <option value="10">10 kHz (Long Range)</option>
+                        <option value="25" selected>25 kHz (Medium)</option>
+                        <option value="50">50 kHz (High Rate)</option>
+                        <option value="100">100 kHz (Short Range)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2">RF Link</label>
+                    <select id="rfLink" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white" onchange="updateSystem()">
+                        <option value="iridium">Iridium (2.4 kbps)</option>
+                        <option value="starlink" selected>Starlink (100 Mbps)</option>
+                        <option value="vhf">VHF Radio (9.6 kbps)</option>
+                        <option value="uhf">UHF SATCOM (64 kbps)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2">Sea State</label>
+                    <select id="seaState" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white" onchange="updateSystem()">
+                        <option value="0">0 - Calm</option>
+                        <option value="2" selected>2 - Slight</option>
+                        <option value="4">4 - Moderate</option>
+                        <option value="6">6 - Rough</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Visualization -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-water mr-2"></i>Cross-Domain Link Visualization</h3>
+                <svg id="systemSvg" viewBox="0 0 500 400" class="w-full">
+                    <!-- Sky background -->
+                    <defs>
+                        <linearGradient id="skyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" style="stop-color:#1e3a5f"/>
+                            <stop offset="100%" style="stop-color:#0e7490"/>
+                        </linearGradient>
+                        <linearGradient id="waterGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" style="stop-color:#164e63"/>
+                            <stop offset="100%" style="stop-color:#0a2540"/>
+                        </linearGradient>
+                    </defs>
+
+                    <!-- Sky -->
+                    <rect x="0" y="0" width="500" height="100" fill="url(#skyGrad)"/>
+
+                    <!-- Satellite -->
+                    <g id="satellite" transform="translate(400, 30)">
+                        <rect x="-15" y="-5" width="30" height="10" fill="#94a3b8"/>
+                        <rect x="-40" y="-2" width="25" height="4" fill="#06b6d4"/>
+                        <rect x="15" y="-2" width="25" height="4" fill="#06b6d4"/>
+                    </g>
+
+                    <!-- RF Link (satellite to buoy) -->
+                    <line id="rfLink1" x1="400" y1="40" x2="250" y2="95" stroke="#22c55e" stroke-width="2" stroke-dasharray="5,5"/>
+                    <text x="340" y="60" fill="#22c55e" font-size="10">RF Uplink</text>
+
+                    <!-- Water surface -->
+                    <path d="M0,100 Q50,90 100,100 T200,100 T300,100 T400,100 T500,100 L500,400 L0,400 Z" fill="url(#waterGrad)"/>
+
+                    <!-- Waves -->
+                    <path d="M0,100 Q25,95 50,100 T100,100 T150,100 T200,100 T250,100 T300,100 T350,100 T400,100 T450,100 T500,100"
+                          fill="none" stroke="#06b6d4" stroke-width="2" opacity="0.5"/>
+
+                    <!-- Buoy -->
+                    <g id="buoy" class="floating">
+                        <ellipse cx="250" cy="100" rx="25" ry="8" fill="#ef4444"/>
+                        <rect x="240" y="85" width="20" height="15" fill="#ef4444"/>
+                        <line x1="250" y1="70" x2="250" y2="85" stroke="#6b7280" stroke-width="3"/>
+                        <circle cx="250" cy="67" r="5" fill="#22c55e"/>
+                        <!-- Antenna -->
+                        <line x1="250" y1="67" x2="250" y2="55" stroke="#94a3b8" stroke-width="2"/>
+                        <circle cx="250" cy="52" r="3" fill="#06b6d4"/>
+                    </g>
+
+                    <!-- Acoustic transducer -->
+                    <line x1="250" y1="108" x2="250" y2="130" stroke="#6b7280" stroke-width="2"/>
+                    <circle cx="250" cy="135" r="8" fill="#0e7490" stroke="#06b6d4" stroke-width="2"/>
+
+                    <!-- UUV -->
+                    <g id="uuv">
+                        <ellipse cx="100" cy="300" rx="40" ry="15" fill="#374151" stroke="#06b6d4" stroke-width="2"/>
+                        <ellipse cx="60" cy="300" rx="8" ry="10" fill="#374151"/>
+                        <circle cx="130" cy="300" r="6" fill="#22c55e" opacity="0.8"/>
+                        <text x="100" y="304" fill="white" font-size="10" text-anchor="middle">UUV</text>
+                    </g>
+
+                    <!-- Acoustic link -->
+                    <g id="acousticLink">
+                        <path d="M140,300 Q200,250 250,135" stroke="#06b6d4" stroke-width="2" stroke-dasharray="10,5" fill="none"/>
+                        <!-- Sound waves -->
+                        <circle cx="180" cy="250" r="10" stroke="#06b6d4" stroke-width="1" fill="none" opacity="0.5"/>
+                        <circle cx="180" cy="250" r="20" stroke="#06b6d4" stroke-width="1" fill="none" opacity="0.3"/>
+                        <circle cx="180" cy="250" r="30" stroke="#06b6d4" stroke-width="1" fill="none" opacity="0.2"/>
+                    </g>
+
+                    <!-- Labels -->
+                    <text x="100" y="340" fill="#9ca3af" font-size="11" text-anchor="middle">Underwater Acoustic</text>
+                    <text x="250" y="160" fill="#06b6d4" font-size="10" text-anchor="middle">Acoustic Modem</text>
+                    <text x="400" y="20" fill="#9ca3af" font-size="10" text-anchor="middle">Satellite</text>
+                    <text x="250" y="45" fill="#ef4444" font-size="10" text-anchor="middle">Relay Buoy</text>
+
+                    <!-- Depth marker -->
+                    <line x1="480" y1="100" x2="480" y2="350" stroke="#6b7280" stroke-width="1" stroke-dasharray="2,2"/>
+                    <text id="depthMarker" x="470" y="300" fill="#9ca3af" font-size="9" text-anchor="end">100m</text>
+                </svg>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-signal mr-2"></i>Signal Quality Over Time</h3>
+                <div id="signalChart" style="height: 320px;"></div>
+            </div>
+        </div>
+
+        <!-- Link Budget Analysis -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-chart-bar mr-2"></i>Acoustic Link Budget</h3>
+                <div id="acousticBudget" style="height: 300px;"></div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-chart-bar mr-2"></i>RF Link Budget</h3>
+                <div id="rfBudget" style="height: 300px;"></div>
+            </div>
+        </div>
+
+        <!-- Performance Metrics -->
+        <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center card-hover transition-all">
+                <div class="text-2xl font-bold text-cyan-400" id="acousticRate">2.4</div>
+                <div class="text-xs text-gray-400">Acoustic Rate (kbps)</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center card-hover transition-all">
+                <div class="text-2xl font-bold text-green-400" id="rfRate">100</div>
+                <div class="text-xs text-gray-400">RF Rate (Mbps)</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center card-hover transition-all">
+                <div class="text-2xl font-bold text-yellow-400" id="latency">850</div>
+                <div class="text-xs text-gray-400">Latency (ms)</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center card-hover transition-all">
+                <div class="text-2xl font-bold text-purple-400" id="acousticSnr">18.5</div>
+                <div class="text-xs text-gray-400">Acoustic SNR (dB)</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center card-hover transition-all">
+                <div class="text-2xl font-bold text-red-400" id="ber">1e-5</div>
+                <div class="text-xs text-gray-400">BER</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center card-hover transition-all">
+                <div class="text-2xl font-bold text-cyan-400" id="availability">98.2</div>
+                <div class="text-xs text-gray-400">Availability (%)</div>
+            </div>
+        </div>
+
+        <!-- Message Queue Simulation -->
+        <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6 mb-8">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-cyan-400"><i class="fas fa-envelope mr-2"></i>Message Relay Simulation</h3>
+                <div class="flex gap-2">
+                    <button onclick="sendMessage()" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 rounded-lg transition-colors">
+                        <i class="fas fa-paper-plane mr-2"></i>Send Message
+                    </button>
+                    <button onclick="clearMessages()" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-lg transition-colors">
+                        <i class="fas fa-trash mr-2"></i>Clear
+                    </button>
+                </div>
+            </div>
+            <div id="messageLog" class="h-32 overflow-y-auto bg-gray-900 rounded-lg p-4 font-mono text-sm space-y-1"></div>
+        </div>
+
+        <!-- System Architecture -->
+        <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+            <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-sitemap mr-2"></i>Cross-Domain System Architecture</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-gray-700/50 rounded-lg p-4">
+                    <h4 class="text-cyan-300 font-semibold mb-2"><i class="fas fa-water mr-2"></i>Underwater Segment</h4>
+                    <ul class="text-gray-400 text-sm space-y-1">
+                        <li>• Acoustic modem (10-100 kHz)</li>
+                        <li>• Data rate: 0.5-10 kbps</li>
+                        <li>• Range: 0.5-10 km</li>
+                        <li>• Protocol: JANUS/custom</li>
+                    </ul>
+                </div>
+                <div class="bg-gray-700/50 rounded-lg p-4">
+                    <h4 class="text-cyan-300 font-semibold mb-2"><i class="fas fa-life-ring mr-2"></i>Relay Buoy</h4>
+                    <ul class="text-gray-400 text-sm space-y-1">
+                        <li>• Acoustic-RF gateway</li>
+                        <li>• GPS for positioning</li>
+                        <li>• Store-and-forward buffer</li>
+                        <li>• Solar/battery power</li>
+                    </ul>
+                </div>
+                <div class="bg-gray-700/50 rounded-lg p-4">
+                    <h4 class="text-cyan-300 font-semibold mb-2"><i class="fas fa-satellite mr-2"></i>RF/Satellite Segment</h4>
+                    <ul class="text-gray-400 text-sm space-y-1">
+                        <li>• Iridium/Starlink/VHF</li>
+                        <li>• Data rate: 2.4kbps-100Mbps</li>
+                        <li>• Global coverage</li>
+                        <li>• Low latency backhaul</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const plotConfig = { displayModeBar: false, responsive: true };
+        const plotLayout = {
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(17,24,39,0.8)',
+            font: { color: '#9ca3af' },
+            margin: { t: 30, r: 30, b: 50, l: 60 }
+        };
+
+        let messageId = 0;
+
+        function updateSystem() {
+            const depth = parseInt(document.getElementById('uuvDepth').value);
+            const range = parseFloat(document.getElementById('hRange').value);
+            const freq = parseInt(document.getElementById('acousticFreq').value);
+            const rfLink = document.getElementById('rfLink').value;
+            const seaState = parseInt(document.getElementById('seaState').value);
+
+            document.getElementById('depthDisplay').textContent = depth + ' m';
+            document.getElementById('rangeDisplay').textContent = range + ' km';
+
+            // Update visualization
+            updateVisualization(depth, range);
+
+            // Update charts
+            updateSignalChart(seaState);
+            updateLinkBudgets(depth, range, freq, seaState);
+
+            // Update metrics
+            updateMetrics(depth, range, freq, rfLink, seaState);
+        }
+
+        function updateVisualization(depth, range) {
+            // Update UUV position based on depth
+            const uuv = document.getElementById('uuv');
+            const yPos = 150 + (depth / 500) * 200;
+            uuv.setAttribute('transform', `translate(0, ${yPos - 300})`);
+
+            // Update depth marker
+            document.getElementById('depthMarker').textContent = depth + 'm';
+        }
+
+        function updateSignalChart(seaState) {
+            const time = Array.from({length: 60}, (_, i) => i);
+            const noiseLevel = seaState * 3;
+
+            const acousticSNR = time.map(t => 20 - noiseLevel + Math.sin(t / 5) * 3 + (Math.random() - 0.5) * noiseLevel);
+            const rfSNR = time.map(t => 25 + Math.sin(t / 8) * 2 + (Math.random() - 0.5) * 2);
+
+            Plotly.newPlot('signalChart', [
+                { x: time, y: acousticSNR, name: 'Acoustic SNR', line: { color: '#06b6d4', width: 2 } },
+                { x: time, y: rfSNR, name: 'RF SNR', line: { color: '#22c55e', width: 2 } }
+            ], {
+                ...plotLayout,
+                xaxis: { title: 'Time (s)', gridcolor: '#374151' },
+                yaxis: { title: 'SNR (dB)', gridcolor: '#374151' },
+                legend: { x: 0.02, y: 0.98 }
+            }, plotConfig);
+        }
+
+        function updateLinkBudgets(depth, range, freq, seaState) {
+            // Acoustic link budget
+            const txPower = 180; // dB re 1 µPa @ 1m
+            const spreadingLoss = 20 * Math.log10(range * 1000 + depth);
+            const absorption = freq * 0.001 * (range + depth / 1000);
+            const noiseLevel = 50 + seaState * 5;
+            const rxSensitivity = -180;
+
+            const acousticItems = ['Tx Power', 'Spreading Loss', 'Absorption', 'Noise Level', 'Rx Sensitivity'];
+            const acousticValues = [txPower, -spreadingLoss, -absorption, -noiseLevel, -rxSensitivity];
+
+            Plotly.newPlot('acousticBudget', [{
+                x: acousticItems,
+                y: acousticValues,
+                type: 'bar',
+                marker: { color: acousticValues.map(v => v >= 0 ? '#22c55e' : '#ef4444') }
+            }], {
+                ...plotLayout,
+                xaxis: { gridcolor: '#374151' },
+                yaxis: { title: 'dB', gridcolor: '#374151' }
+            }, plotConfig);
+
+            // RF link budget
+            const eirp = 40;
+            const pathLoss = 150;
+            const atmosphericLoss = 2 + seaState * 0.5;
+            const antGain = 30;
+            const margin = eirp - pathLoss - atmosphericLoss + antGain;
+
+            const rfItems = ['EIRP', 'Path Loss', 'Atm. Loss', 'Ant. Gain', 'Link Margin'];
+            const rfValues = [eirp, -pathLoss / 3, -atmosphericLoss, antGain, margin];
+
+            Plotly.newPlot('rfBudget', [{
+                x: rfItems,
+                y: rfValues,
+                type: 'bar',
+                marker: { color: rfValues.map(v => v >= 0 ? '#22c55e' : '#ef4444') }
+            }], {
+                ...plotLayout,
+                xaxis: { gridcolor: '#374151' },
+                yaxis: { title: 'dB', gridcolor: '#374151' }
+            }, plotConfig);
+        }
+
+        function updateMetrics(depth, range, freq, rfLink, seaState) {
+            // Acoustic data rate based on frequency and conditions
+            const acousticRates = { 10: 1.2, 25: 2.4, 50: 4.8, 100: 9.6 };
+            let acousticRate = acousticRates[freq] * (1 - seaState * 0.1);
+            acousticRate = Math.max(0.5, acousticRate);
+
+            // RF data rates
+            const rfRates = { iridium: 0.0024, starlink: 100, vhf: 0.0096, uhf: 0.064 };
+            const rfRate = rfRates[rfLink];
+
+            // Latency calculation
+            const soundSpeed = 1500; // m/s
+            const acousticDelay = (Math.sqrt(depth * depth + range * range * 1e6)) / soundSpeed * 1000;
+            const rfDelay = rfLink === 'starlink' ? 40 : (rfLink === 'iridium' ? 780 : 20);
+            const totalLatency = acousticDelay + rfDelay + 50; // 50ms processing
+
+            // SNR calculation
+            const snr = 25 - (range * 2) - (depth / 50) - (seaState * 2);
+
+            // BER estimate
+            const ber = Math.pow(10, -Math.max(3, snr / 4));
+
+            // Availability
+            const availability = Math.max(85, 99 - seaState * 2 - range);
+
+            document.getElementById('acousticRate').textContent = acousticRate.toFixed(1);
+            document.getElementById('rfRate').textContent = rfRate >= 1 ? rfRate.toFixed(0) : (rfRate * 1000).toFixed(1) + 'k';
+            document.getElementById('latency').textContent = Math.round(totalLatency);
+            document.getElementById('acousticSnr').textContent = snr.toFixed(1);
+            document.getElementById('ber').textContent = ber.toExponential(0);
+            document.getElementById('availability').textContent = availability.toFixed(1);
+        }
+
+        function sendMessage() {
+            messageId++;
+            const depth = document.getElementById('uuvDepth').value;
+            const log = document.getElementById('messageLog');
+            const latency = parseInt(document.getElementById('latency').textContent);
+
+            log.innerHTML = `<div class="text-cyan-400">[MSG-${messageId}] UUV → Buoy: Transmitting acoustic packet...</div>` + log.innerHTML;
+
+            setTimeout(() => {
+                log.innerHTML = `<div class="text-yellow-400">[MSG-${messageId}] Buoy: Received from UUV, relaying via RF...</div>` + log.innerHTML;
+            }, latency / 2);
+
+            setTimeout(() => {
+                log.innerHTML = `<div class="text-green-400">[MSG-${messageId}] Satellite: Message received successfully! (${latency}ms total)</div>` + log.innerHTML;
+            }, latency);
+        }
+
+        function clearMessages() {
+            document.getElementById('messageLog').innerHTML = '';
+            messageId = 0;
+        }
+
+        // Initialize
+        updateSystem();
+    </script>
+
+    <footer class="bg-gray-800 border-t border-cyan-500/20 py-6 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center text-gray-400">
+            <p>Cross-Domain Communications - RF Relay Buoy System</p>
+        </div>
+    </footer>
+</body>
+</html>

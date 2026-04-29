@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S-Parameter Analyzer - RF/SiP Co-Design</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>.gradient-bg { background: linear-gradient(135deg, #0891b2 0%, #06b6d4 50%, #22d3ee 100%); }</style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-cyan-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="rf-sip-codesign.html" class="flex items-center text-cyan-400 hover:text-cyan-300">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to RF/SiP Co-Design
+                </a>
+                <span class="text-cyan-400 font-semibold">S-Parameter Analyzer</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4"><i class="fas fa-chart-line mr-4"></i>S-Parameter Analyzer</h1>
+            <p class="text-xl text-cyan-100">Interactive scattering parameter visualization with Smith chart</p>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid lg:grid-cols-4 gap-6">
+            <div class="space-y-6">
+                <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-cog mr-2"></i>Network Parameters</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Network Type</label>
+                            <select id="networkType" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white">
+                                <option value="lowpass">Low-Pass Filter</option>
+                                <option value="highpass">High-Pass Filter</option>
+                                <option value="bandpass" selected>Band-Pass Filter</option>
+                                <option value="antenna">Patch Antenna</option>
+                                <option value="amplifier">LNA</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Center Frequency: <span id="fcVal">28</span> GHz</label>
+                            <input type="range" id="fc" min="1" max="60" value="28" class="w-full accent-cyan-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Bandwidth: <span id="bwVal">4</span> GHz</label>
+                            <input type="range" id="bw" min="0.5" max="20" step="0.5" value="4" class="w-full accent-cyan-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Return Loss: <span id="rlVal">20</span> dB</label>
+                            <input type="range" id="rl" min="5" max="40" value="20" class="w-full accent-cyan-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Insertion Loss: <span id="ilVal">1</span> dB</label>
+                            <input type="range" id="il" min="0.1" max="5" step="0.1" value="1" class="w-full accent-cyan-500">
+                        </div>
+                    </div>
+                    <button onclick="analyze()" class="w-full mt-4 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors">
+                        <i class="fas fa-calculator mr-2"></i>Analyze
+                    </button>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-info-circle mr-2"></i>Metrics</h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center p-2 bg-gray-700/50 rounded">
+                            <span class="text-gray-400">VSWR (min)</span>
+                            <span class="text-cyan-400 font-bold" id="vswr">1.22</span>
+                        </div>
+                        <div class="flex justify-between items-center p-2 bg-gray-700/50 rounded">
+                            <span class="text-gray-400">|Γ| at f₀</span>
+                            <span class="text-green-400 font-bold" id="gamma">0.10</span>
+                        </div>
+                        <div class="flex justify-between items-center p-2 bg-gray-700/50 rounded">
+                            <span class="text-gray-400">Z₀ (real)</span>
+                            <span class="text-purple-400 font-bold" id="z0real">50 Ω</span>
+                        </div>
+                        <div class="flex justify-between items-center p-2 bg-gray-700/50 rounded">
+                            <span class="text-gray-400">Q factor</span>
+                            <span class="text-amber-400 font-bold" id="qfactor">7.0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-3 space-y-6">
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                        <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-chart-area mr-2"></i>S11 Magnitude</h3>
+                        <div id="s11Chart" style="height: 300px;"></div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                        <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-chart-area mr-2"></i>S21 Magnitude</h3>
+                        <div id="s21Chart" style="height: 300px;"></div>
+                    </div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                        <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-compass mr-2"></i>Smith Chart (S11)</h3>
+                        <div id="smithChart" style="height: 350px;"></div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                        <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-ruler-combined mr-2"></i>Phase Response</h3>
+                        <div id="phaseChart" style="height: 350px;"></div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-clock mr-2"></i>Group Delay</h3>
+                    <div id="groupDelayChart" style="height: 250px;"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const fc = document.getElementById('fc');
+        const fcVal = document.getElementById('fcVal');
+        const bw = document.getElementById('bw');
+        const bwVal = document.getElementById('bwVal');
+        const rl = document.getElementById('rl');
+        const rlVal = document.getElementById('rlVal');
+        const il = document.getElementById('il');
+        const ilVal = document.getElementById('ilVal');
+
+        fc.addEventListener('input', () => { fcVal.textContent = fc.value; analyze(); });
+        bw.addEventListener('input', () => { bwVal.textContent = bw.value; analyze(); });
+        rl.addEventListener('input', () => { rlVal.textContent = rl.value; analyze(); });
+        il.addEventListener('input', () => { ilVal.textContent = il.value; analyze(); });
+        document.getElementById('networkType').addEventListener('change', analyze);
+
+        function analyze() {
+            const f0 = parseFloat(fc.value);
+            const bandwidth = parseFloat(bw.value);
+            const returnLoss = parseFloat(rl.value);
+            const insertionLoss = parseFloat(il.value);
+            const networkType = document.getElementById('networkType').value;
+
+            const freq = [];
+            const s11Mag = [];
+            const s21Mag = [];
+            const s11Phase = [];
+            const s21Phase = [];
+            const smithReal = [];
+            const smithImag = [];
+            const groupDelay = [];
+
+            const fStart = Math.max(0.1, f0 - bandwidth * 3);
+            const fEnd = f0 + bandwidth * 3;
+
+            for (let f = fStart; f <= fEnd; f += (fEnd - fStart) / 200) {
+                freq.push(f);
+
+                let s11, s21, phase11, phase21;
+
+                if (networkType === 'bandpass') {
+                    const delta = (f - f0) / (bandwidth / 2);
+                    s11 = -returnLoss * Math.exp(-delta * delta * 2) - 3;
+                    s21 = -insertionLoss - 0.5 * delta * delta;
+                    phase11 = -180 + 360 * Math.atan(delta) / Math.PI;
+                    phase21 = -90 - 20 * delta;
+                } else if (networkType === 'lowpass') {
+                    const norm = f / f0;
+                    s11 = norm < 1 ? -returnLoss + norm * 10 : -3 - 10 * Math.log10(norm);
+                    s21 = norm < 1 ? -insertionLoss : -insertionLoss - 20 * Math.log10(norm);
+                    phase11 = -norm * 90;
+                    phase21 = -norm * 45;
+                } else if (networkType === 'antenna') {
+                    const delta = (f - f0) / (bandwidth / 2);
+                    s11 = -returnLoss * Math.exp(-delta * delta * 3) - 2;
+                    s21 = -30; // Antenna has no S21
+                    phase11 = -180 + 360 * Math.atan(delta) / Math.PI;
+                    phase21 = 0;
+                } else {
+                    const delta = (f - f0) / bandwidth;
+                    s11 = -returnLoss + 5 * Math.abs(delta);
+                    s21 = -insertionLoss - 0.2 * delta * delta + (networkType === 'amplifier' ? 15 : 0);
+                    phase11 = -delta * 90;
+                    phase21 = -delta * 45;
+                }
+
+                s11Mag.push(s11);
+                s21Mag.push(s21);
+                s11Phase.push(phase11);
+                s21Phase.push(phase21);
+
+                // Smith chart coordinates
+                const gammaAbs = Math.pow(10, s11 / 20);
+                const phaseRad = phase11 * Math.PI / 180;
+                smithReal.push(gammaAbs * Math.cos(phaseRad));
+                smithImag.push(gammaAbs * Math.sin(phaseRad));
+
+                // Group delay (derivative of phase)
+                const gd = Math.abs(phase21) / (f + 0.1) * 0.1;
+                groupDelay.push(gd);
+            }
+
+            // Update metrics
+            const minS11 = Math.min(...s11Mag);
+            const gammaMin = Math.pow(10, minS11 / 20);
+            const vswr = (1 + gammaMin) / (1 - gammaMin);
+            document.getElementById('vswr').textContent = vswr.toFixed(2);
+            document.getElementById('gamma').textContent = gammaMin.toFixed(3);
+            document.getElementById('z0real').textContent = (50 * (1 + gammaMin) / (1 - gammaMin)).toFixed(0) + ' Ω';
+            document.getElementById('qfactor').textContent = (f0 / bandwidth).toFixed(1);
+
+            // S11 Chart
+            Plotly.newPlot('s11Chart', [{
+                x: freq,
+                y: s11Mag,
+                type: 'scatter',
+                line: { color: '#06b6d4' },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(6, 182, 212, 0.2)'
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 50, r: 20, t: 10, b: 40 },
+                xaxis: { title: 'Frequency (GHz)', gridcolor: '#374151' },
+                yaxis: { title: '|S11| (dB)', gridcolor: '#374151' },
+                shapes: [{
+                    type: 'line', x0: fStart, x1: fEnd, y0: -10, y1: -10,
+                    line: { color: '#ef4444', dash: 'dash' }
+                }]
+            }, { responsive: true });
+
+            // S21 Chart
+            Plotly.newPlot('s21Chart', [{
+                x: freq,
+                y: s21Mag,
+                type: 'scatter',
+                line: { color: '#10b981' },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(16, 185, 129, 0.2)'
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 50, r: 20, t: 10, b: 40 },
+                xaxis: { title: 'Frequency (GHz)', gridcolor: '#374151' },
+                yaxis: { title: '|S21| (dB)', gridcolor: '#374151' }
+            }, { responsive: true });
+
+            // Smith Chart
+            const smithCircles = [];
+            // Constant resistance circles
+            [0, 0.5, 1, 2].forEach(r => {
+                const theta = [];
+                const x = [];
+                const y = [];
+                for (let t = 0; t <= 360; t += 5) {
+                    const rad = t * Math.PI / 180;
+                    const radius = 1 / (1 + r);
+                    x.push(r / (1 + r) + radius * Math.cos(rad));
+                    y.push(radius * Math.sin(rad));
+                }
+                smithCircles.push({ x, y, mode: 'lines', line: { color: '#374151', width: 1 }, showlegend: false });
+            });
+
+            // Unit circle
+            const unitX = [], unitY = [];
+            for (let t = 0; t <= 360; t += 5) {
+                unitX.push(Math.cos(t * Math.PI / 180));
+                unitY.push(Math.sin(t * Math.PI / 180));
+            }
+            smithCircles.push({ x: unitX, y: unitY, mode: 'lines', line: { color: '#6b7280', width: 2 }, showlegend: false });
+
+            // S11 data on Smith chart
+            smithCircles.push({
+                x: smithReal,
+                y: smithImag,
+                mode: 'lines+markers',
+                line: { color: '#06b6d4', width: 2 },
+                marker: { size: 3 },
+                name: 'S11'
+            });
+
+            Plotly.newPlot('smithChart', smithCircles, {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 20, r: 20, t: 10, b: 20 },
+                xaxis: { range: [-1.2, 1.2], zeroline: true, zerolinecolor: '#6b7280', showgrid: false },
+                yaxis: { range: [-1.2, 1.2], zeroline: true, zerolinecolor: '#6b7280', showgrid: false, scaleanchor: 'x' },
+                showlegend: false
+            }, { responsive: true });
+
+            // Phase Chart
+            Plotly.newPlot('phaseChart', [
+                { x: freq, y: s11Phase, name: '∠S11', line: { color: '#06b6d4' } },
+                { x: freq, y: s21Phase, name: '∠S21', line: { color: '#10b981' } }
+            ], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 50, r: 20, t: 10, b: 40 },
+                xaxis: { title: 'Frequency (GHz)', gridcolor: '#374151' },
+                yaxis: { title: 'Phase (°)', gridcolor: '#374151' },
+                legend: { orientation: 'h', y: -0.2 }
+            }, { responsive: true });
+
+            // Group Delay Chart
+            Plotly.newPlot('groupDelayChart', [{
+                x: freq,
+                y: groupDelay,
+                type: 'scatter',
+                line: { color: '#f59e0b' },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(245, 158, 11, 0.2)'
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 50, r: 20, t: 10, b: 40 },
+                xaxis: { title: 'Frequency (GHz)', gridcolor: '#374151' },
+                yaxis: { title: 'Group Delay (ns)', gridcolor: '#374151' }
+            }, { responsive: true });
+        }
+
+        analyze();
+    </script>
+</body>
+</html>

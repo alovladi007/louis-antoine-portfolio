@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDN Analysis - RF/SiP Co-Design</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>.gradient-bg { background: linear-gradient(135deg, #0891b2 0%, #06b6d4 50%, #22d3ee 100%); }</style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-cyan-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="rf-sip-codesign.html" class="flex items-center text-cyan-400 hover:text-cyan-300">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to RF/SiP Co-Design
+                </a>
+                <span class="text-cyan-400 font-semibold">PDN Analysis</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4"><i class="fas fa-bolt mr-4"></i>PDN Analysis</h1>
+            <p class="text-xl text-cyan-100">Power distribution network impedance and decoupling optimization</p>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid lg:grid-cols-4 gap-6">
+            <div class="space-y-6">
+                <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-microchip mr-2"></i>Load Profile</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Voltage Rail</label>
+                            <select id="voltage" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white">
+                                <option value="0.75">0.75V (Core)</option>
+                                <option value="0.9" selected>0.9V (Core)</option>
+                                <option value="1.0">1.0V (Core)</option>
+                                <option value="1.8">1.8V (I/O)</option>
+                                <option value="3.3">3.3V (I/O)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Static Current: <span id="idcVal">50</span> A</label>
+                            <input type="range" id="idc" min="1" max="200" value="50" class="w-full accent-cyan-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Transient ΔI: <span id="diVal">20</span> A</label>
+                            <input type="range" id="di" min="1" max="100" value="20" class="w-full accent-cyan-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Transition Time: <span id="trVal">1</span> ns</label>
+                            <input type="range" id="tr" min="0.1" max="10" step="0.1" value="1" class="w-full accent-cyan-500">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-cubes mr-2"></i>Decoupling</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Die Cap: <span id="dieCapVal">100</span> nF</label>
+                            <input type="range" id="dieCap" min="10" max="500" value="100" class="w-full accent-cyan-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Package MLCCs: <span id="pkgCapVal">20</span></label>
+                            <input type="range" id="pkgCap" min="1" max="100" value="20" class="w-full accent-cyan-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Board MLCCs: <span id="brdCapVal">50</span></label>
+                            <input type="range" id="brdCap" min="10" max="200" value="50" class="w-full accent-cyan-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Bulk Caps: <span id="bulkCapVal">10</span></label>
+                            <input type="range" id="bulkCap" min="0" max="50" value="10" class="w-full accent-cyan-500">
+                        </div>
+                    </div>
+                    <button onclick="analyze()" class="w-full mt-4 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors">
+                        <i class="fas fa-calculator mr-2"></i>Analyze PDN
+                    </button>
+                </div>
+            </div>
+
+            <div class="lg:col-span-3 space-y-6">
+                <div class="grid md:grid-cols-4 gap-4">
+                    <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center">
+                        <div class="text-3xl font-bold text-cyan-400" id="ztarget">18 mΩ</div>
+                        <div class="text-sm text-gray-400">Target Z</div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center">
+                        <div class="text-3xl font-bold text-green-400" id="zactual">12 mΩ</div>
+                        <div class="text-sm text-gray-400">Actual Z (max)</div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center">
+                        <div class="text-3xl font-bold text-purple-400" id="ripple">25 mV</div>
+                        <div class="text-sm text-gray-400">Voltage Ripple</div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center">
+                        <div class="text-3xl font-bold text-amber-400" id="margin">PASS</div>
+                        <div class="text-sm text-gray-400">Status</div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-chart-line mr-2"></i>PDN Impedance vs Frequency</h3>
+                    <div id="impedanceChart" style="height: 350px;"></div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                        <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-wave-square mr-2"></i>Transient Response</h3>
+                        <div id="transientChart" style="height: 280px;"></div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                        <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-layer-group mr-2"></i>Impedance Contributions</h3>
+                        <div id="contributionChart" style="height: 280px;"></div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-list mr-2"></i>Decoupling Strategy</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b border-gray-700">
+                                    <th class="text-left py-3 px-4 text-gray-400">Stage</th>
+                                    <th class="text-right py-3 px-4 text-gray-400">Capacitance</th>
+                                    <th class="text-right py-3 px-4 text-gray-400">ESL</th>
+                                    <th class="text-right py-3 px-4 text-gray-400">ESR</th>
+                                    <th class="text-right py-3 px-4 text-gray-400">Freq Range</th>
+                                </tr>
+                            </thead>
+                            <tbody id="strategyTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const idc = document.getElementById('idc');
+        const idcVal = document.getElementById('idcVal');
+        const di = document.getElementById('di');
+        const diVal = document.getElementById('diVal');
+        const tr = document.getElementById('tr');
+        const trVal = document.getElementById('trVal');
+        const dieCap = document.getElementById('dieCap');
+        const dieCapVal = document.getElementById('dieCapVal');
+        const pkgCap = document.getElementById('pkgCap');
+        const pkgCapVal = document.getElementById('pkgCapVal');
+        const brdCap = document.getElementById('brdCap');
+        const brdCapVal = document.getElementById('brdCapVal');
+        const bulkCap = document.getElementById('bulkCap');
+        const bulkCapVal = document.getElementById('bulkCapVal');
+
+        idc.addEventListener('input', () => { idcVal.textContent = idc.value; analyze(); });
+        di.addEventListener('input', () => { diVal.textContent = di.value; analyze(); });
+        tr.addEventListener('input', () => { trVal.textContent = tr.value; analyze(); });
+        dieCap.addEventListener('input', () => { dieCapVal.textContent = dieCap.value; analyze(); });
+        pkgCap.addEventListener('input', () => { pkgCapVal.textContent = pkgCap.value; analyze(); });
+        brdCap.addEventListener('input', () => { brdCapVal.textContent = brdCap.value; analyze(); });
+        bulkCap.addEventListener('input', () => { bulkCapVal.textContent = bulkCap.value; analyze(); });
+        document.getElementById('voltage').addEventListener('change', analyze);
+
+        function analyze() {
+            const V = parseFloat(document.getElementById('voltage').value);
+            const Idc = parseFloat(idc.value);
+            const dI = parseFloat(di.value);
+            const Tr = parseFloat(tr.value) * 1e-9;
+
+            const Cdie = parseFloat(dieCap.value) * 1e-9;
+            const Cpkg = parseFloat(pkgCap.value) * 100e-9; // 100nF each
+            const Cbrd = parseFloat(brdCap.value) * 10e-6;  // 10uF each
+            const Cbulk = parseFloat(bulkCap.value) * 100e-6; // 100uF each
+
+            // Target impedance
+            const rippleBudget = V * 0.03; // 3% ripple
+            const Ztarget = rippleBudget / dI * 1000; // mΩ
+
+            // Frequency analysis
+            const freq = [];
+            const Ztotal = [];
+            const Zdie = [];
+            const Zpkg = [];
+            const Zbrd = [];
+            const Zbulk = [];
+
+            // ESL and ESR values
+            const eslDie = 10e-12;  // 10pH
+            const eslPkg = 100e-12; // 100pH
+            const eslBrd = 500e-12; // 500pH
+            const eslBulk = 2e-9;   // 2nH
+
+            const esrDie = 5e-3;   // 5mΩ
+            const esrPkg = 2e-3;   // 2mΩ
+            const esrBrd = 5e-3;   // 5mΩ
+            const esrBulk = 10e-3; // 10mΩ
+
+            for (let f = 1e3; f <= 1e9; f *= 1.1) {
+                freq.push(f);
+                const w = 2 * Math.PI * f;
+
+                // Impedance of each stage (parallel RLC)
+                const zDie = Math.sqrt(Math.pow(1 / (w * Cdie), 2) + Math.pow(esrDie + w * eslDie, 2));
+                const zPkg = Cpkg > 0 ? Math.sqrt(Math.pow(1 / (w * Cpkg), 2) + Math.pow(esrPkg + w * eslPkg, 2)) : 1e6;
+                const zBrd = Cbrd > 0 ? Math.sqrt(Math.pow(1 / (w * Cbrd), 2) + Math.pow(esrBrd + w * eslBrd, 2)) : 1e6;
+                const zBulkVal = Cbulk > 0 ? Math.sqrt(Math.pow(1 / (w * Cbulk), 2) + Math.pow(esrBulk + w * eslBulk, 2)) : 1e6;
+
+                // Parallel combination
+                const zTot = 1 / (1/zDie + 1/zPkg + 1/zBrd + 1/zBulkVal);
+
+                Ztotal.push(zTot * 1000); // mΩ
+                Zdie.push(zDie * 1000);
+                Zpkg.push(zPkg * 1000);
+                Zbrd.push(zBrd * 1000);
+                Zbulk.push(zBulkVal * 1000);
+            }
+
+            const maxZ = Math.max(...Ztotal);
+            const ripple = maxZ * dI / 1000 * 1000; // mV
+            const pass = maxZ < Ztarget;
+
+            document.getElementById('ztarget').textContent = Ztarget.toFixed(1) + ' mΩ';
+            document.getElementById('zactual').textContent = maxZ.toFixed(1) + ' mΩ';
+            document.getElementById('ripple').textContent = ripple.toFixed(1) + ' mV';
+            document.getElementById('margin').textContent = pass ? 'PASS' : 'FAIL';
+            document.getElementById('margin').className = `text-3xl font-bold ${pass ? 'text-green-400' : 'text-red-400'}`;
+
+            // Impedance chart
+            Plotly.newPlot('impedanceChart', [
+                { x: freq, y: Ztotal, name: 'Total', line: { color: '#06b6d4', width: 3 } },
+                { x: freq, y: Zdie, name: 'Die Cap', line: { color: '#f59e0b', dash: 'dot' } },
+                { x: freq, y: Zpkg, name: 'Package', line: { color: '#10b981', dash: 'dot' } },
+                { x: freq, y: Zbrd, name: 'Board', line: { color: '#8b5cf6', dash: 'dot' } },
+                { x: freq, y: Zbulk, name: 'Bulk', line: { color: '#ef4444', dash: 'dot' } }
+            ], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 60, r: 20, t: 10, b: 50 },
+                xaxis: { title: 'Frequency (Hz)', type: 'log', gridcolor: '#374151' },
+                yaxis: { title: 'Impedance (mΩ)', type: 'log', gridcolor: '#374151' },
+                legend: { orientation: 'h', y: -0.2 },
+                shapes: [{
+                    type: 'line', x0: 1e3, x1: 1e9, y0: Ztarget, y1: Ztarget,
+                    line: { color: '#ef4444', dash: 'dash', width: 2 }
+                }]
+            }, { responsive: true });
+
+            // Transient response
+            const time = [];
+            const voltage = [];
+            const current = [];
+
+            for (let t = 0; t <= 100e-9; t += 0.5e-9) {
+                time.push(t * 1e9);
+
+                // Current step
+                let i = 0;
+                if (t < 10e-9) i = Idc;
+                else if (t < 10e-9 + Tr) i = Idc + dI * (t - 10e-9) / Tr;
+                else i = Idc + dI;
+                current.push(i);
+
+                // Voltage response (simplified)
+                let v = V;
+                if (t >= 10e-9) {
+                    const dt = t - 10e-9;
+                    const drop = dI * maxZ / 1000 * (1 - Math.exp(-dt / (maxZ / 1000 * Cdie)));
+                    v = V - drop;
+                }
+                voltage.push(v * 1000); // mV
+            }
+
+            Plotly.newPlot('transientChart', [
+                { x: time, y: voltage, name: 'Voltage', yaxis: 'y1', line: { color: '#06b6d4' } },
+                { x: time, y: current, name: 'Current', yaxis: 'y2', line: { color: '#f59e0b' } }
+            ], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 60, r: 60, t: 10, b: 40 },
+                xaxis: { title: 'Time (ns)', gridcolor: '#374151' },
+                yaxis: { title: 'Voltage (mV)', gridcolor: '#374151', side: 'left' },
+                yaxis2: { title: 'Current (A)', gridcolor: '#374151', side: 'right', overlaying: 'y' },
+                legend: { orientation: 'h', y: -0.2 }
+            }, { responsive: true });
+
+            // Contribution chart
+            Plotly.newPlot('contributionChart', [{
+                labels: ['Die Cap', 'Package MLCCs', 'Board MLCCs', 'Bulk Caps'],
+                values: [Cdie * 1e9, Cpkg * 1e9, Cbrd * 1e6, Cbulk * 1e6],
+                type: 'pie',
+                hole: 0.4,
+                marker: { colors: ['#f59e0b', '#10b981', '#8b5cf6', '#ef4444'] },
+                textfont: { color: '#fff' }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 20, r: 20, t: 20, b: 20 },
+                showlegend: true,
+                legend: { font: { color: '#fff' } }
+            }, { responsive: true });
+
+            // Strategy table
+            document.getElementById('strategyTable').innerHTML = `
+                <tr class="border-b border-gray-700/50">
+                    <td class="py-3 px-4">Die Capacitance</td>
+                    <td class="py-3 px-4 text-right text-cyan-400">${(Cdie * 1e9).toFixed(0)} nF</td>
+                    <td class="py-3 px-4 text-right">10 pH</td>
+                    <td class="py-3 px-4 text-right">5 mΩ</td>
+                    <td class="py-3 px-4 text-right text-green-400">100 MHz - 1 GHz</td>
+                </tr>
+                <tr class="border-b border-gray-700/50">
+                    <td class="py-3 px-4">Package MLCCs (100nF)</td>
+                    <td class="py-3 px-4 text-right text-cyan-400">${(Cpkg * 1e6).toFixed(1)} µF</td>
+                    <td class="py-3 px-4 text-right">100 pH</td>
+                    <td class="py-3 px-4 text-right">2 mΩ</td>
+                    <td class="py-3 px-4 text-right text-green-400">10 MHz - 100 MHz</td>
+                </tr>
+                <tr class="border-b border-gray-700/50">
+                    <td class="py-3 px-4">Board MLCCs (10µF)</td>
+                    <td class="py-3 px-4 text-right text-cyan-400">${(Cbrd * 1e3).toFixed(0)} mF</td>
+                    <td class="py-3 px-4 text-right">500 pH</td>
+                    <td class="py-3 px-4 text-right">5 mΩ</td>
+                    <td class="py-3 px-4 text-right text-green-400">1 MHz - 10 MHz</td>
+                </tr>
+                <tr class="border-b border-gray-700/50">
+                    <td class="py-3 px-4">Bulk Caps (100µF)</td>
+                    <td class="py-3 px-4 text-right text-cyan-400">${(Cbulk * 1e3).toFixed(0)} mF</td>
+                    <td class="py-3 px-4 text-right">2 nH</td>
+                    <td class="py-3 px-4 text-right">10 mΩ</td>
+                    <td class="py-3 px-4 text-right text-green-400">1 kHz - 1 MHz</td>
+                </tr>
+            `;
+        }
+
+        analyze();
+    </script>
+</body>
+</html>

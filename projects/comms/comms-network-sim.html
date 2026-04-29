@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Simulator - Cross-Domain Comms</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #164e63 0%, #155e75 50%, #0e7490 100%); }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 40px rgba(6, 182, 212, 0.3); }
+        .node-active { animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-cyan-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="cross-domain-comms-complete-project.html" class="flex items-center text-cyan-400 hover:text-cyan-300 transition-colors">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Cross-Domain Comms
+                </a>
+                <span class="text-cyan-400 font-semibold">Network Simulator</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4">
+                <i class="fas fa-project-diagram mr-4 text-cyan-400"></i>Underwater Network Simulator
+            </h1>
+            <p class="text-xl text-cyan-100 max-w-3xl mx-auto">
+                Multi-hop acoustic network simulation with routing, propagation, and protocol analysis
+            </p>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Network Configuration -->
+        <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6 mb-8">
+            <h2 class="text-xl font-semibold text-cyan-400 mb-4"><i class="fas fa-cogs mr-2"></i>Network Configuration</h2>
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2">Network Topology</label>
+                    <select id="topology" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white" onchange="updateNetwork()">
+                        <option value="mesh">Mesh</option>
+                        <option value="star">Star</option>
+                        <option value="cluster">Cluster</option>
+                        <option value="linear">Linear</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2">Number of Nodes</label>
+                    <input type="range" id="numNodes" min="4" max="20" value="8" class="w-full" oninput="updateNetwork()">
+                    <div class="text-center text-cyan-400" id="nodeDisplay">8</div>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2">Routing Protocol</label>
+                    <select id="routing" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white" onchange="updateNetwork()">
+                        <option value="flooding">Flooding</option>
+                        <option value="vbf">Vector-Based (VBF)</option>
+                        <option value="dbr">Depth-Based (DBR)</option>
+                        <option value="hhvbf">Hop-by-Hop VBF</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2">Comm Range (m)</label>
+                    <input type="range" id="commRange" min="500" max="3000" value="1500" class="w-full" oninput="updateNetwork()">
+                    <div class="text-center text-cyan-400" id="rangeDisplay">1500 m</div>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2">Traffic Pattern</label>
+                    <select id="traffic" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white" onchange="updateNetwork()">
+                        <option value="uniform">Uniform Random</option>
+                        <option value="sink">To Sink</option>
+                        <option value="broadcast">Broadcast</option>
+                        <option value="multicast">Multicast</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Network Visualization and Stats -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-cyan-400"><i class="fas fa-network-wired mr-2"></i>Network Topology</h3>
+                    <div class="flex gap-2">
+                        <button onclick="startSimulation()" id="startBtn" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 rounded-lg transition-colors">
+                            <i class="fas fa-play mr-2"></i>Run
+                        </button>
+                        <button onclick="resetNetwork()" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-lg transition-colors">
+                            <i class="fas fa-redo mr-2"></i>Reset
+                        </button>
+                    </div>
+                </div>
+                <svg id="networkSvg" viewBox="0 0 500 400" class="w-full bg-gray-900 rounded-lg"></svg>
+                <div class="mt-2 flex justify-center gap-4 text-sm">
+                    <span><span class="inline-block w-3 h-3 bg-cyan-400 rounded-full mr-1"></span>Sensor</span>
+                    <span><span class="inline-block w-3 h-3 bg-yellow-400 rounded-full mr-1"></span>Relay</span>
+                    <span><span class="inline-block w-3 h-3 bg-green-400 rounded-full mr-1"></span>Sink</span>
+                </div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-chart-line mr-2"></i>Network Performance</h3>
+                <div id="perfChart" style="height: 350px;"></div>
+            </div>
+        </div>
+
+        <!-- Routing and Delay Analysis -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-route mr-2"></i>Routing Efficiency</h3>
+                <div id="routingChart" style="height: 300px;"></div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-clock mr-2"></i>End-to-End Delay</h3>
+                <div id="delayChart" style="height: 300px;"></div>
+            </div>
+        </div>
+
+        <!-- Energy and Connectivity -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-battery-half mr-2"></i>Energy Consumption</h3>
+                <div id="energyChart" style="height: 280px;"></div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-link mr-2"></i>Connectivity Matrix</h3>
+                <div id="connectivityChart" style="height: 280px;"></div>
+            </div>
+        </div>
+
+        <!-- Performance Metrics -->
+        <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center card-hover transition-all">
+                <div class="text-2xl font-bold text-cyan-400" id="pdr">92.5</div>
+                <div class="text-xs text-gray-400">Packet Delivery (%)</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center card-hover transition-all">
+                <div class="text-2xl font-bold text-green-400" id="avgHops">3.2</div>
+                <div class="text-xs text-gray-400">Avg Hop Count</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center card-hover transition-all">
+                <div class="text-2xl font-bold text-yellow-400" id="e2eDelay">2.4</div>
+                <div class="text-xs text-gray-400">E2E Delay (s)</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center card-hover transition-all">
+                <div class="text-2xl font-bold text-purple-400" id="throughput">1.8</div>
+                <div class="text-xs text-gray-400">Throughput (kbps)</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center card-hover transition-all">
+                <div class="text-2xl font-bold text-red-400" id="energyNode">45</div>
+                <div class="text-xs text-gray-400">Energy/Node (mJ)</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center card-hover transition-all">
+                <div class="text-2xl font-bold text-cyan-400" id="connectivity">87</div>
+                <div class="text-xs text-gray-400">Connectivity (%)</div>
+            </div>
+        </div>
+
+        <!-- Simulation Log -->
+        <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6 mb-8">
+            <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-terminal mr-2"></i>Simulation Events</h3>
+            <div id="simLog" class="h-40 overflow-y-auto bg-gray-900 rounded-lg p-4 font-mono text-sm space-y-1"></div>
+        </div>
+
+        <!-- Routing Protocol Comparison -->
+        <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+            <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-balance-scale mr-2"></i>Underwater Routing Protocol Comparison</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-gray-700">
+                            <th class="text-left py-3 px-4 text-cyan-400">Protocol</th>
+                            <th class="text-center py-3 px-4 text-cyan-400">PDR</th>
+                            <th class="text-center py-3 px-4 text-cyan-400">Delay</th>
+                            <th class="text-center py-3 px-4 text-cyan-400">Energy</th>
+                            <th class="text-center py-3 px-4 text-cyan-400">Scalability</th>
+                            <th class="py-3 px-4 text-cyan-400">Best For</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-b border-gray-700/50 hover:bg-gray-700/30">
+                            <td class="py-3 px-4">Flooding</td>
+                            <td class="text-center py-3 px-4 text-green-400">High</td>
+                            <td class="text-center py-3 px-4 text-green-400">Low</td>
+                            <td class="text-center py-3 px-4 text-red-400">Very High</td>
+                            <td class="text-center py-3 px-4 text-red-400">Poor</td>
+                            <td class="py-3 px-4">Small networks, critical data</td>
+                        </tr>
+                        <tr class="border-b border-gray-700/50 hover:bg-gray-700/30">
+                            <td class="py-3 px-4">Vector-Based (VBF)</td>
+                            <td class="text-center py-3 px-4 text-yellow-400">Good</td>
+                            <td class="text-center py-3 px-4 text-yellow-400">Medium</td>
+                            <td class="text-center py-3 px-4 text-green-400">Low</td>
+                            <td class="text-center py-3 px-4 text-green-400">Good</td>
+                            <td class="py-3 px-4">Sparse networks</td>
+                        </tr>
+                        <tr class="border-b border-gray-700/50 hover:bg-gray-700/30">
+                            <td class="py-3 px-4">Depth-Based (DBR)</td>
+                            <td class="text-center py-3 px-4 text-green-400">High</td>
+                            <td class="text-center py-3 px-4 text-green-400">Low</td>
+                            <td class="text-center py-3 px-4 text-yellow-400">Medium</td>
+                            <td class="text-center py-3 px-4 text-green-400">Good</td>
+                            <td class="py-3 px-4">Surface sinks</td>
+                        </tr>
+                        <tr class="hover:bg-gray-700/30">
+                            <td class="py-3 px-4">Hop-by-Hop VBF</td>
+                            <td class="text-center py-3 px-4 text-green-400">High</td>
+                            <td class="text-center py-3 px-4 text-yellow-400">Medium</td>
+                            <td class="text-center py-3 px-4 text-green-400">Low</td>
+                            <td class="text-center py-3 px-4 text-green-400">Excellent</td>
+                            <td class="py-3 px-4">Mobile networks</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const plotConfig = { displayModeBar: false, responsive: true };
+        const plotLayout = {
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(17,24,39,0.8)',
+            font: { color: '#9ca3af' },
+            margin: { t: 30, r: 30, b: 50, l: 60 }
+        };
+
+        let nodes = [];
+        let links = [];
+        let simRunning = false;
+        let simInterval = null;
+        let packetCount = 0;
+
+        function updateNetwork() {
+            const numNodes = parseInt(document.getElementById('numNodes').value);
+            const commRange = parseInt(document.getElementById('commRange').value);
+            const topology = document.getElementById('topology').value;
+
+            document.getElementById('nodeDisplay').textContent = numNodes;
+            document.getElementById('rangeDisplay').textContent = commRange + ' m';
+
+            generateTopology(topology, numNodes, commRange);
+            updateCharts();
+        }
+
+        function generateTopology(topology, numNodes, commRange) {
+            nodes = [];
+            links = [];
+            const svg = document.getElementById('networkSvg');
+            svg.innerHTML = '';
+
+            // Generate node positions based on topology
+            if (topology === 'mesh') {
+                for (let i = 0; i < numNodes; i++) {
+                    nodes.push({
+                        id: i,
+                        x: 50 + Math.random() * 400,
+                        y: 50 + Math.random() * 300,
+                        type: i === 0 ? 'sink' : (i < 3 ? 'relay' : 'sensor'),
+                        energy: 100
+                    });
+                }
+            } else if (topology === 'star') {
+                nodes.push({ id: 0, x: 250, y: 200, type: 'sink', energy: 100 });
+                for (let i = 1; i < numNodes; i++) {
+                    const angle = (2 * Math.PI * (i - 1)) / (numNodes - 1);
+                    nodes.push({
+                        id: i,
+                        x: 250 + 150 * Math.cos(angle),
+                        y: 200 + 150 * Math.sin(angle),
+                        type: 'sensor',
+                        energy: 100
+                    });
+                }
+            } else if (topology === 'cluster') {
+                const clusters = 3;
+                const nodesPerCluster = Math.floor(numNodes / clusters);
+                let nodeId = 0;
+                for (let c = 0; c < clusters; c++) {
+                    const cx = 100 + c * 150;
+                    const cy = 150 + (c % 2) * 100;
+                    nodes.push({ id: nodeId++, x: cx, y: cy, type: c === 0 ? 'sink' : 'relay', energy: 100 });
+                    for (let i = 1; i < nodesPerCluster && nodeId < numNodes; i++) {
+                        const angle = (2 * Math.PI * i) / nodesPerCluster;
+                        nodes.push({
+                            id: nodeId++,
+                            x: cx + 60 * Math.cos(angle),
+                            y: cy + 60 * Math.sin(angle),
+                            type: 'sensor',
+                            energy: 100
+                        });
+                    }
+                }
+            } else {
+                for (let i = 0; i < numNodes; i++) {
+                    nodes.push({
+                        id: i,
+                        x: 50 + i * (400 / (numNodes - 1)),
+                        y: 180 + (i % 2) * 40,
+                        type: i === 0 ? 'sink' : 'sensor',
+                        energy: 100
+                    });
+                }
+            }
+
+            // Generate links based on communication range
+            const rangeNorm = commRange / 3000 * 200;
+            for (let i = 0; i < nodes.length; i++) {
+                for (let j = i + 1; j < nodes.length; j++) {
+                    const dist = Math.sqrt(Math.pow(nodes[i].x - nodes[j].x, 2) + Math.pow(nodes[i].y - nodes[j].y, 2));
+                    if (dist < rangeNorm) {
+                        links.push({ from: i, to: j, dist });
+                    }
+                }
+            }
+
+            // Draw links
+            links.forEach(link => {
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', nodes[link.from].x);
+                line.setAttribute('y1', nodes[link.from].y);
+                line.setAttribute('x2', nodes[link.to].x);
+                line.setAttribute('y2', nodes[link.to].y);
+                line.setAttribute('stroke', '#374151');
+                line.setAttribute('stroke-width', '1');
+                line.setAttribute('stroke-dasharray', '4,4');
+                svg.appendChild(line);
+            });
+
+            // Draw nodes
+            const colors = { sink: '#22c55e', relay: '#eab308', sensor: '#06b6d4' };
+            nodes.forEach(node => {
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', node.x);
+                circle.setAttribute('cy', node.y);
+                circle.setAttribute('r', node.type === 'sink' ? 15 : 10);
+                circle.setAttribute('fill', colors[node.type]);
+                circle.setAttribute('id', `node-${node.id}`);
+                svg.appendChild(circle);
+
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', node.x);
+                text.setAttribute('y', node.y + 25);
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('fill', '#9ca3af');
+                text.setAttribute('font-size', '10');
+                text.textContent = node.type === 'sink' ? 'Sink' : `N${node.id}`;
+                svg.appendChild(text);
+            });
+        }
+
+        function updateCharts() {
+            const routing = document.getElementById('routing').value;
+            const numNodes = parseInt(document.getElementById('numNodes').value);
+
+            // Performance over time
+            const time = Array.from({length: 20}, (_, i) => i * 5);
+            const routingEfficiencies = {
+                flooding: time.map(t => 95 - t * 0.5 + (Math.random() - 0.5) * 5),
+                vbf: time.map(t => 85 + t * 0.2 + (Math.random() - 0.5) * 3),
+                dbr: time.map(t => 90 + t * 0.1 + (Math.random() - 0.5) * 4),
+                hhvbf: time.map(t => 88 + t * 0.3 + (Math.random() - 0.5) * 3)
+            };
+
+            Plotly.newPlot('perfChart', [{
+                x: time,
+                y: routingEfficiencies[routing],
+                name: 'PDR',
+                line: { color: '#06b6d4', width: 2 }
+            }], {
+                ...plotLayout,
+                xaxis: { title: 'Time (s)', gridcolor: '#374151' },
+                yaxis: { title: 'Packet Delivery Ratio (%)', range: [70, 100], gridcolor: '#374151' }
+            }, plotConfig);
+
+            // Routing efficiency comparison
+            const protocols = ['Flooding', 'VBF', 'DBR', 'HHVBF'];
+            const efficiency = [65, 85, 88, 92];
+
+            Plotly.newPlot('routingChart', [{
+                x: protocols,
+                y: efficiency,
+                type: 'bar',
+                marker: { color: ['#ef4444', '#eab308', '#22c55e', '#06b6d4'] }
+            }], {
+                ...plotLayout,
+                xaxis: { gridcolor: '#374151' },
+                yaxis: { title: 'Efficiency (%)', gridcolor: '#374151' }
+            }, plotConfig);
+
+            // Delay histogram
+            const delays = Array.from({length: 50}, () => {
+                const base = routing === 'flooding' ? 0.5 : 2;
+                return base + Math.random() * 3;
+            });
+
+            Plotly.newPlot('delayChart', [{
+                x: delays,
+                type: 'histogram',
+                marker: { color: '#06b6d4' },
+                nbinsx: 15
+            }], {
+                ...plotLayout,
+                xaxis: { title: 'Delay (s)', gridcolor: '#374151' },
+                yaxis: { title: 'Count', gridcolor: '#374151' }
+            }, plotConfig);
+
+            // Energy per node
+            const nodeIds = nodes.map((_, i) => `N${i}`);
+            const energies = nodes.map(n => n.type === 'relay' ? 60 + Math.random() * 20 : 30 + Math.random() * 40);
+
+            Plotly.newPlot('energyChart', [{
+                x: nodeIds,
+                y: energies,
+                type: 'bar',
+                marker: { color: energies.map(e => e > 50 ? '#22c55e' : (e > 30 ? '#eab308' : '#ef4444')) }
+            }], {
+                ...plotLayout,
+                xaxis: { gridcolor: '#374151' },
+                yaxis: { title: 'Energy (mJ)', gridcolor: '#374151' }
+            }, plotConfig);
+
+            // Connectivity matrix
+            const matrix = [];
+            for (let i = 0; i < Math.min(numNodes, 10); i++) {
+                const row = [];
+                for (let j = 0; j < Math.min(numNodes, 10); j++) {
+                    if (i === j) row.push(1);
+                    else {
+                        const hasLink = links.some(l => (l.from === i && l.to === j) || (l.from === j && l.to === i));
+                        row.push(hasLink ? 1 : 0);
+                    }
+                }
+                matrix.push(row);
+            }
+
+            Plotly.newPlot('connectivityChart', [{
+                z: matrix,
+                type: 'heatmap',
+                colorscale: [[0, '#1f2937'], [1, '#06b6d4']],
+                showscale: false
+            }], {
+                ...plotLayout,
+                xaxis: { title: 'Node', gridcolor: '#374151' },
+                yaxis: { title: 'Node', gridcolor: '#374151' }
+            }, plotConfig);
+
+            // Update metrics
+            updateMetrics(routing, numNodes);
+        }
+
+        function updateMetrics(routing, numNodes) {
+            const metrics = {
+                flooding: { pdr: 95, hops: 2.1, delay: 0.8, throughput: 2.5, energy: 85 },
+                vbf: { pdr: 88, hops: 3.5, delay: 2.2, throughput: 1.5, energy: 35 },
+                dbr: { pdr: 92, hops: 3.0, delay: 1.5, throughput: 2.0, energy: 45 },
+                hhvbf: { pdr: 90, hops: 3.2, delay: 2.0, throughput: 1.8, energy: 32 }
+            };
+
+            const m = metrics[routing];
+            document.getElementById('pdr').textContent = m.pdr.toFixed(1);
+            document.getElementById('avgHops').textContent = m.hops.toFixed(1);
+            document.getElementById('e2eDelay').textContent = m.delay.toFixed(1);
+            document.getElementById('throughput').textContent = m.throughput.toFixed(1);
+            document.getElementById('energyNode').textContent = Math.round(m.energy);
+
+            const connectivity = (links.length / (numNodes * (numNodes - 1) / 2)) * 100;
+            document.getElementById('connectivity').textContent = Math.round(connectivity);
+        }
+
+        function startSimulation() {
+            if (simRunning) {
+                simRunning = false;
+                clearInterval(simInterval);
+                document.getElementById('startBtn').innerHTML = '<i class="fas fa-play mr-2"></i>Run';
+                return;
+            }
+
+            simRunning = true;
+            document.getElementById('startBtn').innerHTML = '<i class="fas fa-pause mr-2"></i>Pause';
+            document.getElementById('simLog').innerHTML = '';
+            packetCount = 0;
+
+            logEvent('Simulation started', 'info');
+
+            simInterval = setInterval(() => {
+                simulatePacket();
+            }, 500);
+        }
+
+        function simulatePacket() {
+            packetCount++;
+            const routing = document.getElementById('routing').value;
+
+            // Select random source (non-sink)
+            const sourceIdx = 1 + Math.floor(Math.random() * (nodes.length - 1));
+            const source = nodes[sourceIdx];
+
+            logEvent(`[PKT-${packetCount}] Source: N${source.id} → Sink`, 'info');
+
+            // Simulate routing
+            let hops = 0;
+            let currentNode = sourceIdx;
+            const visited = new Set([currentNode]);
+
+            const routeInterval = setInterval(() => {
+                // Find next hop
+                const neighbors = links.filter(l =>
+                    (l.from === currentNode || l.to === currentNode) &&
+                    !visited.has(l.from === currentNode ? l.to : l.from)
+                );
+
+                if (neighbors.length === 0 || currentNode === 0) {
+                    clearInterval(routeInterval);
+                    if (currentNode === 0) {
+                        logEvent(`[PKT-${packetCount}] Delivered in ${hops} hops`, 'success');
+                    } else {
+                        logEvent(`[PKT-${packetCount}] Dropped - no route`, 'error');
+                    }
+                    return;
+                }
+
+                // Select next hop (simplified - closest to sink)
+                let nextHop;
+                if (routing === 'dbr') {
+                    nextHop = neighbors[0].from === currentNode ? neighbors[0].to : neighbors[0].from;
+                } else {
+                    // Random for flooding effect
+                    const link = neighbors[Math.floor(Math.random() * neighbors.length)];
+                    nextHop = link.from === currentNode ? link.to : link.from;
+                }
+
+                // Animate
+                const nodeEl = document.getElementById(`node-${nextHop}`);
+                if (nodeEl) {
+                    nodeEl.classList.add('node-active');
+                    setTimeout(() => nodeEl.classList.remove('node-active'), 300);
+                }
+
+                currentNode = nextHop;
+                visited.add(currentNode);
+                hops++;
+
+                if (hops > 10) {
+                    clearInterval(routeInterval);
+                    logEvent(`[PKT-${packetCount}] TTL exceeded`, 'error');
+                }
+            }, 200);
+        }
+
+        function logEvent(msg, type) {
+            const log = document.getElementById('simLog');
+            const colors = { info: 'text-gray-400', success: 'text-green-400', error: 'text-red-400' };
+            const time = new Date().toLocaleTimeString();
+            log.innerHTML = `<div class="${colors[type]}">[${time}] ${msg}</div>` + log.innerHTML;
+        }
+
+        function resetNetwork() {
+            simRunning = false;
+            clearInterval(simInterval);
+            document.getElementById('startBtn').innerHTML = '<i class="fas fa-play mr-2"></i>Run';
+            document.getElementById('simLog').innerHTML = '';
+            packetCount = 0;
+            updateNetwork();
+        }
+
+        // Initialize
+        updateNetwork();
+    </script>
+
+    <footer class="bg-gray-800 border-t border-cyan-500/20 py-6 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center text-gray-400">
+            <p>Cross-Domain Communications - Underwater Network Simulator</p>
+        </div>
+    </footer>
+</body>
+</html>

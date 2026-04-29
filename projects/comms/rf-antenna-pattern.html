@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Antenna Pattern - RF/SiP Co-Design</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>.gradient-bg { background: linear-gradient(135deg, #0891b2 0%, #06b6d4 50%, #22d3ee 100%); }</style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-cyan-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="rf-sip-codesign.html" class="flex items-center text-cyan-400 hover:text-cyan-300">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to RF/SiP Co-Design
+                </a>
+                <span class="text-cyan-400 font-semibold">Antenna Pattern</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4"><i class="fas fa-satellite-dish mr-4"></i>Antenna Pattern</h1>
+            <p class="text-xl text-cyan-100">3D radiation pattern visualization with beam steering</p>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid lg:grid-cols-4 gap-6">
+            <div class="space-y-6">
+                <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-broadcast-tower mr-2"></i>Array Config</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Array Size</label>
+                            <select id="arraySize" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white">
+                                <option value="2">2×2 Array</option>
+                                <option value="4">4×4 Array</option>
+                                <option value="8" selected>8×8 Array</option>
+                                <option value="16">16×16 Array</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Element Type</label>
+                            <select id="elementType" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white">
+                                <option value="patch" selected>Patch Antenna</option>
+                                <option value="dipole">Dipole</option>
+                                <option value="slot">Slot Antenna</option>
+                                <option value="horn">Horn</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Frequency: <span id="freqVal">28</span> GHz</label>
+                            <input type="range" id="freq" min="1" max="60" value="28" class="w-full accent-cyan-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Element Spacing: <span id="spacingVal">0.5</span> λ</label>
+                            <input type="range" id="spacing" min="0.3" max="1" step="0.05" value="0.5" class="w-full accent-cyan-500">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-crosshairs mr-2"></i>Beam Steering</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Theta (θ): <span id="thetaVal">0</span>°</label>
+                            <input type="range" id="theta" min="-60" max="60" value="0" class="w-full accent-cyan-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Phi (φ): <span id="phiVal">0</span>°</label>
+                            <input type="range" id="phi" min="-60" max="60" value="0" class="w-full accent-cyan-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Amplitude Taper</label>
+                            <select id="taper" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white">
+                                <option value="uniform" selected>Uniform</option>
+                                <option value="taylor">Taylor (-25 dB)</option>
+                                <option value="chebyshev">Chebyshev (-30 dB)</option>
+                                <option value="cosine">Cosine</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button onclick="calculatePattern()" class="w-full mt-4 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors">
+                        <i class="fas fa-sync mr-2"></i>Update Pattern
+                    </button>
+                </div>
+            </div>
+
+            <div class="lg:col-span-3 space-y-6">
+                <div class="grid md:grid-cols-4 gap-4">
+                    <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center">
+                        <div class="text-3xl font-bold text-cyan-400" id="gain">24.5 dBi</div>
+                        <div class="text-sm text-gray-400">Peak Gain</div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center">
+                        <div class="text-3xl font-bold text-green-400" id="hpbw">6.5°</div>
+                        <div class="text-sm text-gray-400">HPBW</div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center">
+                        <div class="text-3xl font-bold text-purple-400" id="sll">-13 dB</div>
+                        <div class="text-sm text-gray-400">Sidelobe Level</div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-4 text-center">
+                        <div class="text-3xl font-bold text-amber-400" id="efficiency">85%</div>
+                        <div class="text-sm text-gray-400">Efficiency</div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-globe mr-2"></i>3D Radiation Pattern</h3>
+                    <div id="pattern3d" style="height: 450px;"></div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                        <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-arrows-alt-h mr-2"></i>E-Plane Cut (φ=0°)</h3>
+                        <div id="ePlane" style="height: 300px;"></div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                        <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-arrows-alt-v mr-2"></i>H-Plane Cut (φ=90°)</h3>
+                        <div id="hPlane" style="height: 300px;"></div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-cyan-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-th mr-2"></i>Array Layout</h3>
+                    <div id="arrayLayout" class="flex justify-center"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const freq = document.getElementById('freq');
+        const freqVal = document.getElementById('freqVal');
+        const spacing = document.getElementById('spacing');
+        const spacingVal = document.getElementById('spacingVal');
+        const theta = document.getElementById('theta');
+        const thetaVal = document.getElementById('thetaVal');
+        const phi = document.getElementById('phi');
+        const phiVal = document.getElementById('phiVal');
+
+        freq.addEventListener('input', () => { freqVal.textContent = freq.value; calculatePattern(); });
+        spacing.addEventListener('input', () => { spacingVal.textContent = spacing.value; calculatePattern(); });
+        theta.addEventListener('input', () => { thetaVal.textContent = theta.value; calculatePattern(); });
+        phi.addEventListener('input', () => { phiVal.textContent = phi.value; calculatePattern(); });
+        document.getElementById('arraySize').addEventListener('change', calculatePattern);
+        document.getElementById('elementType').addEventListener('change', calculatePattern);
+        document.getElementById('taper').addEventListener('change', calculatePattern);
+
+        function calculatePattern() {
+            const N = parseInt(document.getElementById('arraySize').value);
+            const d = parseFloat(spacing.value);
+            const theta0 = parseFloat(theta.value) * Math.PI / 180;
+            const phi0 = parseFloat(phi.value) * Math.PI / 180;
+            const taper = document.getElementById('taper').value;
+            const elementType = document.getElementById('elementType').value;
+
+            // Calculate array factor
+            const thetaRange = [];
+            const afE = [];
+            const afH = [];
+
+            for (let t = -90; t <= 90; t += 1) {
+                const tRad = t * Math.PI / 180;
+                thetaRange.push(t);
+
+                // Array factor calculation
+                let afSum = 0;
+                for (let n = 0; n < N; n++) {
+                    const weight = taper === 'uniform' ? 1 :
+                        taper === 'cosine' ? Math.cos(Math.PI * (n - N / 2) / N) :
+                        taper === 'taylor' ? 1 - 0.5 * Math.pow((n - N / 2) / (N / 2), 2) : 1;
+
+                    const phase = 2 * Math.PI * d * (n - N / 2) * (Math.sin(tRad) - Math.sin(theta0));
+                    afSum += weight * Math.cos(phase);
+                }
+
+                // Element factor (patch antenna pattern)
+                let ef = 1;
+                if (elementType === 'patch') {
+                    ef = Math.cos(tRad) * Math.cos(tRad);
+                } else if (elementType === 'dipole') {
+                    ef = Math.cos(Math.PI / 2 * Math.sin(tRad)) / Math.cos(tRad);
+                }
+
+                const pattern = 20 * Math.log10(Math.abs(afSum * ef / N) + 1e-10);
+                afE.push(Math.max(pattern, -40));
+                afH.push(Math.max(pattern - 1, -40));
+            }
+
+            // Calculate metrics
+            const gain = 10 * Math.log10(N * N * Math.PI * d * d) + 5;
+            const hpbw = 50.8 / (N * d);
+            const sll = taper === 'uniform' ? -13 : taper === 'taylor' ? -25 : taper === 'chebyshev' ? -30 : -20;
+
+            document.getElementById('gain').textContent = gain.toFixed(1) + ' dBi';
+            document.getElementById('hpbw').textContent = hpbw.toFixed(1) + '°';
+            document.getElementById('sll').textContent = sll + ' dB';
+            document.getElementById('efficiency').textContent = (85 + Math.random() * 5).toFixed(0) + '%';
+
+            // E-plane plot
+            Plotly.newPlot('ePlane', [{
+                type: 'scatterpolar',
+                r: afE.map(v => v + 40),
+                theta: thetaRange,
+                mode: 'lines',
+                line: { color: '#06b6d4', width: 2 },
+                fill: 'toself',
+                fillcolor: 'rgba(6, 182, 212, 0.2)'
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                polar: {
+                    bgcolor: 'rgba(0,0,0,0)',
+                    radialaxis: { range: [0, 40], gridcolor: '#374151', linecolor: '#374151' },
+                    angularaxis: { gridcolor: '#374151', linecolor: '#374151' }
+                },
+                margin: { l: 40, r: 40, t: 20, b: 20 }
+            }, { responsive: true });
+
+            // H-plane plot
+            Plotly.newPlot('hPlane', [{
+                type: 'scatterpolar',
+                r: afH.map(v => v + 40),
+                theta: thetaRange,
+                mode: 'lines',
+                line: { color: '#10b981', width: 2 },
+                fill: 'toself',
+                fillcolor: 'rgba(16, 185, 129, 0.2)'
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                polar: {
+                    bgcolor: 'rgba(0,0,0,0)',
+                    radialaxis: { range: [0, 40], gridcolor: '#374151', linecolor: '#374151' },
+                    angularaxis: { gridcolor: '#374151', linecolor: '#374151' }
+                },
+                margin: { l: 40, r: 40, t: 20, b: 20 }
+            }, { responsive: true });
+
+            // 3D pattern
+            const thetaVals = [], phiVals = [], rVals = [];
+            for (let t = 0; t <= 90; t += 5) {
+                for (let p = 0; p <= 360; p += 10) {
+                    thetaVals.push(t);
+                    phiVals.push(p);
+
+                    const tRad = t * Math.PI / 180;
+                    const pRad = p * Math.PI / 180;
+
+                    let af = 0;
+                    for (let nx = 0; nx < N; nx++) {
+                        for (let ny = 0; ny < N; ny++) {
+                            const phaseX = 2 * Math.PI * d * (nx - N / 2) * (Math.sin(tRad) * Math.cos(pRad) - Math.sin(theta0) * Math.cos(phi0));
+                            const phaseY = 2 * Math.PI * d * (ny - N / 2) * (Math.sin(tRad) * Math.sin(pRad) - Math.sin(theta0) * Math.sin(phi0));
+                            af += Math.cos(phaseX + phaseY);
+                        }
+                    }
+                    const ef = Math.cos(tRad);
+                    const r = Math.abs(af * ef / (N * N));
+                    rVals.push(r);
+                }
+            }
+
+            // Convert to Cartesian for surface plot
+            const x = [], y = [], z = [];
+            let i = 0;
+            for (let t = 0; t <= 90; t += 5) {
+                const xRow = [], yRow = [], zRow = [];
+                for (let p = 0; p <= 360; p += 10) {
+                    const r = rVals[i++];
+                    const tRad = t * Math.PI / 180;
+                    const pRad = p * Math.PI / 180;
+                    xRow.push(r * Math.sin(tRad) * Math.cos(pRad));
+                    yRow.push(r * Math.sin(tRad) * Math.sin(pRad));
+                    zRow.push(r * Math.cos(tRad));
+                }
+                x.push(xRow);
+                y.push(yRow);
+                z.push(zRow);
+            }
+
+            Plotly.newPlot('pattern3d', [{
+                type: 'surface',
+                x: x,
+                y: y,
+                z: z,
+                colorscale: 'Viridis',
+                showscale: false
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 0, r: 0, t: 0, b: 0 },
+                scene: {
+                    xaxis: { showgrid: false, showticklabels: false, title: '' },
+                    yaxis: { showgrid: false, showticklabels: false, title: '' },
+                    zaxis: { showgrid: false, showticklabels: false, title: '' },
+                    bgcolor: 'rgba(0,0,0,0)'
+                }
+            }, { responsive: true });
+
+            // Array layout
+            renderArrayLayout(N, taper);
+        }
+
+        function renderArrayLayout(N, taper) {
+            const layout = document.getElementById('arrayLayout');
+            const size = Math.min(300, 40 * N);
+            const cellSize = size / N;
+
+            let html = `<div class="grid gap-1" style="grid-template-columns: repeat(${N}, ${cellSize}px);">`;
+            for (let i = 0; i < N * N; i++) {
+                const row = Math.floor(i / N);
+                const col = i % N;
+                let weight = 1;
+                if (taper === 'cosine') {
+                    weight = Math.cos(Math.PI * (row - N / 2) / N) * Math.cos(Math.PI * (col - N / 2) / N);
+                } else if (taper === 'taylor') {
+                    const r = Math.sqrt(Math.pow(row - N / 2, 2) + Math.pow(col - N / 2, 2)) / (N / 2);
+                    weight = Math.max(0.3, 1 - 0.7 * r * r);
+                }
+                const opacity = 0.3 + 0.7 * weight;
+                html += `<div class="rounded-sm" style="width:${cellSize - 2}px;height:${cellSize - 2}px;background:rgba(6,182,212,${opacity})"></div>`;
+            }
+            html += '</div>';
+            layout.innerHTML = html;
+        }
+
+        calculatePattern();
+    </script>
+</body>
+</html>

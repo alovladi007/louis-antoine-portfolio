@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monte Carlo Simulator - Cross-Domain Comms</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #164e63 0%, #0e7490 50%, #06b6d4 100%); }
+        .card { background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(6, 182, 212, 0.3); }
+        .stat-card { background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(6, 182, 212, 0.05)); }
+        .progress-bar { transition: width 0.3s ease-in-out; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-cyan-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="cross-domain-comms-complete-project.html" class="flex items-center text-cyan-400 hover:text-cyan-300 transition-colors">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Cross-Domain Comms
+                </a>
+                <span class="text-cyan-400 font-semibold">Monte Carlo Simulator</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4">
+                <i class="fas fa-dice mr-4 text-cyan-300"></i>Monte Carlo Simulator
+            </h1>
+            <p class="text-xl text-cyan-100 max-w-3xl mx-auto">
+                Statistical analysis of underwater communication link performance through randomized simulations
+            </p>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="bg-cyan-900/30 border-l-4 border-cyan-500 p-4 rounded-r-lg mb-8">
+            <h3 class="text-cyan-400 font-semibold mb-2"><i class="fas fa-info-circle mr-2"></i>About Monte Carlo Simulation</h3>
+            <p class="text-gray-300">
+                Monte Carlo methods use repeated random sampling to obtain numerical results for complex systems. For underwater
+                communications, this allows statistical analysis of BER, outage probability, and throughput under varying channel
+                conditions, environmental factors, and system parameters that cannot be analyzed analytically.
+            </p>
+        </div>
+
+        <div class="card rounded-xl p-6 mb-8">
+            <h2 class="text-xl font-semibold text-cyan-400 mb-6"><i class="fas fa-sliders-h mr-2"></i>Simulation Parameters</h2>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div>
+                    <label class="block text-gray-300 mb-2">Number of Trials: <span id="trials-val" class="text-cyan-400">1000</span></label>
+                    <input type="range" id="num-trials" min="100" max="10000" step="100" value="1000" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                </div>
+                <div>
+                    <label class="block text-gray-300 mb-2">Link Type</label>
+                    <select id="link-type" class="w-full bg-gray-800 border border-cyan-500/30 rounded-lg p-3 text-white">
+                        <option value="acoustic">Acoustic (Long Range)</option>
+                        <option value="optical">Optical (High Bandwidth)</option>
+                        <option value="rf">RF Relay (Surface)</option>
+                        <option value="hybrid">Hybrid Tri-Link</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-300 mb-2">Analysis Type</label>
+                    <select id="analysis-type" class="w-full bg-gray-800 border border-cyan-500/30 rounded-lg p-3 text-white">
+                        <option value="ber">BER Analysis</option>
+                        <option value="outage">Outage Probability</option>
+                        <option value="throughput">Throughput Distribution</option>
+                        <option value="latency">Latency Distribution</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-300 mb-2">Mean SNR (dB): <span id="snr-val" class="text-cyan-400">15</span></label>
+                    <input type="range" id="mean-snr" min="0" max="30" value="15" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                </div>
+                <div>
+                    <label class="block text-gray-300 mb-2">SNR Std Dev (dB): <span id="snr-std-val" class="text-cyan-400">3</span></label>
+                    <input type="range" id="snr-std" min="0" max="10" value="3" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                </div>
+                <div>
+                    <label class="block text-gray-300 mb-2">Range (m): <span id="range-val" class="text-cyan-400">500</span></label>
+                    <input type="range" id="range" min="10" max="2000" step="10" value="500" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                </div>
+            </div>
+            <div class="flex gap-4 mt-6">
+                <button onclick="runSimulation()" id="run-btn" class="bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 px-6 py-3 rounded-lg font-semibold transition-all">
+                    <i class="fas fa-play mr-2"></i>Run Simulation
+                </button>
+                <button onclick="resetDefaults()" class="bg-gray-700 hover:bg-gray-600 px-6 py-3 rounded-lg font-semibold transition-all">
+                    <i class="fas fa-undo mr-2"></i>Reset
+                </button>
+            </div>
+            <div id="progress-container" class="mt-4" style="display: none;">
+                <div class="flex justify-between text-sm text-gray-400 mb-1">
+                    <span>Progress</span>
+                    <span id="progress-text">0%</span>
+                </div>
+                <div class="w-full bg-gray-700 rounded-full h-2">
+                    <div id="progress-bar" class="progress-bar bg-cyan-500 h-2 rounded-full" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="stats-container" class="grid md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8" style="display: none;">
+            <div class="stat-card rounded-xl p-4 text-center border border-cyan-500/20">
+                <div class="text-2xl font-bold text-cyan-400" id="mean-stat">--</div>
+                <div class="text-gray-400 text-sm">Mean Value</div>
+            </div>
+            <div class="stat-card rounded-xl p-4 text-center border border-cyan-500/20">
+                <div class="text-2xl font-bold text-cyan-400" id="std-stat">--</div>
+                <div class="text-gray-400 text-sm">Std Deviation</div>
+            </div>
+            <div class="stat-card rounded-xl p-4 text-center border border-cyan-500/20">
+                <div class="text-2xl font-bold text-cyan-400" id="min-stat">--</div>
+                <div class="text-gray-400 text-sm">Minimum</div>
+            </div>
+            <div class="stat-card rounded-xl p-4 text-center border border-cyan-500/20">
+                <div class="text-2xl font-bold text-cyan-400" id="max-stat">--</div>
+                <div class="text-gray-400 text-sm">Maximum</div>
+            </div>
+            <div class="stat-card rounded-xl p-4 text-center border border-cyan-500/20">
+                <div class="text-2xl font-bold text-cyan-400" id="p95-stat">--</div>
+                <div class="text-gray-400 text-sm">95th Percentile</div>
+            </div>
+            <div class="stat-card rounded-xl p-4 text-center border border-cyan-500/20">
+                <div class="text-2xl font-bold text-cyan-400" id="ci-stat">--</div>
+                <div class="text-gray-400 text-sm">95% CI Width</div>
+            </div>
+        </div>
+
+        <div class="grid lg:grid-cols-2 gap-8 mb-8">
+            <div class="card rounded-xl p-6">
+                <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-chart-bar mr-2"></i>Result Distribution</h3>
+                <div id="histogram-plot" class="h-80"></div>
+            </div>
+            <div class="card rounded-xl p-6">
+                <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-chart-line mr-2"></i>Cumulative Distribution (CDF)</h3>
+                <div id="cdf-plot" class="h-80"></div>
+            </div>
+            <div class="card rounded-xl p-6">
+                <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-chart-area mr-2"></i>Convergence Analysis</h3>
+                <div id="convergence-plot" class="h-80"></div>
+            </div>
+            <div class="card rounded-xl p-6">
+                <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-box mr-2"></i>Box Plot Summary</h3>
+                <div id="box-plot" class="h-80"></div>
+            </div>
+        </div>
+
+        <div class="card rounded-xl p-6 mb-8">
+            <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-chart-line mr-2"></i>Sensitivity Analysis</h3>
+            <div id="sensitivity-plot" class="h-80"></div>
+        </div>
+
+        <div class="card rounded-xl p-6 mb-8">
+            <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-table mr-2"></i>Statistical Summary</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full" id="stats-table">
+                    <thead>
+                        <tr class="bg-cyan-900/30">
+                            <th class="px-4 py-3 text-left text-cyan-400">Statistic</th>
+                            <th class="px-4 py-3 text-left text-cyan-400">Value</th>
+                            <th class="px-4 py-3 text-left text-cyan-400">Description</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-gray-300" id="stats-tbody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card rounded-xl p-6">
+            <h2 class="text-xl font-semibold text-cyan-400 mb-4"><i class="fas fa-book-open mr-2"></i>Monte Carlo Theory</h2>
+            <div class="space-y-6 text-gray-300">
+                <div>
+                    <h3 class="text-lg font-semibold text-cyan-300 mb-2">Statistical Estimation</h3>
+                    <p class="mb-2">The Monte Carlo estimate of an expected value converges to the true value as N increases:</p>
+                    <div class="bg-gray-800 p-4 rounded-lg font-mono text-cyan-400 text-center">
+                        E[X] ≈ (1/N) * sum(X_i), Standard Error = sigma / sqrt(N)
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-cyan-300 mb-2">Confidence Intervals</h3>
+                    <p class="mb-2">95% confidence interval for the mean:</p>
+                    <div class="bg-gray-800 p-4 rounded-lg font-mono text-cyan-400 text-center">
+                        CI = [X_bar - 1.96*SE, X_bar + 1.96*SE]
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-cyan-300 mb-2">Outage Probability</h3>
+                    <p class="mb-2">Probability that link quality falls below threshold:</p>
+                    <div class="bg-gray-800 p-4 rounded-lg font-mono text-cyan-400 text-center">
+                        P_outage = P(SNR &lt; SNR_threshold) = count(SNR_i &lt; threshold) / N
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-800 border-t border-cyan-500/20 py-6 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center text-gray-400">
+            <p>Cross-Domain Undersea Communications - Monte Carlo Analysis Tools</p>
+        </div>
+    </footer>
+
+    <script>
+        const sliders = { 'num-trials': 'trials-val', 'mean-snr': 'snr-val', 'snr-std': 'snr-std-val', 'range': 'range-val' };
+        Object.keys(sliders).forEach(id => {
+            document.getElementById(id).addEventListener('input', function(e) {
+                document.getElementById(sliders[id]).textContent = e.target.value;
+            });
+        });
+
+        function resetDefaults() {
+            document.getElementById('num-trials').value = 1000;
+            document.getElementById('mean-snr').value = 15;
+            document.getElementById('snr-std').value = 3;
+            document.getElementById('range').value = 500;
+            document.getElementById('link-type').value = 'acoustic';
+            document.getElementById('analysis-type').value = 'ber';
+            Object.keys(sliders).forEach(id => document.getElementById(id).dispatchEvent(new Event('input')));
+        }
+
+        function gaussianRandom(mean, std) {
+            let u = 0, v = 0;
+            while(u === 0) u = Math.random();
+            while(v === 0) v = Math.random();
+            return mean + std * Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+        }
+
+        function calculateBER(snrDB) {
+            const snr = Math.pow(10, snrDB / 10);
+            return 0.5 * Math.exp(-snr / 2);
+        }
+
+        function runSimulation() {
+            const numTrials = parseInt(document.getElementById('num-trials').value);
+            const meanSNR = parseFloat(document.getElementById('mean-snr').value);
+            const snrStd = parseFloat(document.getElementById('snr-std').value);
+            const range = parseFloat(document.getElementById('range').value);
+            const linkType = document.getElementById('link-type').value;
+            const analysisType = document.getElementById('analysis-type').value;
+
+            document.getElementById('progress-container').style.display = 'block';
+            document.getElementById('run-btn').disabled = true;
+
+            const results = [];
+            const convergence = [];
+            let runningSum = 0;
+
+            for (let i = 0; i < numTrials; i++) {
+                let snr = gaussianRandom(meanSNR, snrStd);
+
+                if (linkType === 'acoustic') snr -= 20 * Math.log10(range / 100);
+                else if (linkType === 'optical') snr -= 0.5 * range;
+
+                let result;
+                if (analysisType === 'ber') {
+                    result = -Math.log10(calculateBER(snr) + 1e-15);
+                } else if (analysisType === 'outage') {
+                    result = snr < 10 ? 1 : 0;
+                } else if (analysisType === 'throughput') {
+                    result = Math.max(0, snr > 0 ? Math.log2(1 + Math.pow(10, snr/10)) * 12 : 0);
+                } else {
+                    result = 100 + range / 1.5 + gaussianRandom(0, 20);
+                }
+
+                results.push(result);
+                runningSum += result;
+                if (i % 10 === 0) convergence.push({ trial: i, mean: runningSum / (i + 1) });
+            }
+
+            document.getElementById('progress-bar').style.width = '100%';
+            document.getElementById('progress-text').textContent = '100%';
+
+            results.sort((a, b) => a - b);
+            const mean = results.reduce((a, b) => a + b, 0) / numTrials;
+            const variance = results.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / numTrials;
+            const std = Math.sqrt(variance);
+            const min = results[0];
+            const max = results[results.length - 1];
+            const p95 = results[Math.floor(0.95 * numTrials)];
+            const se = std / Math.sqrt(numTrials);
+            const ciWidth = 2 * 1.96 * se;
+
+            document.getElementById('stats-container').style.display = 'grid';
+            document.getElementById('mean-stat').textContent = mean.toFixed(3);
+            document.getElementById('std-stat').textContent = std.toFixed(3);
+            document.getElementById('min-stat').textContent = min.toFixed(3);
+            document.getElementById('max-stat').textContent = max.toFixed(3);
+            document.getElementById('p95-stat').textContent = p95.toFixed(3);
+            document.getElementById('ci-stat').textContent = ciWidth.toFixed(4);
+
+            const labels = { ber: '-log10(BER)', outage: 'Outage (0/1)', throughput: 'Throughput (bps/Hz)', latency: 'Latency (ms)' };
+
+            Plotly.newPlot('histogram-plot', [{ x: results, type: 'histogram', marker: { color: '#06b6d4' }, nbinsx: 50 }], {
+                title: { text: 'Distribution of ' + labels[analysisType], font: { color: '#e0e0e0', size: 14 } },
+                xaxis: { title: labels[analysisType], gridcolor: '#333', color: '#e0e0e0' },
+                yaxis: { title: 'Frequency', gridcolor: '#333', color: '#e0e0e0' },
+                plot_bgcolor: 'rgba(15,23,42,0.8)', paper_bgcolor: 'rgba(0,0,0,0)', font: { color: '#e0e0e0' },
+                margin: { t: 40, r: 20, b: 50, l: 60 }
+            }, { responsive: true });
+
+            const cdfY = results.map((_, i) => (i + 1) / numTrials);
+            Plotly.newPlot('cdf-plot', [{ x: results, y: cdfY, mode: 'lines', line: { color: '#10b981', width: 2 } }], {
+                title: { text: 'Cumulative Distribution Function', font: { color: '#e0e0e0', size: 14 } },
+                xaxis: { title: labels[analysisType], gridcolor: '#333', color: '#e0e0e0' },
+                yaxis: { title: 'CDF', gridcolor: '#333', color: '#e0e0e0' },
+                plot_bgcolor: 'rgba(15,23,42,0.8)', paper_bgcolor: 'rgba(0,0,0,0)', font: { color: '#e0e0e0' },
+                margin: { t: 40, r: 20, b: 50, l: 60 }
+            }, { responsive: true });
+
+            Plotly.newPlot('convergence-plot', [{
+                x: convergence.map(c => c.trial),
+                y: convergence.map(c => c.mean),
+                mode: 'lines',
+                line: { color: '#f59e0b', width: 2 }
+            }], {
+                title: { text: 'Running Mean Convergence', font: { color: '#e0e0e0', size: 14 } },
+                xaxis: { title: 'Number of Trials', gridcolor: '#333', color: '#e0e0e0' },
+                yaxis: { title: 'Running Mean', gridcolor: '#333', color: '#e0e0e0' },
+                plot_bgcolor: 'rgba(15,23,42,0.8)', paper_bgcolor: 'rgba(0,0,0,0)', font: { color: '#e0e0e0' },
+                shapes: [{ type: 'line', x0: 0, x1: numTrials, y0: mean, y1: mean, line: { color: '#ef4444', dash: 'dash' } }],
+                margin: { t: 40, r: 20, b: 50, l: 60 }
+            }, { responsive: true });
+
+            Plotly.newPlot('box-plot', [{ y: results, type: 'box', marker: { color: '#06b6d4' }, boxmean: 'sd' }], {
+                title: { text: 'Box Plot Summary', font: { color: '#e0e0e0', size: 14 } },
+                yaxis: { title: labels[analysisType], gridcolor: '#333', color: '#e0e0e0' },
+                plot_bgcolor: 'rgba(15,23,42,0.8)', paper_bgcolor: 'rgba(0,0,0,0)', font: { color: '#e0e0e0' },
+                margin: { t: 40, r: 20, b: 50, l: 60 }
+            }, { responsive: true });
+
+            const snrValues = [], meanResults = [];
+            for (let snr = 5; snr <= 25; snr += 2) {
+                snrValues.push(snr);
+                let sum = 0;
+                for (let i = 0; i < 100; i++) {
+                    let s = gaussianRandom(snr, snrStd);
+                    sum += analysisType === 'ber' ? -Math.log10(calculateBER(s) + 1e-15) : Math.log2(1 + Math.pow(10, s/10)) * 12;
+                }
+                meanResults.push(sum / 100);
+            }
+
+            Plotly.newPlot('sensitivity-plot', [{ x: snrValues, y: meanResults, mode: 'lines+markers', line: { color: '#06b6d4', width: 3 }, marker: { size: 8 } }], {
+                title: { text: 'Sensitivity: Mean SNR vs Performance', font: { color: '#e0e0e0', size: 14 } },
+                xaxis: { title: 'Mean SNR (dB)', gridcolor: '#333', color: '#e0e0e0' },
+                yaxis: { title: labels[analysisType], gridcolor: '#333', color: '#e0e0e0' },
+                plot_bgcolor: 'rgba(15,23,42,0.8)', paper_bgcolor: 'rgba(0,0,0,0)', font: { color: '#e0e0e0' },
+                margin: { t: 40, r: 20, b: 50, l: 60 }
+            }, { responsive: true });
+
+            const statsData = [
+                ['Sample Size', numTrials, 'Number of Monte Carlo trials'],
+                ['Mean', mean.toFixed(4), 'Average of all samples'],
+                ['Standard Deviation', std.toFixed(4), 'Spread of distribution'],
+                ['Standard Error', se.toFixed(6), 'Uncertainty in mean estimate'],
+                ['95% CI Lower', (mean - 1.96*se).toFixed(4), 'Lower confidence bound'],
+                ['95% CI Upper', (mean + 1.96*se).toFixed(4), 'Upper confidence bound'],
+                ['Minimum', min.toFixed(4), 'Smallest observed value'],
+                ['Maximum', max.toFixed(4), 'Largest observed value'],
+                ['Median', results[Math.floor(numTrials/2)].toFixed(4), '50th percentile'],
+                ['5th Percentile', results[Math.floor(0.05*numTrials)].toFixed(4), 'Lower tail'],
+                ['95th Percentile', p95.toFixed(4), 'Upper tail']
+            ];
+
+            const tbody = document.getElementById('stats-tbody');
+            tbody.innerHTML = '';
+            statsData.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-gray-700';
+                tr.innerHTML = `<td class="px-4 py-3 font-semibold">${row[0]}</td><td class="px-4 py-3 text-cyan-400">${row[1]}</td><td class="px-4 py-3">${row[2]}</td>`;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('run-btn').disabled = false;
+            setTimeout(() => {
+                document.getElementById('progress-container').style.display = 'none';
+                document.getElementById('progress-bar').style.width = '0%';
+            }, 1000);
+        }
+
+        window.addEventListener('load', runSimulation);
+    </script>
+</body>
+</html>
