@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMP Molecular Dynamics - Interactive Demo</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; color: #333; }
+        .navbar { background: rgba(255, 255, 255, 0.95); padding: 15px 30px; border-radius: 15px; margin-bottom: 30px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); display: flex; align-items: center; gap: 20px; }
+        .nav-link { color: #667eea; text-decoration: none; font-weight: 600; font-size: 16px; transition: color 0.3s; }
+        .nav-link:hover { color: #f39c12; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .hero { background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f39c12 100%); padding: 60px 40px; border-radius: 20px; text-align: center; margin-bottom: 40px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); }
+        .hero h1 { color: white; font-size: 3.5em; margin-bottom: 20px; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3); }
+        .hero p { color: rgba(255, 255, 255, 0.95); font-size: 1.3em; max-width: 800px; margin: 0 auto; }
+        .info-box { background: white; padding: 30px; border-radius: 15px; margin-bottom: 30px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1); border-left: 5px solid #667eea; }
+        .info-box h2 { color: #667eea; margin-bottom: 15px; font-size: 1.8em; }
+        .info-box p { line-height: 1.8; color: #555; font-size: 1.1em; }
+        .controls-panel { background: white; padding: 30px; border-radius: 15px; margin-bottom: 30px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1); }
+        .controls-panel h3 { color: #667eea; margin-bottom: 25px; font-size: 1.6em; border-bottom: 3px solid #f39c12; padding-bottom: 10px; }
+        .control-group { margin-bottom: 25px; }
+        .control-group label { display: block; margin-bottom: 8px; color: #333; font-weight: 600; font-size: 1.05em; }
+        .control-group input[type="range"] { width: 100%; height: 8px; border-radius: 5px; background: linear-gradient(to right, #667eea, #764ba2); outline: none; -webkit-appearance: none; }
+        .control-group input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #f39c12; cursor: pointer; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2); }
+        .control-group input[type="range"]::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: #f39c12; cursor: pointer; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2); }
+        .value-display { display: inline-block; background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 5px 15px; border-radius: 20px; font-weight: 600; margin-left: 10px; min-width: 100px; text-align: center; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1); text-align: center; transition: transform 0.3s, box-shadow 0.3s; }
+        .stat-card:hover { transform: translateY(-5px); box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15); }
+        .stat-card h4 { color: #667eea; margin-bottom: 10px; font-size: 1.1em; }
+        .stat-value { font-size: 2.2em; font-weight: bold; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .stat-unit { color: #999; font-size: 0.9em; margin-top: 5px; }
+        .chart-container { background: white; padding: 25px; border-radius: 15px; margin-bottom: 30px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1); }
+        .chart-title { color: #667eea; margin-bottom: 20px; font-size: 1.4em; font-weight: 600; }
+        #threejs-container { background: white; padding: 25px; border-radius: 15px; margin-bottom: 30px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1); height: 700px; }
+        .theory-section { background: white; padding: 40px; border-radius: 15px; margin-bottom: 30px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1); }
+        .theory-section h2 { color: #667eea; margin-bottom: 25px; font-size: 2em; border-bottom: 3px solid #f39c12; padding-bottom: 15px; }
+        .theory-section h3 { color: #764ba2; margin-top: 30px; margin-bottom: 15px; font-size: 1.5em; }
+        .theory-section p { line-height: 1.9; color: #555; margin-bottom: 15px; font-size: 1.05em; }
+        .equation { background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0; text-align: center; font-family: 'Courier New', monospace; font-size: 1.2em; border-left: 4px solid #667eea; overflow-x: auto; }
+        .grid-2col { display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 30px; margin-bottom: 30px; }
+        .sim-controls { display: flex; gap: 10px; margin-bottom: 15px; }
+        .btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); }
+        @media (max-width: 768px) { .hero h1 { font-size: 2em; } .grid-2col { grid-template-columns: 1fr; } .stats-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="navbar">
+            <a href="cmp-complete-project.html" class="nav-link">← Back to CMP Project</a>
+            <a href="#controls" class="nav-link">Controls</a>
+            <a href="#visualizations" class="nav-link">Visualizations</a>
+            <a href="#theory" class="nav-link">Theory</a>
+        </nav>
+
+        <div class="hero">
+            <h1>CMP Molecular Dynamics Simulator</h1>
+            <p>Explore atomic-scale material removal, bond breaking mechanics, Lennard-Jones force fields, energy landscapes, and reaction coordinate analysis with real-time MD visualization</p>
+        </div>
+
+        <div class="info-box">
+            <h2>Understanding Molecular-Scale CMP</h2>
+            <p>
+                Molecular dynamics (MD) simulations provide atomic-level insights into CMP mechanisms that cannot be observed experimentally. MD models the motion of individual atoms under interatomic force fields, capturing bond formation/breaking, material deformation, and chemical reactions. In CMP, MD reveals how abrasive particles indent surfaces, how water and chemical species interact with material surfaces, and the energetics of atom removal. Lennard-Jones potentials model van der Waals interactions, while reactive force fields (ReaxFF) capture chemical bond dynamics. Understanding these nanoscale phenomena enables rational design of slurries and prediction of removal rates from first principles.
+            </p>
+        </div>
+
+        <div id="controls" class="controls-panel">
+            <h3>Interactive Controls</h3>
+
+            <div class="sim-controls">
+                <button class="btn" onclick="toggleSimulation()">▶ Play/Pause</button>
+                <button class="btn" onclick="resetSimulation()">↻ Reset</button>
+                <button class="btn" onclick="heatUpSystem()">🔥 Heat Up</button>
+                <button class="btn" onclick="applyIndentation()">⬇ Apply Load</button>
+            </div>
+
+            <div class="control-group">
+                <label>Number of Atoms: <span class="value-display" id="numatoms-value">100</span></label>
+                <input type="range" id="numatoms" min="50" max="150" value="100" step="10">
+            </div>
+            <div class="control-group">
+                <label>Temperature: <span class="value-display" id="temperature-value">300 K</span></label>
+                <input type="range" id="temperature" min="100" max="800" value="300" step="50">
+            </div>
+            <div class="control-group">
+                <label>Indenter Force: <span class="value-display" id="force-value">50 nN</span></label>
+                <input type="range" id="force" min="10" max="200" value="50" step="10">
+            </div>
+            <div class="control-group">
+                <label>LJ Epsilon (ε): <span class="value-display" id="epsilon-value">0.3 eV</span></label>
+                <input type="range" id="epsilon" min="0.1" max="1.0" value="0.3" step="0.1">
+            </div>
+            <div class="control-group">
+                <label>LJ Sigma (σ): <span class="value-display" id="sigma-value">3.0 Å</span></label>
+                <input type="range" id="sigma" min="2.0" max="4.0" value="3.0" step="0.2">
+            </div>
+            <div class="control-group">
+                <label>Time Step: <span class="value-display" id="timestep-value">1.0 fs</span></label>
+                <input type="range" id="timestep" min="0.5" max="3.0" value="1.0" step="0.5">
+            </div>
+            <div class="control-group">
+                <label>Chemical Reactivity: <span class="value-display" id="reactivity-value">0.5</span></label>
+                <input type="range" id="reactivity" min="0.0" max="1.0" value="0.5" step="0.1">
+            </div>
+            <div class="control-group">
+                <label>Surface Bonding: <span class="value-display" id="bonding-value">0.7</span></label>
+                <input type="range" id="bonding" min="0.3" max="1.0" value="0.7" step="0.1">
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card"><h4>Total Energy</h4><div class="stat-value" id="energy-stat">-245</div><div class="stat-unit">eV</div></div>
+            <div class="stat-card"><h4>Kinetic Energy</h4><div class="stat-value" id="kinetic-stat">38</div><div class="stat-unit">eV</div></div>
+            <div class="stat-card"><h4>Potential Energy</h4><div class="stat-value" id="potential-stat">-283</div><div class="stat-unit">eV</div></div>
+            <div class="stat-card"><h4>System Temp</h4><div class="stat-value" id="systtemp-stat">312</div><div class="stat-unit">K</div></div>
+            <div class="stat-card"><h4>Broken Bonds</h4><div class="stat-value" id="bonds-stat">7</div><div class="stat-unit">count</div></div>
+            <div class="stat-card"><h4>Removed Atoms</h4><div class="stat-value" id="removed-stat">3</div><div class="stat-unit">atoms</div></div>
+        </div>
+
+        <div id="visualizations">
+            <div id="threejs-container"><div class="chart-title">3D Molecular Dynamics: Atomic Indentation Simulation</div></div>
+
+            <div class="grid-2col">
+                <div class="chart-container"><div class="chart-title">Energy Evolution Over Time</div><div id="energy-chart"></div></div>
+                <div class="chart-container"><div class="chart-title">Temperature Fluctuations</div><div id="temp-chart"></div></div>
+            </div>
+
+            <div class="chart-container"><div class="chart-title">Lennard-Jones Potential Energy Surface</div><div id="lj-potential-chart"></div></div>
+
+            <div class="grid-2col">
+                <div class="chart-container"><div class="chart-title">Radial Distribution Function g(r)</div><div id="rdf-chart"></div></div>
+                <div class="chart-container"><div class="chart-title">Force vs Indentation Depth</div><div id="force-depth-chart"></div></div>
+            </div>
+
+            <div class="chart-container"><div class="chart-title">Reaction Coordinate: Energy Barrier</div><div id="reaction-coord-chart"></div></div>
+            <div class="chart-container"><div class="chart-title">Velocity Distribution (Maxwell-Boltzmann)</div><div id="velocity-dist-chart"></div></div>
+        </div>
+
+        <div id="theory" class="theory-section">
+            <h2>Theoretical Background</h2>
+            <h3>1. Molecular Dynamics Fundamentals</h3>
+            <p>MD simulates atomic motion by numerically integrating Newton's equations of motion for all atoms in the system. Forces are calculated from interatomic potentials, and positions/velocities are updated at each timestep using integration algorithms (Verlet, velocity Verlet, etc.).</p>
+            <div class="equation">m_i × d²r_i/dt² = F_i = -∇U(r₁, r₂, ..., r_N)</div>
+            <p>where m_i is mass, r_i is position, F_i is force on atom i, and U is total potential energy.</p>
+
+            <h3>2. Lennard-Jones Potential</h3>
+            <p>The LJ potential models van der Waals interactions between neutral atoms. It includes attractive dispersion forces (r⁻⁶) and short-range repulsion (r⁻¹²). Parameters ε (well depth) and σ (collision diameter) are material-specific.</p>
+            <div class="equation">U_LJ(r) = 4ε[(σ/r)¹² - (σ/r)⁶]</div>
+            <p>Minimum energy occurs at r_min = 2^(1/6) × σ ≈ 1.122σ with U = -ε.</p>
+
+            <h3>3. Bond Breaking and Formation</h3>
+            <p>Chemical bonds break when thermal or mechanical energy exceeds the bond dissociation energy. In CMP, mechanical stress from particle indentation combined with chemical attack lowers the activation barrier for bond breaking, enabling material removal.</p>
+            <div class="equation">E_activation = E_bond - σ × V_activation</div>
+            <p>where σ is applied stress and V_activation is activation volume.</p>
+
+            <h3>4. Indentation Mechanics at Nanoscale</h3>
+            <p>Nanoindentation by abrasive particles causes local plastic deformation. The hardness at nanoscale differs from bulk due to size effects, surface energy, and discrete dislocation nucleation. MD captures these atomistic phenomena.</p>
+            <div class="equation">H_nano = F_max / A_contact</div>
+            <p>where H_nano is nanohardness, F_max is peak load, and A_contact is projected contact area.</p>
+
+            <h3>5. Reactive Force Fields (ReaxFF)</h3>
+            <p>ReaxFF extends classical MD to include chemical reactions by using bond order-dependent potentials. This enables simulation of oxidation, dissolution, and bond rearrangement during CMP without predefined reaction pathways.</p>
+
+            <h3>6. Energy Landscape and Transition States</h3>
+            <p>Material removal involves transition from bound surface atoms to solvated/removed states. The energy landscape shows local minima (stable configurations) and saddle points (transition states). Activation energy determines removal rate.</p>
+            <div class="equation">k = A × exp(-E_a / (k_B × T))</div>
+            <p>Arrhenius equation: k is rate constant, A is pre-exponential factor, E_a is activation energy, k_B is Boltzmann constant, T is temperature.</p>
+
+            <h3>7. Radial Distribution Function</h3>
+            <p>The RDF g(r) quantifies the probability of finding an atom at distance r from a reference atom. Peaks indicate preferred coordination distances. RDF provides structural information about crystalline vs amorphous states.</p>
+            <div class="equation">g(r) = (V / N²) × ⟨Σ_i Σ_(j≠i) δ(r - r_ij)⟩</div>
+
+            <h3>8. Thermostat and Barostat</h3>
+            <p>MD simulations use thermostats (Nose-Hoover, Berendsen) to maintain constant temperature and barostats for constant pressure. These algorithms mimic experimental conditions by coupling the system to external heat/pressure baths.</p>
+
+            <h3>9. Time and Length Scale Limitations</h3>
+            <p>Classical MD is limited to ~ns timescales and ~10⁶ atoms due to computational cost. Accelerated MD methods (metadynamics, hyperdynamics) extend accessible timescales. Coarse-graining bridges to mesoscale phenomena.</p>
+        </div>
+    </div>
+
+    <script>
+        let params = { numAtoms: 100, temperature: 300, force: 50, epsilon: 0.3, sigma: 3.0, timestep: 1.0, reactivity: 0.5, bonding: 0.7 };
+        let scene, camera, renderer, atoms = [];
+        let simulationRunning = true;
+        let brokenBonds = 0;
+        let removedAtoms = 0;
+        let energyHistory = [];
+        let tempHistory = [];
+
+        class Atom {
+            constructor(x, y, z) {
+                this.pos = new THREE.Vector3(x, y, z);
+                this.vel = new THREE.Vector3((Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.5);
+                this.force = new THREE.Vector3(0, 0, 0);
+                this.mass = 1.0;
+                this.removed = false;
+
+                const geometry = new THREE.SphereGeometry(0.3, 16, 16);
+                const material = new THREE.MeshPhongMaterial({ color: 0x667eea, shininess: 100 });
+                this.mesh = new THREE.Mesh(geometry, material);
+                this.mesh.position.copy(this.pos);
+            }
+
+            update(dt) {
+                if (this.removed) return;
+
+                this.force.set(0, 0, 0);
+
+                atoms.forEach(other => {
+                    if (other === this || other.removed) return;
+                    const r = this.pos.distanceTo(other.pos);
+                    if (r < 0.1) return;
+
+                    const sigma = params.sigma;
+                    const epsilon = params.epsilon;
+                    const forceMag = 24 * epsilon * (2 * Math.pow(sigma / r, 12) - Math.pow(sigma / r, 6)) / r;
+                    const forceVec = new THREE.Vector3().subVectors(this.pos, other.pos).normalize().multiplyScalar(forceMag);
+                    this.force.add(forceVec);
+                });
+
+                const bondStrength = params.bonding;
+                if (this.pos.y > 5 && Math.random() < 0.001 * (1 - bondStrength)) {
+                    this.removed = true;
+                    removedAtoms++;
+                    scene.remove(this.mesh);
+                    return;
+                }
+
+                const acc = this.force.clone().divideScalar(this.mass);
+                this.vel.add(acc.multiplyScalar(dt));
+
+                const tempScale = Math.sqrt(params.temperature / 300);
+                this.vel.multiplyScalar(tempScale * 0.995);
+
+                this.pos.add(this.vel.clone().multiplyScalar(dt));
+
+                const bounds = 8;
+                if (Math.abs(this.pos.x) > bounds) { this.pos.x = -Math.sign(this.pos.x) * bounds; this.vel.x *= -0.9; }
+                if (this.pos.y < -5) { this.pos.y = -5; this.vel.y *= -0.9; }
+                if (this.pos.y > 10) { this.pos.y = 10; this.vel.y *= -0.9; }
+                if (Math.abs(this.pos.z) > bounds) { this.pos.z = -Math.sign(this.pos.z) * bounds; this.vel.z *= -0.9; }
+
+                this.mesh.position.copy(this.pos);
+            }
+
+            getKineticEnergy() {
+                return 0.5 * this.mass * this.vel.lengthSq();
+            }
+        }
+
+        function initThreeJS() {
+            const container = document.getElementById('threejs-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight - 50;
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a0a);
+
+            camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
+            camera.position.set(15, 10, 20);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
+
+            const pointLight1 = new THREE.PointLight(0x667eea, 1, 50);
+            pointLight1.position.set(10, 10, 10);
+            scene.add(pointLight1);
+
+            const pointLight2 = new THREE.PointLight(0xf39c12, 0.7, 50);
+            pointLight2.position.set(-10, 10, -10);
+            scene.add(pointLight2);
+
+            const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x222222);
+            gridHelper.position.y = -5;
+            scene.add(gridHelper);
+
+            createAtoms();
+            animate3D();
+        }
+
+        function createAtoms() {
+            atoms.forEach(a => scene.remove(a.mesh));
+            atoms = [];
+            removedAtoms = 0;
+            brokenBonds = 0;
+
+            const gridSize = Math.ceil(Math.pow(params.numAtoms, 1/3));
+            let count = 0;
+
+            for (let i = 0; i < gridSize && count < params.numAtoms; i++) {
+                for (let j = 0; j < gridSize && count < params.numAtoms; j++) {
+                    for (let k = 0; k < gridSize && count < params.numAtoms; k++) {
+                        const x = (i - gridSize / 2) * 1.5;
+                        const y = j * 1.5 - 4;
+                        const z = (k - gridSize / 2) * 1.5;
+                        const atom = new Atom(x, y, z);
+                        atoms.push(atom);
+                        scene.add(atom.mesh);
+                        count++;
+                    }
+                }
+            }
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+
+            if (simulationRunning) {
+                const dt = params.timestep * 0.001;
+                atoms.forEach(a => a.update(dt));
+
+                if (Math.random() < 0.05) {
+                    const totalKE = atoms.filter(a => !a.removed).reduce((sum, a) => sum + a.getKineticEnergy(), 0);
+                    const totalPE = calculatePotentialEnergy();
+                    energyHistory.push(totalKE + totalPE);
+                    tempHistory.push(calculateTemperature());
+                    if (energyHistory.length > 100) { energyHistory.shift(); tempHistory.shift(); }
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function calculatePotentialEnergy() {
+            let U = 0;
+            for (let i = 0; i < atoms.length; i++) {
+                if (atoms[i].removed) continue;
+                for (let j = i + 1; j < atoms.length; j++) {
+                    if (atoms[j].removed) continue;
+                    const r = atoms[i].pos.distanceTo(atoms[j].pos);
+                    if (r > 0.1) {
+                        const sigma = params.sigma;
+                        const epsilon = params.epsilon;
+                        U += 4 * epsilon * (Math.pow(sigma / r, 12) - Math.pow(sigma / r, 6));
+                    }
+                }
+            }
+            return U;
+        }
+
+        function calculateTemperature() {
+            const activeAtoms = atoms.filter(a => !a.removed);
+            if (activeAtoms.length === 0) return 0;
+            const totalKE = activeAtoms.reduce((sum, a) => sum + a.getKineticEnergy(), 0);
+            const k_B = 8.617e-5; // eV/K
+            return (2 * totalKE) / (3 * activeAtoms.length * k_B);
+        }
+
+        function toggleSimulation() { simulationRunning = !simulationRunning; }
+        function resetSimulation() { createAtoms(); energyHistory = []; tempHistory = []; updateStats(); updateAllCharts(); }
+        function heatUpSystem() { atoms.forEach(a => a.vel.multiplyScalar(1.5)); }
+        function applyIndentation() { atoms.forEach(a => { if (a.pos.y > 2) a.force.add(new THREE.Vector3(0, -params.force * 0.1, 0)); }); }
+
+        function updateStats() {
+            const activeAtoms = atoms.filter(a => !a.removed);
+            const totalKE = activeAtoms.reduce((sum, a) => sum + a.getKineticEnergy(), 0);
+            const totalPE = calculatePotentialEnergy();
+            const totalE = totalKE + totalPE;
+            const temp = calculateTemperature();
+
+            document.getElementById('energy-stat').textContent = totalE.toFixed(0);
+            document.getElementById('kinetic-stat').textContent = totalKE.toFixed(0);
+            document.getElementById('potential-stat').textContent = totalPE.toFixed(0);
+            document.getElementById('systtemp-stat').textContent = temp.toFixed(0);
+            document.getElementById('bonds-stat').textContent = brokenBonds;
+            document.getElementById('removed-stat').textContent = removedAtoms;
+        }
+
+        function plotEnergy() {
+            const steps = Array.from({ length: energyHistory.length }, (_, i) => i);
+            const trace = { x: steps, y: energyHistory, type: 'scatter', mode: 'lines', line: { color: '#667eea', width: 2 } };
+            Plotly.newPlot('energy-chart', [trace], { xaxis: { title: 'Step' }, yaxis: { title: 'Energy (eV)' } }, { responsive: true });
+        }
+
+        function plotTemp() {
+            const steps = Array.from({ length: tempHistory.length }, (_, i) => i);
+            const trace = { x: steps, y: tempHistory, type: 'scatter', mode: 'lines', line: { color: '#f39c12', width: 2 } };
+            Plotly.newPlot('temp-chart', [trace], { xaxis: { title: 'Step' }, yaxis: { title: 'Temperature (K)' } }, { responsive: true });
+        }
+
+        function plotLJPotential() {
+            const distances = Array.from({ length: 100 }, (_, i) => 2 + i * 0.1);
+            const potentials = distances.map(r => {
+                const sigma = params.sigma;
+                const epsilon = params.epsilon;
+                return 4 * epsilon * (Math.pow(sigma / r, 12) - Math.pow(sigma / r, 6));
+            });
+
+            const trace = { x: distances, y: potentials, type: 'scatter', mode: 'lines', line: { color: '#764ba2', width: 3 } };
+            Plotly.newPlot('lj-potential-chart', [trace], { xaxis: { title: 'Distance (Å)' }, yaxis: { title: 'Potential (eV)' } }, { responsive: true });
+        }
+
+        function plotRDF() {
+            const distances = [];
+            const activeAtoms = atoms.filter(a => !a.removed);
+
+            for (let i = 0; i < activeAtoms.length; i++) {
+                for (let j = i + 1; j < activeAtoms.length; j++) {
+                    distances.push(activeAtoms[i].pos.distanceTo(activeAtoms[j].pos));
+                }
+            }
+
+            const trace = { x: distances, type: 'histogram', nbinsx: 50, marker: { color: '#667eea' } };
+            Plotly.newPlot('rdf-chart', [trace], { xaxis: { title: 'Distance (Å)' }, yaxis: { title: 'g(r)' } }, { responsive: true });
+        }
+
+        function plotForceDepth() {
+            const depths = Array.from({ length: 50 }, (_, i) => i * 0.1);
+            const forces = depths.map(d => params.force * (1 + d * 0.5));
+
+            const trace = { x: depths, y: forces, type: 'scatter', mode: 'lines+markers', line: { color: '#f39c12', width: 3 }, marker: { size: 8 } };
+            Plotly.newPlot('force-depth-chart', [trace], { xaxis: { title: 'Depth (Å)' }, yaxis: { title: 'Force (nN)' } }, { responsive: true });
+        }
+
+        function plotReactionCoord() {
+            const coords = Array.from({ length: 100 }, (_, i) => i * 0.05);
+            const energies = coords.map(x => {
+                const E_barrier = 2.0 * params.bonding;
+                const E_product = -0.5;
+                return E_barrier * Math.exp(-x) + E_product * (1 - Math.exp(-x));
+            });
+
+            const trace = { x: coords, y: energies, type: 'scatter', mode: 'lines', fill: 'tozeroy', line: { color: '#764ba2', width: 3 } };
+            Plotly.newPlot('reaction-coord-chart', [trace], { xaxis: { title: 'Reaction Coordinate' }, yaxis: { title: 'Energy (eV)' } }, { responsive: true });
+        }
+
+        function plotVelocityDist() {
+            const velocities = atoms.filter(a => !a.removed).map(a => a.vel.length());
+            const trace = { x: velocities, type: 'histogram', nbinsx: 30, marker: { color: '#f39c12' } };
+            Plotly.newPlot('velocity-dist-chart', [trace], { xaxis: { title: 'Velocity' }, yaxis: { title: 'Count' } }, { responsive: true });
+        }
+
+        function updateAllCharts() {
+            plotEnergy();
+            plotTemp();
+            plotLJPotential();
+            plotRDF();
+            plotForceDepth();
+            plotReactionCoord();
+            plotVelocityDist();
+        }
+
+        document.getElementById('numatoms').addEventListener('input', (e) => {
+            params.numAtoms = parseInt(e.target.value);
+            document.getElementById('numatoms-value').textContent = params.numAtoms;
+            createAtoms();
+            updateStats();
+            updateAllCharts();
+        });
+
+        document.getElementById('temperature').addEventListener('input', (e) => {
+            params.temperature = parseInt(e.target.value);
+            document.getElementById('temperature-value').textContent = params.temperature + ' K';
+            updateStats();
+            updateAllCharts();
+        });
+
+        document.getElementById('force').addEventListener('input', (e) => {
+            params.force = parseInt(e.target.value);
+            document.getElementById('force-value').textContent = params.force + ' nN';
+            updateStats();
+            updateAllCharts();
+        });
+
+        document.getElementById('epsilon').addEventListener('input', (e) => {
+            params.epsilon = parseFloat(e.target.value);
+            document.getElementById('epsilon-value').textContent = params.epsilon.toFixed(1) + ' eV';
+            updateStats();
+            updateAllCharts();
+        });
+
+        document.getElementById('sigma').addEventListener('input', (e) => {
+            params.sigma = parseFloat(e.target.value);
+            document.getElementById('sigma-value').textContent = params.sigma.toFixed(1) + ' Å';
+            updateStats();
+            updateAllCharts();
+        });
+
+        document.getElementById('timestep').addEventListener('input', (e) => {
+            params.timestep = parseFloat(e.target.value);
+            document.getElementById('timestep-value').textContent = params.timestep.toFixed(1) + ' fs';
+            updateStats();
+            updateAllCharts();
+        });
+
+        document.getElementById('reactivity').addEventListener('input', (e) => {
+            params.reactivity = parseFloat(e.target.value);
+            document.getElementById('reactivity-value').textContent = params.reactivity.toFixed(1);
+            updateStats();
+            updateAllCharts();
+        });
+
+        document.getElementById('bonding').addEventListener('input', (e) => {
+            params.bonding = parseFloat(e.target.value);
+            document.getElementById('bonding-value').textContent = params.bonding.toFixed(1);
+            updateStats();
+            updateAllCharts();
+        });
+
+        window.addEventListener('load', () => {
+            initThreeJS();
+            updateStats();
+            updateAllCharts();
+            setInterval(() => updateStats(), 1000);
+        });
+
+        window.addEventListener('resize', () => {
+            const container = document.getElementById('threejs-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight - 50;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        });
+    </script>
+</body>
+</html>

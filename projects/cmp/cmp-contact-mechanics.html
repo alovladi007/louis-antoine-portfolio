@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact Mechanics Model - CMP Models</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #0a0a0a;
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+
+        .navbar {
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-title {
+            color: #667eea;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 3rem 0;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            border-radius: 20px;
+            margin-bottom: 3rem;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            background: linear-gradient(135deg, #667eea, #f39c12);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+
+        .hero-subtitle {
+            font-size: 1.2rem;
+            color: #a0a0a0;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .controls-panel {
+            background: rgba(102, 126, 234, 0.05);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .controls-title {
+            color: #667eea;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .control-label {
+            display: block;
+            color: #c0c0c0;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .control-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .slider {
+            flex: 1;
+            height: 8px;
+            border-radius: 5px;
+            background: rgba(102, 126, 234, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+        }
+
+        .value-display {
+            min-width: 120px;
+            background: rgba(102, 126, 234, 0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            color: #667eea;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 1rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .plot-container {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .plot-title {
+            color: #667eea;
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+        }
+
+        .info-box {
+            background: rgba(243, 156, 18, 0.1);
+            border-left: 4px solid #f39c12;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+
+        .info-box h3 {
+            color: #f39c12;
+            margin-bottom: 0.5rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: #a0a0a0;
+            font-size: 0.9rem;
+        }
+
+        .comparison-table {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            overflow-x: auto;
+        }
+
+        .comparison-table h3 {
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .comparison-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .comparison-table th {
+            background: rgba(102, 126, 234, 0.2);
+            color: #667eea;
+            padding: 1rem;
+            text-align: left;
+        }
+
+        .comparison-table td {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: #c0c0c0;
+        }
+
+        .comparison-table tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .theory-section {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-top: 2rem;
+        }
+
+        .theory-section h2 {
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .theory-section h3 {
+            color: #667eea;
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+            font-size: 1.2rem;
+        }
+
+        .equation-box {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+            font-size: 1.1rem;
+            color: #667eea;
+        }
+
+        .theory-section p {
+            color: #c0c0c0;
+            margin-bottom: 1rem;
+        }
+
+        .theory-section ul {
+            margin-left: 2rem;
+            color: #c0c0c0;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-title">
+            <i class="fas fa-compress"></i> Contact Mechanics Model
+        </div>
+        <a href="cmp-complete-project.html" class="nav-btn">
+            <i class="fas fa-arrow-left"></i> Back to Suite
+        </a>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h1><i class="fas fa-compress"></i> Greenwood-Williamson Contact Mechanics</h1>
+            <p class="hero-subtitle">
+                Asperity-based contact model for CMP: Pad deformation, real contact area calculation, and pressure distribution at the micro-scale.
+            </p>
+        </div>
+
+        <div class="info-box">
+            <h3><i class="fas fa-info-circle"></i> About Contact Mechanics in CMP</h3>
+            <p>
+                The Greenwood-Williamson (GW) model treats rough surfaces as collections of spherical asperities with Gaussian height distribution.
+                Real contact area is typically only 1-5% of nominal area, creating localized high pressures that drive material removal.
+                Pad asperity density (10⁷-10⁹ /cm²), mean asperity radius (10-50 μm), and roughness (σ = 5-20 μm) control contact behavior.
+            </p>
+        </div>
+
+        <div class="controls-panel">
+            <h2 class="controls-title"><i class="fas fa-sliders-h"></i> Contact Parameters</h2>
+
+            <div class="control-group">
+                <label class="control-label">Applied Pressure (psi)</label>
+                <div class="control-row">
+                    <input type="range" id="pressure" class="slider" min="1" max="10" step="0.5" value="5">
+                    <span class="value-display" id="pressure-val">5.0 psi</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Asperity Density (×10⁸ /cm²)</label>
+                <div class="control-row">
+                    <input type="range" id="density" class="slider" min="1" max="10" step="0.5" value="5">
+                    <span class="value-display" id="density-val">5.0</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Mean Asperity Radius (μm)</label>
+                <div class="control-row">
+                    <input type="range" id="radius" class="slider" min="10" max="50" step="5" value="25">
+                    <span class="value-display" id="radius-val">25 μm</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Surface Roughness σ (μm)</label>
+                <div class="control-row">
+                    <input type="range" id="roughness" class="slider" min="5" max="25" step="1" value="12">
+                    <span class="value-display" id="roughness-val">12 μm</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Pad Elastic Modulus (MPa)</label>
+                <div class="control-row">
+                    <input type="range" id="modulus" class="slider" min="50" max="500" step="25" value="200">
+                    <span class="value-display" id="modulus-val">200 MPa</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Pad Poisson's Ratio</label>
+                <div class="control-row">
+                    <input type="range" id="poisson" class="slider" min="0.2" max="0.5" step="0.05" value="0.35">
+                    <span class="value-display" id="poisson-val">0.35</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Nominal Contact Area (cm²)</label>
+                <div class="control-row">
+                    <input type="range" id="area" class="slider" min="100" max="800" step="50" value="707">
+                    <span class="value-display" id="area-val">707 cm²</span>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="runSimulation()">
+                    <i class="fas fa-play"></i> Calculate Contact
+                </button>
+                <button class="btn btn-secondary" onclick="resetDefaults()">
+                    <i class="fas fa-undo"></i> Reset Defaults
+                </button>
+            </div>
+        </div>
+
+        <div class="stats-grid" id="stats-container" style="display: none;">
+            <div class="stat-card">
+                <div class="stat-value" id="real-area">--</div>
+                <div class="stat-label">Real Contact Area (cm²)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="contact-fraction">--</div>
+                <div class="stat-label">Contact Fraction (%)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="num-contacts">--</div>
+                <div class="stat-label">Number of Contacts (×10⁶)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="mean-contact-pressure">--</div>
+                <div class="stat-label">Mean Contact Pressure (MPa)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="max-contact-pressure">--</div>
+                <div class="stat-label">Max Contact Pressure (MPa)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="contact-stress">--</div>
+                <div class="stat-label">Von Mises Stress (MPa)</div>
+            </div>
+        </div>
+
+        <div class="plot-container">
+            <h3 class="plot-title"><i class="fas fa-chart-line"></i> Asperity Height Distribution</h3>
+            <div id="height-distribution"></div>
+        </div>
+
+        <div class="plot-container">
+            <h3 class="plot-title"><i class="fas fa-chart-area"></i> Contact Pressure Distribution</h3>
+            <div id="pressure-distribution"></div>
+        </div>
+
+        <div class="plot-container">
+            <h3 class="plot-title"><i class="fas fa-map"></i> Real Contact Area vs Applied Pressure</h3>
+            <div id="area-pressure"></div>
+        </div>
+
+        <div class="comparison-table">
+            <h3><i class="fas fa-table"></i> CMP Pad Surface Characteristics</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Pad Type</th>
+                        <th>Asperity Density (/cm²)</th>
+                        <th>Mean Radius (μm)</th>
+                        <th>Roughness σ (μm)</th>
+                        <th>Modulus (MPa)</th>
+                        <th>Typical Application</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>IC1000 (Hard)</td>
+                        <td>5-8 × 10⁸</td>
+                        <td>15-25</td>
+                        <td>8-12</td>
+                        <td>300-400</td>
+                        <td>Oxide CMP</td>
+                    </tr>
+                    <tr>
+                        <td>Polytex (Soft)</td>
+                        <td>2-4 × 10⁸</td>
+                        <td>25-40</td>
+                        <td>15-20</td>
+                        <td>100-200</td>
+                        <td>Metal CMP</td>
+                    </tr>
+                    <tr>
+                        <td>Stacked Pad</td>
+                        <td>3-6 × 10⁸</td>
+                        <td>20-30</td>
+                        <td>10-15</td>
+                        <td>150-250</td>
+                        <td>STI, Damascene</td>
+                    </tr>
+                    <tr>
+                        <td>Fixed Abrasive</td>
+                        <td>1-2 × 10⁹</td>
+                        <td>5-15</td>
+                        <td>3-8</td>
+                        <td>500-800</td>
+                        <td>Sapphire, SiC</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="theory-section">
+            <h2><i class="fas fa-book-open"></i> Greenwood-Williamson Contact Theory</h2>
+
+            <h3>Asperity Contact Model</h3>
+            <p>
+                The GW model assumes surface roughness consists of spherical asperities with heights following a Gaussian distribution.
+                When two surfaces approach, only asperities above a critical separation d make contact.
+            </p>
+            <div class="equation-box">
+                φ(z) = (1/√(2πσ)) × exp(-z²/(2σ²))
+            </div>
+
+            <h3>Real Contact Area</h3>
+            <p>
+                The real contact area A<sub>real</sub> is the sum of individual asperity contact areas:
+            </p>
+            <div class="equation-box">
+                A<sub>real</sub> = η × A<sub>nom</sub> × ∫[d,∞] πR(z-d) φ(z) dz
+            </div>
+            <p>Where:</p>
+            <ul>
+                <li>η = asperity density (number per unit area)</li>
+                <li>R = mean asperity radius</li>
+                <li>d = separation distance</li>
+                <li>φ(z) = height probability density</li>
+            </ul>
+
+            <h3>Contact Pressure</h3>
+            <p>
+                Individual asperity contact pressure depends on elastic deformation (Hertzian contact):
+            </p>
+            <div class="equation-box">
+                P<sub>asperity</sub> = (4/3) × E* × √(R × δ³)
+            </div>
+            <p>
+                Where E* = E/(1-ν²) is the effective elastic modulus, E is Young's modulus, ν is Poisson's ratio, and δ is asperity deformation.
+            </p>
+
+            <h3>Load-Area Relationship</h3>
+            <p>
+                For elastic contact, the GW model predicts real contact area proportional to applied load:
+            </p>
+            <div class="equation-box">
+                A<sub>real</sub> ∝ P<sup>2/3</sup>
+            </div>
+            <p>
+                This sublinear relationship means contact area grows slowly with pressure, maintaining high local pressures even at moderate nominal loads.
+            </p>
+
+            <h3>Implications for CMP</h3>
+            <ul>
+                <li>Real contact area is 1-5% of nominal area → High local pressures (10-100× nominal)</li>
+                <li>Contact spots are discrete and dynamic → Slurry transport between contacts critical</li>
+                <li>Pad conditioning regenerates asperities → Maintains consistent contact mechanics</li>
+                <li>Particle size must match asperity spacing → 50-150 nm particles optimal</li>
+                <li>Soft pads → More contact area, lower local pressure → Better for soft metals</li>
+                <li>Hard pads → Less contact area, higher local pressure → Better for hard oxides</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const sliders = ['pressure', 'density', 'radius', 'roughness', 'modulus', 'poisson', 'area'];
+        const units = {
+            'pressure': ' psi',
+            'density': '',
+            'radius': ' μm',
+            'roughness': ' μm',
+            'modulus': ' MPa',
+            'poisson': '',
+            'area': ' cm²'
+        };
+
+        sliders.forEach(id => {
+            document.getElementById(id).addEventListener('input', function(e) {
+                document.getElementById(id + '-val').textContent = parseFloat(e.target.value).toFixed(2) + units[id];
+            });
+        });
+
+        function resetDefaults() {
+            document.getElementById('pressure').value = 5;
+            document.getElementById('density').value = 5;
+            document.getElementById('radius').value = 25;
+            document.getElementById('roughness').value = 12;
+            document.getElementById('modulus').value = 200;
+            document.getElementById('poisson').value = 0.35;
+            document.getElementById('area').value = 707;
+
+            sliders.forEach(id => {
+                document.getElementById(id).dispatchEvent(new Event('input'));
+            });
+        }
+
+        function runSimulation() {
+            const P_psi = parseFloat(document.getElementById('pressure').value);
+            const eta = parseFloat(document.getElementById('density').value) * 1e8; // /cm²
+            const R = parseFloat(document.getElementById('radius').value) * 1e-4; // cm
+            const sigma = parseFloat(document.getElementById('roughness').value) * 1e-4; // cm
+            const E = parseFloat(document.getElementById('modulus').value) * 1e6; // Pa
+            const nu = parseFloat(document.getElementById('poisson').value);
+            const A_nom = parseFloat(document.getElementById('area').value); // cm²
+
+            // Convert pressure to Pa
+            const P = P_psi * 6894.76;
+
+            // Effective modulus
+            const E_star = E / (1 - nu * nu);
+
+            // Simplified GW: Real area proportional to P^(2/3)
+            const d_over_sigma = Math.pow(P / (eta * E_star * sigma), 0.5);
+            const contact_fraction = 0.01 * Math.pow(P_psi / 5, 0.67); // Empirical fit
+            const A_real = A_nom * contact_fraction;
+
+            // Number of contacts
+            const N_contacts = eta * A_real;
+
+            // Mean contact pressure
+            const P_contact_mean = P / contact_fraction;
+
+            // Max contact pressure (Hertzian)
+            const P_contact_max = 1.5 * P_contact_mean;
+
+            // Von Mises equivalent stress
+            const sigma_vm = 0.6 * P_contact_max;
+
+            // Update stats
+            document.getElementById('stats-container').style.display = 'grid';
+            document.getElementById('real-area').textContent = A_real.toFixed(2);
+            document.getElementById('contact-fraction').textContent = (contact_fraction * 100).toFixed(2);
+            document.getElementById('num-contacts').textContent = (N_contacts / 1e6).toFixed(1);
+            document.getElementById('mean-contact-pressure').textContent = (P_contact_mean / 1e6).toFixed(1);
+            document.getElementById('max-contact-pressure').textContent = (P_contact_max / 1e6).toFixed(1);
+            document.getElementById('contact-stress').textContent = (sigma_vm / 1e6).toFixed(1);
+
+            // Height distribution
+            const heights = [];
+            const prob = [];
+            for (let z = -3 * sigma * 1e4; z <= 3 * sigma * 1e4; z += sigma * 1e4 / 20) {
+                heights.push(z);
+                const phi = (1 / Math.sqrt(2 * Math.PI * sigma * sigma * 1e8)) * Math.exp(-z * z / (2 * sigma * sigma * 1e8));
+                prob.push(phi * 1e4);
+            }
+
+            const trace1 = {
+                x: heights,
+                y: prob,
+                mode: 'lines',
+                fill: 'tozeroy',
+                line: { color: '#667eea', width: 3 },
+                fillcolor: 'rgba(102, 126, 234, 0.3)'
+            };
+
+            const layout1 = {
+                title: { text: 'Asperity Height Distribution (Gaussian)', font: { color: '#e0e0e0' }},
+                xaxis: { title: 'Height (μm)', gridcolor: '#333', color: '#e0e0e0' },
+                yaxis: { title: 'Probability Density', gridcolor: '#333', color: '#e0e0e0' },
+                plot_bgcolor: '#0a0a0a',
+                paper_bgcolor: '#0a0a0a',
+                font: { color: '#e0e0e0' }
+            };
+
+            Plotly.newPlot('height-distribution', [trace1], layout1, {responsive: true});
+
+            // Pressure distribution
+            const pressures = [];
+            const counts = [];
+            for (let p = 0; p <= P_contact_max / 1e6 * 1.2; p += P_contact_max / 1e6 / 50) {
+                pressures.push(p);
+                // Exponential distribution of contact pressures
+                const count = Math.exp(-p / (P_contact_mean / 1e6));
+                counts.push(count);
+            }
+
+            const trace2 = {
+                x: pressures,
+                y: counts,
+                mode: 'lines',
+                fill: 'tozeroy',
+                line: { color: '#f39c12', width: 3 },
+                fillcolor: 'rgba(243, 156, 18, 0.3)'
+            };
+
+            const layout2 = {
+                title: { text: 'Contact Pressure Distribution', font: { color: '#e0e0e0' }},
+                xaxis: { title: 'Contact Pressure (MPa)', gridcolor: '#333', color: '#e0e0e0' },
+                yaxis: { title: 'Relative Frequency', gridcolor: '#333', color: '#e0e0e0' },
+                plot_bgcolor: '#0a0a0a',
+                paper_bgcolor: '#0a0a0a',
+                font: { color: '#e0e0e0' }
+            };
+
+            Plotly.newPlot('pressure-distribution', [trace2], layout2, {responsive: true});
+
+            // Area vs pressure
+            const P_range = [];
+            const A_range = [];
+            for (let p = 1; p <= 10; p += 0.2) {
+                P_range.push(p);
+                const cf = 0.01 * Math.pow(p / 5, 0.67);
+                A_range.push(A_nom * cf);
+            }
+
+            const trace3 = {
+                x: P_range,
+                y: A_range,
+                mode: 'lines',
+                line: { color: '#764ba2', width: 3 }
+            };
+
+            const layout3 = {
+                title: { text: 'Real Contact Area vs Applied Pressure', font: { color: '#e0e0e0' }},
+                xaxis: { title: 'Applied Pressure (psi)', gridcolor: '#333', color: '#e0e0e0' },
+                yaxis: { title: 'Real Contact Area (cm²)', gridcolor: '#333', color: '#e0e0e0' },
+                plot_bgcolor: '#0a0a0a',
+                paper_bgcolor: '#0a0a0a',
+                font: { color: '#e0e0e0' },
+                annotations: [{
+                    x: P_psi,
+                    y: A_real,
+                    text: 'Current',
+                    showarrow: true,
+                    arrowhead: 2,
+                    ax: 40,
+                    ay: -40,
+                    font: { color: '#f39c12' },
+                    arrowcolor: '#f39c12'
+                }]
+            };
+
+            Plotly.newPlot('area-pressure', [trace3], layout3, {responsive: true});
+        }
+
+        window.addEventListener('load', runSimulation);
+    </script>
+</body>
+</html>
