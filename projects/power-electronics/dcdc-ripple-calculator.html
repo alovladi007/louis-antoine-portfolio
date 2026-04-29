@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ripple Calculator - DC-DC Converter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #c084fc 100%); }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-violet-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="dcdc-converter-complete-project.html" class="flex items-center text-violet-400 hover:text-violet-300">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to DC-DC Project
+                </a>
+                <span class="text-violet-400 font-semibold">Ripple Calculator</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4">
+                <i class="fas fa-wave-square mr-4 text-violet-200"></i>Ripple Calculator
+            </h1>
+            <p class="text-xl text-violet-100 max-w-3xl mx-auto">
+                Input and output ripple analysis with capacitor and inductor sizing
+            </p>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+            <div class="bg-gray-800 rounded-xl border border-violet-500/30 p-6">
+                <h2 class="text-xl font-semibold text-violet-400 mb-4"><i class="fas fa-bolt mr-2"></i>Operating Point</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>Vin</span><span id="vinVal" class="text-violet-400">12V</span></label>
+                        <input type="range" id="vin" min="6" max="48" step="1" value="12" class="w-full" oninput="updateRipple()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>Vout</span><span id="voutVal" class="text-violet-400">1.2V</span></label>
+                        <input type="range" id="vout" min="0.6" max="5" step="0.1" value="1.2" class="w-full" oninput="updateRipple()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>Iout</span><span id="ioutVal" class="text-violet-400">10A</span></label>
+                        <input type="range" id="iout" min="1" max="25" step="0.5" value="10" class="w-full" oninput="updateRipple()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>Fsw</span><span id="fswVal" class="text-violet-400">500kHz</span></label>
+                        <input type="range" id="fsw" min="100" max="2000" step="50" value="500" class="w-full" oninput="updateRipple()">
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gray-800 rounded-xl border border-violet-500/30 p-6">
+                <h2 class="text-xl font-semibold text-violet-400 mb-4"><i class="fas fa-coil mr-2"></i>Inductor</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>L</span><span id="lVal" class="text-violet-400">1.0µH</span></label>
+                        <input type="range" id="L" min="0.1" max="10" step="0.1" value="1" class="w-full" oninput="updateRipple()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>DCR</span><span id="dcrVal" class="text-violet-400">2mΩ</span></label>
+                        <input type="range" id="dcr" min="0.5" max="20" step="0.5" value="2" class="w-full" oninput="updateRipple()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>Isat</span><span id="isatVal" class="text-violet-400">25A</span></label>
+                        <input type="range" id="isat" min="10" max="50" step="1" value="25" class="w-full" oninput="updateRipple()">
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gray-800 rounded-xl border border-violet-500/30 p-6">
+                <h2 class="text-xl font-semibold text-violet-400 mb-4"><i class="fas fa-battery-full mr-2"></i>Capacitors</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>Cout</span><span id="coutVal" class="text-violet-400">470µF</span></label>
+                        <input type="range" id="cout" min="22" max="2000" step="22" value="470" class="w-full" oninput="updateRipple()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>ESR (out)</span><span id="esrOutVal" class="text-violet-400">5mΩ</span></label>
+                        <input type="range" id="esrOut" min="1" max="100" step="1" value="5" class="w-full" oninput="updateRipple()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>Cin</span><span id="cinVal" class="text-violet-400">100µF</span></label>
+                        <input type="range" id="cin" min="10" max="500" step="10" value="100" class="w-full" oninput="updateRipple()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>ESR (in)</span><span id="esrInVal" class="text-violet-400">10mΩ</span></label>
+                        <input type="range" id="esrIn" min="1" max="100" step="1" value="10" class="w-full" oninput="updateRipple()">
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gray-800 rounded-xl border border-violet-500/30 p-6">
+                <h2 class="text-xl font-semibold text-violet-400 mb-4"><i class="fas fa-chart-bar mr-2"></i>Results</h2>
+                <div class="space-y-3">
+                    <div class="p-3 bg-violet-500/20 rounded-lg">
+                        <div class="flex justify-between">
+                            <span class="text-gray-400 text-sm">ΔIL (pk-pk)</span>
+                            <span id="diL" class="text-violet-400 font-bold">2.4A</span>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-cyan-500/20 rounded-lg">
+                        <div class="flex justify-between">
+                            <span class="text-gray-400 text-sm">ΔVout (pk-pk)</span>
+                            <span id="dvOut" class="text-cyan-400 font-bold">15mV</span>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-yellow-500/20 rounded-lg">
+                        <div class="flex justify-between">
+                            <span class="text-gray-400 text-sm">ΔVin (pk-pk)</span>
+                            <span id="dvIn" class="text-yellow-400 font-bold">45mV</span>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-green-500/20 rounded-lg">
+                        <div class="flex justify-between">
+                            <span class="text-gray-400 text-sm">Ripple Ratio</span>
+                            <span id="rippleRatio" class="text-green-400 font-bold">24%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div class="bg-gray-800 rounded-xl border border-violet-500/30 p-6">
+                <h3 class="text-lg font-semibold text-violet-400 mb-4">Inductor Current Waveform</h3>
+                <div id="iLChart" style="height: 280px;"></div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-violet-500/30 p-6">
+                <h3 class="text-lg font-semibold text-violet-400 mb-4">Output Voltage Ripple</h3>
+                <div id="voutChart" style="height: 280px;"></div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-gray-800 rounded-xl border border-violet-500/30 p-6">
+                <h3 class="text-lg font-semibold text-violet-400 mb-4">Input Current & Voltage</h3>
+                <div id="vinChart" style="height: 280px;"></div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-violet-500/30 p-6">
+                <h3 class="text-lg font-semibold text-violet-400 mb-4">Ripple vs Inductance</h3>
+                <div id="rippleVsLChart" style="height: 280px;"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function updateRipple() {
+            const vin = parseFloat(document.getElementById('vin').value);
+            const vout = parseFloat(document.getElementById('vout').value);
+            const iout = parseFloat(document.getElementById('iout').value);
+            const fsw = parseFloat(document.getElementById('fsw').value) * 1000;
+            const L = parseFloat(document.getElementById('L').value) * 1e-6;
+            const dcr = parseFloat(document.getElementById('dcr').value) * 1e-3;
+            const isat = parseFloat(document.getElementById('isat').value);
+            const cout = parseFloat(document.getElementById('cout').value) * 1e-6;
+            const esrOut = parseFloat(document.getElementById('esrOut').value) * 1e-3;
+            const cin = parseFloat(document.getElementById('cin').value) * 1e-6;
+            const esrIn = parseFloat(document.getElementById('esrIn').value) * 1e-3;
+
+            // Update displays
+            document.getElementById('vinVal').textContent = vin + 'V';
+            document.getElementById('voutVal').textContent = vout + 'V';
+            document.getElementById('ioutVal').textContent = iout + 'A';
+            document.getElementById('fswVal').textContent = (fsw/1000) + 'kHz';
+            document.getElementById('lVal').textContent = (L*1e6).toFixed(1) + 'µH';
+            document.getElementById('dcrVal').textContent = (dcr*1e3).toFixed(1) + 'mΩ';
+            document.getElementById('isatVal').textContent = isat + 'A';
+            document.getElementById('coutVal').textContent = (cout*1e6).toFixed(0) + 'µF';
+            document.getElementById('esrOutVal').textContent = (esrOut*1e3).toFixed(0) + 'mΩ';
+            document.getElementById('cinVal').textContent = (cin*1e6).toFixed(0) + 'µF';
+            document.getElementById('esrInVal').textContent = (esrIn*1e3).toFixed(0) + 'mΩ';
+
+            const duty = vout / vin;
+            const T = 1 / fsw;
+            const ton = duty * T;
+            const toff = T - ton;
+
+            // Inductor ripple
+            const diL = (vin - vout) * ton / L;
+            const iLpeak = iout + diL / 2;
+            const iLvalley = iout - diL / 2;
+            const rippleRatio = diL / iout * 100;
+
+            // Output voltage ripple
+            const dvOutCap = diL / (8 * fsw * cout);
+            const dvOutEsr = diL * esrOut;
+            const dvOut = Math.sqrt(dvOutCap**2 + dvOutEsr**2);
+
+            // Input voltage ripple
+            const iinAvg = iout * duty;
+            const iinPeak = iLpeak * duty;
+            const dvIn = iinPeak * esrIn + iinPeak * ton / cin;
+
+            document.getElementById('diL').textContent = diL.toFixed(2) + 'A';
+            document.getElementById('dvOut').textContent = (dvOut * 1000).toFixed(1) + 'mV';
+            document.getElementById('dvIn').textContent = (dvIn * 1000).toFixed(1) + 'mV';
+            document.getElementById('rippleRatio').textContent = rippleRatio.toFixed(0) + '%';
+
+            // Generate waveforms
+            const points = 400;
+            const cycles = 3;
+            const t = [], iL = [], voutWave = [], vinWave = [], iinWave = [];
+
+            for (let i = 0; i <= points; i++) {
+                const time = i / points * cycles * T;
+                const tInCycle = time % T;
+
+                t.push(time * 1e6);
+
+                // Inductor current (triangular)
+                let il;
+                if (tInCycle < ton) {
+                    il = iLvalley + (iLpeak - iLvalley) * tInCycle / ton;
+                } else {
+                    il = iLpeak - (iLpeak - iLvalley) * (tInCycle - ton) / toff;
+                }
+                iL.push(il);
+
+                // Output voltage (inverted triangle with ESR spike)
+                const voutDc = vout * 1000;
+                const vRipple = (dvOutCap * 1000) * Math.cos(2 * Math.PI * tInCycle / T);
+                const vEsrSpike = tInCycle < ton ? dvOutEsr * 1000 * 0.5 : -dvOutEsr * 1000 * 0.5;
+                voutWave.push(voutDc + vRipple + vEsrSpike * 0.3);
+
+                // Input current and voltage
+                const iin = tInCycle < ton ? il : 0;
+                iinWave.push(iin);
+                const vinDc = vin * 1000;
+                const vinRipple = iin * esrIn * 1000;
+                vinWave.push(vinDc - vinRipple);
+            }
+
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#9ca3af' }, margin: { t: 20, r: 30, b: 50, l: 60 },
+                showlegend: true, legend: { x: 1, y: 1, xanchor: 'right' }
+            };
+
+            // Inductor current chart
+            Plotly.react('iLChart', [
+                { x: t, y: iL, name: 'IL', line: { color: '#8b5cf6', width: 2 }, fill: 'tozeroy', fillcolor: 'rgba(139, 92, 246, 0.2)' },
+                { x: [0, t[t.length-1]], y: [iout, iout], name: 'Iavg', line: { color: '#22c55e', dash: 'dash' } },
+                { x: [0, t[t.length-1]], y: [isat, isat], name: 'Isat', line: { color: '#ef4444', dash: 'dot' } }
+            ], { ...layout, xaxis: { title: 'Time (µs)', gridcolor: '#374151' }, yaxis: { title: 'IL (A)', gridcolor: '#374151' } }, { responsive: true });
+
+            // Output voltage chart
+            Plotly.react('voutChart', [{
+                x: t, y: voutWave, name: 'Vout', line: { color: '#06b6d4', width: 2 }
+            }], { ...layout, xaxis: { title: 'Time (µs)', gridcolor: '#374151' }, yaxis: { title: 'Vout (mV)', gridcolor: '#374151' } }, { responsive: true });
+
+            // Input voltage/current chart
+            Plotly.react('vinChart', [
+                { x: t, y: iinWave, name: 'Iin', line: { color: '#f59e0b', width: 2 } },
+                { x: t, y: vinWave.map(v => (v - vin * 1000) * 10 + iout), name: 'Vin ripple (scaled)', line: { color: '#ef4444', dash: 'dash' } }
+            ], { ...layout, xaxis: { title: 'Time (µs)', gridcolor: '#374151' }, yaxis: { title: 'Current (A)', gridcolor: '#374151' } }, { responsive: true });
+
+            // Ripple vs L chart
+            const Ls = [], diLs = [], dvOuts = [];
+            for (let l = 0.2; l <= 10; l += 0.2) {
+                const lh = l * 1e-6;
+                const di = (vin - vout) * ton / lh;
+                const dv = di / (8 * fsw * cout) * 1000;
+                Ls.push(l);
+                diLs.push(di);
+                dvOuts.push(dv);
+            }
+
+            Plotly.react('rippleVsLChart', [
+                { x: Ls, y: diLs, name: 'ΔIL', line: { color: '#8b5cf6', width: 2 } },
+                { x: Ls, y: dvOuts, name: 'ΔVout (mV)', yaxis: 'y2', line: { color: '#06b6d4', width: 2 } }
+            ], {
+                ...layout,
+                xaxis: { title: 'Inductance (µH)', gridcolor: '#374151' },
+                yaxis: { title: 'ΔIL (A)', gridcolor: '#374151' },
+                yaxis2: { title: 'ΔVout (mV)', overlaying: 'y', side: 'right' }
+            }, { responsive: true });
+        }
+
+        updateRipple();
+    </script>
+</body>
+</html>

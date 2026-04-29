@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RISC-V SoC - Complete Implementation</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1rem 2rem;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-brand {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: #e0e0e0;
+            text-decoration: none;
+            transition: color 0.3s;
+            cursor: pointer;
+        }
+
+        .nav-links a:hover {
+            color: #667eea;
+        }
+
+        /* Main Content */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 6rem 2rem 2rem;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            color: #a0a0a0;
+        }
+
+        /* File Browser */
+        .file-browser {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .file-tree {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 1.5rem;
+            height: fit-content;
+            position: sticky;
+            top: 5rem;
+        }
+
+        .file-tree h3 {
+            color: #667eea;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .tree-item {
+            padding: 0.5rem;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tree-item:hover {
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .tree-item.active {
+            background: rgba(102, 126, 234, 0.3);
+            color: #667eea;
+        }
+
+        .tree-folder {
+            font-weight: 600;
+            color: #764ba2;
+            margin-top: 0.5rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .tree-file {
+            padding-left: 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        /* Code Display */
+        .code-viewer {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        .code-header {
+            background: rgba(102, 126, 234, 0.2);
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .code-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #667eea;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .code-actions {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .code-action {
+            padding: 0.5rem 1rem;
+            background: rgba(102, 126, 234, 0.2);
+            border: 1px solid rgba(102, 126, 234, 0.5);
+            border-radius: 5px;
+            color: #e0e0e0;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .code-action:hover {
+            background: rgba(102, 126, 234, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .code-content {
+            padding: 1.5rem;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .code-description {
+            background: rgba(118, 75, 162, 0.1);
+            border-left: 3px solid #764ba2;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 5px;
+        }
+
+        pre {
+            background: #1a1a1a !important;
+            border-radius: 10px;
+            padding: 1rem !important;
+            overflow-x: auto;
+        }
+
+        code {
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 10px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #a0a0a0;
+            margin-top: 0.5rem;
+        }
+
+        /* Module Sections */
+        .module-section {
+            margin-bottom: 3rem;
+        }
+
+        .module-header {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .module-header h2 {
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .module-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .module-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 1.5rem;
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+        }
+
+        .module-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }
+
+        .module-card h3 {
+            color: #764ba2;
+            margin-bottom: 0.5rem;
+        }
+
+        .module-card p {
+            color: #a0a0a0;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .module-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .file-browser {
+                grid-template-columns: 1fr;
+            }
+            
+            .file-tree {
+                position: relative;
+                top: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav>
+        <div class="nav-content">
+            <div class="nav-brand">RISC-V SoC Implementation</div>
+            <ul class="nav-links">
+                <li><a href="index.html">Portfolio</a></li>
+                <li><a href="riscv-soc-showcase.html">Overview</a></li>
+                <li><a onclick="scrollToSection('cpu')">CPU</a></li>
+                <li><a onclick="scrollToSection('peripherals')">Peripherals</a></li>
+                <li><a onclick="scrollToSection('testbench')">Testing</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>RISC-V SoC - Complete Implementation</h1>
+            <p>Full SystemVerilog source code with 5-stage pipeline CPU and peripherals</p>
+        </div>
+
+        <!-- Statistics -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">10,000+</div>
+                <div class="stat-label">Lines of Code</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">50+</div>
+                <div class="stat-label">Modules</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">5</div>
+                <div class="stat-label">Pipeline Stages</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">8</div>
+                <div class="stat-label">Peripherals</div>
+            </div>
+        </div>
+
+        <!-- CPU Section -->
+        <div class="module-section" id="cpu">
+            <div class="module-header">
+                <h2><i class="fas fa-microchip"></i> CPU Core - 5-Stage Pipeline</h2>
+                <p>Complete RV32IM implementation with hazard detection and forwarding</p>
+            </div>
+
+            <div class="module-grid">
+                <div class="module-card" onclick="showCode('alu')">
+                    <h3><i class="fas fa-calculator"></i> ALU Module</h3>
+                    <p>32-bit Arithmetic Logic Unit supporting all RV32I operations</p>
+                    <span class="module-link">View Code <i class="fas fa-arrow-right"></i></span>
+                </div>
+
+                <div class="module-card" onclick="showCode('pipeline')">
+                    <h3><i class="fas fa-stream"></i> Pipeline Stages</h3>
+                    <p>IF, ID, EX, MEM, WB stages with full forwarding</p>
+                    <span class="module-link">View Code <i class="fas fa-arrow-right"></i></span>
+                </div>
+
+                <div class="module-card" onclick="showCode('hazard')">
+                    <h3><i class="fas fa-shield-alt"></i> Hazard Unit</h3>
+                    <p>Detection and resolution of data and control hazards</p>
+                    <span class="module-link">View Code <i class="fas fa-arrow-right"></i></span>
+                </div>
+
+                <div class="module-card" onclick="showCode('muldiv')">
+                    <h3><i class="fas fa-times"></i> Multiply/Divide</h3>
+                    <p>Hardware multiplication and division unit</p>
+                    <span class="module-link">View Code <i class="fas fa-arrow-right"></i></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Code Viewer -->
+        <div class="code-viewer" id="codeViewer" style="display: none;">
+            <div class="code-header">
+                <div class="code-title">
+                    <i class="fas fa-code"></i>
+                    <span id="codeTitle">ALU Module</span>
+                </div>
+                <div class="code-actions">
+                    <a class="code-action" onclick="copyCode()">
+                        <i class="fas fa-copy"></i> Copy
+                    </a>
+                    <a class="code-action" id="githubLink" href="#" target="_blank">
+                        <i class="fab fa-github"></i> View on GitHub
+                    </a>
+                    <a class="code-action" onclick="closeCode()">
+                        <i class="fas fa-times"></i> Close
+                    </a>
+                </div>
+            </div>
+            <div class="code-content">
+                <div class="code-description" id="codeDescription">
+                    Loading...
+                </div>
+                <pre><code class="language-verilog" id="codeContent">Loading...</code></pre>
+            </div>
+        </div>
+
+        <!-- Peripherals Section -->
+        <div class="module-section" id="peripherals">
+            <div class="module-header">
+                <h2><i class="fas fa-plug"></i> Peripherals</h2>
+                <p>Complete set of memory-mapped peripherals with AXI-Lite interface</p>
+            </div>
+
+            <div class="module-grid">
+                <div class="module-card" onclick="showCode('uart')">
+                    <h3><i class="fas fa-terminal"></i> UART</h3>
+                    <p>Full-duplex UART with configurable baud rate and interrupts</p>
+                    <span class="module-link">View Code <i class="fas fa-arrow-right"></i></span>
+                </div>
+
+                <div class="module-card" onclick="showCode('spi')">
+                    <h3><i class="fas fa-exchange-alt"></i> SPI Master</h3>
+                    <p>4-wire SPI with multiple chip selects and modes</p>
+                    <span class="module-link">View Code <i class="fas fa-arrow-right"></i></span>
+                </div>
+
+                <div class="module-card" onclick="showCode('gpio')">
+                    <h3><i class="fas fa-plug"></i> GPIO</h3>
+                    <p>16-bit GPIO with interrupt support</p>
+                    <span class="module-link">View Code <i class="fas fa-arrow-right"></i></span>
+                </div>
+
+                <div class="module-card" onclick="showCode('timer')">
+                    <h3><i class="fas fa-clock"></i> Timer/PWM</h3>
+                    <p>32-bit timer with PWM generation</p>
+                    <span class="module-link">View Code <i class="fas fa-arrow-right"></i></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Advanced Features -->
+        <div class="module-section">
+            <div class="module-header">
+                <h2><i class="fas fa-rocket"></i> Advanced Features</h2>
+                <p>Micro-sequencer and boot ROM implementation</p>
+            </div>
+
+            <div class="module-grid">
+                <div class="module-card" onclick="showCode('sequencer')">
+                    <h3><i class="fas fa-robot"></i> AXI Micro-Sequencer</h3>
+                    <p>Hardware state machine that autonomously prints messages</p>
+                    <span class="module-link">View Code <i class="fas fa-arrow-right"></i></span>
+                </div>
+
+                <div class="module-card" onclick="showCode('bootrom')">
+                    <h3><i class="fas fa-memory"></i> Boot ROM</h3>
+                    <p>RISC-V assembly boot code with UART initialization</p>
+                    <span class="module-link">View Code <i class="fas fa-arrow-right"></i></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Testing Section -->
+        <div class="module-section" id="testbench">
+            <div class="module-header">
+                <h2><i class="fas fa-vial"></i> Verification & Testing</h2>
+                <p>Comprehensive testbenches and verification infrastructure</p>
+            </div>
+
+            <div class="module-grid">
+                <div class="module-card" onclick="showCode('testbench')">
+                    <h3><i class="fas fa-check-circle"></i> SoC Testbench</h3>
+                    <p>Complete system-level testbench with UART monitor</p>
+                    <span class="module-link">View Code <i class="fas fa-arrow-right"></i></span>
+                </div>
+
+                <div class="module-card" onclick="showCode('makefile')">
+                    <h3><i class="fas fa-cogs"></i> Build System</h3>
+                    <p>Makefile for simulation and synthesis</p>
+                    <span class="module-link">View Code <i class="fas fa-arrow-right"></i></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-verilog.min.js"></script>
+    <script>
+        // Code samples for demonstration
+        const codeExamples = {
+            alu: {
+                title: "ALU Module - alu.sv",
+                description: "32-bit Arithmetic Logic Unit implementing all RV32I ALU operations including ADD, SUB, AND, OR, XOR, shifts, and comparisons.",
+                github: "https://github.com/alovladi007/louis-antoine-portfolio/blob/main/riscv-soc-files/rtl/cpu/alu.sv",
+                code: `module alu #(
+    parameter XLEN = 32
+)(
+    input  logic [XLEN-1:0] a,
+    input  logic [XLEN-1:0] b,
+    input  logic [3:0]      alu_op,
+    output logic [XLEN-1:0] result,
+    output logic            zero,
+    output logic            lt,
+    output logic            ltu
+);
+
+    // ALU operation encoding
+    localparam ALU_ADD  = 4'b0000;
+    localparam ALU_SUB  = 4'b0001;
+    localparam ALU_SLL  = 4'b0010;
+    localparam ALU_SLT  = 4'b0011;
+    localparam ALU_SLTU = 4'b0100;
+    localparam ALU_XOR  = 4'b0101;
+    localparam ALU_SRL  = 4'b0110;
+    localparam ALU_SRA  = 4'b0111;
+    localparam ALU_OR   = 4'b1000;
+    localparam ALU_AND  = 4'b1001;
+
+    // Main ALU logic
+    always_comb begin
+        case (alu_op)
+            ALU_ADD:  result = a + b;
+            ALU_SUB:  result = a - b;
+            ALU_SLL:  result = a << b[4:0];
+            ALU_SLT:  result = {{(XLEN-1){1'b0}}, $signed(a) < $signed(b)};
+            ALU_SLTU: result = {{(XLEN-1){1'b0}}, a < b};
+            ALU_XOR:  result = a ^ b;
+            ALU_SRL:  result = a >> b[4:0];
+            ALU_SRA:  result = $signed(a) >>> b[4:0];
+            ALU_OR:   result = a | b;
+            ALU_AND:  result = a & b;
+            default:  result = '0;
+        endcase
+    end
+    
+    assign zero = (result == '0);
+    assign lt = ($signed(a) < $signed(b));
+    assign ltu = (a < b);
+
+endmodule`
+            },
+            
+            pipeline: {
+                title: "Pipeline IF Stage - if_stage.sv",
+                description: "Instruction Fetch stage with PC management, branch handling, and instruction memory interface.",
+                github: "https://github.com/alovladi007/louis-antoine-portfolio/blob/main/riscv-soc-files/rtl/cpu/if_stage.sv",
+                code: `module if_stage #(
+    parameter XLEN = 32
+)(
+    input  logic             clk,
+    input  logic             rst,
+    
+    // Control signals
+    input  logic             stall,
+    input  logic             flush,
+    
+    // Branch/Jump signals
+    input  logic             branch_taken,
+    input  logic [XLEN-1:0]  branch_target,
+    
+    // Instruction memory interface
+    output logic [XLEN-1:0]  imem_addr,
+    output logic             imem_req,
+    input  logic [XLEN-1:0]  imem_rdata,
+    input  logic             imem_ready,
+    
+    // Output to ID stage
+    output logic [XLEN-1:0]  pc_out,
+    output logic [XLEN-1:0]  instr_out,
+    output logic             valid_out
+);
+
+    logic [XLEN-1:0] pc_reg;
+    logic [XLEN-1:0] pc_next;
+    
+    // Next PC selection
+    always_comb begin
+        if (branch_taken)
+            pc_next = branch_target;
+        else if (!stall)
+            pc_next = pc_reg + 4;
+        else
+            pc_next = pc_reg;
+    end
+    
+    // PC register
+    always_ff @(posedge clk) begin
+        if (rst)
+            pc_reg <= 32'h0000_0000;
+        else if (!stall || branch_taken)
+            pc_reg <= pc_next;
+    end
+    
+    // Instruction memory interface
+    assign imem_addr = pc_reg;
+    assign imem_req = !rst && !stall;
+
+endmodule`
+            },
+
+            uart: {
+                title: "UART Module - uart.sv",
+                description: "Full-featured UART with AXI-Lite interface, configurable baud rate, and interrupt support.",
+                github: "https://github.com/alovladi007/louis-antoine-portfolio/blob/main/riscv-soc-files/rtl/periph/uart.sv",
+                code: `module uart #(
+    parameter AW = 32,
+    parameter DW = 32,
+    parameter CLK_FREQ = 50_000_000,
+    parameter BAUD_RATE = 115200
+)(
+    input  logic clk,
+    input  logic rst,
+    
+    // AXI-Lite interface
+    axi_lite_if.slave s_axi,
+    
+    // UART pins
+    output logic uart_tx,
+    input  logic uart_rx,
+    
+    // Interrupt
+    output logic irq
+);
+
+    // Register map
+    localparam ADDR_TX_DATA   = 3'h0;
+    localparam ADDR_RX_DATA   = 3'h1;
+    localparam ADDR_STATUS    = 3'h2;
+    localparam ADDR_CONTROL   = 3'h3;
+    localparam ADDR_BAUD_DIV  = 3'h4;
+    
+    // Internal registers
+    logic [7:0]  tx_data_reg;
+    logic [7:0]  rx_data_reg;
+    logic [3:0]  status_reg;
+    logic [3:0]  control_reg;
+    logic [15:0] baud_div_reg;
+    
+    // UART TX state machine
+    typedef enum {IDLE, START, DATA, STOP} tx_state_t;
+    tx_state_t tx_state;
+    
+    // Baud rate generator
+    logic [15:0] baud_counter;
+    logic baud_tick;
+    
+    always_ff @(posedge clk) begin
+        if (rst) begin
+            baud_counter <= 0;
+            baud_tick <= 0;
+        end else begin
+            if (baud_counter >= baud_div_reg) begin
+                baud_counter <= 0;
+                baud_tick <= 1;
+            end else begin
+                baud_counter <= baud_counter + 1;
+                baud_tick <= 0;
+            end
+        end
+    end
+    
+    // TX logic implementation...
+    
+endmodule`
+            },
+
+            sequencer: {
+                title: "AXI Micro-Sequencer - axi_seq_hello.sv",
+                description: "Hardware state machine that autonomously prints 'HELLO' via UART using AXI-Lite transactions.",
+                github: "https://github.com/alovladi007/louis-antoine-portfolio/blob/main/riscv-soc-files/rtl/micro/axi_seq_hello.sv",
+                code: `module axi_seq_hello #(
+    parameter AW = 32,
+    parameter DW = 32,
+    parameter UART_BASE = 32'h4000_0000,
+    parameter STRLEN = 6
+)(
+    input  logic             ACLK,
+    input  logic             ARESETn,
+    
+    // AXI-Lite master interface
+    output logic [AW-1:0]    M_AWADDR,
+    output logic             M_AWVALID,
+    input  logic             M_AWREADY,
+    output logic [DW-1:0]    M_WDATA,
+    output logic [DW/8-1:0]  M_WSTRB,
+    output logic             M_WVALID,
+    input  logic             M_WREADY,
+    // ... more AXI signals
+);
+
+    // ROM string storage
+    byte rom [0:STRLEN-1];
+    initial begin
+        rom[0] = "H";
+        rom[1] = "E";
+        rom[2] = "L";
+        rom[3] = "L";
+        rom[4] = "O";
+        rom[5] = "\\n";
+    end
+
+    // State machine
+    typedef enum logic [2:0] {
+        IDLE, POLL_REQ, POLL_WAIT, 
+        WRITE_ADDR, WRITE_DATA, WRITE_RESP, 
+        NEXT_CHAR, DONE
+    } state_t;
+    
+    state_t state;
+    integer idx;
+
+    // State machine logic
+    always_ff @(posedge ACLK or negedge ARESETn) begin
+        if (!ARESETn) begin
+            state <= IDLE;
+            idx <= 0;
+        end else begin
+            case (state)
+                IDLE: state <= POLL_REQ;
+                
+                POLL_REQ: begin
+                    // Read UART status register
+                    if (M_ARREADY) 
+                        state <= POLL_WAIT;
+                end
+                
+                POLL_WAIT: begin
+                    if (M_RVALID) begin
+                        // Check if UART is ready
+                        if (M_RDATA[0] == 1'b0) 
+                            state <= WRITE_ADDR;
+                        else 
+                            state <= POLL_REQ;
+                    end
+                end
+                
+                // Continue with write states...
+            endcase
+        end
+    end
+
+endmodule`
+            },
+
+            bootrom: {
+                title: "Boot ROM Assembly - hello_uart.S",
+                description: "RISC-V assembly code that prints 'HELLO' by polling UART status and writing to TX register.",
+                github: "https://github.com/alovladi007/louis-antoine-portfolio/blob/main/riscv-soc-files/fw/boot/hello_uart.S",
+                code: `# hello_uart.S - RISC-V Boot ROM
+# Prints "HELLO\\n" via UART
+
+.section .text.init
+.global _start
+
+# UART MMIO addresses
+.equ UART_BASE, 0x40000000
+.equ UART_TX,   0x40000000
+.equ UART_ST,   0x40000008
+
+_start:
+    # Load address of message
+    la   t0, hello_msg      # t0 = address of message
+    
+print_loop:
+    # Load next character
+    lb   t1, 0(t0)          # t1 = *t0 (load byte)
+    beq  t1, x0, done       # if null terminator, done
+    
+wait_uart:
+    # Poll UART status until ready
+    li   t2, UART_ST        # t2 = UART status address
+    lw   t3, 0(t2)          # t3 = status value
+    andi t3, t3, 1          # check tx_busy bit
+    bnez t3, wait_uart      # if busy, keep waiting
+    
+    # Transmit character
+    li   t2, UART_TX        # t2 = UART TX address
+    sw   t1, 0(t2)          # write character
+    
+    # Move to next character
+    addi t0, t0, 1          # increment pointer
+    j    print_loop         # continue loop
+    
+done:
+    j    done               # infinite loop
+
+.section .rodata
+hello_msg:
+    .string "HELLO\\n"`
+            }
+        };
+
+        function showCode(module) {
+            const viewer = document.getElementById('codeViewer');
+            const example = codeExamples[module];
+            
+            if (example) {
+                document.getElementById('codeTitle').textContent = example.title;
+                document.getElementById('codeDescription').textContent = example.description;
+                document.getElementById('codeContent').textContent = example.code;
+                document.getElementById('githubLink').href = example.github;
+                
+                viewer.style.display = 'block';
+                viewer.scrollIntoView({ behavior: 'smooth' });
+                
+                // Re-highlight code
+                Prism.highlightElement(document.getElementById('codeContent'));
+            }
+        }
+
+        function closeCode() {
+            document.getElementById('codeViewer').style.display = 'none';
+        }
+
+        function copyCode() {
+            const code = document.getElementById('codeContent').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                alert('Code copied to clipboard!');
+            });
+        }
+
+        function scrollToSection(id) {
+            document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html> 

@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loss Breakdown - DC-DC Converter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #c084fc 100%); }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-violet-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="dcdc-converter-complete-project.html" class="flex items-center text-violet-400 hover:text-violet-300">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to DC-DC Project
+                </a>
+                <span class="text-violet-400 font-semibold">Loss Breakdown</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4">
+                <i class="fas fa-chart-pie mr-4 text-violet-200"></i>Loss Breakdown Analysis
+            </h1>
+            <p class="text-xl text-violet-100 max-w-3xl mx-auto">
+                Detailed conduction, switching, and magnetic loss visualization
+            </p>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+            <div class="bg-gray-800 rounded-xl border border-violet-500/30 p-6">
+                <h2 class="text-xl font-semibold text-violet-400 mb-4"><i class="fas fa-bolt mr-2"></i>Operating Point</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>Vin</span><span id="vinVal" class="text-violet-400">12V</span></label>
+                        <input type="range" id="vin" min="6" max="48" step="1" value="12" class="w-full" oninput="updateLoss()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>Vout</span><span id="voutVal" class="text-violet-400">1.2V</span></label>
+                        <input type="range" id="vout" min="0.6" max="5" step="0.1" value="1.2" class="w-full" oninput="updateLoss()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>Iout</span><span id="ioutVal" class="text-violet-400">10A</span></label>
+                        <input type="range" id="iout" min="1" max="25" step="0.5" value="10" class="w-full" oninput="updateLoss()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>Fsw</span><span id="fswVal" class="text-violet-400">500kHz</span></label>
+                        <input type="range" id="fsw" min="100" max="2000" step="50" value="500" class="w-full" oninput="updateLoss()">
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gray-800 rounded-xl border border-violet-500/30 p-6">
+                <h2 class="text-xl font-semibold text-violet-400 mb-4"><i class="fas fa-microchip mr-2"></i>MOSFETs</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>Rds(on) HS</span><span id="rdsHsVal" class="text-violet-400">5mΩ</span></label>
+                        <input type="range" id="rdsHs" min="1" max="20" step="0.5" value="5" class="w-full" oninput="updateLoss()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>Rds(on) LS</span><span id="rdsLsVal" class="text-violet-400">3mΩ</span></label>
+                        <input type="range" id="rdsLs" min="1" max="20" step="0.5" value="3" class="w-full" oninput="updateLoss()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>Qg</span><span id="qgVal" class="text-violet-400">15nC</span></label>
+                        <input type="range" id="qg" min="5" max="50" step="1" value="15" class="w-full" oninput="updateLoss()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>tr+tf</span><span id="tswVal" class="text-violet-400">18ns</span></label>
+                        <input type="range" id="tsw" min="5" max="50" step="1" value="18" class="w-full" oninput="updateLoss()">
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gray-800 rounded-xl border border-violet-500/30 p-6">
+                <h2 class="text-xl font-semibold text-violet-400 mb-4"><i class="fas fa-ring mr-2"></i>Magnetics</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>DCR</span><span id="dcrVal" class="text-violet-400">2mΩ</span></label>
+                        <input type="range" id="dcr" min="0.5" max="10" step="0.5" value="2" class="w-full" oninput="updateLoss()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>Core Loss Coeff</span><span id="coreVal" class="text-violet-400">0.1</span></label>
+                        <input type="range" id="core" min="0.01" max="0.5" step="0.01" value="0.1" class="w-full" oninput="updateLoss()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1"><span>L</span><span id="lVal" class="text-violet-400">1.0µH</span></label>
+                        <input type="range" id="L" min="0.2" max="5" step="0.1" value="1" class="w-full" oninput="updateLoss()">
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gray-800 rounded-xl border border-violet-500/30 p-6">
+                <h2 class="text-xl font-semibold text-violet-400 mb-4"><i class="fas fa-chart-bar mr-2"></i>Summary</h2>
+                <div class="space-y-3">
+                    <div class="p-3 bg-red-500/20 rounded-lg">
+                        <div class="flex justify-between">
+                            <span class="text-gray-400 text-sm">Total Loss</span>
+                            <span id="ploss" class="text-red-400 font-bold">2.1W</span>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-green-500/20 rounded-lg">
+                        <div class="flex justify-between">
+                            <span class="text-gray-400 text-sm">Efficiency</span>
+                            <span id="eff" class="text-green-400 font-bold">85.1%</span>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-violet-500/20 rounded-lg">
+                        <div class="flex justify-between">
+                            <span class="text-gray-400 text-sm">Output Power</span>
+                            <span id="pout" class="text-violet-400 font-bold">12W</span>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-cyan-500/20 rounded-lg">
+                        <div class="flex justify-between">
+                            <span class="text-gray-400 text-sm">Input Power</span>
+                            <span id="pin" class="text-cyan-400 font-bold">14.1W</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div class="bg-gray-800 rounded-xl border border-violet-500/30 p-6">
+                <h3 class="text-lg font-semibold text-violet-400 mb-4">Loss Distribution</h3>
+                <div id="pieChart" style="height: 350px;"></div>
+            </div>
+            <div class="bg-gray-800 rounded-xl border border-violet-500/30 p-6">
+                <h3 class="text-lg font-semibold text-violet-400 mb-4">Loss Breakdown by Component</h3>
+                <div id="barChart" style="height: 350px;"></div>
+            </div>
+        </div>
+
+        <div class="bg-gray-800 rounded-xl border border-violet-500/30 p-6">
+            <h3 class="text-lg font-semibold text-violet-400 mb-4">Loss vs Load Current</h3>
+            <div id="lossVsLoadChart" style="height: 300px;"></div>
+        </div>
+
+        <!-- Loss Table -->
+        <div class="bg-gray-800 rounded-xl border border-violet-500/30 p-6 mt-6">
+            <h3 class="text-lg font-semibold text-violet-400 mb-4">Detailed Loss Table</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="py-2 px-4 text-left">Loss Component</th>
+                            <th class="py-2 px-4 text-right">Power (mW)</th>
+                            <th class="py-2 px-4 text-right">Percentage</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lossTable">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function updateLoss() {
+            const vin = parseFloat(document.getElementById('vin').value);
+            const vout = parseFloat(document.getElementById('vout').value);
+            const iout = parseFloat(document.getElementById('iout').value);
+            const fsw = parseFloat(document.getElementById('fsw').value) * 1000;
+            const rdsHs = parseFloat(document.getElementById('rdsHs').value) * 1e-3;
+            const rdsLs = parseFloat(document.getElementById('rdsLs').value) * 1e-3;
+            const qg = parseFloat(document.getElementById('qg').value) * 1e-9;
+            const tsw = parseFloat(document.getElementById('tsw').value) * 1e-9;
+            const dcr = parseFloat(document.getElementById('dcr').value) * 1e-3;
+            const coreCoeff = parseFloat(document.getElementById('core').value);
+            const L = parseFloat(document.getElementById('L').value) * 1e-6;
+
+            // Update displays
+            document.getElementById('vinVal').textContent = vin + 'V';
+            document.getElementById('voutVal').textContent = vout + 'V';
+            document.getElementById('ioutVal').textContent = iout + 'A';
+            document.getElementById('fswVal').textContent = (fsw/1000) + 'kHz';
+            document.getElementById('rdsHsVal').textContent = (rdsHs*1000).toFixed(1) + 'mΩ';
+            document.getElementById('rdsLsVal').textContent = (rdsLs*1000).toFixed(1) + 'mΩ';
+            document.getElementById('qgVal').textContent = (qg*1e9).toFixed(0) + 'nC';
+            document.getElementById('tswVal').textContent = (tsw*1e9).toFixed(0) + 'ns';
+            document.getElementById('dcrVal').textContent = (dcr*1000).toFixed(1) + 'mΩ';
+            document.getElementById('coreVal').textContent = coreCoeff.toFixed(2);
+            document.getElementById('lVal').textContent = (L*1e6).toFixed(1) + 'µH';
+
+            const duty = vout / vin;
+            const pout = vout * iout;
+
+            // Loss calculations
+            const pCondHs = iout * iout * rdsHs * duty;
+            const pCondLs = iout * iout * rdsLs * (1 - duty);
+            const pSwOn = 0.5 * vin * iout * (tsw / 2) * fsw;
+            const pSwOff = 0.5 * vin * iout * (tsw / 2) * fsw;
+            const vgate = 10;
+            const pGate = qg * vgate * fsw * 2;
+            const pDcr = iout * iout * dcr;
+            const deltaI = (vin - vout) * duty / (L * fsw);
+            const pCore = coreCoeff * deltaI * deltaI * fsw / 1e6;
+            const pDeadTime = 0.7 * iout * 20e-9 * fsw * 2;
+
+            const ploss = pCondHs + pCondLs + pSwOn + pSwOff + pGate + pDcr + pCore + pDeadTime;
+            const pin = pout + ploss;
+            const eff = (pout / pin) * 100;
+
+            document.getElementById('ploss').textContent = ploss.toFixed(2) + 'W';
+            document.getElementById('eff').textContent = eff.toFixed(1) + '%';
+            document.getElementById('pout').textContent = pout.toFixed(1) + 'W';
+            document.getElementById('pin').textContent = pin.toFixed(1) + 'W';
+
+            const losses = [
+                { name: 'HS Conduction', value: pCondHs * 1000, color: '#ef4444' },
+                { name: 'LS Conduction', value: pCondLs * 1000, color: '#f97316' },
+                { name: 'Turn-On', value: pSwOn * 1000, color: '#eab308' },
+                { name: 'Turn-Off', value: pSwOff * 1000, color: '#84cc16' },
+                { name: 'Gate Drive', value: pGate * 1000, color: '#22c55e' },
+                { name: 'Inductor DCR', value: pDcr * 1000, color: '#06b6d4' },
+                { name: 'Core Loss', value: pCore * 1000, color: '#3b82f6' },
+                { name: 'Dead Time', value: pDeadTime * 1000, color: '#8b5cf6' }
+            ];
+
+            // Pie chart
+            Plotly.react('pieChart', [{
+                values: losses.map(l => l.value),
+                labels: losses.map(l => l.name),
+                type: 'pie',
+                marker: { colors: losses.map(l => l.color) },
+                textinfo: 'percent',
+                hovertemplate: '%{label}: %{value:.1f} mW<extra></extra>'
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#9ca3af' }, margin: { t: 20, r: 30, b: 20, l: 30 },
+                showlegend: true, legend: { x: 1.05, y: 0.5 }
+            }, { responsive: true });
+
+            // Bar chart
+            Plotly.react('barChart', [{
+                x: losses.map(l => l.name),
+                y: losses.map(l => l.value),
+                type: 'bar',
+                marker: { color: losses.map(l => l.color) }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#9ca3af' }, margin: { t: 20, r: 30, b: 100, l: 60 },
+                xaxis: { gridcolor: '#374151', tickangle: -45 },
+                yaxis: { title: 'Power Loss (mW)', gridcolor: '#374151' }
+            }, { responsive: true });
+
+            // Loss vs Load
+            const loads = [], totalLosses = [], condLosses = [], swLosses = [], magLosses = [];
+            for (let i = 1; i <= 25; i += 1) {
+                loads.push(i);
+                const pc = i * i * (rdsHs * duty + rdsLs * (1 - duty) + dcr);
+                const ps = 0.5 * vin * i * tsw * fsw + qg * vgate * fsw * 2;
+                const di = (vin - vout) * duty / (L * fsw);
+                const pm = coreCoeff * di * di * fsw / 1e6;
+                condLosses.push(pc * 1000);
+                swLosses.push(ps * 1000);
+                magLosses.push(pm * 1000);
+                totalLosses.push((pc + ps + pm) * 1000);
+            }
+
+            Plotly.react('lossVsLoadChart', [
+                { x: loads, y: condLosses, name: 'Conduction', stackgroup: 'one', fillcolor: 'rgba(239, 68, 68, 0.7)' },
+                { x: loads, y: swLosses, name: 'Switching', stackgroup: 'one', fillcolor: 'rgba(234, 179, 8, 0.7)' },
+                { x: loads, y: magLosses, name: 'Magnetic', stackgroup: 'one', fillcolor: 'rgba(59, 130, 246, 0.7)' }
+            ], {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#9ca3af' }, margin: { t: 20, r: 30, b: 50, l: 60 },
+                xaxis: { title: 'Load Current (A)', gridcolor: '#374151' },
+                yaxis: { title: 'Power Loss (mW)', gridcolor: '#374151' },
+                legend: { x: 0, y: 1.1, orientation: 'h' }
+            }, { responsive: true });
+
+            // Update table
+            const tableBody = document.getElementById('lossTable');
+            tableBody.innerHTML = losses.map(l => `
+                <tr class="border-b border-gray-700/50">
+                    <td class="py-2 px-4">${l.name}</td>
+                    <td class="py-2 px-4 text-right font-mono">${l.value.toFixed(1)}</td>
+                    <td class="py-2 px-4 text-right font-mono">${((l.value / (ploss * 1000)) * 100).toFixed(1)}%</td>
+                </tr>
+            `).join('');
+        }
+
+        updateLoss();
+    </script>
+</body>
+</html>
