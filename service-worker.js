@@ -1,14 +1,17 @@
 // Service Worker for PWA functionality
-const CACHE_NAME = 'portfolio-v1.0.0';
+const CACHE_NAME = 'portfolio-v2.0.0';
 const urlsToCache = [
   '/',
   '/index.html',
   '/styles.css',
-  '/additional-projects.html',
-  '/innovation-projects.html',
-  '/portfolio-enhancements.html',
+  '/styles-advanced.css',
+  '/script.js',
+  '/i18n.js',
   '/manifest.json',
-  '/theme-toggle.js',
+  '/electronics-projects.html',
+  '/photonics-projects.html',
+  '/machine-learning-projects.html',
+  '/innovation-projects.html',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css'
 ];
 
@@ -121,8 +124,8 @@ async function syncMessages() {
 self.addEventListener('push', event => {
   const options = {
     body: event.data ? event.data.text() : 'New update available!',
-    icon: '/icons/icon-192x192.png',
-    badge: '/icons/badge-72x72.png',
+    icon: '/assets/icons/icon-192x192.png',
+    badge: '/assets/icons/icon-72x72.png',
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),
@@ -131,13 +134,11 @@ self.addEventListener('push', event => {
     actions: [
       {
         action: 'explore',
-        title: 'View Projects',
-        icon: '/icons/checkmark.png'
+        title: 'View Projects'
       },
       {
         action: 'close',
-        title: 'Close',
-        icon: '/icons/xmark.png'
+        title: 'Close'
       }
     ]
   };
