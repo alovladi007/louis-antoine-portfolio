@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Examples - Climate Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <style>.gradient-bg { background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); }</style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-cyan-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="climate-complete-project.html" class="flex items-center text-cyan-400 hover:text-cyan-300">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Climate Suite
+                </a>
+                <span class="text-cyan-400 font-semibold">Code Examples</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl font-bold mb-4"><i class="fas fa-code mr-4"></i>Code Examples</h1>
+            <p class="text-xl text-cyan-100">Production-ready code snippets for climate and energy forecasting</p>
+        </div>
+    </section>
+
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Prophet Forecasting -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-cyan-400 mb-4">
+                <i class="fas fa-chart-line mr-2"></i>Prophet Demand Forecasting
+            </h2>
+            <div class="bg-gray-800 rounded-xl p-6 border border-cyan-500/30">
+                <p class="text-gray-300 mb-4">Complete energy demand forecasting with seasonality and holidays.</p>
+                <pre><code class="language-python">import pandas as pd
+from prophet import Prophet
+from prophet.diagnostics import cross_validation, performance_metrics
+import holidays
+
+class EnergyDemandForecaster:
+    """Prophet-based energy demand forecasting with custom seasonality."""
+
+    def __init__(self, region='US', include_holidays=True):
+        self.region = region
+        self.include_holidays = include_holidays
+        self.model = None
+
+    def prepare_data(self, df, date_col='timestamp', demand_col='demand_mw'):
+        """Prepare data for Prophet (requires 'ds' and 'y' columns)."""
+        prophet_df = df[[date_col, demand_col]].copy()
+        prophet_df.columns = ['ds', 'y']
+        prophet_df['ds'] = pd.to_datetime(prophet_df['ds'])
+        return prophet_df
+
+    def add_weather_regressors(self, df, weather_df):
+        """Add temperature and humidity as external regressors."""
+        merged = df.merge(weather_df, left_on='ds', right_on='timestamp', how='left')
+        merged = merged.ffill()  # Forward fill missing weather data
+        return merged
+
+    def build_model(self):
+        """Initialize Prophet with custom configuration."""
+        self.model = Prophet(
+            yearly_seasonality=True,
+            weekly_seasonality=True,
+            daily_seasonality=True,
+            seasonality_mode='multiplicative',
+            changepoint_prior_scale=0.05,
+            seasonality_prior_scale=10,
+            interval_width=0.90
+        )
+
+        # Add hourly seasonality for fine-grained patterns
+        self.model.add_seasonality(
+            name='hourly',
+            period=1,
+            fourier_order=8
+        )
+
+        # Add US holidays
+        if self.include_holidays:
+            self.model.add_country_holidays(country_name=self.region)
+
+        # Add weather regressors
+        self.model.add_regressor('temperature', mode='multiplicative')
+        self.model.add_regressor('humidity', mode='additive')
+
+        return self.model
+
+    def fit(self, df):
+        """Train the forecasting model."""
+        if self.model is None:
+            self.build_model()
+        self.model.fit(df)
+        return self
+
+    def predict(self, periods=168, freq='H', include_weather=None):
+        """Generate forecast for specified horizon."""
+        future = self.model.make_future_dataframe(periods=periods, freq=freq)
+
+        if include_weather is not None:
+            future = future.merge(include_weather, left_on='ds',
+                                  right_on='timestamp', how='left')
+            future[['temperature', 'humidity']] = future[['temperature', 'humidity']].ffill()
+
+        forecast = self.model.predict(future)
+        return forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper',
+                        'trend', 'weekly', 'yearly', 'daily']]
+
+    def evaluate(self, initial='730 days', period='180 days', horizon='7 days'):
+        """Cross-validate model performance."""
+        cv_results = cross_validation(
+            self.model,
+            initial=initial,
+            period=period,
+            horizon=horizon
+        )
+        metrics = performance_metrics(cv_results)
+        return {
+            'mape': metrics['mape'].mean(),
+            'rmse': metrics['rmse'].mean(),
+            'mae': metrics['mae'].mean(),
+            'coverage': metrics['coverage'].mean()
+        }
+
+# Usage Example
+if __name__ == '__main__':
+    # Load historical demand data
+    demand_data = pd.read_csv('energy_demand.csv')
+    weather_data = pd.read_csv('weather_forecast.csv')
+
+    forecaster = EnergyDemandForecaster(region='US')
+    df = forecaster.prepare_data(demand_data)
+    df = forecaster.add_weather_regressors(df, weather_data)
+
+    forecaster.fit(df)
+
+    # Generate 7-day hourly forecast
+    forecast = forecaster.predict(periods=168)
+    print(f"Peak demand next 7 days: {forecast['yhat'].max():.0f} MW")</code></pre>
+            </div>
+        </section>
+
+        <!-- LSTM Model -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-cyan-400 mb-4">
+                <i class="fas fa-brain mr-2"></i>LSTM Sequence Forecasting
+            </h2>
+            <div class="bg-gray-800 rounded-xl p-6 border border-cyan-500/30">
+                <p class="text-gray-300 mb-4">Deep learning approach for capturing complex temporal patterns.</p>
+                <pre><code class="language-python">import numpy as np
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense, Dropout, Bidirectional
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
+from sklearn.preprocessing import MinMaxScaler
+
+class LSTMForecaster:
+    """LSTM-based time series forecasting for energy demand."""
+
+    def __init__(self, sequence_length=168, n_features=5, forecast_horizon=24):
+        self.sequence_length = sequence_length
+        self.n_features = n_features
+        self.forecast_horizon = forecast_horizon
+        self.scaler = MinMaxScaler()
+        self.model = None
+
+    def create_sequences(self, data, target_col=0):
+        """Create sliding window sequences for LSTM training."""
+        X, y = [], []
+        for i in range(len(data) - self.sequence_length - self.forecast_horizon + 1):
+            X.append(data[i:i + self.sequence_length])
+            y.append(data[i + self.sequence_length:
+                         i + self.sequence_length + self.forecast_horizon, target_col])
+        return np.array(X), np.array(y)
+
+    def build_model(self):
+        """Construct bidirectional LSTM architecture."""
+        self.model = Sequential([
+            Bidirectional(
+                LSTM(128, return_sequences=True, dropout=0.2),
+                input_shape=(self.sequence_length, self.n_features)
+            ),
+            Bidirectional(LSTM(64, return_sequences=True, dropout=0.2)),
+            Bidirectional(LSTM(32, dropout=0.2)),
+            Dense(64, activation='relu'),
+            Dropout(0.3),
+            Dense(32, activation='relu'),
+            Dense(self.forecast_horizon)
+        ])
+
+        self.model.compile(
+            optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
+            loss='huber',
+            metrics=['mae', 'mape']
+        )
+
+        return self.model
+
+    def fit(self, X_train, y_train, X_val, y_val, epochs=100, batch_size=32):
+        """Train the LSTM model with early stopping."""
+        if self.model is None:
+            self.build_model()
+
+        callbacks = [
+            EarlyStopping(monitor='val_loss', patience=15, restore_best_weights=True),
+            ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=1e-6)
+        ]
+
+        history = self.model.fit(
+            X_train, y_train,
+            validation_data=(X_val, y_val),
+            epochs=epochs,
+            batch_size=batch_size,
+            callbacks=callbacks,
+            verbose=1
+        )
+
+        return history
+
+    def predict(self, X):
+        """Generate multi-step forecast."""
+        predictions = self.model.predict(X)
+        return self.scaler.inverse_transform(
+            np.hstack([predictions, np.zeros((len(predictions), self.n_features - 1))])
+        )[:, 0]
+
+    def prepare_data(self, df, feature_cols, target_col='demand_mw', test_size=0.2):
+        """Prepare and scale data for training."""
+        features = df[feature_cols].values
+        scaled = self.scaler.fit_transform(features)
+
+        X, y = self.create_sequences(scaled, target_col=0)
+
+        split_idx = int(len(X) * (1 - test_size))
+        X_train, X_test = X[:split_idx], X[split_idx:]
+        y_train, y_test = y[:split_idx], y[split_idx:]
+
+        return X_train, X_test, y_train, y_test
+
+# Usage
+if __name__ == '__main__':
+    import pandas as pd
+
+    df = pd.read_csv('hourly_demand.csv', parse_dates=['timestamp'])
+    feature_cols = ['demand_mw', 'temperature', 'humidity', 'hour', 'day_of_week']
+
+    forecaster = LSTMForecaster(
+        sequence_length=168,  # 1 week lookback
+        n_features=len(feature_cols),
+        forecast_horizon=24   # 24-hour forecast
+    )
+
+    X_train, X_test, y_train, y_test = forecaster.prepare_data(df, feature_cols)
+    history = forecaster.fit(X_train, y_train, X_test, y_test)
+
+    predictions = forecaster.predict(X_test[-1:])
+    print(f"24-hour forecast: {predictions}")</code></pre>
+            </div>
+        </section>
+
+        <!-- Renewable Energy Optimization -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-cyan-400 mb-4">
+                <i class="fas fa-solar-panel mr-2"></i>Renewable Energy Optimization
+            </h2>
+            <div class="bg-gray-800 rounded-xl p-6 border border-cyan-500/30">
+                <p class="text-gray-300 mb-4">Optimize battery dispatch based on solar/wind forecasts and price signals.</p>
+                <pre><code class="language-python">import numpy as np
+from scipy.optimize import minimize
+from dataclasses import dataclass
+from typing import List, Tuple
+
+@dataclass
+class BatteryConfig:
+    capacity_mwh: float = 100.0
+    max_charge_rate: float = 25.0
+    max_discharge_rate: float = 25.0
+    efficiency: float = 0.92
+    min_soc: float = 0.1
+    max_soc: float = 0.9
+
+class RenewableOptimizer:
+    """Optimize battery dispatch for renewable energy arbitrage."""
+
+    def __init__(self, battery: BatteryConfig):
+        self.battery = battery
+
+    def forecast_solar(self, hours: int, date, latitude: float) -> np.ndarray:
+        """Simple solar generation forecast based on hour and cloud cover."""
+        capacity_mw = 50  # Solar farm capacity
+        generation = np.zeros(hours)
+
+        for h in range(hours):
+            hour = (date.hour + h) % 24
+            if 6 <= hour <= 18:
+                # Peak at noon, using cosine curve
+                solar_factor = np.cos((hour - 12) * np.pi / 12) * 0.5 + 0.5
+                cloud_factor = 0.8 + np.random.random() * 0.2
+                generation[h] = capacity_mw * solar_factor * cloud_factor
+
+        return generation
+
+    def forecast_wind(self, hours: int, avg_wind_speed: float = 12) -> np.ndarray:
+        """Wind generation forecast using simplified power curve."""
+        capacity_mw = 75
+        cut_in = 3
+        rated = 12
+        cut_out = 25
+
+        generation = np.zeros(hours)
+        for h in range(hours):
+            # Simulate varying wind speed
+            wind = avg_wind_speed + np.random.randn() * 3
+
+            if wind < cut_in or wind > cut_out:
+                generation[h] = 0
+            elif wind < rated:
+                generation[h] = capacity_mw * (wind / rated) ** 3
+            else:
+                generation[h] = capacity_mw
+
+        return generation
+
+    def optimize_dispatch(self, demand: np.ndarray, solar: np.ndarray,
+                         wind: np.ndarray, prices: np.ndarray) -> dict:
+        """
+        Optimize battery charge/discharge schedule to minimize cost.
+
+        Args:
+            demand: Hourly demand in MW
+            solar: Hourly solar generation in MW
+            wind: Hourly wind generation in MW
+            prices: Hourly electricity prices in $/MWh
+
+        Returns:
+            Optimal dispatch schedule and cost savings
+        """
+        hours = len(demand)
+        renewable = solar + wind
+        net_demand = demand - renewable
+
+        def objective(x):
+            """Minimize total electricity cost."""
+            charge = x[:hours]
+            discharge = x[hours:]
+            grid_import = net_demand - discharge + charge / self.battery.efficiency
+            return np.sum(np.maximum(grid_import, 0) * prices)
+
+        def soc_constraint(x):
+            """Ensure SOC stays within bounds."""
+            charge = x[:hours]
+            discharge = x[hours:]
+
+            soc = np.zeros(hours + 1)
+            soc[0] = self.battery.capacity_mwh * 0.5  # Start at 50%
+
+            for h in range(hours):
+                soc[h + 1] = soc[h] + charge[h] * self.battery.efficiency - discharge[h]
+
+            min_allowed = self.battery.capacity_mwh * self.battery.min_soc
+            max_allowed = self.battery.capacity_mwh * self.battery.max_soc
+
+            return np.concatenate([
+                soc[1:] - min_allowed,
+                max_allowed - soc[1:]
+            ])
+
+        # Initial guess: charge when cheap, discharge when expensive
+        x0 = np.zeros(hours * 2)
+        median_price = np.median(prices)
+        for h in range(hours):
+            if prices[h] < median_price * 0.8:
+                x0[h] = self.battery.max_charge_rate * 0.5
+            elif prices[h] > median_price * 1.2:
+                x0[hours + h] = self.battery.max_discharge_rate * 0.5
+
+        bounds = (
+            [(0, self.battery.max_charge_rate)] * hours +
+            [(0, self.battery.max_discharge_rate)] * hours
+        )
+
+        result = minimize(
+            objective,
+            x0,
+            method='SLSQP',
+            bounds=bounds,
+            constraints={'type': 'ineq', 'fun': soc_constraint},
+            options={'maxiter': 500}
+        )
+
+        charge = result.x[:hours]
+        discharge = result.x[hours:]
+
+        # Calculate savings
+        baseline_cost = np.sum(np.maximum(net_demand, 0) * prices)
+        optimized_cost = result.fun
+        savings = baseline_cost - optimized_cost
+
+        return {
+            'charge_schedule': charge,
+            'discharge_schedule': discharge,
+            'baseline_cost': baseline_cost,
+            'optimized_cost': optimized_cost,
+            'savings': savings,
+            'savings_pct': (savings / baseline_cost) * 100 if baseline_cost > 0 else 0
+        }
+
+# Usage
+if __name__ == '__main__':
+    from datetime import datetime
+
+    battery = BatteryConfig(capacity_mwh=100, max_charge_rate=25)
+    optimizer = RenewableOptimizer(battery)
+
+    hours = 24
+    demand = np.random.uniform(80, 120, hours)
+    solar = optimizer.forecast_solar(hours, datetime.now(), latitude=37.7749)
+    wind = optimizer.forecast_wind(hours)
+    prices = 50 + 30 * np.sin(np.arange(hours) * np.pi / 12)  # Price peaks mid-day
+
+    result = optimizer.optimize_dispatch(demand, solar, wind, prices)
+    print(f"Daily savings: ${result['savings']:.2f} ({result['savings_pct']:.1f}%)")</code></pre>
+            </div>
+        </section>
+
+        <!-- Anomaly Detection -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-cyan-400 mb-4">
+                <i class="fas fa-exclamation-triangle mr-2"></i>Demand Anomaly Detection
+            </h2>
+            <div class="bg-gray-800 rounded-xl p-6 border border-cyan-500/30">
+                <p class="text-gray-300 mb-4">Detect unusual patterns in energy demand using statistical methods.</p>
+                <pre><code class="language-python">import numpy as np
+import pandas as pd
+from scipy import stats
+from sklearn.ensemble import IsolationForest
+from dataclasses import dataclass
+from typing import List, Optional
+
+@dataclass
+class Anomaly:
+    timestamp: str
+    actual: float
+    expected: float
+    deviation: float
+    zscore: float
+    severity: str
+    anomaly_type: str
+
+class DemandAnomalyDetector:
+    """Multi-method anomaly detection for energy demand."""
+
+    def __init__(self, zscore_threshold: float = 3.0,
+                 isolation_contamination: float = 0.01):
+        self.zscore_threshold = zscore_threshold
+        self.isolation_forest = IsolationForest(
+            contamination=isolation_contamination,
+            random_state=42,
+            n_estimators=200
+        )
+        self.baseline_stats = None
+
+    def compute_baseline(self, df: pd.DataFrame) -> dict:
+        """Compute baseline statistics by hour and day of week."""
+        df['hour'] = pd.to_datetime(df['timestamp']).dt.hour
+        df['dow'] = pd.to_datetime(df['timestamp']).dt.dayofweek
+
+        baseline = df.groupby(['dow', 'hour'])['demand_mw'].agg([
+            'mean', 'std',
+            ('q25', lambda x: x.quantile(0.25)),
+            ('q75', lambda x: x.quantile(0.75))
+        ]).reset_index()
+
+        self.baseline_stats = baseline
+        return baseline
+
+    def zscore_detection(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Detect anomalies using z-score method."""
+        if self.baseline_stats is None:
+            raise ValueError("Must compute baseline first")
+
+        df = df.copy()
+        df['hour'] = pd.to_datetime(df['timestamp']).dt.hour
+        df['dow'] = pd.to_datetime(df['timestamp']).dt.dayofweek
+
+        merged = df.merge(self.baseline_stats, on=['dow', 'hour'])
+        merged['zscore'] = (merged['demand_mw'] - merged['mean']) / merged['std']
+        merged['is_anomaly'] = np.abs(merged['zscore']) > self.zscore_threshold
+
+        return merged
+
+    def isolation_forest_detection(self, df: pd.DataFrame,
+                                   feature_cols: List[str]) -> np.ndarray:
+        """Detect anomalies using Isolation Forest."""
+        features = df[feature_cols].values
+        predictions = self.isolation_forest.fit_predict(features)
+        return predictions == -1  # -1 indicates anomaly
+
+    def classify_anomaly(self, actual: float, expected: float,
+                        zscore: float) -> tuple:
+        """Classify anomaly type and severity."""
+        deviation_pct = ((actual - expected) / expected) * 100
+
+        # Determine type
+        if actual > expected:
+            anomaly_type = 'demand_spike'
+        else:
+            anomaly_type = 'demand_drop'
+
+        # Determine severity
+        abs_z = abs(zscore)
+        if abs_z > 5:
+            severity = 'critical'
+        elif abs_z > 4:
+            severity = 'high'
+        elif abs_z > 3:
+            severity = 'medium'
+        else:
+            severity = 'low'
+
+        return anomaly_type, severity, deviation_pct
+
+    def detect(self, df: pd.DataFrame,
+               feature_cols: Optional[List[str]] = None) -> List[Anomaly]:
+        """Run full anomaly detection pipeline."""
+        if self.baseline_stats is None:
+            self.compute_baseline(df)
+
+        # Z-score detection
+        zscore_df = self.zscore_detection(df)
+
+        # Isolation Forest detection
+        if feature_cols:
+            if_anomalies = self.isolation_forest_detection(df, feature_cols)
+            zscore_df['if_anomaly'] = if_anomalies
+            # Combine: flag if either method detects
+            zscore_df['is_anomaly'] = zscore_df['is_anomaly'] | zscore_df['if_anomaly']
+
+        # Extract anomalies
+        anomalies = []
+        for _, row in zscore_df[zscore_df['is_anomaly']].iterrows():
+            anomaly_type, severity, deviation = self.classify_anomaly(
+                row['demand_mw'], row['mean'], row['zscore']
+            )
+
+            anomalies.append(Anomaly(
+                timestamp=str(row['timestamp']),
+                actual=row['demand_mw'],
+                expected=row['mean'],
+                deviation=deviation,
+                zscore=row['zscore'],
+                severity=severity,
+                anomaly_type=anomaly_type
+            ))
+
+        return sorted(anomalies, key=lambda x: abs(x.zscore), reverse=True)
+
+    def get_summary(self, anomalies: List[Anomaly]) -> dict:
+        """Generate anomaly summary statistics."""
+        if not anomalies:
+            return {'total': 0, 'by_severity': {}, 'by_type': {}}
+
+        return {
+            'total': len(anomalies),
+            'by_severity': {
+                'critical': len([a for a in anomalies if a.severity == 'critical']),
+                'high': len([a for a in anomalies if a.severity == 'high']),
+                'medium': len([a for a in anomalies if a.severity == 'medium']),
+                'low': len([a for a in anomalies if a.severity == 'low'])
+            },
+            'by_type': {
+                'demand_spike': len([a for a in anomalies if a.anomaly_type == 'demand_spike']),
+                'demand_drop': len([a for a in anomalies if a.anomaly_type == 'demand_drop'])
+            },
+            'max_deviation': max(abs(a.deviation) for a in anomalies)
+        }
+
+# Usage
+if __name__ == '__main__':
+    # Load data
+    df = pd.read_csv('hourly_demand.csv')
+
+    detector = DemandAnomalyDetector(zscore_threshold=3.0)
+    detector.compute_baseline(df)
+
+    # Detect in new data
+    recent_data = pd.read_csv('recent_demand.csv')
+    anomalies = detector.detect(recent_data,
+                                feature_cols=['demand_mw', 'temperature', 'hour'])
+
+    summary = detector.get_summary(anomalies)
+    print(f"Found {summary['total']} anomalies")
+    print(f"Critical: {summary['by_severity']['critical']}")</code></pre>
+            </div>
+        </section>
+
+        <!-- Real-time Streaming -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-cyan-400 mb-4">
+                <i class="fas fa-stream mr-2"></i>Real-time Streaming Pipeline
+            </h2>
+            <div class="bg-gray-800 rounded-xl p-6 border border-cyan-500/30">
+                <p class="text-gray-300 mb-4">Apache Kafka integration for real-time demand forecasting.</p>
+                <pre><code class="language-python">import json
+from datetime import datetime
+from kafka import KafkaConsumer, KafkaProducer
+from typing import Dict, Any
+import numpy as np
+
+class RealTimeForecaster:
+    """Real-time demand forecasting with Kafka streaming."""
+
+    def __init__(self, bootstrap_servers: str = 'localhost:9092',
+                 input_topic: str = 'demand-readings',
+                 output_topic: str = 'demand-forecasts'):
+        self.producer = KafkaProducer(
+            bootstrap_servers=bootstrap_servers,
+            value_serializer=lambda v: json.dumps(v).encode('utf-8')
+        )
+        self.consumer = KafkaConsumer(
+            input_topic,
+            bootstrap_servers=bootstrap_servers,
+            value_deserializer=lambda m: json.loads(m.decode('utf-8')),
+            group_id='forecaster-group',
+            auto_offset_reset='latest'
+        )
+        self.output_topic = output_topic
+        self.window_size = 168  # 1 week of hourly data
+        self.buffer = []
+        self.model = None
+
+    def update_buffer(self, reading: Dict[str, Any]):
+        """Maintain sliding window of recent readings."""
+        self.buffer.append({
+            'timestamp': reading['timestamp'],
+            'demand_mw': reading['demand_mw'],
+            'temperature': reading.get('temperature', 0),
+            'humidity': reading.get('humidity', 0)
+        })
+
+        # Keep only the last window_size readings
+        if len(self.buffer) > self.window_size:
+            self.buffer = self.buffer[-self.window_size:]
+
+    def generate_forecast(self, horizon: int = 24) -> Dict[str, Any]:
+        """Generate short-term forecast from buffer data."""
+        if len(self.buffer) < 24:
+            return None
+
+        # Simple exponential smoothing for real-time
+        values = [r['demand_mw'] for r in self.buffer]
+        alpha = 0.3
+
+        # Calculate baseline from recent values
+        smoothed = values[0]
+        for v in values[1:]:
+            smoothed = alpha * v + (1 - alpha) * smoothed
+
+        # Calculate hourly pattern from last week
+        hourly_pattern = np.zeros(24)
+        hourly_counts = np.zeros(24)
+
+        for reading in self.buffer:
+            hour = datetime.fromisoformat(reading['timestamp']).hour
+            hourly_pattern[hour] += reading['demand_mw']
+            hourly_counts[hour] += 1
+
+        hourly_avg = np.where(hourly_counts > 0,
+                              hourly_pattern / hourly_counts,
+                              smoothed)
+
+        # Generate forecast
+        current_hour = datetime.fromisoformat(self.buffer[-1]['timestamp']).hour
+        forecasts = []
+
+        for h in range(horizon):
+            forecast_hour = (current_hour + h + 1) % 24
+
+            # Blend smoothed value with hourly pattern
+            base = 0.7 * smoothed + 0.3 * hourly_avg[forecast_hour]
+
+            # Add confidence interval
+            std = np.std(values[-24:]) if len(values) >= 24 else np.std(values)
+
+            forecasts.append({
+                'hour_ahead': h + 1,
+                'forecast_mw': round(base, 1),
+                'lower_bound': round(base - 1.96 * std, 1),
+                'upper_bound': round(base + 1.96 * std, 1)
+            })
+
+        return {
+            'generated_at': datetime.now().isoformat(),
+            'horizon_hours': horizon,
+            'forecasts': forecasts,
+            'model': 'exponential_smoothing',
+            'buffer_size': len(self.buffer)
+        }
+
+    def publish_forecast(self, forecast: Dict[str, Any]):
+        """Publish forecast to Kafka topic."""
+        self.producer.send(self.output_topic, forecast)
+        self.producer.flush()
+
+    def run(self, forecast_interval: int = 60):
+        """Main processing loop."""
+        last_forecast_time = 0
+
+        print(f"Starting real-time forecaster...")
+        print(f"Consuming from: {self.consumer.subscription()}")
+        print(f"Publishing to: {self.output_topic}")
+
+        for message in self.consumer:
+            reading = message.value
+            self.update_buffer(reading)
+
+            current_time = datetime.now().timestamp()
+
+            # Generate forecast every interval seconds
+            if current_time - last_forecast_time >= forecast_interval:
+                forecast = self.generate_forecast()
+
+                if forecast:
+                    self.publish_forecast(forecast)
+                    print(f"Published forecast: {forecast['forecasts'][0]['forecast_mw']} MW (1h ahead)")
+
+                last_forecast_time = current_time
+
+# Usage
+if __name__ == '__main__':
+    forecaster = RealTimeForecaster(
+        bootstrap_servers='kafka:9092',
+        input_topic='grid-demand',
+        output_topic='demand-forecasts'
+    )
+    forecaster.run(forecast_interval=300)  # Forecast every 5 minutes</code></pre>
+            </div>
+        </section>
+
+        <!-- API Client -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-cyan-400 mb-4">
+                <i class="fas fa-plug mr-2"></i>Climate API Client
+            </h2>
+            <div class="bg-gray-800 rounded-xl p-6 border border-cyan-500/30">
+                <p class="text-gray-300 mb-4">Python client for the Climate Forecasting API.</p>
+                <pre><code class="language-python">import requests
+from typing import Optional, Dict, Any, List
+from datetime import datetime, timedelta
+from dataclasses import dataclass
+
+@dataclass
+class ForecastResult:
+    forecast_id: str
+    predictions: List[Dict]
+    model_version: str
+    metrics: Dict
+
+class ClimateAPIClient:
+    """Client for Climate & Energy Forecasting API."""
+
+    def __init__(self, api_key: str, base_url: str = 'https://api.climate-forecast.io/v1'):
+        self.api_key = api_key
+        self.base_url = base_url
+        self.session = requests.Session()
+        self.session.headers.update({
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json'
+        })
+
+    def _request(self, method: str, endpoint: str, **kwargs) -> Dict:
+        """Make authenticated API request."""
+        url = f"{self.base_url}{endpoint}"
+        response = self.session.request(method, url, **kwargs)
+        response.raise_for_status()
+        return response.json()
+
+    def get_forecast(self,
+                     target: str = 'energy_demand',
+                     region: str = 'california',
+                     horizon_hours: int = 168,
+                     model: str = 'hybrid',
+                     include_weather: bool = True,
+                     confidence_level: float = 0.90) -> ForecastResult:
+        """
+        Generate demand or weather forecast.
+
+        Args:
+            target: 'energy_demand', 'temperature', 'solar', 'wind'
+            region: Geographic region code
+            horizon_hours: Forecast horizon (1-336)
+            model: 'prophet', 'lstm', or 'hybrid'
+            include_weather: Include weather data in response
+            confidence_level: 0.80, 0.90, or 0.95
+
+        Returns:
+            ForecastResult with predictions and metadata
+        """
+        payload = {
+            'target': target,
+            'region': region,
+            'horizon_hours': horizon_hours,
+            'model': model,
+            'include_weather': include_weather,
+            'confidence_level': confidence_level,
+            'granularity': 'hourly'
+        }
+
+        result = self._request('POST', '/forecast', json=payload)
+
+        return ForecastResult(
+            forecast_id=result['forecast_id'],
+            predictions=result['predictions'],
+            model_version=result['model_version'],
+            metrics=result['metrics']
+        )
+
+    def get_historical(self,
+                       region: str,
+                       start: datetime,
+                       end: datetime,
+                       granularity: str = 'hourly') -> List[Dict]:
+        """Retrieve historical demand and weather data."""
+        params = {
+            'region': region,
+            'start': start.isoformat(),
+            'end': end.isoformat(),
+            'granularity': granularity
+        }
+
+        result = self._request('GET', '/historical', params=params)
+        return result['data']
+
+    def get_weather(self, region: str, days: int = 7) -> List[Dict]:
+        """Get weather forecast for region."""
+        result = self._request('GET', f'/weather/{region}', params={'days': days})
+        return result['forecast']
+
+    def get_anomalies(self,
+                      region: Optional[str] = None,
+                      severity: Optional[str] = None,
+                      limit: int = 50) -> List[Dict]:
+        """Get detected anomalies."""
+        params = {'limit': limit}
+        if region:
+            params['region'] = region
+        if severity:
+            params['severity'] = severity
+
+        result = self._request('GET', '/anomalies', params=params)
+        return result['anomalies']
+
+    def get_renewable_forecast(self,
+                               region: str,
+                               source: str = 'all') -> Dict:
+        """Get renewable energy generation forecast."""
+        params = {'source': source}
+        result = self._request('GET', f'/renewable/{region}', params=params)
+        return result
+
+# Usage
+if __name__ == '__main__':
+    client = ClimateAPIClient(api_key='your-api-key')
+
+    # Get 7-day energy demand forecast
+    forecast = client.get_forecast(
+        target='energy_demand',
+        region='california',
+        horizon_hours=168,
+        model='hybrid'
+    )
+
+    print(f"Forecast ID: {forecast.forecast_id}")
+    print(f"Expected MAPE: {forecast.metrics['expected_mape']}%")
+
+    # Get peak demand
+    peak = max(forecast.predictions, key=lambda p: p['value'])
+    print(f"Peak demand: {peak['value']} MW at {peak['timestamp']}")
+
+    # Check for anomalies
+    anomalies = client.get_anomalies(region='california', severity='critical')
+    if anomalies:
+        print(f"WARNING: {len(anomalies)} critical anomalies detected")</code></pre>
+            </div>
+        </section>
+
+        <!-- Quick Reference -->
+        <section class="mb-8">
+            <h2 class="text-2xl font-bold text-cyan-400 mb-4">Quick Reference</h2>
+            <div class="grid md:grid-cols-2 gap-4">
+                <div class="bg-gray-800 rounded-xl p-4 border border-cyan-500/30">
+                    <h3 class="font-semibold text-white mb-2">Installation</h3>
+                    <pre><code class="language-bash">pip install prophet tensorflow scikit-learn
+pip install kafka-python scipy
+pip install climate-sdk  # Official SDK</code></pre>
+                </div>
+                <div class="bg-gray-800 rounded-xl p-4 border border-cyan-500/30">
+                    <h3 class="font-semibold text-white mb-2">Environment Variables</h3>
+                    <pre><code class="language-bash">export CLIMATE_API_KEY=your_key
+export CLIMATE_API_URL=https://api.climate.io
+export KAFKA_BOOTSTRAP_SERVERS=kafka:9092</code></pre>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>hljs.highlightAll();</script>
+</body>
+</html>

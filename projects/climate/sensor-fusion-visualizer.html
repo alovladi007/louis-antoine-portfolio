@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sensor Fusion Visualizer - Self-Driving Vision</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%); color: #e0e0e0; line-height: 1.6; }
+        .navigation-bar { position: fixed; top: 0; left: 0; right: 0; background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(10px); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; z-index: 1000; border-bottom: 1px solid rgba(102, 126, 234, 0.3); }
+        .nav-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.3s ease; }
+        .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .hero-section { padding: 120px 2rem 4rem; text-align: center; max-width: 1200px; margin: 0 auto; }
+        .hero-title { font-size: 3rem; font-weight: 800; margin-bottom: 1rem; background: linear-gradient(135deg, #667eea, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero-subtitle { font-size: 1.2rem; color: #667eea; margin-bottom: 2rem; }
+        .demo-container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .demo-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; margin-top: 2rem; }
+        .demo-main { background: rgba(102, 126, 234, 0.05); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; }
+        .demo-controls { background: rgba(102, 126, 234, 0.05); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; }
+        .canvas-container { background: #1a1a1a; border-radius: 10px; padding: 1rem; margin: 1rem 0; position: relative; overflow: hidden; }
+        #fusionCanvas { width: 100%; height: 500px; background: #0a0a0a; border-radius: 8px; }
+        .control-group { margin-bottom: 1.5rem; }
+        .control-label { display: block; color: #667eea; font-weight: 600; margin-bottom: 0.5rem; }
+        .control-input { width: 100%; padding: 0.75rem; background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 8px; color: #e0e0e0; font-size: 0.9rem; }
+        .control-slider { width: 100%; margin: 0.5rem 0; }
+        .control-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 8px; cursor: pointer; transition: all 0.3s ease; width: 100%; font-weight: 600; }
+        .control-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .sensor-status { background: rgba(20, 20, 20, 0.8); padding: 1rem; border-radius: 8px; margin: 1rem 0; border-left: 4px solid #667eea; }
+        .sensor-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin: 1rem 0; }
+        .sensor-card { background: rgba(102, 126, 234, 0.1); padding: 1rem; border-radius: 8px; text-align: center; }
+        .sensor-value { font-size: 1.2rem; font-weight: 600; color: #667eea; }
+        .sensor-label { font-size: 0.9rem; color: #a0a0a0; margin-top: 0.25rem; }
+        .sensor-toggle { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
+        .toggle-switch { position: relative; display: inline-block; width: 50px; height: 24px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #667eea; }
+        input:checked + .slider:before { transform: translateX(26px); }
+        @media (max-width: 768px) { .demo-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <nav class="navigation-bar">
+        <div class="nav-title"><i class="fas fa-radar"></i> Sensor Fusion Visualizer</div>
+        <a href="self-driving-vision-complete-suite.html" class="nav-btn"><i class="fas fa-arrow-left"></i> Back to Suite</a>
+    </nav>
+
+    <section class="hero-section">
+        <h1 class="hero-title">Sensor Fusion Visualizer</h1>
+        <p class="hero-subtitle">3D sensor fusion with camera, LiDAR, and radar data</p>
+        <p style="color: #a0a0a0; max-width: 800px; margin: 0 auto;">Interactive 3D visualization combining camera, LiDAR, and radar data with Kalman filtering and multi-modal object tracking for autonomous navigation.</p>
+    </section>
+
+    <div class="demo-container">
+        <div class="demo-grid">
+            <div class="demo-main">
+                <!-- Canvas for 3D visualization -->
+                <div class="canvas-container">
+                    <canvas id="fusionCanvas"></canvas>
+                </div>
+
+                <!-- Sensor Status Display -->
+                <div class="sensor-status">
+                    <h3 style="color: #667eea; margin-bottom: 1rem;">Sensor Fusion Status</h3>
+                    <div class="sensor-grid">
+                        <div class="sensor-card">
+                            <div class="sensor-value" id="cameraObjects">--</div>
+                            <div class="sensor-label">Camera Objects</div>
+                        </div>
+                        <div class="sensor-card">
+                            <div class="sensor-value" id="lidarPoints">--</div>
+                            <div class="sensor-label">LiDAR Points</div>
+                        </div>
+                        <div class="sensor-card">
+                            <div class="sensor-value" id="radarTargets">--</div>
+                            <div class="sensor-label">Radar Targets</div>
+                        </div>
+                        <div class="sensor-card">
+                            <div class="sensor-value" id="fusedObjects">--</div>
+                            <div class="sensor-label">Fused Objects</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="demo-controls">
+                <h3 style="color: #667eea; margin-bottom: 1.5rem;">Sensor Controls</h3>
+                
+                <div class="sensor-toggle">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="cameraToggle" checked>
+                        <span class="slider"></span>
+                    </label>
+                    <label class="control-label">Camera</label>
+                </div>
+
+                <div class="sensor-toggle">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="lidarToggle" checked>
+                        <span class="slider"></span>
+                    </label>
+                    <label class="control-label">LiDAR</label>
+                </div>
+
+                <div class="sensor-toggle">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="radarToggle" checked>
+                        <span class="slider"></span>
+                    </label>
+                    <label class="control-label">Radar</label>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Camera Detection Range (m)</label>
+                    <input type="range" class="control-slider" id="cameraRange" min="10" max="100" value="50">
+                    <span style="color: #a0a0a0; font-size: 0.9rem;" id="cameraRangeValue">50 m</span>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">LiDAR Range (m)</label>
+                    <input type="range" class="control-slider" id="lidarRange" min="20" max="200" value="120">
+                    <span style="color: #a0a0a0; font-size: 0.9rem;" id="lidarRangeValue">120 m</span>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Radar Range (m)</label>
+                    <input type="range" class="control-slider" id="radarRange" min="5" max="150" value="80">
+                    <span style="color: #a0a0a0; font-size: 0.9rem;" id="radarRangeValue">80 m</span>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Fusion Confidence Threshold</label>
+                    <input type="range" class="control-slider" id="confidenceThreshold" min="0.1" max="1.0" step="0.1" value="0.7">
+                    <span style="color: #a0a0a0; font-size: 0.9rem;" id="confidenceValue">0.7</span>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Scenario</label>
+                    <select class="control-input" id="scenarioSelect">
+                        <option value="highway">Highway</option>
+                        <option value="city">City Streets</option>
+                        <option value="intersection">Intersection</option>
+                        <option value="parking">Parking Lot</option>
+                    </select>
+                </div>
+
+                <button class="control-btn" id="startBtn">
+                    <i class="fas fa-play"></i> Start Simulation
+                </button>
+
+                <button class="control-btn" id="resetBtn" style="background: linear-gradient(135deg, #e74c3c, #c0392b); margin-top: 0.5rem;">
+                    <i class="fas fa-redo"></i> Reset
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class SensorFusionVisualizer {
+            constructor() {
+                this.canvas = document.getElementById('fusionCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.setupCanvas();
+                this.setupEventListeners();
+                this.isRunning = false;
+                this.animationId = null;
+                this.frame = 0;
+                
+                // Sensor data
+                this.sensors = {
+                    camera: { enabled: true, range: 50, objects: [] },
+                    lidar: { enabled: true, range: 120, points: [] },
+                    radar: { enabled: true, range: 80, targets: [] }
+                };
+                
+                this.fusedObjects = [];
+                this.confidenceThreshold = 0.7;
+                
+                this.init();
+            }
+
+            setupCanvas() {
+                const rect = this.canvas.getBoundingClientRect();
+                this.canvas.width = rect.width * window.devicePixelRatio;
+                this.canvas.height = 500 * window.devicePixelRatio;
+                this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+                this.canvas.style.width = rect.width + 'px';
+                this.canvas.style.height = '500px';
+            }
+
+            setupEventListeners() {
+                // Sensor toggles
+                document.getElementById('cameraToggle').addEventListener('change', (e) => {
+                    this.sensors.camera.enabled = e.target.checked;
+                });
+
+                document.getElementById('lidarToggle').addEventListener('change', (e) => {
+                    this.sensors.lidar.enabled = e.target.checked;
+                });
+
+                document.getElementById('radarToggle').addEventListener('change', (e) => {
+                    this.sensors.radar.enabled = e.target.checked;
+                });
+
+                // Range sliders
+                document.getElementById('cameraRange').addEventListener('input', (e) => {
+                    document.getElementById('cameraRangeValue').textContent = e.target.value + ' m';
+                    this.sensors.camera.range = parseInt(e.target.value);
+                });
+
+                document.getElementById('lidarRange').addEventListener('input', (e) => {
+                    document.getElementById('lidarRangeValue').textContent = e.target.value + ' m';
+                    this.sensors.lidar.range = parseInt(e.target.value);
+                });
+
+                document.getElementById('radarRange').addEventListener('input', (e) => {
+                    document.getElementById('radarRangeValue').textContent = e.target.value + ' m';
+                    this.sensors.radar.range = parseInt(e.target.value);
+                });
+
+                document.getElementById('confidenceThreshold').addEventListener('input', (e) => {
+                    document.getElementById('confidenceValue').textContent = e.target.value;
+                    this.confidenceThreshold = parseFloat(e.target.value);
+                });
+
+                // Buttons
+                document.getElementById('startBtn').addEventListener('click', () => {
+                    if (this.isRunning) {
+                        this.stopSimulation();
+                    } else {
+                        this.startSimulation();
+                    }
+                });
+
+                document.getElementById('resetBtn').addEventListener('click', () => {
+                    this.resetSimulation();
+                });
+
+                window.addEventListener('resize', () => {
+                    this.setupCanvas();
+                });
+            }
+
+            generateSensorData() {
+                this.frame++;
+                
+                // Generate camera objects (detected vehicles, pedestrians)
+                if (this.sensors.camera.enabled) {
+                    this.sensors.camera.objects = this.generateCameraObjects();
+                } else {
+                    this.sensors.camera.objects = [];
+                }
+
+                // Generate LiDAR point cloud
+                if (this.sensors.lidar.enabled) {
+                    this.sensors.lidar.points = this.generateLidarPoints();
+                } else {
+                    this.sensors.lidar.points = [];
+                }
+
+                // Generate radar targets
+                if (this.sensors.radar.enabled) {
+                    this.sensors.radar.targets = this.generateRadarTargets();
+                } else {
+                    this.sensors.radar.targets = [];
+                }
+
+                // Perform sensor fusion
+                this.performSensorFusion();
+            }
+
+            generateCameraObjects() {
+                const objects = [];
+                const numObjects = 3 + Math.floor(Math.random() * 4);
+                
+                for (let i = 0; i < numObjects; i++) {
+                    const distance = 20 + Math.random() * this.sensors.camera.range;
+                    const angle = (Math.random() - 0.5) * 60; // ±30 degrees
+                    const x = Math.cos(angle * Math.PI / 180) * distance;
+                    const y = Math.sin(angle * Math.PI / 180) * distance;
+                    
+                    objects.push({
+                        x: x,
+                        y: y,
+                        type: Math.random() > 0.7 ? 'pedestrian' : 'vehicle',
+                        confidence: 0.6 + Math.random() * 0.4,
+                        size: Math.random() > 0.7 ? 2 : 4
+                    });
+                }
+                return objects;
+            }
+
+            generateLidarPoints() {
+                const points = [];
+                const numPoints = 200 + Math.floor(Math.random() * 300);
+                
+                for (let i = 0; i < numPoints; i++) {
+                    const distance = 10 + Math.random() * this.sensors.lidar.range;
+                    const angle = (Math.random() - 0.5) * 180; // ±90 degrees
+                    const x = Math.cos(angle * Math.PI / 180) * distance;
+                    const y = Math.sin(angle * Math.PI / 180) * distance;
+                    const z = (Math.random() - 0.5) * 10; // ±5m height
+                    
+                    points.push({
+                        x: x,
+                        y: y,
+                        z: z,
+                        intensity: Math.random()
+                    });
+                }
+                return points;
+            }
+
+            generateRadarTargets() {
+                const targets = [];
+                const numTargets = 2 + Math.floor(Math.random() * 3);
+                
+                for (let i = 0; i < numTargets; i++) {
+                    const distance = 10 + Math.random() * this.sensors.radar.range;
+                    const angle = (Math.random() - 0.5) * 60; // ±30 degrees
+                    const x = Math.cos(angle * Math.PI / 180) * distance;
+                    const y = Math.sin(angle * Math.PI / 180) * distance;
+                    const speed = Math.random() * 20; // 0-20 m/s
+                    
+                    targets.push({
+                        x: x,
+                        y: y,
+                        speed: speed,
+                        confidence: 0.7 + Math.random() * 0.3
+                    });
+                }
+                return targets;
+            }
+
+            performSensorFusion() {
+                this.fusedObjects = [];
+                const allObjects = [];
+                
+                // Collect all detected objects with their sensor types
+                this.sensors.camera.objects.forEach(obj => {
+                    allObjects.push({ ...obj, sensor: 'camera' });
+                });
+                
+                this.sensors.radar.targets.forEach(obj => {
+                    allObjects.push({ ...obj, sensor: 'radar' });
+                });
+                
+                // Simple clustering for fusion
+                allObjects.forEach(obj => {
+                    let fused = false;
+                    
+                    for (let fusedObj of this.fusedObjects) {
+                        const distance = Math.sqrt(
+                            Math.pow(obj.x - fusedObj.x, 2) + 
+                            Math.pow(obj.y - fusedObj.y, 2)
+                        );
+                        
+                        if (distance < 10) { // 10m threshold
+                            // Merge objects
+                            fusedObj.confidence = Math.max(fusedObj.confidence, obj.confidence);
+                            fusedObj.sensors = fusedObj.sensors || [fusedObj.sensor];
+                            fusedObj.sensors.push(obj.sensor);
+                            fused = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!fused && obj.confidence >= this.confidenceThreshold) {
+                        this.fusedObjects.push({
+                            ...obj,
+                            sensors: [obj.sensor]
+                        });
+                    }
+                });
+            }
+
+            updateSensorStatus() {
+                document.getElementById('cameraObjects').textContent = this.sensors.camera.objects.length;
+                document.getElementById('lidarPoints').textContent = this.sensors.lidar.points.length;
+                document.getElementById('radarTargets').textContent = this.sensors.radar.targets.length;
+                document.getElementById('fusedObjects').textContent = this.fusedObjects.length;
+            }
+
+            draw() {
+                this.ctx.fillStyle = '#0a0a0a';
+                this.ctx.fillRect(0, 0, this.canvas.width / window.devicePixelRatio, this.canvas.height / window.devicePixelRatio);
+                
+                // Draw ego vehicle (center)
+                this.drawEgoVehicle();
+                
+                // Draw sensor ranges
+                this.drawSensorRanges();
+                
+                // Draw sensor data
+                if (this.sensors.camera.enabled) {
+                    this.drawCameraObjects();
+                }
+                
+                if (this.sensors.lidar.enabled) {
+                    this.drawLidarPoints();
+                }
+                
+                if (this.sensors.radar.enabled) {
+                    this.drawRadarTargets();
+                }
+                
+                // Draw fused objects
+                this.drawFusedObjects();
+                
+                // Draw coordinate system
+                this.drawCoordinateSystem();
+            }
+
+            drawEgoVehicle() {
+                const centerX = this.canvas.width / window.devicePixelRatio / 2;
+                const centerY = this.canvas.height / window.devicePixelRatio / 2;
+                
+                this.ctx.fillStyle = '#667eea';
+                this.ctx.fillRect(centerX - 15, centerY - 8, 30, 16);
+                
+                this.ctx.fillStyle = '#fff';
+                this.ctx.fillRect(centerX + 10, centerY - 2, 8, 4);
+            }
+
+            drawSensorRanges() {
+                const centerX = this.canvas.width / window.devicePixelRatio / 2;
+                const centerY = this.canvas.height / window.devicePixelRatio / 2;
+                
+                // Camera range
+                if (this.sensors.camera.enabled) {
+                    this.ctx.strokeStyle = 'rgba(102, 126, 234, 0.2)';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.setLineDash([5, 5]);
+                    this.ctx.beginPath();
+                    this.ctx.arc(centerX, centerY, this.sensors.camera.range * 2, -Math.PI/3, Math.PI/3);
+                    this.ctx.stroke();
+                }
+                
+                // LiDAR range
+                if (this.sensors.lidar.enabled) {
+                    this.ctx.strokeStyle = 'rgba(34, 197, 94, 0.2)';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.beginPath();
+                    this.ctx.arc(centerX, centerY, this.sensors.lidar.range * 2, 0, 2 * Math.PI);
+                    this.ctx.stroke();
+                }
+                
+                // Radar range
+                if (this.sensors.radar.enabled) {
+                    this.ctx.strokeStyle = 'rgba(239, 68, 68, 0.2)';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.beginPath();
+                    this.ctx.arc(centerX, centerY, this.sensors.radar.range * 2, -Math.PI/4, Math.PI/4);
+                    this.ctx.stroke();
+                }
+                
+                this.ctx.setLineDash([]);
+            }
+
+            drawCameraObjects() {
+                const centerX = this.canvas.width / window.devicePixelRatio / 2;
+                const centerY = this.canvas.height / window.devicePixelRatio / 2;
+                
+                this.sensors.camera.objects.forEach(obj => {
+                    const x = centerX + obj.x * 2;
+                    const y = centerY + obj.y * 2;
+                    
+                    this.ctx.fillStyle = `rgba(102, 126, 234, ${obj.confidence})`;
+                    this.ctx.fillRect(x - obj.size, y - obj.size, obj.size * 2, obj.size * 2);
+                });
+            }
+
+            drawLidarPoints() {
+                const centerX = this.canvas.width / window.devicePixelRatio / 2;
+                const centerY = this.canvas.height / window.devicePixelRatio / 2;
+                
+                this.sensors.lidar.points.forEach(point => {
+                    const x = centerX + point.x * 2;
+                    const y = centerY + point.y * 2;
+                    
+                    this.ctx.fillStyle = `rgba(34, 197, 94, ${point.intensity})`;
+                    this.ctx.fillRect(x - 1, y - 1, 2, 2);
+                });
+            }
+
+            drawRadarTargets() {
+                const centerX = this.canvas.width / window.devicePixelRatio / 2;
+                const centerY = this.canvas.height / window.devicePixelRatio / 2;
+                
+                this.sensors.radar.targets.forEach(target => {
+                    const x = centerX + target.x * 2;
+                    const y = centerY + target.y * 2;
+                    
+                    this.ctx.fillStyle = `rgba(239, 68, 68, ${target.confidence})`;
+                    this.ctx.beginPath();
+                    this.ctx.arc(x, y, 6, 0, 2 * Math.PI);
+                    this.ctx.fill();
+                });
+            }
+
+            drawFusedObjects() {
+                const centerX = this.canvas.width / window.devicePixelRatio / 2;
+                const centerY = this.canvas.height / window.devicePixelRatio / 2;
+                
+                this.fusedObjects.forEach(obj => {
+                    const x = centerX + obj.x * 2;
+                    const y = centerY + obj.y * 2;
+                    
+                    // Draw fused object with multiple sensor colors
+                    const numSensors = obj.sensors.length;
+                    this.ctx.fillStyle = '#fff';
+                    this.ctx.fillRect(x - 8, y - 8, 16, 16);
+                    
+                    // Draw border based on confidence
+                    this.ctx.strokeStyle = obj.confidence > 0.8 ? '#27ae60' : 
+                                         obj.confidence > 0.6 ? '#f39c12' : '#e74c3c';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.strokeRect(x - 8, y - 8, 16, 16);
+                    
+                    // Draw sensor indicators
+                    if (obj.sensors.includes('camera')) {
+                        this.ctx.fillStyle = '#667eea';
+                        this.ctx.fillRect(x - 6, y - 6, 4, 4);
+                    }
+                    if (obj.sensors.includes('radar')) {
+                        this.ctx.fillStyle = '#ef4444';
+                        this.ctx.fillRect(x + 2, y - 6, 4, 4);
+                    }
+                });
+            }
+
+            drawCoordinateSystem() {
+                const centerX = this.canvas.width / window.devicePixelRatio / 2;
+                const centerY = this.canvas.height / window.devicePixelRatio / 2;
+                
+                // X axis (forward direction)
+                this.ctx.strokeStyle = '#fff';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.moveTo(centerX, centerY);
+                this.ctx.lineTo(centerX + 50, centerY);
+                this.ctx.stroke();
+                
+                // Y axis (lateral direction)
+                this.ctx.beginPath();
+                this.ctx.moveTo(centerX, centerY);
+                this.ctx.lineTo(centerX, centerY - 50);
+                this.ctx.stroke();
+                
+                // Labels
+                this.ctx.fillStyle = '#fff';
+                this.ctx.font = '12px Arial';
+                this.ctx.fillText('X', centerX + 55, centerY + 5);
+                this.ctx.fillText('Y', centerX + 5, centerY - 55);
+            }
+
+            startSimulation() {
+                this.isRunning = true;
+                document.getElementById('startBtn').innerHTML = '<i class="fas fa-pause"></i> Pause';
+                this.animate();
+            }
+
+            stopSimulation() {
+                this.isRunning = false;
+                document.getElementById('startBtn').innerHTML = '<i class="fas fa-play"></i> Start Simulation';
+                if (this.animationId) {
+                    cancelAnimationFrame(this.animationId);
+                }
+            }
+
+            resetSimulation() {
+                this.stopSimulation();
+                this.frame = 0;
+                this.fusedObjects = [];
+                this.updateSensorStatus();
+                this.draw();
+            }
+
+            animate() {
+                if (!this.isRunning) return;
+                
+                this.generateSensorData();
+                this.updateSensorStatus();
+                this.draw();
+                
+                this.animationId = requestAnimationFrame(() => this.animate());
+            }
+
+            init() {
+                this.updateSensorStatus();
+                this.draw();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            new SensorFusionVisualizer();
+        });
+    </script>
+</body>
+</html>

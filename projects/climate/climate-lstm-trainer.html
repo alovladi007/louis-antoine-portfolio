@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LSTM Trainer - Climate Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>.gradient-bg { background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); }</style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-cyan-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="climate-complete-project.html" class="flex items-center text-cyan-400 hover:text-cyan-300">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Climate Suite
+                </a>
+                <span class="text-cyan-400 font-semibold">LSTM Trainer</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-3xl font-bold"><i class="fas fa-brain mr-4"></i>LSTM Model Trainer</h1>
+            <p class="text-cyan-100 mt-2">Train and tune LSTM networks for sequence forecasting</p>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <!-- Configuration -->
+        <div class="grid lg:grid-cols-3 gap-6 mb-6">
+            <div class="bg-gray-800 rounded-xl p-6 border border-cyan-500/30">
+                <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-layer-group mr-2"></i>Architecture</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">LSTM Units: <span id="unitsVal">128</span></label>
+                        <input type="range" id="units" min="32" max="512" step="32" value="128" class="w-full" oninput="document.getElementById('unitsVal').textContent=this.value">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Layers: <span id="layersVal">2</span></label>
+                        <input type="range" id="layers" min="1" max="4" value="2" class="w-full" oninput="document.getElementById('layersVal').textContent=this.value">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Sequence Length: <span id="seqVal">168</span></label>
+                        <input type="range" id="seqLen" min="24" max="336" step="24" value="168" class="w-full" oninput="document.getElementById('seqVal').textContent=this.value">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Dropout: <span id="dropVal">0.2</span></label>
+                        <input type="range" id="dropout" min="0" max="0.5" step="0.1" value="0.2" class="w-full" oninput="document.getElementById('dropVal').textContent=this.value">
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gray-800 rounded-xl p-6 border border-cyan-500/30">
+                <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-cog mr-2"></i>Training Config</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Learning Rate: <span id="lrVal">0.001</span></label>
+                        <input type="range" id="lr" min="0.0001" max="0.01" step="0.0001" value="0.001" class="w-full" oninput="document.getElementById('lrVal').textContent=parseFloat(this.value).toFixed(4)">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Batch Size: <span id="batchVal">32</span></label>
+                        <input type="range" id="batch" min="16" max="128" step="16" value="32" class="w-full" oninput="document.getElementById('batchVal').textContent=this.value">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Epochs: <span id="epochsVal">100</span></label>
+                        <input type="range" id="epochs" min="20" max="200" step="10" value="100" class="w-full" oninput="document.getElementById('epochsVal').textContent=this.value">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Optimizer</label>
+                        <select class="w-full bg-gray-700 rounded px-3 py-2">
+                            <option>Adam</option>
+                            <option>RMSprop</option>
+                            <option>SGD</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gray-800 rounded-xl p-6 border border-cyan-500/30">
+                <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-database mr-2"></i>Data Config</h3>
+                <div class="space-y-3">
+                    <div class="p-3 bg-gray-900 rounded-lg">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-400">Training Samples</span>
+                            <span>52,560</span>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-gray-900 rounded-lg">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-400">Validation Split</span>
+                            <span>20%</span>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-gray-900 rounded-lg">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-400">Features</span>
+                            <span>12</span>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-gray-900 rounded-lg">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-400">Target</span>
+                            <span>Demand (MW)</span>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="startTraining()" class="w-full mt-4 px-4 py-3 bg-cyan-600 hover:bg-cyan-500 rounded-lg font-semibold">
+                    <i class="fas fa-play mr-2"></i>Start Training
+                </button>
+            </div>
+        </div>
+
+        <!-- Training Progress -->
+        <div class="bg-gray-800 rounded-xl p-6 border border-cyan-500/30 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-cyan-400"><i class="fas fa-chart-line mr-2"></i>Training Progress</h3>
+                <span id="trainingStatus" class="px-3 py-1 bg-gray-700 rounded text-sm">Ready</span>
+            </div>
+            <div class="grid lg:grid-cols-2 gap-6">
+                <div>
+                    <div id="lossChart" style="height: 280px;"></div>
+                </div>
+                <div>
+                    <div id="metricsChart" style="height: 280px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div class="grid lg:grid-cols-2 gap-6">
+            <div class="bg-gray-800 rounded-xl p-6 border border-cyan-500/30">
+                <h3 class="text-lg font-semibold text-cyan-400 mb-4">Predictions vs Actual</h3>
+                <div id="predictChart" style="height: 300px;"></div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-6 border border-cyan-500/30">
+                <h3 class="text-lg font-semibold text-cyan-400 mb-4">Error Distribution</h3>
+                <div id="errorChart" style="height: 300px;"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        var trainingInterval = null;
+        var epoch = 0;
+        var trainLoss = [], valLoss = [];
+        var mape = [], rmse = [];
+
+        function startTraining() {
+            if (trainingInterval) return;
+            epoch = 0;
+            trainLoss = []; valLoss = [];
+            mape = []; rmse = [];
+            document.getElementById('trainingStatus').textContent = 'Training...';
+            document.getElementById('trainingStatus').className = 'px-3 py-1 bg-amber-600 rounded text-sm';
+
+            trainingInterval = setInterval(function() {
+                epoch++;
+                trainLoss.push(0.08 * Math.exp(-epoch * 0.03) + 0.01 + Math.random() * 0.002);
+                valLoss.push(0.09 * Math.exp(-epoch * 0.025) + 0.012 + Math.random() * 0.003);
+                mape.push(Math.max(1.5, 8 - epoch * 0.06 + Math.random() * 0.3));
+                rmse.push(Math.max(800, 3500 - epoch * 25 + Math.random() * 100));
+
+                updateCharts();
+
+                if (epoch >= 100) {
+                    clearInterval(trainingInterval);
+                    trainingInterval = null;
+                    document.getElementById('trainingStatus').textContent = 'Completed';
+                    document.getElementById('trainingStatus').className = 'px-3 py-1 bg-green-600 rounded text-sm';
+                    updateResults();
+                }
+            }, 80);
+        }
+
+        function updateCharts() {
+            var epochs = Array.from({length: trainLoss.length}, function(_, i) { return i + 1; });
+
+            Plotly.react('lossChart', [
+                { x: epochs, y: trainLoss, name: 'Train Loss', line: { color: '#06b6d4' } },
+                { x: epochs, y: valLoss, name: 'Val Loss', line: { color: '#f59e0b', dash: 'dash' } }
+            ], {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' }, margin: { l: 50, r: 20, t: 30, b: 40 },
+                title: { text: 'Loss', font: { size: 14 } },
+                xaxis: { title: 'Epoch', gridcolor: '#374151' },
+                yaxis: { title: 'MSE', gridcolor: '#374151' },
+                legend: { x: 0.7, y: 1 }
+            }, { responsive: true });
+
+            Plotly.react('metricsChart', [
+                { x: epochs, y: mape, name: 'MAPE (%)', line: { color: '#10b981' }, yaxis: 'y' },
+                { x: epochs, y: rmse, name: 'RMSE (MW)', line: { color: '#a855f7' }, yaxis: 'y2' }
+            ], {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' }, margin: { l: 50, r: 50, t: 30, b: 40 },
+                title: { text: 'Metrics', font: { size: 14 } },
+                xaxis: { title: 'Epoch', gridcolor: '#374151' },
+                yaxis: { title: 'MAPE (%)', gridcolor: '#374151', side: 'left' },
+                yaxis2: { title: 'RMSE (MW)', overlaying: 'y', side: 'right' },
+                legend: { x: 0.7, y: 0.2 }
+            }, { responsive: true });
+        }
+
+        function updateResults() {
+            var times = [];
+            var actual = [];
+            var predicted = [];
+            for (var i = 0; i < 168; i++) {
+                var t = new Date();
+                t.setHours(t.getHours() + i);
+                times.push(t);
+                var base = 35000 + Math.sin(i * Math.PI / 12) * 8000 + Math.random() * 1000;
+                actual.push(base);
+                predicted.push(base + (Math.random() - 0.5) * 1500);
+            }
+
+            Plotly.react('predictChart', [
+                { x: times, y: actual, name: 'Actual', line: { color: '#10b981' } },
+                { x: times, y: predicted, name: 'Predicted', line: { color: '#06b6d4', dash: 'dot' } }
+            ], {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' }, margin: { l: 60, r: 20, t: 10, b: 40 },
+                yaxis: { title: 'Demand (MW)', gridcolor: '#374151' },
+                legend: { x: 0.7, y: 1 }
+            }, { responsive: true });
+
+            var errors = [];
+            for (var i = 0; i < 1000; i++) {
+                errors.push((Math.random() - 0.5) * 3000);
+            }
+            Plotly.react('errorChart', [{
+                type: 'histogram',
+                x: errors,
+                nbinsx: 40,
+                marker: { color: '#06b6d4' }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' }, margin: { l: 50, r: 20, t: 10, b: 40 },
+                xaxis: { title: 'Error (MW)', gridcolor: '#374151' },
+                yaxis: { title: 'Count', gridcolor: '#374151' }
+            }, { responsive: true });
+        }
+
+        function checkPlotly() {
+            if (typeof Plotly !== 'undefined') { updateCharts(); updateResults(); }
+            else { setTimeout(checkPlotly, 100); }
+        }
+        checkPlotly();
+    </script>
+</body>
+</html>

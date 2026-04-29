@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grid Simulator - Climate Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>.gradient-bg { background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); }</style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-cyan-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="climate-complete-project.html" class="flex items-center text-cyan-400 hover:text-cyan-300">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Climate Suite
+                </a>
+                <span class="text-cyan-400 font-semibold">Grid Simulator</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-3xl font-bold"><i class="fas fa-network-wired mr-4"></i>Grid Load Simulator</h1>
+            <p class="text-cyan-100 mt-2">Simulate grid load balancing and stress scenarios</p>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <!-- Controls -->
+        <div class="bg-gray-800 rounded-xl p-6 border border-cyan-500/30 mb-6">
+            <h3 class="text-lg font-semibold text-cyan-400 mb-4"><i class="fas fa-sliders-h mr-2"></i>Simulation Parameters</h3>
+            <div class="grid md:grid-cols-4 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Base Load: <span id="baseVal">35,000</span> MW</label>
+                    <input type="range" id="baseLoad" min="20000" max="50000" step="1000" value="35000" class="w-full" oninput="document.getElementById('baseVal').textContent=parseInt(this.value).toLocaleString();runSimulation()">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Solar Capacity: <span id="solarVal">10,000</span> MW</label>
+                    <input type="range" id="solarCap" min="0" max="20000" step="500" value="10000" class="w-full" oninput="document.getElementById('solarVal').textContent=parseInt(this.value).toLocaleString();runSimulation()">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Wind Capacity: <span id="windVal">8,000</span> MW</label>
+                    <input type="range" id="windCap" min="0" max="15000" step="500" value="8000" class="w-full" oninput="document.getElementById('windVal').textContent=parseInt(this.value).toLocaleString();runSimulation()">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Battery Storage: <span id="batteryVal">5,000</span> MWh</label>
+                    <input type="range" id="battery" min="0" max="15000" step="500" value="5000" class="w-full" oninput="document.getElementById('batteryVal').textContent=parseInt(this.value).toLocaleString();runSimulation()">
+                </div>
+            </div>
+            <div class="grid md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Scenario</label>
+                    <select id="scenario" class="w-full bg-gray-700 rounded px-3 py-2" onchange="runSimulation()">
+                        <option value="normal">Normal Day</option>
+                        <option value="heatwave">Heat Wave</option>
+                        <option value="cloudy">Cloudy Day</option>
+                        <option value="storm">Storm Event</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Season</label>
+                    <select id="season" class="w-full bg-gray-700 rounded px-3 py-2" onchange="runSimulation()">
+                        <option value="summer">Summer</option>
+                        <option value="winter">Winter</option>
+                        <option value="spring">Spring</option>
+                        <option value="fall">Fall</option>
+                    </select>
+                </div>
+                <div class="md:col-span-2 flex items-end">
+                    <button onclick="runSimulation()" class="w-full px-6 py-2 bg-cyan-600 hover:bg-cyan-500 rounded-lg">
+                        <i class="fas fa-play mr-2"></i>Run Simulation
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grid Status -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-gray-800 rounded-xl p-4 border border-cyan-500/30">
+                <div class="text-gray-400 text-sm">Grid Frequency</div>
+                <div class="text-2xl font-bold text-green-400" id="frequency">60.00 Hz</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-4 border border-cyan-500/30">
+                <div class="text-gray-400 text-sm">Reserve Margin</div>
+                <div class="text-2xl font-bold text-green-400" id="reserve">18.5%</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-4 border border-cyan-500/30">
+                <div class="text-gray-400 text-sm">Renewable %</div>
+                <div class="text-2xl font-bold text-cyan-400" id="renewable">42%</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-4 border border-cyan-500/30">
+                <div class="text-gray-400 text-sm">Grid Status</div>
+                <div class="text-2xl font-bold text-green-400" id="status">STABLE</div>
+            </div>
+        </div>
+
+        <!-- Main Chart -->
+        <div class="bg-gray-800 rounded-xl p-6 border border-cyan-500/30 mb-6">
+            <h3 class="text-lg font-semibold text-cyan-400 mb-4">24-Hour Simulation</h3>
+            <div id="simulationChart" style="height: 400px;"></div>
+        </div>
+
+        <!-- Breakdown Charts -->
+        <div class="grid lg:grid-cols-2 gap-6">
+            <div class="bg-gray-800 rounded-xl p-6 border border-cyan-500/30">
+                <h3 class="text-lg font-semibold text-cyan-400 mb-4">Generation Mix</h3>
+                <div id="mixChart" style="height: 280px;"></div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-6 border border-cyan-500/30">
+                <h3 class="text-lg font-semibold text-cyan-400 mb-4">Battery State of Charge</h3>
+                <div id="batteryChart" style="height: 280px;"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function runSimulation() {
+            var baseLoad = parseInt(document.getElementById('baseLoad').value);
+            var solarCap = parseInt(document.getElementById('solarCap').value);
+            var windCap = parseInt(document.getElementById('windCap').value);
+            var batteryCap = parseInt(document.getElementById('battery').value);
+            var scenario = document.getElementById('scenario').value;
+
+            var hours = Array.from({length: 24}, function(_, i) { return i + ':00'; });
+            var demand = [];
+            var solar = [];
+            var wind = [];
+            var gas = [];
+            var battery = [];
+            var soc = [50]; // Start at 50%
+
+            var scenarioMult = scenario === 'heatwave' ? 1.3 : scenario === 'storm' ? 0.8 : 1;
+            var solarMult = scenario === 'cloudy' ? 0.4 : scenario === 'storm' ? 0.2 : 1;
+            var windMult = scenario === 'storm' ? 1.5 : 1;
+
+            for (var i = 0; i < 24; i++) {
+                // Calculate demand
+                var d = baseLoad * scenarioMult + Math.sin((i - 6) * Math.PI / 12) * 8000 * scenarioMult;
+                demand.push(d);
+
+                // Solar generation
+                var s = Math.max(0, Math.sin((i - 6) * Math.PI / 12) * solarCap * solarMult);
+                solar.push(s);
+
+                // Wind generation
+                var w = windCap * (0.3 + Math.random() * 0.4) * windMult;
+                wind.push(w);
+
+                // Net demand after renewables
+                var net = d - s - w;
+
+                // Battery dispatch
+                var batteryPower = 0;
+                if (net > 0 && soc[soc.length - 1] > 10) {
+                    batteryPower = Math.min(net * 0.3, batteryCap * 0.2, soc[soc.length - 1] / 100 * batteryCap);
+                    soc.push(soc[soc.length - 1] - (batteryPower / batteryCap) * 100);
+                } else if (net < 0 && soc[soc.length - 1] < 90) {
+                    batteryPower = -Math.min(-net * 0.5, batteryCap * 0.2);
+                    soc.push(Math.min(100, soc[soc.length - 1] - (batteryPower / batteryCap) * 100));
+                } else {
+                    soc.push(soc[soc.length - 1]);
+                }
+                battery.push(-batteryPower);
+
+                // Gas fills the rest
+                gas.push(Math.max(0, net - batteryPower));
+            }
+
+            // Update KPIs
+            var totalRenewable = (solar.reduce(function(a,b){return a+b;},0) + wind.reduce(function(a,b){return a+b;},0));
+            var totalDemand = demand.reduce(function(a,b){return a+b;},0);
+            var renewablePercent = Math.round(totalRenewable / totalDemand * 100);
+            var peakDemand = Math.max.apply(null, demand);
+            var totalCapacity = solarCap + windCap + 50000; // Assume 50GW gas
+            var reserveMargin = Math.round((totalCapacity - peakDemand) / peakDemand * 100);
+
+            document.getElementById('renewable').textContent = renewablePercent + '%';
+            document.getElementById('reserve').textContent = reserveMargin + '%';
+            document.getElementById('reserve').className = 'text-2xl font-bold ' + (reserveMargin < 10 ? 'text-red-400' : reserveMargin < 15 ? 'text-amber-400' : 'text-green-400');
+            document.getElementById('status').textContent = reserveMargin < 10 ? 'STRESSED' : reserveMargin < 15 ? 'TIGHT' : 'STABLE';
+            document.getElementById('status').className = 'text-2xl font-bold ' + (reserveMargin < 10 ? 'text-red-400' : reserveMargin < 15 ? 'text-amber-400' : 'text-green-400');
+
+            // Main chart
+            Plotly.react('simulationChart', [
+                { x: hours, y: demand, name: 'Demand', line: { color: '#ef4444', width: 3 } },
+                { x: hours, y: solar, name: 'Solar', stackgroup: 'gen', fillcolor: 'rgba(251, 191, 36, 0.7)' },
+                { x: hours, y: wind, name: 'Wind', stackgroup: 'gen', fillcolor: 'rgba(6, 182, 212, 0.7)' },
+                { x: hours, y: gas, name: 'Gas', stackgroup: 'gen', fillcolor: 'rgba(156, 163, 175, 0.7)' },
+                { x: hours, y: battery, name: 'Battery', type: 'bar', marker: { color: battery.map(function(b) { return b > 0 ? '#a855f7' : '#10b981'; }) } }
+            ], {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' }, margin: { l: 60, r: 20, t: 20, b: 40 },
+                yaxis: { title: 'MW', gridcolor: '#374151' },
+                legend: { x: 0, y: 1.15, orientation: 'h' },
+                barmode: 'relative'
+            }, { responsive: true });
+
+            // Mix chart
+            var avgSolar = solar.reduce(function(a,b){return a+b;},0) / 24;
+            var avgWind = wind.reduce(function(a,b){return a+b;},0) / 24;
+            var avgGas = gas.reduce(function(a,b){return a+b;},0) / 24;
+            Plotly.react('mixChart', [{
+                type: 'pie',
+                values: [avgSolar, avgWind, avgGas],
+                labels: ['Solar', 'Wind', 'Gas'],
+                marker: { colors: ['#fbbf24', '#06b6d4', '#6b7280'] },
+                hole: 0.4
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)', font: { color: '#fff' },
+                margin: { l: 20, r: 20, t: 20, b: 20 }
+            }, { responsive: true });
+
+            // Battery chart
+            Plotly.react('batteryChart', [{
+                x: hours, y: soc.slice(0, 24), fill: 'tozeroy',
+                fillcolor: 'rgba(168, 85, 247, 0.3)', line: { color: '#a855f7', width: 2 }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' }, margin: { l: 50, r: 20, t: 10, b: 40 },
+                yaxis: { title: 'SOC %', range: [0, 100], gridcolor: '#374151' }
+            }, { responsive: true });
+        }
+
+        function checkPlotly() {
+            if (typeof Plotly !== 'undefined') { runSimulation(); }
+            else { setTimeout(checkPlotly, 100); }
+        }
+        checkPlotly();
+    </script>
+</body>
+</html>
