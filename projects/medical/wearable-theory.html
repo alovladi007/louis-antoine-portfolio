@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Theory & Background - Wearable Health Monitor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%); }
+        .card-gradient { background: linear-gradient(180deg, rgba(249, 115, 22, 0.1) 0%, rgba(234, 88, 12, 0.05) 100%); border: 1px solid rgba(249, 115, 22, 0.2); }
+        .nav-blur { backdrop-filter: blur(12px); background: rgba(15, 15, 35, 0.8); }
+        .equation-box { background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(249, 115, 22, 0.3); }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-gray-100">
+    <nav class="fixed top-0 w-full z-50 nav-blur border-b border-orange-500/20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-4">
+                    <a href="wearable-complete-project.html" class="text-orange-400 hover:text-orange-300"><i class="fas fa-arrow-left mr-2"></i>Back to Suite</a>
+                    <span class="text-gray-500">|</span>
+                    <span class="text-xl font-bold bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent">Theory & Background</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="pt-20 pb-12 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
+        <!-- Table of Contents -->
+        <div class="card-gradient rounded-xl p-6 mb-8">
+            <h2 class="text-xl font-bold text-orange-300 mb-4"><i class="fas fa-list mr-2"></i>Contents</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <a href="#imu" class="text-gray-300 hover:text-orange-400">1. IMU Sensor Fusion</a>
+                <a href="#ppg" class="text-gray-300 hover:text-orange-400">2. PPG Heart Rate Estimation</a>
+                <a href="#activity" class="text-gray-300 hover:text-orange-400">3. Activity Recognition</a>
+                <a href="#sleep" class="text-gray-300 hover:text-orange-400">4. Sleep Stage Classification</a>
+                <a href="#tinyml" class="text-gray-300 hover:text-orange-400">5. TinyML & Edge Inference</a>
+                <a href="#power" class="text-gray-300 hover:text-orange-400">6. Power Optimization</a>
+            </div>
+        </div>
+
+        <!-- IMU Sensor Fusion -->
+        <section id="imu" class="card-gradient rounded-xl p-6 mb-8">
+            <h2 class="text-2xl font-bold text-orange-300 mb-4"><i class="fas fa-compass mr-2"></i>1. IMU Sensor Fusion</h2>
+
+            <p class="text-gray-300 mb-4">Inertial Measurement Units (IMUs) combine accelerometers, gyroscopes, and magnetometers to estimate orientation. Raw sensor data is noisy and subject to drift, requiring sensor fusion algorithms.</p>
+
+            <h3 class="text-lg font-bold text-orange-200 mb-3">Complementary Filter</h3>
+            <p class="text-gray-300 mb-3">A simple approach combining high-pass filtered gyroscope with low-pass filtered accelerometer:</p>
+            <div class="equation-box rounded-lg p-4 mb-4 text-center">
+                <span id="eq-comp"></span>
+            </div>
+            <p class="text-gray-400 text-sm mb-4">Where α ≈ 0.98 weights the gyroscope for short-term accuracy while correcting drift with accelerometer.</p>
+
+            <h3 class="text-lg font-bold text-orange-200 mb-3">Madgwick Filter</h3>
+            <p class="text-gray-300 mb-3">An efficient gradient descent algorithm for quaternion-based orientation estimation:</p>
+            <div class="equation-box rounded-lg p-4 mb-4 text-center">
+                <span id="eq-madg"></span>
+            </div>
+            <p class="text-gray-300 mb-3">The objective function minimizes the error between measured and predicted gravity direction:</p>
+            <div class="equation-box rounded-lg p-4 mb-4 text-center">
+                <span id="eq-madg-obj"></span>
+            </div>
+
+            <h3 class="text-lg font-bold text-orange-200 mb-3">Extended Kalman Filter (EKF)</h3>
+            <p class="text-gray-300 mb-3">For nonlinear systems, the EKF linearizes around the current estimate:</p>
+            <div class="equation-box rounded-lg p-4 mb-4">
+                <p class="text-gray-300 mb-2"><strong>Predict:</strong></p>
+                <div class="text-center mb-2"><span id="eq-ekf-pred"></span></div>
+                <p class="text-gray-300 mb-2"><strong>Update:</strong></p>
+                <div class="text-center"><span id="eq-ekf-upd"></span></div>
+            </div>
+        </section>
+
+        <!-- PPG Heart Rate -->
+        <section id="ppg" class="card-gradient rounded-xl p-6 mb-8">
+            <h2 class="text-2xl font-bold text-orange-300 mb-4"><i class="fas fa-heartbeat mr-2"></i>2. PPG Heart Rate Estimation</h2>
+
+            <p class="text-gray-300 mb-4">Photoplethysmography (PPG) measures blood volume changes using light absorption. Green LEDs (~530nm) are preferred for wrist-worn devices due to penetration depth and motion artifact resistance.</p>
+
+            <h3 class="text-lg font-bold text-orange-200 mb-3">Signal Processing Pipeline</h3>
+            <ol class="text-gray-300 space-y-2 mb-4 list-decimal list-inside">
+                <li><strong>Bandpass Filtering:</strong> 0.5-4 Hz (30-240 BPM range)</li>
+                <li><strong>Motion Artifact Removal:</strong> Adaptive filtering using accelerometer reference</li>
+                <li><strong>Peak Detection:</strong> Finding systolic peaks in filtered PPG</li>
+                <li><strong>Heart Rate Calculation:</strong> From inter-beat intervals</li>
+            </ol>
+
+            <h3 class="text-lg font-bold text-orange-200 mb-3">Adaptive Noise Cancellation</h3>
+            <p class="text-gray-300 mb-3">LMS adaptive filter removes motion artifacts using accelerometer as reference:</p>
+            <div class="equation-box rounded-lg p-4 mb-4 text-center">
+                <span id="eq-lms"></span>
+            </div>
+
+            <h3 class="text-lg font-bold text-orange-200 mb-3">Heart Rate Variability (HRV)</h3>
+            <p class="text-gray-300 mb-3">Time-domain metrics from RR intervals:</p>
+            <div class="equation-box rounded-lg p-4 mb-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="text-center"><span id="eq-sdnn"></span><p class="text-gray-400 text-xs mt-1">Standard deviation</p></div>
+                    <div class="text-center"><span id="eq-rmssd"></span><p class="text-gray-400 text-xs mt-1">Successive differences</p></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Activity Recognition -->
+        <section id="activity" class="card-gradient rounded-xl p-6 mb-8">
+            <h2 class="text-2xl font-bold text-orange-300 mb-4"><i class="fas fa-running mr-2"></i>3. Activity Recognition</h2>
+
+            <p class="text-gray-300 mb-4">Human Activity Recognition (HAR) classifies movement patterns from accelerometer and gyroscope data using machine learning.</p>
+
+            <h3 class="text-lg font-bold text-orange-200 mb-3">Feature Extraction</h3>
+            <p class="text-gray-300 mb-3">Time-domain features computed over sliding windows (2-5 seconds):</p>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                <div class="bg-gray-900/50 rounded-lg p-3 text-center">
+                    <p class="text-orange-300 font-bold">Mean</p>
+                    <p class="text-gray-400 text-xs">DC component</p>
+                </div>
+                <div class="bg-gray-900/50 rounded-lg p-3 text-center">
+                    <p class="text-orange-300 font-bold">Std Dev</p>
+                    <p class="text-gray-400 text-xs">Variability</p>
+                </div>
+                <div class="bg-gray-900/50 rounded-lg p-3 text-center">
+                    <p class="text-orange-300 font-bold">Energy</p>
+                    <p class="text-gray-400 text-xs">Signal power</p>
+                </div>
+                <div class="bg-gray-900/50 rounded-lg p-3 text-center">
+                    <p class="text-orange-300 font-bold">Entropy</p>
+                    <p class="text-gray-400 text-xs">Complexity</p>
+                </div>
+            </div>
+
+            <h3 class="text-lg font-bold text-orange-200 mb-3">Signal Magnitude Area (SMA)</h3>
+            <div class="equation-box rounded-lg p-4 mb-4 text-center">
+                <span id="eq-sma"></span>
+            </div>
+
+            <h3 class="text-lg font-bold text-orange-200 mb-3">1D-CNN Architecture</h3>
+            <p class="text-gray-300 mb-3">Convolutional networks learn hierarchical temporal features directly from raw sensor data:</p>
+            <div class="bg-gray-900/50 rounded-lg p-4">
+                <div class="flex flex-wrap items-center justify-center gap-2 text-sm">
+                    <span class="bg-blue-500/30 px-3 py-1 rounded">Input (128×6)</span>
+                    <span>→</span>
+                    <span class="bg-orange-500/30 px-3 py-1 rounded">Conv1D (64)</span>
+                    <span>→</span>
+                    <span class="bg-orange-500/30 px-3 py-1 rounded">Conv1D (128)</span>
+                    <span>→</span>
+                    <span class="bg-purple-500/30 px-3 py-1 rounded">LSTM (64)</span>
+                    <span>→</span>
+                    <span class="bg-green-500/30 px-3 py-1 rounded">Dense (8)</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sleep Classification -->
+        <section id="sleep" class="card-gradient rounded-xl p-6 mb-8">
+            <h2 class="text-2xl font-bold text-orange-300 mb-4"><i class="fas fa-moon mr-2"></i>4. Sleep Stage Classification</h2>
+
+            <p class="text-gray-300 mb-4">Sleep staging from wearables uses movement (actigraphy) and heart rate patterns to classify Awake, REM, Light, and Deep sleep stages.</p>
+
+            <h3 class="text-lg font-bold text-orange-200 mb-3">Sleep Stages</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                <div class="bg-red-500/20 rounded-lg p-3 text-center border border-red-500/30">
+                    <p class="text-red-300 font-bold">Awake</p>
+                    <p class="text-gray-400 text-xs">High movement, variable HR</p>
+                </div>
+                <div class="bg-orange-500/20 rounded-lg p-3 text-center border border-orange-500/30">
+                    <p class="text-orange-300 font-bold">REM</p>
+                    <p class="text-gray-400 text-xs">Low movement, variable HR</p>
+                </div>
+                <div class="bg-blue-500/20 rounded-lg p-3 text-center border border-blue-500/30">
+                    <p class="text-blue-300 font-bold">Light (N1/N2)</p>
+                    <p class="text-gray-400 text-xs">Moderate HR, some movement</p>
+                </div>
+                <div class="bg-indigo-500/20 rounded-lg p-3 text-center border border-indigo-500/30">
+                    <p class="text-indigo-300 font-bold">Deep (N3)</p>
+                    <p class="text-gray-400 text-xs">Low HR, minimal movement</p>
+                </div>
+            </div>
+
+            <h3 class="text-lg font-bold text-orange-200 mb-3">Features for Sleep Staging</h3>
+            <ul class="text-gray-300 space-y-2 list-disc list-inside">
+                <li><strong>Activity Count:</strong> Integrated accelerometer magnitude per epoch (30s)</li>
+                <li><strong>Heart Rate:</strong> Mean and variability within epoch</li>
+                <li><strong>HRV Metrics:</strong> RMSSD (parasympathetic activity indicator)</li>
+                <li><strong>Respiratory Rate:</strong> Derived from PPG or accelerometer</li>
+            </ul>
+        </section>
+
+        <!-- TinyML -->
+        <section id="tinyml" class="card-gradient rounded-xl p-6 mb-8">
+            <h2 class="text-2xl font-bold text-orange-300 mb-4"><i class="fas fa-microchip mr-2"></i>5. TinyML & Edge Inference</h2>
+
+            <p class="text-gray-300 mb-4">TinyML enables machine learning on microcontrollers with severe constraints: <256KB RAM, <1MB Flash, milliwatt power budgets.</p>
+
+            <h3 class="text-lg font-bold text-orange-200 mb-3">Model Quantization</h3>
+            <p class="text-gray-300 mb-3">Convert 32-bit floats to 8-bit integers with minimal accuracy loss:</p>
+            <div class="equation-box rounded-lg p-4 mb-4 text-center">
+                <span id="eq-quant"></span>
+            </div>
+            <p class="text-gray-400 text-sm mb-4">Scale and zero-point are calibrated on representative data.</p>
+
+            <h3 class="text-lg font-bold text-orange-200 mb-3">Optimization Techniques</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-gray-900/50 rounded-lg p-4">
+                    <p class="text-orange-300 font-bold mb-2">Weight Pruning</p>
+                    <p class="text-gray-400 text-sm">Remove near-zero weights, reducing model size by 50-90%</p>
+                </div>
+                <div class="bg-gray-900/50 rounded-lg p-4">
+                    <p class="text-orange-300 font-bold mb-2">Knowledge Distillation</p>
+                    <p class="text-gray-400 text-sm">Train small "student" model to mimic larger "teacher"</p>
+                </div>
+                <div class="bg-gray-900/50 rounded-lg p-4">
+                    <p class="text-orange-300 font-bold mb-2">Depthwise Separable Conv</p>
+                    <p class="text-gray-400 text-sm">Factorize convolutions for 8-9x fewer parameters</p>
+                </div>
+                <div class="bg-gray-900/50 rounded-lg p-4">
+                    <p class="text-orange-300 font-bold mb-2">CMSIS-NN Kernels</p>
+                    <p class="text-gray-400 text-sm">ARM-optimized operators for Cortex-M</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Power Optimization -->
+        <section id="power" class="card-gradient rounded-xl p-6">
+            <h2 class="text-2xl font-bold text-orange-300 mb-4"><i class="fas fa-battery-full mr-2"></i>6. Power Optimization</h2>
+
+            <p class="text-gray-300 mb-4">Wearable devices must balance functionality with battery life. Key strategies include duty cycling, sensor selection, and efficient algorithms.</p>
+
+            <h3 class="text-lg font-bold text-orange-200 mb-3">Power Budget Breakdown</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                <div class="bg-gray-900/50 rounded-lg p-3 text-center">
+                    <p class="text-orange-300 font-bold">MCU Active</p>
+                    <p class="text-2xl font-bold text-white">4-10 mW</p>
+                </div>
+                <div class="bg-gray-900/50 rounded-lg p-3 text-center">
+                    <p class="text-blue-300 font-bold">PPG Sensor</p>
+                    <p class="text-2xl font-bold text-white">1-3 mW</p>
+                </div>
+                <div class="bg-gray-900/50 rounded-lg p-3 text-center">
+                    <p class="text-green-300 font-bold">IMU</p>
+                    <p class="text-2xl font-bold text-white">0.5-1 mW</p>
+                </div>
+                <div class="bg-gray-900/50 rounded-lg p-3 text-center">
+                    <p class="text-purple-300 font-bold">BLE TX</p>
+                    <p class="text-2xl font-bold text-white">10-20 mW</p>
+                </div>
+            </div>
+
+            <h3 class="text-lg font-bold text-orange-200 mb-3">Duty Cycling Strategy</h3>
+            <p class="text-gray-300 mb-3">Average power with duty cycle D:</p>
+            <div class="equation-box rounded-lg p-4 mb-4 text-center">
+                <span id="eq-power"></span>
+            </div>
+            <p class="text-gray-400 text-sm">Example: 5mW active @ 10% duty + 50μW sleep = 0.55mW average</p>
+        </section>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Complementary filter
+            katex.render("\\theta = \\alpha(\\theta_{prev} + \\omega \\cdot dt) + (1-\\alpha) \\cdot \\theta_{accel}", document.getElementById('eq-comp'));
+
+            // Madgwick
+            katex.render("q_{t+1} = q_t + \\dot{q}_t \\cdot \\Delta t - \\beta \\frac{\\nabla f}{\\|\\nabla f\\|}", document.getElementById('eq-madg'));
+            katex.render("f(q, \\hat{a}) = q^* \\otimes [0, 0, 0, 1] \\otimes q - \\hat{a}", document.getElementById('eq-madg-obj'));
+
+            // EKF
+            katex.render("\\hat{x}_{k|k-1} = f(\\hat{x}_{k-1}), \\quad P_{k|k-1} = F_k P_{k-1} F_k^T + Q", document.getElementById('eq-ekf-pred'));
+            katex.render("K_k = P_{k|k-1}H^T(HP_{k|k-1}H^T + R)^{-1}", document.getElementById('eq-ekf-upd'));
+
+            // LMS
+            katex.render("w(n+1) = w(n) + \\mu \\cdot e(n) \\cdot x(n)", document.getElementById('eq-lms'));
+
+            // HRV
+            katex.render("\\text{SDNN} = \\sqrt{\\frac{1}{N}\\sum_{i=1}^{N}(RR_i - \\overline{RR})^2}", document.getElementById('eq-sdnn'));
+            katex.render("\\text{RMSSD} = \\sqrt{\\frac{1}{N-1}\\sum_{i=1}^{N-1}(RR_{i+1} - RR_i)^2}", document.getElementById('eq-rmssd'));
+
+            // SMA
+            katex.render("\\text{SMA} = \\frac{1}{T}\\sum_{t=1}^{T}(|a_x(t)| + |a_y(t)| + |a_z(t)|)", document.getElementById('eq-sma'));
+
+            // Quantization
+            katex.render("x_{int8} = \\text{round}\\left(\\frac{x_{float}}{scale}\\right) + \\text{zero\\_point}", document.getElementById('eq-quant'));
+
+            // Power
+            katex.render("P_{avg} = D \\cdot P_{active} + (1-D) \\cdot P_{sleep}", document.getElementById('eq-power'));
+        });
+    </script>
+</body>
+</html>

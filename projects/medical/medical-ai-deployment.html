@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deployment Guide - Medical Imaging AI</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0a0a0a 0%, #0a1a2e 100%); color: #e0e0e0; min-height: 100vh; }
+        .nav-bar { background: rgba(10, 10, 10, 0.95); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(6, 182, 212, 0.3); position: sticky; top: 0; z-index: 100; backdrop-filter: blur(10px); }
+        .nav-title { color: #06b6d4; font-weight: 600; font-size: 1.2rem; }
+        .nav-btn { background: linear-gradient(135deg, #06b6d4, #0891b2); color: white; padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; transition: all 0.3s ease; }
+        .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(6, 182, 212, 0.4); }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .hero { text-align: center; padding: 3rem 0; background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(8, 145, 178, 0.1)); border-radius: 20px; margin-bottom: 2rem; border: 1px solid rgba(6, 182, 212, 0.2); }
+        .hero h1 { font-size: 2.5rem; background: linear-gradient(135deg, #06b6d4, #0891b2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 1rem; }
+        .hero p { color: #a0a0a0; font-size: 1.1rem; max-width: 700px; margin: 0 auto; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 2rem; }
+        @media (max-width: 900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+        .panel { background: rgba(20, 20, 30, 0.8); border: 1px solid rgba(6, 182, 212, 0.3); border-radius: 15px; padding: 1.5rem; }
+        .panel h3 { color: #06b6d4; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+        .architecture-diagram { background: #0a0a0a; border-radius: 10px; padding: 2rem; position: relative; min-height: 300px; }
+        .arch-box { background: rgba(6, 182, 212, 0.2); border: 1px solid rgba(6, 182, 212, 0.5); border-radius: 8px; padding: 1rem; text-align: center; position: absolute; min-width: 120px; }
+        .arch-box.client { top: 20px; left: 50%; transform: translateX(-50%); }
+        .arch-box.gateway { top: 100px; left: 50%; transform: translateX(-50%); background: rgba(245, 158, 11, 0.2); border-color: rgba(245, 158, 11, 0.5); }
+        .arch-box.service { top: 180px; }
+        .arch-box.service:nth-child(3) { left: 10%; }
+        .arch-box.service:nth-child(4) { left: 40%; }
+        .arch-box.service:nth-child(5) { left: 70%; }
+        .arch-box.db { top: 260px; left: 50%; transform: translateX(-50%); background: rgba(34, 197, 94, 0.2); border-color: rgba(34, 197, 94, 0.5); }
+        .arch-box i { font-size: 1.5rem; margin-bottom: 0.5rem; display: block; }
+        .arch-box span { font-size: 0.8rem; }
+        .deploy-option { background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: 10px; padding: 1.5rem; text-align: center; transition: all 0.3s ease; cursor: pointer; }
+        .deploy-option:hover { border-color: #06b6d4; transform: translateY(-3px); }
+        .deploy-option.selected { border-color: #06b6d4; background: rgba(6, 182, 212, 0.2); }
+        .deploy-option i { font-size: 2.5rem; color: #06b6d4; margin-bottom: 1rem; }
+        .deploy-option h4 { margin-bottom: 0.5rem; }
+        .deploy-option p { font-size: 0.85rem; color: #a0a0a0; }
+        .code-block { background: #0a0a0a; border-radius: 8px; padding: 1rem; font-family: monospace; font-size: 0.85rem; overflow-x: auto; margin: 1rem 0; border-left: 3px solid #06b6d4; }
+        .code-block .comment { color: #6b7280; }
+        .code-block .keyword { color: #06b6d4; }
+        .code-block .string { color: #22c55e; }
+        .checklist { list-style: none; }
+        .checklist li { padding: 0.75rem 0; border-bottom: 1px solid rgba(6, 182, 212, 0.1); display: flex; align-items: center; gap: 0.75rem; }
+        .checklist li i { color: #22c55e; }
+        .checklist li.warning i { color: #f59e0b; }
+        .btn { background: linear-gradient(135deg, #06b6d4, #0891b2); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(6, 182, 212, 0.4); }
+        .metrics-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+        @media (max-width: 768px) { .metrics-row { grid-template-columns: repeat(2, 1fr); } }
+        .metric-card { background: rgba(6, 182, 212, 0.1); padding: 1rem; border-radius: 10px; text-align: center; border: 1px solid rgba(6, 182, 212, 0.2); }
+        .metric-value { font-size: 1.5rem; font-weight: 700; color: #06b6d4; }
+        .metric-label { font-size: 0.8rem; color: #a0a0a0; margin-top: 0.25rem; }
+    </style>
+</head>
+<body>
+    <nav class="nav-bar">
+        <div class="nav-title"><i class="fas fa-cloud-upload-alt"></i> Deployment Guide</div>
+        <a href="medical-imaging-ai-complete-suite.html" class="nav-btn"><i class="fas fa-arrow-left"></i> Back to Suite</a>
+    </nav>
+    <div class="container">
+        <div class="hero">
+            <h1><i class="fas fa-cloud-upload-alt"></i> Medical AI Deployment Guide</h1>
+            <p>Production-ready deployment strategies for medical imaging AI including HIPAA compliance, scalability patterns, and monitoring infrastructure</p>
+        </div>
+        <div class="metrics-row">
+            <div class="metric-card"><div class="metric-value">99.9%</div><div class="metric-label">Uptime SLA</div></div>
+            <div class="metric-card"><div class="metric-value">&lt;100ms</div><div class="metric-label">P95 Latency</div></div>
+            <div class="metric-card"><div class="metric-value">1000+</div><div class="metric-label">Inferences/sec</div></div>
+            <div class="metric-card"><div class="metric-value">HIPAA</div><div class="metric-label">Compliant</div></div>
+        </div>
+        <div class="grid-3">
+            <div class="deploy-option selected" onclick="selectOption(this)">
+                <i class="fas fa-cloud"></i>
+                <h4>Cloud Deployment</h4>
+                <p>AWS/GCP/Azure with auto-scaling and managed services</p>
+            </div>
+            <div class="deploy-option" onclick="selectOption(this)">
+                <i class="fas fa-server"></i>
+                <h4>On-Premise</h4>
+                <p>Hospital data center with full data sovereignty</p>
+            </div>
+            <div class="deploy-option" onclick="selectOption(this)">
+                <i class="fas fa-cloud-meatball"></i>
+                <h4>Hybrid</h4>
+                <p>Edge inference with cloud orchestration</p>
+            </div>
+        </div>
+        <div class="grid-2">
+            <div class="panel">
+                <h3><i class="fas fa-project-diagram"></i> System Architecture</h3>
+                <div class="architecture-diagram">
+                    <div class="arch-box client"><i class="fas fa-hospital"></i><span>PACS/RIS</span></div>
+                    <div class="arch-box gateway"><i class="fas fa-shield-alt"></i><span>API Gateway</span></div>
+                    <div class="arch-box service" style="left: 10%;"><i class="fas fa-cogs"></i><span>DICOM Service</span></div>
+                    <div class="arch-box service" style="left: 40%;"><i class="fas fa-brain"></i><span>Inference</span></div>
+                    <div class="arch-box service" style="left: 70%;"><i class="fas fa-file-medical"></i><span>Report Gen</span></div>
+                    <div class="arch-box db"><i class="fas fa-database"></i><span>PostgreSQL + MinIO</span></div>
+                </div>
+            </div>
+            <div class="panel">
+                <h3><i class="fas fa-docker"></i> Container Configuration</h3>
+                <div class="code-block">
+<span class="comment"># docker-compose.yml</span>
+<span class="keyword">version</span>: <span class="string">'3.8'</span>
+<span class="keyword">services</span>:
+  <span class="keyword">inference</span>:
+    <span class="keyword">image</span>: medical-ai:latest
+    <span class="keyword">deploy</span>:
+      <span class="keyword">replicas</span>: 3
+      <span class="keyword">resources</span>:
+        <span class="keyword">reservations</span>:
+          <span class="keyword">devices</span>:
+            - <span class="keyword">capabilities</span>: [gpu]
+    <span class="keyword">environment</span>:
+      - MODEL_PATH=/models/unet_v2
+      - BATCH_SIZE=8
+    <span class="keyword">healthcheck</span>:
+      <span class="keyword">test</span>: [<span class="string">"CMD"</span>, <span class="string">"curl"</span>, <span class="string">"-f"</span>, <span class="string">"http://localhost:8080/health"</span>]
+                </div>
+            </div>
+        </div>
+        <div class="grid-2">
+            <div class="panel">
+                <h3><i class="fas fa-shield-alt"></i> HIPAA Compliance Checklist</h3>
+                <ul class="checklist">
+                    <li><i class="fas fa-check-circle"></i> End-to-end TLS encryption (TLS 1.3)</li>
+                    <li><i class="fas fa-check-circle"></i> Data encryption at rest (AES-256)</li>
+                    <li><i class="fas fa-check-circle"></i> Role-based access control (RBAC)</li>
+                    <li><i class="fas fa-check-circle"></i> Audit logging with tamper detection</li>
+                    <li><i class="fas fa-check-circle"></i> PHI de-identification pipeline</li>
+                    <li><i class="fas fa-check-circle"></i> Business Associate Agreement (BAA)</li>
+                    <li class="warning"><i class="fas fa-exclamation-triangle"></i> Penetration testing (scheduled)</li>
+                    <li class="warning"><i class="fas fa-exclamation-triangle"></i> Disaster recovery test (pending)</li>
+                </ul>
+            </div>
+            <div class="panel">
+                <h3><i class="fas fa-chart-line"></i> Performance Monitoring</h3>
+                <div id="latencyChart" style="height: 250px;"></div>
+            </div>
+        </div>
+        <div class="panel">
+            <h3><i class="fas fa-terminal"></i> Kubernetes Deployment</h3>
+            <div class="code-block">
+<span class="comment"># Deploy to Kubernetes cluster</span>
+$ kubectl apply -f medical-ai-deployment.yaml
+
+<span class="comment"># Scale inference pods</span>
+$ kubectl scale deployment inference --replicas=5
+
+<span class="comment"># Check pod status</span>
+$ kubectl get pods -l app=medical-ai
+NAME                        READY   STATUS    RESTARTS   AGE
+inference-7d8f9c6b4-2xk9m   1/1     Running   0          2h
+inference-7d8f9c6b4-8np3j   1/1     Running   0          2h
+inference-7d8f9c6b4-xv7q2   1/1     Running   0          2h
+
+<span class="comment"># View inference metrics</span>
+$ kubectl top pods -l app=medical-ai
+NAME                        CPU    MEMORY
+inference-7d8f9c6b4-2xk9m   850m   4.2Gi
+            </div>
+            <div style="margin-top: 1rem;">
+                <button class="btn"><i class="fas fa-download"></i> Download Helm Chart</button>
+                <button class="btn" style="background: rgba(6, 182, 212, 0.2);"><i class="fas fa-book"></i> View Full Documentation</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            initLatencyChart();
+        });
+
+        function selectOption(el) {
+            document.querySelectorAll('.deploy-option').forEach(o => o.classList.remove('selected'));
+            el.classList.add('selected');
+        }
+
+        function initLatencyChart() {
+            const time = Array.from({length: 60}, (_, i) => i);
+            const p50 = time.map(() => 45 + Math.random() * 15);
+            const p95 = time.map(() => 75 + Math.random() * 25);
+            const p99 = time.map(() => 90 + Math.random() * 30);
+
+            Plotly.newPlot('latencyChart', [
+                { x: time, y: p50, name: 'P50', line: { color: '#22c55e' } },
+                { x: time, y: p95, name: 'P95', line: { color: '#f59e0b' } },
+                { x: time, y: p99, name: 'P99', line: { color: '#ef4444' } }
+            ], {
+                paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+                font: { color: '#a0a0a0' },
+                xaxis: { title: 'Time (min)', gridcolor: 'rgba(255,255,255,0.1)' },
+                yaxis: { title: 'Latency (ms)', gridcolor: 'rgba(255,255,255,0.1)' },
+                margin: { t: 20, r: 20, b: 50, l: 50 },
+                legend: { orientation: 'h', y: 1.1 }
+            }, { responsive: true });
+        }
+    </script>
+</body>
+</html>

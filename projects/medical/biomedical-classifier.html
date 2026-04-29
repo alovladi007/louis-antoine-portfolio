@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML Classifier - Biomedical Signal Processing</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%); }
+        .card-gradient { background: linear-gradient(180deg, rgba(236, 72, 153, 0.1) 0%, rgba(219, 39, 119, 0.05) 100%); border: 1px solid rgba(236, 72, 153, 0.2); }
+        .nav-blur { backdrop-filter: blur(12px); background: rgba(15, 15, 35, 0.8); }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-gray-100">
+    <nav class="fixed top-0 w-full z-50 nav-blur border-b border-rose-500/20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-4">
+                    <a href="biomedical-complete-project.html" class="text-rose-400 hover:text-rose-300"><i class="fas fa-arrow-left mr-2"></i>Back to Suite</a>
+                    <span class="text-gray-500">|</span>
+                    <span class="text-xl font-bold bg-gradient-to-r from-rose-400 to-pink-400 bg-clip-text text-transparent">ML Classifier</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="pt-20 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div class="text-center mb-10">
+            <h1 class="text-4xl font-bold mb-4"><i class="fas fa-network-wired text-green-400 mr-3"></i>ML Classifier</h1>
+            <p class="text-xl text-gray-400 max-w-3xl mx-auto">Train and evaluate SVM, Random Forest, CNN, and LSTM classifiers</p>
+        </div>
+
+        <div class="grid lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-1 space-y-6">
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-rose-300 mb-4"><i class="fas fa-cog mr-2"></i>Model Configuration</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Classification Task</label>
+                            <select id="taskType" class="w-full bg-gray-800 border border-rose-500/30 rounded-lg px-4 py-2 text-white">
+                                <option value="arrhythmia" selected>ECG Arrhythmia (5 classes)</option>
+                                <option value="seizure">EEG Seizure Detection</option>
+                                <option value="sleep">Sleep Stage (5 stages)</option>
+                                <option value="gesture">EMG Gesture (6 gestures)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Model Type</label>
+                            <select id="modelType" class="w-full bg-gray-800 border border-rose-500/30 rounded-lg px-4 py-2 text-white">
+                                <option value="svm">SVM (RBF Kernel)</option>
+                                <option value="rf" selected>Random Forest</option>
+                                <option value="cnn">1D CNN</option>
+                                <option value="lstm">LSTM</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Train/Test Split: <span id="split_val" class="text-rose-400">80/20</span></label>
+                            <input type="range" id="trainSplit" min="60" max="90" step="5" value="80" class="w-full accent-rose-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Cross-Validation Folds: <span id="cv_val" class="text-rose-400">5</span></label>
+                            <input type="range" id="cvFolds" min="3" max="10" value="5" class="w-full accent-rose-500">
+                        </div>
+                        <button id="trainBtn" class="w-full py-3 bg-gradient-to-r from-rose-500 to-pink-600 rounded-lg font-semibold hover:from-rose-600 hover:to-pink-700">
+                            <i class="fas fa-play mr-2"></i>Train & Evaluate
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-rose-300 mb-4"><i class="fas fa-chart-pie mr-2"></i>Performance Metrics</h3>
+                    <div class="space-y-4">
+                        <div class="bg-gray-900/50 rounded-lg p-4">
+                            <div class="text-sm text-gray-400">Accuracy</div>
+                            <div class="text-2xl font-bold text-green-400" id="accuracy">94.7%</div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-gray-900/50 rounded-lg p-3">
+                                <div class="text-xs text-gray-400">Precision</div>
+                                <div class="text-lg font-bold text-rose-400" id="precision">93.2%</div>
+                            </div>
+                            <div class="bg-gray-900/50 rounded-lg p-3">
+                                <div class="text-xs text-gray-400">Recall</div>
+                                <div class="text-lg font-bold text-pink-400" id="recall">92.8%</div>
+                            </div>
+                            <div class="bg-gray-900/50 rounded-lg p-3">
+                                <div class="text-xs text-gray-400">F1-Score</div>
+                                <div class="text-lg font-bold text-fuchsia-400" id="f1score">93.0%</div>
+                            </div>
+                            <div class="bg-gray-900/50 rounded-lg p-3">
+                                <div class="text-xs text-gray-400">AUC-ROC</div>
+                                <div class="text-lg font-bold text-purple-400" id="aucroc">0.978</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2 space-y-6">
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-rose-300 mb-4"><i class="fas fa-th mr-2"></i>Confusion Matrix</h3>
+                    <div id="confusionPlot" style="height: 300px;"></div>
+                </div>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="card-gradient rounded-xl p-6">
+                        <h3 class="text-lg font-semibold text-rose-300 mb-4"><i class="fas fa-chart-line mr-2"></i>ROC Curves</h3>
+                        <div id="rocPlot" style="height: 250px;"></div>
+                    </div>
+                    <div class="card-gradient rounded-xl p-6">
+                        <h3 class="text-lg font-semibold text-rose-300 mb-4"><i class="fas fa-history mr-2"></i>Learning Curve</h3>
+                        <div id="learningPlot" style="height: 250px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="border-t border-rose-500/20 mt-12 py-8">
+        <div class="max-w-7xl mx-auto px-4 text-center text-gray-500"><p>ML Classifier - Biomedical Signal Processing Suite</p></div>
+    </footer>
+
+    <script>
+        function checkPlotly(callback) {
+            if (typeof Plotly !== 'undefined') callback();
+            else setTimeout(function() { checkPlotly(callback); }, 100);
+        }
+
+        var taskTypeSelect = document.getElementById('taskType');
+        var modelTypeSelect = document.getElementById('modelType');
+        var trainSplitSlider = document.getElementById('trainSplit');
+        var cvFoldsSlider = document.getElementById('cvFolds');
+        var trainBtn = document.getElementById('trainBtn');
+
+        function trainModel() {
+            var task = taskTypeSelect.value;
+            var model = modelTypeSelect.value;
+            var split = parseInt(trainSplitSlider.value);
+            var cv = parseInt(cvFoldsSlider.value);
+
+            document.getElementById('split_val').textContent = split + '/' + (100 - split);
+            document.getElementById('cv_val').textContent = cv;
+
+            // Simulate model performance based on model type
+            var baseAcc = model === 'lstm' ? 0.96 : model === 'cnn' ? 0.95 : model === 'rf' ? 0.94 : 0.92;
+            var acc = baseAcc + (Math.random() - 0.5) * 0.04;
+            var prec = acc - Math.random() * 0.02;
+            var rec = acc - Math.random() * 0.02;
+            var f1 = 2 * prec * rec / (prec + rec);
+            var auc = 0.95 + Math.random() * 0.04;
+
+            document.getElementById('accuracy').textContent = (acc * 100).toFixed(1) + '%';
+            document.getElementById('precision').textContent = (prec * 100).toFixed(1) + '%';
+            document.getElementById('recall').textContent = (rec * 100).toFixed(1) + '%';
+            document.getElementById('f1score').textContent = (f1 * 100).toFixed(1) + '%';
+            document.getElementById('aucroc').textContent = auc.toFixed(3);
+
+            // Generate confusion matrix
+            var classes = task === 'arrhythmia' ? ['Normal', 'AFib', 'VT', 'VF', 'PVC'] :
+                         task === 'seizure' ? ['Normal', 'Seizure'] :
+                         task === 'sleep' ? ['Wake', 'N1', 'N2', 'N3', 'REM'] :
+                         ['Rest', 'Fist', 'Open', 'Pinch', 'Wave', 'Point'];
+            var n = classes.length;
+            var confMatrix = [];
+
+            for (var i = 0; i < n; i++) {
+                var row = [];
+                for (var j = 0; j < n; j++) {
+                    if (i === j) {
+                        row.push(Math.floor(80 + Math.random() * 18));
+                    } else {
+                        row.push(Math.floor(Math.random() * 8));
+                    }
+                }
+                confMatrix.push(row);
+            }
+
+            var confTrace = {
+                z: confMatrix, x: classes, y: classes, type: 'heatmap',
+                colorscale: [[0, '#0d1117'], [0.5, '#db2777'], [1, '#fce7f3']],
+                showscale: true
+            };
+            var layout1 = {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e5e7eb' }, margin: { t: 30, r: 80, b: 80, l: 80 },
+                xaxis: { title: 'Predicted', gridcolor: 'rgba(236, 72, 153, 0.1)' },
+                yaxis: { title: 'Actual', gridcolor: 'rgba(236, 72, 153, 0.1)', autorange: 'reversed' }
+            };
+            Plotly.newPlot('confusionPlot', [confTrace], layout1, {responsive: true});
+
+            // Generate ROC curves
+            var rocTraces = [];
+            var colors = ['#ec4899', '#f472b6', '#a855f7', '#8b5cf6', '#6366f1', '#3b82f6'];
+            for (var c = 0; c < Math.min(n, 5); c++) {
+                var fpr = [0], tpr = [0];
+                for (var p = 0.1; p <= 1; p += 0.1) {
+                    fpr.push(p * (1 - auc + Math.random() * 0.05));
+                    tpr.push(Math.min(1, p * auc + Math.random() * 0.05));
+                }
+                fpr.push(1); tpr.push(1);
+                rocTraces.push({
+                    x: fpr, y: tpr, type: 'scatter', mode: 'lines',
+                    name: classes[c], line: { color: colors[c], width: 2 }
+                });
+            }
+            rocTraces.push({
+                x: [0, 1], y: [0, 1], type: 'scatter', mode: 'lines',
+                name: 'Random', line: { color: '#6b7280', width: 1, dash: 'dash' }
+            });
+
+            var layout2 = {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e5e7eb' }, margin: { t: 20, r: 30, b: 50, l: 50 },
+                xaxis: { title: 'False Positive Rate', gridcolor: 'rgba(236, 72, 153, 0.1)', range: [0, 1] },
+                yaxis: { title: 'True Positive Rate', gridcolor: 'rgba(236, 72, 153, 0.1)', range: [0, 1] },
+                legend: { x: 0.6, y: 0.3 }, showlegend: true
+            };
+            Plotly.newPlot('rocPlot', rocTraces, layout2, {responsive: true});
+
+            // Generate learning curve
+            var trainSizes = [0.1, 0.2, 0.4, 0.6, 0.8, 1.0];
+            var trainScores = [], testScores = [];
+            for (var s = 0; s < trainSizes.length; s++) {
+                trainScores.push(0.7 + trainSizes[s] * 0.25 + Math.random() * 0.03);
+                testScores.push(0.65 + trainSizes[s] * 0.28 + Math.random() * 0.04);
+            }
+
+            var trainTrace = {
+                x: trainSizes.map(function(s) { return s * 100; }), y: trainScores,
+                type: 'scatter', mode: 'lines+markers', name: 'Training',
+                line: { color: '#22c55e', width: 2 }, marker: { size: 8 }
+            };
+            var testTrace = {
+                x: trainSizes.map(function(s) { return s * 100; }), y: testScores,
+                type: 'scatter', mode: 'lines+markers', name: 'Validation',
+                line: { color: '#ec4899', width: 2 }, marker: { size: 8 }
+            };
+
+            var layout3 = {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e5e7eb' }, margin: { t: 20, r: 30, b: 50, l: 50 },
+                xaxis: { title: 'Training Set Size (%)', gridcolor: 'rgba(236, 72, 153, 0.1)' },
+                yaxis: { title: 'Score', gridcolor: 'rgba(236, 72, 153, 0.1)', range: [0.5, 1] },
+                legend: { x: 0.7, y: 0.3 }, showlegend: true
+            };
+            Plotly.newPlot('learningPlot', [trainTrace, testTrace], layout3, {responsive: true});
+        }
+
+        trainBtn.addEventListener('click', trainModel);
+        [trainSplitSlider, cvFoldsSlider].forEach(function(el) {
+            el.addEventListener('input', function() {
+                document.getElementById('split_val').textContent = trainSplitSlider.value + '/' + (100 - parseInt(trainSplitSlider.value));
+                document.getElementById('cv_val').textContent = cvFoldsSlider.value;
+            });
+        });
+        checkPlotly(trainModel);
+    </script>
+</body>
+</html>

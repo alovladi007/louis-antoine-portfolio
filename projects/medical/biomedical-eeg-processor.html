@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EEG Processor - Biomedical Signal Processing</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%); }
+        .card-gradient { background: linear-gradient(180deg, rgba(236, 72, 153, 0.1) 0%, rgba(219, 39, 119, 0.05) 100%); border: 1px solid rgba(236, 72, 153, 0.2); }
+        .nav-blur { backdrop-filter: blur(12px); background: rgba(15, 15, 35, 0.8); }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-gray-100">
+    <nav class="fixed top-0 w-full z-50 nav-blur border-b border-rose-500/20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-4">
+                    <a href="biomedical-complete-project.html" class="text-rose-400 hover:text-rose-300"><i class="fas fa-arrow-left mr-2"></i>Back to Suite</a>
+                    <span class="text-gray-500">|</span>
+                    <span class="text-xl font-bold bg-gradient-to-r from-rose-400 to-pink-400 bg-clip-text text-transparent">EEG Processor</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="pt-20 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div class="text-center mb-10">
+            <h1 class="text-4xl font-bold mb-4"><i class="fas fa-brain text-pink-400 mr-3"></i>EEG Signal Processor</h1>
+            <p class="text-xl text-gray-400 max-w-3xl mx-auto">Band power extraction, seizure detection, and sleep stage classification</p>
+        </div>
+
+        <div class="grid lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-1 space-y-6">
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-rose-300 mb-4"><i class="fas fa-cog mr-2"></i>EEG Parameters</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Sample Rate (Hz): <span id="fs_val" class="text-rose-400">256</span></label>
+                            <input type="range" id="sampleRate" min="128" max="512" step="64" value="256" class="w-full accent-rose-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Brain State</label>
+                            <select id="brainState" class="w-full bg-gray-800 border border-rose-500/30 rounded-lg px-4 py-2 text-white">
+                                <option value="awake">Awake (Beta dominant)</option>
+                                <option value="relaxed">Relaxed (Alpha dominant)</option>
+                                <option value="drowsy">Drowsy (Theta dominant)</option>
+                                <option value="sleep">Deep Sleep (Delta dominant)</option>
+                                <option value="seizure">Seizure Activity</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Channel</label>
+                            <select id="channel" class="w-full bg-gray-800 border border-rose-500/30 rounded-lg px-4 py-2 text-white">
+                                <option value="Fp1">Fp1 (Frontal)</option>
+                                <option value="C3">C3 (Central)</option>
+                                <option value="O1" selected>O1 (Occipital)</option>
+                                <option value="T3">T3 (Temporal)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Artifact Level (%): <span id="artifact_val" class="text-rose-400">10</span></label>
+                            <input type="range" id="artifactLevel" min="0" max="50" value="10" class="w-full accent-rose-500">
+                        </div>
+                        <button id="processBtn" class="w-full py-3 bg-gradient-to-r from-rose-500 to-pink-600 rounded-lg font-semibold hover:from-rose-600 hover:to-pink-700">
+                            <i class="fas fa-play mr-2"></i>Process EEG
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-rose-300 mb-4"><i class="fas fa-chart-pie mr-2"></i>Band Power Analysis</h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400">Delta (0.5-4 Hz)</span>
+                            <div class="flex items-center">
+                                <div class="w-24 h-2 bg-gray-700 rounded-full mr-2">
+                                    <div id="delta_bar" class="h-full bg-purple-500 rounded-full" style="width: 20%"></div>
+                                </div>
+                                <span class="text-purple-400 w-12" id="delta_pwr">20%</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400">Theta (4-8 Hz)</span>
+                            <div class="flex items-center">
+                                <div class="w-24 h-2 bg-gray-700 rounded-full mr-2">
+                                    <div id="theta_bar" class="h-full bg-blue-500 rounded-full" style="width: 15%"></div>
+                                </div>
+                                <span class="text-blue-400 w-12" id="theta_pwr">15%</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400">Alpha (8-13 Hz)</span>
+                            <div class="flex items-center">
+                                <div class="w-24 h-2 bg-gray-700 rounded-full mr-2">
+                                    <div id="alpha_bar" class="h-full bg-green-500 rounded-full" style="width: 35%"></div>
+                                </div>
+                                <span class="text-green-400 w-12" id="alpha_pwr">35%</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400">Beta (13-30 Hz)</span>
+                            <div class="flex items-center">
+                                <div class="w-24 h-2 bg-gray-700 rounded-full mr-2">
+                                    <div id="beta_bar" class="h-full bg-yellow-500 rounded-full" style="width: 25%"></div>
+                                </div>
+                                <span class="text-yellow-400 w-12" id="beta_pwr">25%</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400">Gamma (30-100 Hz)</span>
+                            <div class="flex items-center">
+                                <div class="w-24 h-2 bg-gray-700 rounded-full mr-2">
+                                    <div id="gamma_bar" class="h-full bg-rose-500 rounded-full" style="width: 5%"></div>
+                                </div>
+                                <span class="text-rose-400 w-12" id="gamma_pwr">5%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-rose-300 mb-4"><i class="fas fa-diagnoses mr-2"></i>Classification</h3>
+                    <div class="bg-gray-900/50 rounded-lg p-4">
+                        <div class="text-sm text-gray-400">Detected State</div>
+                        <div class="text-xl font-bold text-green-400" id="detected_state">Relaxed</div>
+                        <div class="text-sm text-gray-500 mt-2" id="confidence">Confidence: 94.2%</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2 space-y-6">
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-rose-300 mb-4"><i class="fas fa-wave-square mr-2"></i>Raw EEG Signal</h3>
+                    <div id="eegPlot" style="height: 250px;"></div>
+                </div>
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-rose-300 mb-4"><i class="fas fa-chart-area mr-2"></i>Power Spectral Density</h3>
+                    <div id="psdPlot" style="height: 250px;"></div>
+                </div>
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-rose-300 mb-4"><i class="fas fa-fire mr-2"></i>Spectrogram</h3>
+                    <div id="spectrogramPlot" style="height: 250px;"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="border-t border-rose-500/20 mt-12 py-8">
+        <div class="max-w-7xl mx-auto px-4 text-center text-gray-500"><p>EEG Processor - Biomedical Signal Processing Suite</p></div>
+    </footer>
+
+    <script>
+        function checkPlotly(callback) {
+            if (typeof Plotly !== 'undefined') callback();
+            else setTimeout(function() { checkPlotly(callback); }, 100);
+        }
+
+        var sampleRateSlider = document.getElementById('sampleRate');
+        var brainStateSelect = document.getElementById('brainState');
+        var channelSelect = document.getElementById('channel');
+        var artifactSlider = document.getElementById('artifactLevel');
+        var processBtn = document.getElementById('processBtn');
+
+        function gaussRandom() {
+            var u = 0, v = 0;
+            while(u === 0) u = Math.random();
+            while(v === 0) v = Math.random();
+            return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+        }
+
+        function processEEG() {
+            var fs = parseInt(sampleRateSlider.value);
+            var state = brainStateSelect.value;
+            var artifact = parseInt(artifactSlider.value) / 100;
+
+            document.getElementById('fs_val').textContent = fs;
+            document.getElementById('artifact_val').textContent = artifactSlider.value;
+
+            // Band power weights based on brain state
+            var bandWeights = {
+                'awake': { delta: 0.1, theta: 0.15, alpha: 0.2, beta: 0.45, gamma: 0.1 },
+                'relaxed': { delta: 0.1, theta: 0.15, alpha: 0.5, beta: 0.2, gamma: 0.05 },
+                'drowsy': { delta: 0.2, theta: 0.4, alpha: 0.25, beta: 0.1, gamma: 0.05 },
+                'sleep': { delta: 0.6, theta: 0.2, alpha: 0.1, beta: 0.08, gamma: 0.02 },
+                'seizure': { delta: 0.15, theta: 0.2, alpha: 0.1, beta: 0.25, gamma: 0.3 }
+            };
+
+            var weights = bandWeights[state];
+
+            // Update band power display
+            var bands = ['delta', 'theta', 'alpha', 'beta', 'gamma'];
+            bands.forEach(function(band) {
+                var pct = Math.round(weights[band] * 100);
+                document.getElementById(band + '_bar').style.width = pct + '%';
+                document.getElementById(band + '_pwr').textContent = pct + '%';
+            });
+
+            // Generate EEG signal
+            var duration = 4;
+            var numSamples = duration * fs;
+            var time = [];
+            var eeg = [];
+
+            for (var i = 0; i < numSamples; i++) {
+                var t = i / fs;
+                time.push(t);
+
+                var sample = 0;
+                // Delta (0.5-4 Hz)
+                sample += weights.delta * 50 * Math.sin(2 * Math.PI * 2 * t + Math.random() * 0.5);
+                // Theta (4-8 Hz)
+                sample += weights.theta * 30 * Math.sin(2 * Math.PI * 6 * t + Math.random() * 0.5);
+                // Alpha (8-13 Hz)
+                sample += weights.alpha * 40 * Math.sin(2 * Math.PI * 10 * t + Math.random() * 0.5);
+                // Beta (13-30 Hz)
+                sample += weights.beta * 20 * Math.sin(2 * Math.PI * 20 * t + Math.random() * 0.5);
+                // Gamma (30-100 Hz)
+                sample += weights.gamma * 10 * Math.sin(2 * Math.PI * 40 * t + Math.random() * 0.5);
+
+                // Add noise and artifacts
+                sample += gaussRandom() * 10 * (1 + artifact);
+                if (artifact > 0.2 && Math.random() < 0.01) {
+                    sample += (Math.random() - 0.5) * 200; // Eye blink artifact
+                }
+
+                eeg.push(sample);
+            }
+
+            // Classification result
+            var stateLabels = {
+                'awake': 'Awake / Alert',
+                'relaxed': 'Relaxed / Eyes Closed',
+                'drowsy': 'Drowsy / Light Sleep',
+                'sleep': 'Deep Sleep (N3)',
+                'seizure': 'Abnormal Activity'
+            };
+
+            document.getElementById('detected_state').textContent = stateLabels[state];
+            document.getElementById('detected_state').className = 'text-xl font-bold ' +
+                (state === 'seizure' ? 'text-red-400' : 'text-green-400');
+            document.getElementById('confidence').textContent = 'Confidence: ' + (85 + Math.random() * 14).toFixed(1) + '%';
+
+            // Plot raw EEG
+            var eegTrace = {
+                x: time,
+                y: eeg,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#ec4899', width: 1 }
+            };
+
+            var layout1 = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e5e7eb' },
+                margin: { t: 30, r: 30, b: 50, l: 60 },
+                xaxis: { title: 'Time (s)', gridcolor: 'rgba(236, 72, 153, 0.1)' },
+                yaxis: { title: 'Amplitude (μV)', gridcolor: 'rgba(236, 72, 153, 0.1)' },
+                showlegend: false
+            };
+
+            Plotly.newPlot('eegPlot', [eegTrace], layout1, {responsive: true});
+
+            // Plot PSD
+            var freqs = [];
+            var psd = [];
+            for (var f = 0.5; f <= 50; f += 0.5) {
+                freqs.push(f);
+                var power = 0;
+                if (f >= 0.5 && f < 4) power = weights.delta * 100 * Math.exp(-Math.pow((f - 2) / 1.5, 2));
+                else if (f >= 4 && f < 8) power = weights.theta * 60 * Math.exp(-Math.pow((f - 6) / 1.5, 2));
+                else if (f >= 8 && f < 13) power = weights.alpha * 80 * Math.exp(-Math.pow((f - 10) / 2, 2));
+                else if (f >= 13 && f < 30) power = weights.beta * 40 * Math.exp(-Math.pow((f - 20) / 5, 2));
+                else if (f >= 30) power = weights.gamma * 20 * Math.exp(-Math.pow((f - 40) / 10, 2));
+                psd.push(power + Math.random() * 5);
+            }
+
+            var psdTrace = {
+                x: freqs,
+                y: psd,
+                type: 'scatter',
+                mode: 'lines',
+                fill: 'tozeroy',
+                line: { color: '#f472b6', width: 2 },
+                fillcolor: 'rgba(244, 114, 182, 0.2)'
+            };
+
+            var layout2 = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e5e7eb' },
+                margin: { t: 30, r: 30, b: 50, l: 60 },
+                xaxis: { title: 'Frequency (Hz)', gridcolor: 'rgba(236, 72, 153, 0.1)' },
+                yaxis: { title: 'Power (μV²/Hz)', gridcolor: 'rgba(236, 72, 153, 0.1)' },
+                showlegend: false,
+                shapes: [
+                    { type: 'rect', x0: 0.5, x1: 4, y0: 0, y1: 100, fillcolor: 'rgba(168, 85, 247, 0.1)', line: { width: 0 } },
+                    { type: 'rect', x0: 4, x1: 8, y0: 0, y1: 100, fillcolor: 'rgba(59, 130, 246, 0.1)', line: { width: 0 } },
+                    { type: 'rect', x0: 8, x1: 13, y0: 0, y1: 100, fillcolor: 'rgba(34, 197, 94, 0.1)', line: { width: 0 } },
+                    { type: 'rect', x0: 13, x1: 30, y0: 0, y1: 100, fillcolor: 'rgba(234, 179, 8, 0.1)', line: { width: 0 } },
+                    { type: 'rect', x0: 30, x1: 50, y0: 0, y1: 100, fillcolor: 'rgba(236, 72, 153, 0.1)', line: { width: 0 } }
+                ]
+            };
+
+            Plotly.newPlot('psdPlot', [psdTrace], layout2, {responsive: true});
+
+            // Plot Spectrogram (simplified heatmap)
+            var specTime = [];
+            var specFreq = [];
+            var specZ = [];
+
+            for (var ft = 0.5; ft <= 50; ft += 1) {
+                specFreq.push(ft);
+            }
+
+            for (var st = 0; st < 40; st++) {
+                specTime.push(st * 0.1);
+                var row = [];
+                for (var sf = 0; sf < specFreq.length; sf++) {
+                    var f = specFreq[sf];
+                    var power = 0;
+                    if (f >= 0.5 && f < 4) power = weights.delta * 50;
+                    else if (f >= 4 && f < 8) power = weights.theta * 30;
+                    else if (f >= 8 && f < 13) power = weights.alpha * 40;
+                    else if (f >= 13 && f < 30) power = weights.beta * 20;
+                    else if (f >= 30) power = weights.gamma * 10;
+                    row.push(power * (0.8 + Math.random() * 0.4));
+                }
+                specZ.push(row);
+            }
+
+            var spectrogramTrace = {
+                x: specTime,
+                y: specFreq,
+                z: specZ,
+                type: 'heatmap',
+                colorscale: [[0, '#0d1117'], [0.25, '#581c87'], [0.5, '#db2777'], [0.75, '#f472b6'], [1, '#fce7f3']],
+                showscale: true
+            };
+
+            var layout3 = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e5e7eb' },
+                margin: { t: 30, r: 80, b: 50, l: 60 },
+                xaxis: { title: 'Time (s)', gridcolor: 'rgba(236, 72, 153, 0.1)' },
+                yaxis: { title: 'Frequency (Hz)', gridcolor: 'rgba(236, 72, 153, 0.1)' }
+            };
+
+            Plotly.newPlot('spectrogramPlot', [spectrogramTrace], layout3, {responsive: true});
+        }
+
+        processBtn.addEventListener('click', processEEG);
+        [sampleRateSlider, artifactSlider].forEach(function(el) {
+            el.addEventListener('input', function() {
+                document.getElementById('fs_val').textContent = sampleRateSlider.value;
+                document.getElementById('artifact_val').textContent = artifactSlider.value;
+            });
+        });
+
+        checkPlotly(processEEG);
+    </script>
+</body>
+</html>

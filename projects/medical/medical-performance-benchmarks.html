@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Benchmarks - Medical Imaging AI</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0a0a0a 0%, #0a1a2e 100%); color: #e0e0e0; min-height: 100vh; }
+        .nav-bar { background: rgba(10, 10, 10, 0.95); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(6, 182, 212, 0.3); position: sticky; top: 0; z-index: 100; backdrop-filter: blur(10px); }
+        .nav-title { color: #06b6d4; font-weight: 600; font-size: 1.2rem; }
+        .nav-btn { background: linear-gradient(135deg, #06b6d4, #0891b2); color: white; padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; transition: all 0.3s ease; }
+        .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(6, 182, 212, 0.4); }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .hero { text-align: center; padding: 3rem 0; background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(8, 145, 178, 0.1)); border-radius: 20px; margin-bottom: 2rem; border: 1px solid rgba(6, 182, 212, 0.2); }
+        .hero h1 { font-size: 2.5rem; background: linear-gradient(135deg, #06b6d4, #0891b2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 1rem; }
+        .hero p { color: #a0a0a0; font-size: 1.1rem; max-width: 700px; margin: 0 auto; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
+        @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+        .panel { background: rgba(20, 20, 30, 0.8); border: 1px solid rgba(6, 182, 212, 0.3); border-radius: 15px; padding: 1.5rem; margin-bottom: 2rem; }
+        .panel h3 { color: #06b6d4; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+        .metrics-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+        @media (max-width: 768px) { .metrics-grid { grid-template-columns: repeat(2, 1fr); } }
+        .metric-card { background: rgba(6, 182, 212, 0.1); padding: 1rem; border-radius: 10px; text-align: center; border: 1px solid rgba(6, 182, 212, 0.2); }
+        .metric-value { font-size: 1.5rem; font-weight: 700; color: #06b6d4; }
+        .metric-label { font-size: 0.8rem; color: #a0a0a0; margin-top: 0.25rem; }
+        .benchmark-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        .benchmark-table th, .benchmark-table td { padding: 0.75rem; text-align: left; border-bottom: 1px solid rgba(6, 182, 212, 0.1); }
+        .benchmark-table th { color: #06b6d4; font-weight: 600; background: rgba(6, 182, 212, 0.1); }
+        .benchmark-table tr:hover { background: rgba(6, 182, 212, 0.05); }
+        .rank-badge { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; font-size: 0.75rem; font-weight: 700; }
+        .rank-1 { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #000; }
+        .rank-2 { background: linear-gradient(135deg, #9ca3af, #6b7280); color: #000; }
+        .rank-3 { background: linear-gradient(135deg, #d97706, #b45309); color: #fff; }
+        .progress-bar { height: 8px; background: rgba(6, 182, 212, 0.2); border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #06b6d4, #0891b2); border-radius: 4px; }
+        .tab-container { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        .tab { padding: 0.5rem 1rem; background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: 8px; cursor: pointer; transition: all 0.3s ease; }
+        .tab:hover, .tab.active { background: rgba(6, 182, 212, 0.3); border-color: #06b6d4; }
+        .hardware-spec { display: flex; align-items: center; gap: 1rem; padding: 1rem; background: rgba(6, 182, 212, 0.05); border-radius: 8px; margin-bottom: 0.75rem; }
+        .hardware-spec i { font-size: 1.5rem; color: #06b6d4; }
+        .hardware-info { flex: 1; }
+        .hardware-info h5 { color: #e0e0e0; margin-bottom: 0.25rem; }
+        .hardware-info p { font-size: 0.85rem; color: #a0a0a0; }
+    </style>
+</head>
+<body>
+    <nav class="nav-bar">
+        <div class="nav-title"><i class="fas fa-tachometer-alt"></i> Performance Benchmarks</div>
+        <a href="medical-imaging-ai-complete-suite.html" class="nav-btn"><i class="fas fa-arrow-left"></i> Back to Suite</a>
+    </nav>
+    <div class="container">
+        <div class="hero">
+            <h1><i class="fas fa-tachometer-alt"></i> Performance Benchmarks</h1>
+            <p>Comprehensive performance evaluation across accuracy, speed, and resource utilization for medical imaging AI models</p>
+        </div>
+        <div class="metrics-grid">
+            <div class="metric-card"><div class="metric-value">96.7%</div><div class="metric-label">Mean AUROC</div></div>
+            <div class="metric-card"><div class="metric-value">94.2%</div><div class="metric-label">Mean Dice</div></div>
+            <div class="metric-card"><div class="metric-value">23ms</div><div class="metric-label">P50 Latency</div></div>
+            <div class="metric-card"><div class="metric-value">847</div><div class="metric-label">Images/sec</div></div>
+            <div class="metric-card"><div class="metric-value">4.2GB</div><div class="metric-label">GPU Memory</div></div>
+        </div>
+        <div class="panel">
+            <h3><i class="fas fa-trophy"></i> Model Leaderboard - Chest X-Ray Classification</h3>
+            <div class="tab-container">
+                <div class="tab active" onclick="switchTask('cxr')">Chest X-Ray</div>
+                <div class="tab" onclick="switchTask('ct')">CT Segmentation</div>
+                <div class="tab" onclick="switchTask('mri')">Brain MRI</div>
+                <div class="tab" onclick="switchTask('mammo')">Mammography</div>
+            </div>
+            <table class="benchmark-table">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Model</th>
+                        <th>AUROC</th>
+                        <th>F1 Score</th>
+                        <th>Params</th>
+                        <th>Latency</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="rank-badge rank-1">1</span></td>
+                        <td>CheXpert Ensemble</td>
+                        <td>0.971</td>
+                        <td>0.923</td>
+                        <td>312M</td>
+                        <td>45ms</td>
+                    </tr>
+                    <tr>
+                        <td><span class="rank-badge rank-2">2</span></td>
+                        <td>DenseNet-121 + Attention</td>
+                        <td>0.967</td>
+                        <td>0.918</td>
+                        <td>8.1M</td>
+                        <td>12ms</td>
+                    </tr>
+                    <tr>
+                        <td><span class="rank-badge rank-3">3</span></td>
+                        <td>EfficientNet-B7</td>
+                        <td>0.964</td>
+                        <td>0.912</td>
+                        <td>66M</td>
+                        <td>28ms</td>
+                    </tr>
+                    <tr>
+                        <td>4</td>
+                        <td>ResNet-50 + SE</td>
+                        <td>0.958</td>
+                        <td>0.901</td>
+                        <td>28M</td>
+                        <td>15ms</td>
+                    </tr>
+                    <tr>
+                        <td>5</td>
+                        <td>ViT-Base-16</td>
+                        <td>0.955</td>
+                        <td>0.896</td>
+                        <td>86M</td>
+                        <td>35ms</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="grid-2">
+            <div class="panel">
+                <h3><i class="fas fa-chart-line"></i> AUROC by Pathology</h3>
+                <div id="pathologyChart" style="height: 300px;"></div>
+            </div>
+            <div class="panel">
+                <h3><i class="fas fa-stopwatch"></i> Latency vs Accuracy Trade-off</h3>
+                <div id="tradeoffChart" style="height: 300px;"></div>
+            </div>
+        </div>
+        <div class="panel">
+            <h3><i class="fas fa-server"></i> Hardware Configuration</h3>
+            <div class="grid-2" style="margin-bottom: 0;">
+                <div>
+                    <div class="hardware-spec">
+                        <i class="fas fa-microchip"></i>
+                        <div class="hardware-info">
+                            <h5>GPU</h5>
+                            <p>NVIDIA A100 80GB PCIe</p>
+                        </div>
+                    </div>
+                    <div class="hardware-spec">
+                        <i class="fas fa-memory"></i>
+                        <div class="hardware-info">
+                            <h5>System Memory</h5>
+                            <p>512GB DDR4 ECC</p>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div class="hardware-spec">
+                        <i class="fas fa-hdd"></i>
+                        <div class="hardware-info">
+                            <h5>Storage</h5>
+                            <p>NVMe SSD RAID-0 (4TB)</p>
+                        </div>
+                    </div>
+                    <div class="hardware-spec">
+                        <i class="fas fa-cogs"></i>
+                        <div class="hardware-info">
+                            <h5>Framework</h5>
+                            <p>PyTorch 2.1 + CUDA 12.1</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="panel">
+            <h3><i class="fas fa-chart-bar"></i> Resource Utilization</h3>
+            <div id="resourceChart" style="height: 250px;"></div>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Pathology chart
+            Plotly.newPlot('pathologyChart', [{
+                y: ['Cardiomegaly', 'Effusion', 'Infiltration', 'Mass', 'Nodule', 'Pneumonia', 'Pneumothorax', 'Consolidation'],
+                x: [0.96, 0.95, 0.92, 0.94, 0.89, 0.93, 0.97, 0.91],
+                type: 'bar',
+                orientation: 'h',
+                marker: { color: '#06b6d4' }
+            }], {
+                paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+                font: { color: '#a0a0a0' },
+                xaxis: { title: 'AUROC', gridcolor: 'rgba(255,255,255,0.1)', range: [0.8, 1] },
+                yaxis: { gridcolor: 'rgba(255,255,255,0.1)' },
+                margin: { t: 20, r: 20, b: 50, l: 100 }
+            }, { responsive: true });
+
+            // Trade-off chart
+            Plotly.newPlot('tradeoffChart', [{
+                x: [12, 15, 28, 35, 45],
+                y: [0.967, 0.958, 0.964, 0.955, 0.971],
+                text: ['DenseNet-121', 'ResNet-50', 'EfficientNet-B7', 'ViT-Base', 'Ensemble'],
+                mode: 'markers+text',
+                textposition: 'top center',
+                marker: { size: [20, 18, 25, 22, 30], color: '#06b6d4' }
+            }], {
+                paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+                font: { color: '#a0a0a0' },
+                xaxis: { title: 'Latency (ms)', gridcolor: 'rgba(255,255,255,0.1)' },
+                yaxis: { title: 'AUROC', gridcolor: 'rgba(255,255,255,0.1)', range: [0.95, 0.98] },
+                margin: { t: 40, r: 20, b: 50, l: 50 }
+            }, { responsive: true });
+
+            // Resource chart
+            Plotly.newPlot('resourceChart', [{
+                x: ['GPU Util', 'GPU Memory', 'CPU Util', 'System RAM', 'Disk I/O'],
+                y: [92, 78, 45, 32, 68],
+                type: 'bar',
+                marker: { color: ['#06b6d4', '#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6'] }
+            }], {
+                paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+                font: { color: '#a0a0a0' },
+                xaxis: { gridcolor: 'rgba(255,255,255,0.1)' },
+                yaxis: { title: 'Utilization (%)', gridcolor: 'rgba(255,255,255,0.1)', range: [0, 100] },
+                margin: { t: 20, r: 20, b: 50, l: 50 }
+            }, { responsive: true });
+        });
+
+        function switchTask(task) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+</html>
