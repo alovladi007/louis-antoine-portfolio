@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collision Prediction Lab - Self-Driving Vision</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%); color: #e0e0e0; line-height: 1.6; }
+        .navigation-bar { position: fixed; top: 0; left: 0; right: 0; background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(10px); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; z-index: 1000; border-bottom: 1px solid rgba(102, 126, 234, 0.3); }
+        .nav-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.3s ease; }
+        .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .hero-section { padding: 120px 2rem 4rem; text-align: center; max-width: 1200px; margin: 0 auto; }
+        .hero-title { font-size: 3rem; font-weight: 800; margin-bottom: 1rem; background: linear-gradient(135deg, #667eea, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero-subtitle { font-size: 1.2rem; color: #667eea; margin-bottom: 2rem; }
+        .demo-container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .demo-grid { display: grid; grid-template-columns: 1fr 400px; gap: 2rem; margin-top: 2rem; }
+        .demo-main { background: rgba(102, 126, 234, 0.05); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; }
+        .demo-controls { background: rgba(102, 126, 234, 0.05); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; }
+        .canvas-container { background: #1a1a1a; border-radius: 10px; padding: 1rem; margin: 1rem 0; position: relative; overflow: hidden; }
+        #collisionCanvas { width: 100%; height: 400px; background: #0a0a0a; border-radius: 8px; }
+        .control-group { margin-bottom: 1.5rem; }
+        .control-label { display: block; color: #667eea; font-weight: 600; margin-bottom: 0.5rem; }
+        .control-input { width: 100%; padding: 0.75rem; background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 8px; color: #e0e0e0; font-size: 0.9rem; }
+        .control-slider { width: 100%; margin: 0.5rem 0; }
+        .control-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 8px; cursor: pointer; transition: all 0.3s ease; width: 100%; font-weight: 600; }
+        .control-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .status-display { background: rgba(20, 20, 20, 0.8); padding: 1rem; border-radius: 8px; margin: 1rem 0; border-left: 4px solid #667eea; }
+        .metric-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin: 1rem 0; }
+        .metric-card { background: rgba(102, 126, 234, 0.1); padding: 1rem; border-radius: 8px; text-align: center; }
+        .metric-value { font-size: 1.5rem; font-weight: 600; color: #667eea; }
+        .metric-label { font-size: 0.9rem; color: #a0a0a0; margin-top: 0.25rem; }
+        .scenario-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
+        .tab-btn { padding: 0.5rem 1rem; background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 6px; color: #e0e0e0; cursor: pointer; transition: all 0.3s ease; }
+        .tab-btn.active { background: rgba(102, 126, 234, 0.3); border-color: #667eea; }
+        @media (max-width: 768px) { .demo-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <nav class="navigation-bar">
+        <div class="nav-title"><i class="fas fa-car-crash"></i> Collision Prediction Lab</div>
+        <a href="self-driving-vision-complete-suite.html" class="nav-btn"><i class="fas fa-arrow-left"></i> Back to Suite</a>
+    </nav>
+
+    <section class="hero-section">
+        <h1 class="hero-title">Collision Prediction Lab</h1>
+        <p class="hero-subtitle">Advanced trajectory analysis and collision avoidance</p>
+        <p style="color: #a0a0a0; max-width: 800px; margin: 0 auto;">Interactive collision prediction system with real-time trajectory analysis, time-to-collision calculations, and risk assessment algorithms for autonomous vehicles.</p>
+    </section>
+
+    <div class="demo-container">
+        <div class="demo-grid">
+            <div class="demo-main">
+                <!-- Scenario Selection -->
+                <div class="scenario-tabs">
+                    <button class="tab-btn active" data-scenario="intersection">Intersection</button>
+                    <button class="tab-btn" data-scenario="highway">Highway</button>
+                    <button class="tab-btn" data-scenario="parking">Parking</button>
+                    <button class="tab-btn" data-scenario="pedestrian">Pedestrian</button>
+                </div>
+
+                <!-- Canvas for visualization -->
+                <div class="canvas-container">
+                    <canvas id="collisionCanvas"></canvas>
+                </div>
+
+                <!-- Status Display -->
+                <div class="status-display">
+                    <h3 style="color: #667eea; margin-bottom: 1rem;">Collision Risk Assessment</h3>
+                    <div class="metric-grid">
+                        <div class="metric-card">
+                            <div class="metric-value" id="timeToCollision">--</div>
+                            <div class="metric-label">Time to Collision (s)</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="collisionRisk">--</div>
+                            <div class="metric-label">Risk Level</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="relativeSpeed">--</div>
+                            <div class="metric-label">Relative Speed (m/s)</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="distance">--</div>
+                            <div class="metric-label">Distance (m)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="demo-controls">
+                <h3 style="color: #667eea; margin-bottom: 1.5rem;">Simulation Controls</h3>
+                
+                <div class="control-group">
+                    <label class="control-label">Vehicle Speed (km/h)</label>
+                    <input type="range" class="control-slider" id="vehicleSpeed" min="0" max="120" value="50">
+                    <span style="color: #a0a0a0; font-size: 0.9rem;" id="speedValue">50 km/h</span>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Obstacle Distance (m)</label>
+                    <input type="range" class="control-slider" id="obstacleDistance" min="5" max="200" value="100">
+                    <span style="color: #a0a0a0; font-size: 0.9rem;" id="distanceValue">100 m</span>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Obstacle Speed (km/h)</label>
+                    <input type="range" class="control-slider" id="obstacleSpeed" min="0" max="80" value="30">
+                    <span style="color: #a0a0a0; font-size: 0.9rem;" id="obstacleSpeedValue">30 km/h</span>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Prediction Horizon (s)</label>
+                    <input type="range" class="control-slider" id="horizonSlider" min="1" max="10" value="5">
+                    <span style="color: #a0a0a0; font-size: 0.9rem;" id="horizonValue">5 s</span>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Weather Condition</label>
+                    <select class="control-input" id="weatherSelect">
+                        <option value="clear">Clear</option>
+                        <option value="rain">Rain</option>
+                        <option value="fog">Fog</option>
+                        <option value="snow">Snow</option>
+                    </select>
+                </div>
+
+                <button class="control-btn" id="simulateBtn">
+                    <i class="fas fa-play"></i> Start Simulation
+                </button>
+
+                <button class="control-btn" id="resetBtn" style="background: linear-gradient(135deg, #e74c3c, #c0392b); margin-top: 0.5rem;">
+                    <i class="fas fa-redo"></i> Reset
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class CollisionPredictionLab {
+            constructor() {
+                this.canvas = document.getElementById('collisionCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.setupCanvas();
+                this.setupEventListeners();
+                this.currentScenario = 'intersection';
+                this.isSimulating = false;
+                this.animationId = null;
+                
+                // Vehicle and obstacle properties
+                this.vehicle = { x: 50, y: 200, speed: 50, angle: 0, trail: [] };
+                this.obstacle = { x: 800, y: 200, speed: 30, angle: 180, trail: [] };
+                this.timeStep = 0;
+                this.maxTimeSteps = 100;
+                
+                this.init();
+            }
+
+            setupCanvas() {
+                const rect = this.canvas.getBoundingClientRect();
+                this.canvas.width = rect.width * window.devicePixelRatio;
+                this.canvas.height = 400 * window.devicePixelRatio;
+                this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+                this.canvas.style.width = rect.width + 'px';
+                this.canvas.style.height = '400px';
+            }
+
+            setupEventListeners() {
+                // Scenario tabs
+                document.querySelectorAll('.tab-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.currentScenario = e.target.dataset.scenario;
+                        this.setupScenario();
+                    });
+                });
+
+                // Control sliders
+                document.getElementById('vehicleSpeed').addEventListener('input', (e) => {
+                    document.getElementById('speedValue').textContent = e.target.value + ' km/h';
+                    this.vehicle.speed = parseInt(e.target.value);
+                });
+
+                document.getElementById('obstacleDistance').addEventListener('input', (e) => {
+                    document.getElementById('distanceValue').textContent = e.target.value + ' m';
+                    this.obstacle.x = 50 + parseInt(e.target.value) * 3;
+                });
+
+                document.getElementById('obstacleSpeed').addEventListener('input', (e) => {
+                    document.getElementById('obstacleSpeedValue').textContent = e.target.value + ' km/h';
+                    this.obstacle.speed = parseInt(e.target.value);
+                });
+
+                document.getElementById('horizonSlider').addEventListener('input', (e) => {
+                    document.getElementById('horizonValue').textContent = e.target.value + ' s';
+                });
+
+                // Buttons
+                document.getElementById('simulateBtn').addEventListener('click', () => {
+                    if (this.isSimulating) {
+                        this.stopSimulation();
+                    } else {
+                        this.startSimulation();
+                    }
+                });
+
+                document.getElementById('resetBtn').addEventListener('click', () => {
+                    this.resetSimulation();
+                });
+
+                window.addEventListener('resize', () => {
+                    this.setupCanvas();
+                });
+            }
+
+            setupScenario() {
+                switch (this.currentScenario) {
+                    case 'intersection':
+                        this.vehicle = { x: 50, y: 200, speed: 50, angle: 0, trail: [] };
+                        this.obstacle = { x: 400, y: 50, speed: 30, angle: 90, trail: [] };
+                        break;
+                    case 'highway':
+                        this.vehicle = { x: 50, y: 150, speed: 80, angle: 0, trail: [] };
+                        this.obstacle = { x: 600, y: 150, speed: 20, angle: 0, trail: [] };
+                        break;
+                    case 'parking':
+                        this.vehicle = { x: 100, y: 100, speed: 10, angle: 45, trail: [] };
+                        this.obstacle = { x: 300, y: 200, speed: 0, angle: 0, trail: [] };
+                        break;
+                    case 'pedestrian':
+                        this.vehicle = { x: 50, y: 200, speed: 30, angle: 0, trail: [] };
+                        this.obstacle = { x: 400, y: 250, speed: 5, angle: 90, trail: [] };
+                        break;
+                }
+                this.timeStep = 0;
+                this.clearTrails();
+            }
+
+            startSimulation() {
+                this.isSimulating = true;
+                document.getElementById('simulateBtn').innerHTML = '<i class="fas fa-pause"></i> Pause';
+                this.animate();
+            }
+
+            stopSimulation() {
+                this.isSimulating = false;
+                document.getElementById('simulateBtn').innerHTML = '<i class="fas fa-play"></i> Start Simulation';
+                if (this.animationId) {
+                    cancelAnimationFrame(this.animationId);
+                }
+            }
+
+            resetSimulation() {
+                this.stopSimulation();
+                this.setupScenario();
+                this.clearTrails();
+                this.updateMetrics();
+                this.draw();
+            }
+
+            clearTrails() {
+                this.vehicle.trail = [];
+                this.obstacle.trail = [];
+            }
+
+            animate() {
+                if (!this.isSimulating) return;
+
+                this.updateSimulation();
+                this.draw();
+                this.updateMetrics();
+
+                if (this.timeStep < this.maxTimeSteps) {
+                    this.animationId = requestAnimationFrame(() => this.animate());
+                } else {
+                    this.stopSimulation();
+                }
+            }
+
+            updateSimulation() {
+                const dt = 0.1;
+                this.timeStep++;
+
+                // Update vehicle position
+                this.vehicle.x += (this.vehicle.speed * 1000 / 3600) * dt * Math.cos(this.vehicle.angle * Math.PI / 180);
+                this.vehicle.y += (this.vehicle.speed * 1000 / 3600) * dt * Math.sin(this.vehicle.angle * Math.PI / 180);
+
+                // Update obstacle position
+                this.obstacle.x += (this.obstacle.speed * 1000 / 3600) * dt * Math.cos(this.obstacle.angle * Math.PI / 180);
+                this.obstacle.y += (this.obstacle.speed * 1000 / 3600) * dt * Math.sin(this.obstacle.angle * Math.PI / 180);
+
+                // Add to trails
+                this.vehicle.trail.push({ x: this.vehicle.x, y: this.vehicle.y });
+                this.obstacle.trail.push({ x: this.obstacle.x, y: this.obstacle.y });
+
+                // Keep trail length reasonable
+                if (this.vehicle.trail.length > 50) this.vehicle.trail.shift();
+                if (this.obstacle.trail.length > 50) this.obstacle.trail.shift();
+            }
+
+            calculateCollisionMetrics() {
+                const dx = this.obstacle.x - this.vehicle.x;
+                const dy = this.obstacle.y - this.vehicle.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                const vx1 = (this.vehicle.speed * 1000 / 3600) * Math.cos(this.vehicle.angle * Math.PI / 180);
+                const vy1 = (this.vehicle.speed * 1000 / 3600) * Math.sin(this.vehicle.angle * Math.PI / 180);
+                const vx2 = (this.obstacle.speed * 1000 / 3600) * Math.cos(this.obstacle.angle * Math.PI / 180);
+                const vy2 = (this.obstacle.speed * 1000 / 3600) * Math.sin(this.obstacle.angle * Math.PI / 180);
+                
+                const relativeVx = vx2 - vx1;
+                const relativeVy = vy2 - vy1;
+                const relativeSpeed = Math.sqrt(relativeVx * relativeVx + relativeVy * relativeVy);
+
+                const timeToCollision = distance > 0 ? distance / (relativeSpeed + 0.1) : 0;
+
+                let riskLevel = 'Low';
+                if (timeToCollision < 2) riskLevel = 'Critical';
+                else if (timeToCollision < 5) riskLevel = 'High';
+                else if (timeToCollision < 10) riskLevel = 'Medium';
+
+                return {
+                    distance: Math.round(distance * 10) / 10,
+                    relativeSpeed: Math.round(relativeSpeed * 10) / 10,
+                    timeToCollision: Math.round(timeToCollision * 10) / 10,
+                    riskLevel: riskLevel
+                };
+            }
+
+            updateMetrics() {
+                const metrics = this.calculateCollisionMetrics();
+                document.getElementById('distance').textContent = metrics.distance;
+                document.getElementById('relativeSpeed').textContent = metrics.relativeSpeed;
+                document.getElementById('timeToCollision').textContent = metrics.timeToCollision;
+                document.getElementById('collisionRisk').textContent = metrics.riskLevel;
+
+                const riskElement = document.getElementById('collisionRisk');
+                riskElement.style.color = {
+                    'Low': '#27ae60',
+                    'Medium': '#f39c12',
+                    'High': '#e67e22',
+                    'Critical': '#e74c3c'
+                }[metrics.riskLevel] || '#667eea';
+            }
+
+            draw() {
+                this.ctx.fillStyle = '#0a0a0a';
+                this.ctx.fillRect(0, 0, this.canvas.width / window.devicePixelRatio, this.canvas.height / window.devicePixelRatio);
+
+                this.drawRoad();
+                this.drawTrails();
+                this.drawVehicle(this.vehicle, '#667eea');
+                this.drawVehicle(this.obstacle, '#e74c3c');
+
+                const metrics = this.calculateCollisionMetrics();
+                if (metrics.distance < 50) {
+                    this.drawCollisionZone();
+                }
+                this.drawPredictionHorizon();
+            }
+
+            drawRoad() {
+                this.ctx.strokeStyle = '#555';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.moveTo(20, 100);
+                this.ctx.lineTo(800, 100);
+                this.ctx.moveTo(20, 300);
+                this.ctx.lineTo(800, 300);
+                this.ctx.stroke();
+
+                this.ctx.setLineDash([10, 10]);
+                this.ctx.strokeStyle = '#777';
+                this.ctx.lineWidth = 1;
+                this.ctx.beginPath();
+                this.ctx.moveTo(20, 200);
+                this.ctx.lineTo(800, 200);
+                this.ctx.stroke();
+                this.ctx.setLineDash([]);
+            }
+
+            drawTrails() {
+                if (this.vehicle.trail.length > 1) {
+                    this.ctx.strokeStyle = 'rgba(102, 126, 234, 0.3)';
+                    this.ctx.lineWidth = 3;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(this.vehicle.trail[0].x, this.vehicle.trail[0].y);
+                    for (let i = 1; i < this.vehicle.trail.length; i++) {
+                        this.ctx.lineTo(this.vehicle.trail[i].x, this.vehicle.trail[i].y);
+                    }
+                    this.ctx.stroke();
+                }
+
+                if (this.obstacle.trail.length > 1) {
+                    this.ctx.strokeStyle = 'rgba(231, 76, 60, 0.3)';
+                    this.ctx.lineWidth = 3;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(this.obstacle.trail[0].x, this.obstacle.trail[0].y);
+                    for (let i = 1; i < this.obstacle.trail.length; i++) {
+                        this.ctx.lineTo(this.obstacle.trail[i].x, this.obstacle.trail[i].y);
+                    }
+                    this.ctx.stroke();
+                }
+            }
+
+            drawVehicle(vehicle, color) {
+                this.ctx.save();
+                this.ctx.translate(vehicle.x, vehicle.y);
+                this.ctx.rotate(vehicle.angle * Math.PI / 180);
+                this.ctx.fillStyle = color;
+                this.ctx.fillRect(-15, -8, 30, 16);
+                this.ctx.fillStyle = '#fff';
+                this.ctx.fillRect(10, -2, 8, 4);
+                this.ctx.restore();
+            }
+
+            drawCollisionZone() {
+                const metrics = this.calculateCollisionMetrics();
+                const radius = Math.max(20, 50 - metrics.distance);
+                this.ctx.strokeStyle = 'rgba(231, 76, 60, 0.5)';
+                this.ctx.lineWidth = 2;
+                this.ctx.setLineDash([5, 5]);
+                this.ctx.beginPath();
+                this.ctx.arc(this.vehicle.x, this.vehicle.y, radius, 0, 2 * Math.PI);
+                this.ctx.stroke();
+                this.ctx.setLineDash([]);
+            }
+
+            drawPredictionHorizon() {
+                const horizon = parseInt(document.getElementById('horizonSlider').value);
+                const futureX = this.vehicle.x + (this.vehicle.speed * 1000 / 3600) * horizon * Math.cos(this.vehicle.angle * Math.PI / 180);
+                const futureY = this.vehicle.y + (this.vehicle.speed * 1000 / 3600) * horizon * Math.sin(this.vehicle.angle * Math.PI / 180);
+
+                this.ctx.strokeStyle = 'rgba(102, 126, 234, 0.3)';
+                this.ctx.lineWidth = 2;
+                this.ctx.setLineDash([10, 10]);
+                this.ctx.beginPath();
+                this.ctx.moveTo(this.vehicle.x, this.vehicle.y);
+                this.ctx.lineTo(futureX, futureY);
+                this.ctx.stroke();
+                this.ctx.setLineDash([]);
+
+                this.ctx.fillStyle = 'rgba(102, 126, 234, 0.5)';
+                this.ctx.beginPath();
+                this.ctx.arc(futureX, futureY, 5, 0, 2 * Math.PI);
+                this.ctx.fill();
+            }
+
+            init() {
+                this.setupScenario();
+                this.draw();
+                this.updateMetrics();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            new CollisionPredictionLab();
+        });
+    </script>
+</body>
+</html>

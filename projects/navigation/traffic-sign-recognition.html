@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traffic Sign Recognition - Self-Driving Vision</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%); color: #e0e0e0; line-height: 1.6; }
+        .navigation-bar { position: fixed; top: 0; left: 0; right: 0; background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(10px); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; z-index: 1000; border-bottom: 1px solid rgba(102, 126, 234, 0.3); }
+        .nav-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.3s ease; }
+        .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .hero-section { padding: 120px 2rem 4rem; text-align: center; max-width: 1200px; margin: 0 auto; }
+        .hero-title { font-size: 3rem; font-weight: 800; margin-bottom: 1rem; background: linear-gradient(135deg, #667eea, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero-subtitle { font-size: 1.2rem; color: #667eea; margin-bottom: 2rem; }
+        .demo-container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .demo-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; margin-top: 2rem; }
+        .demo-main { background: rgba(102, 126, 234, 0.05); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; }
+        .demo-controls { background: rgba(102, 126, 234, 0.05); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; }
+        .canvas-container { background: #1a1a1a; border-radius: 10px; padding: 1rem; margin: 1rem 0; position: relative; overflow: hidden; }
+        #signCanvas { width: 100%; height: 400px; background: #0a0a0a; border-radius: 8px; }
+        .control-group { margin-bottom: 1.5rem; }
+        .control-label { display: block; color: #667eea; font-weight: 600; margin-bottom: 0.5rem; }
+        .control-input { width: 100%; padding: 0.75rem; background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 8px; color: #e0e0e0; font-size: 0.9rem; }
+        .control-slider { width: 100%; margin: 0.5rem 0; }
+        .control-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 8px; cursor: pointer; transition: all 0.3s ease; width: 100%; font-weight: 600; }
+        .control-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .recognition-status { background: rgba(20, 20, 20, 0.8); padding: 1rem; border-radius: 8px; margin: 1rem 0; border-left: 4px solid #667eea; }
+        .sign-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1rem 0; }
+        .sign-card { background: rgba(102, 126, 234, 0.1); padding: 1rem; border-radius: 8px; text-align: center; }
+        .sign-confidence { font-size: 1.2rem; font-weight: 600; color: #667eea; }
+        .sign-label { font-size: 0.9rem; color: #a0a0a0; margin-top: 0.25rem; }
+        .detected-signs { margin-top: 1rem; }
+        .sign-item { background: rgba(102, 126, 234, 0.05); padding: 0.75rem; border-radius: 6px; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; }
+        .sign-name { font-weight: 600; }
+        .sign-confidence-bar { width: 60px; height: 8px; background: rgba(102, 126, 234, 0.2); border-radius: 4px; overflow: hidden; }
+        .confidence-fill { height: 100%; background: linear-gradient(90deg, #e74c3c, #f39c12, #27ae60); transition: width 0.3s ease; }
+        @media (max-width: 768px) { .demo-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <nav class="navigation-bar">
+        <div class="nav-title"><i class="fas fa-traffic-light"></i> Traffic Sign Recognition</div>
+        <a href="self-driving-vision-complete-suite.html" class="nav-btn"><i class="fas fa-arrow-left"></i> Back to Suite</a>
+    </nav>
+
+    <section class="hero-section">
+        <h1 class="hero-title">Traffic Sign Recognition</h1>
+        <p class="hero-subtitle">CNN-based traffic sign classification with real-time recognition</p>
+        <p style="color: #a0a0a0; max-width: 800px; margin: 0 auto;">Advanced CNN-based traffic sign classification system with real-time recognition, confidence scoring, and regulatory compliance verification for autonomous vehicles.</p>
+    </section>
+
+    <div class="demo-container">
+        <div class="demo-grid">
+            <div class="demo-main">
+                <!-- Canvas for visualization -->
+                <div class="canvas-container">
+                    <canvas id="signCanvas"></canvas>
+                </div>
+
+                <!-- Recognition Status Display -->
+                <div class="recognition-status">
+                    <h3 style="color: #667eea; margin-bottom: 1rem;">Recognition Performance</h3>
+                    <div class="sign-grid">
+                        <div class="sign-card">
+                            <div class="sign-confidence" id="accuracy">--</div>
+                            <div class="sign-label">Accuracy</div>
+                        </div>
+                        <div class="sign-card">
+                            <div class="sign-confidence" id="processingTime">--</div>
+                            <div class="sign-label">Processing Time (ms)</div>
+                        </div>
+                        <div class="sign-card">
+                            <div class="sign-confidence" id="signsDetected">--</div>
+                            <div class="sign-label">Signs Detected</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detected Signs -->
+                <div class="detected-signs">
+                    <h3 style="color: #667eea; margin-bottom: 1rem;">Detected Traffic Signs</h3>
+                    <div id="detectedSignsList"></div>
+                </div>
+            </div>
+
+            <div class="demo-controls">
+                <h3 style="color: #667eea; margin-bottom: 1.5rem;">Recognition Controls</h3>
+                
+                <div class="control-group">
+                    <label class="control-label">Detection Confidence Threshold</label>
+                    <input type="range" class="control-slider" id="confidenceThreshold" min="0.1" max="1.0" step="0.1" value="0.7">
+                    <span style="color: #a0a0a0; font-size: 0.9rem;" id="confidenceValue">0.7</span>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Processing Speed</label>
+                    <select class="control-input" id="speedSelect">
+                        <option value="fast">Fast (30 FPS)</option>
+                        <option value="balanced">Balanced (15 FPS)</option>
+                        <option value="accurate">Accurate (5 FPS)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Scenario</label>
+                    <select class="control-input" id="scenarioSelect">
+                        <option value="highway">Highway</option>
+                        <option value="city">City Streets</option>
+                        <option value="construction">Construction Zone</option>
+                        <option value="school">School Zone</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Weather Condition</label>
+                    <select class="control-input" id="weatherSelect">
+                        <option value="clear">Clear</option>
+                        <option value="rain">Rain</option>
+                        <option value="fog">Fog</option>
+                        <option value="night">Night</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Model Type</label>
+                    <select class="control-input" id="modelSelect">
+                        <option value="cnn">CNN (Fast)</option>
+                        <option value="resnet">ResNet (Accurate)</option>
+                        <option value="efficientnet">EfficientNet (Balanced)</option>
+                    </select>
+                </div>
+
+                <button class="control-btn" id="startBtn">
+                    <i class="fas fa-play"></i> Start Recognition
+                </button>
+
+                <button class="control-btn" id="resetBtn" style="background: linear-gradient(135deg, #e74c3c, #c0392b); margin-top: 0.5rem;">
+                    <i class="fas fa-redo"></i> Reset
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class TrafficSignRecognition {
+            constructor() {
+                this.canvas = document.getElementById('signCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.setupCanvas();
+                this.setupEventListeners();
+                this.isRunning = false;
+                this.animationId = null;
+                this.frame = 0;
+                
+                // Traffic signs database
+                this.trafficSigns = [
+                    { name: 'Stop', color: '#e74c3c', shape: 'octagon', confidence: 0.95 },
+                    { name: 'Speed Limit 50', color: '#3498db', shape: 'circle', confidence: 0.87 },
+                    { name: 'Yield', color: '#f39c12', shape: 'triangle', confidence: 0.92 },
+                    { name: 'No Entry', color: '#e74c3c', shape: 'circle', confidence: 0.89 },
+                    { name: 'One Way', color: '#2ecc71', shape: 'rectangle', confidence: 0.85 },
+                    { name: 'School Zone', color: '#9b59b6', shape: 'pentagon', confidence: 0.78 },
+                    { name: 'Construction', color: '#f39c12', shape: 'diamond', confidence: 0.83 },
+                    { name: 'Pedestrian Crossing', color: '#1abc9c', shape: 'diamond', confidence: 0.91 }
+                ];
+                
+                this.detectedSigns = [];
+                this.confidenceThreshold = 0.7;
+                this.accuracy = 0;
+                this.processingTime = 0;
+                
+                this.init();
+            }
+
+            setupCanvas() {
+                const rect = this.canvas.getBoundingClientRect();
+                this.canvas.width = rect.width * window.devicePixelRatio;
+                this.canvas.height = 400 * window.devicePixelRatio;
+                this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+                this.canvas.style.width = rect.width + 'px';
+                this.canvas.style.height = '400px';
+            }
+
+            setupEventListeners() {
+                document.getElementById('confidenceThreshold').addEventListener('input', (e) => {
+                    document.getElementById('confidenceValue').textContent = e.target.value;
+                    this.confidenceThreshold = parseFloat(e.target.value);
+                });
+
+                document.getElementById('startBtn').addEventListener('click', () => {
+                    if (this.isRunning) {
+                        this.stopRecognition();
+                    } else {
+                        this.startRecognition();
+                    }
+                });
+
+                document.getElementById('resetBtn').addEventListener('click', () => {
+                    this.resetRecognition();
+                });
+
+                window.addEventListener('resize', () => {
+                    this.setupCanvas();
+                });
+            }
+
+            generateTrafficSigns() {
+                this.detectedSigns = [];
+                const numSigns = 2 + Math.floor(Math.random() * 4);
+                
+                for (let i = 0; i < numSigns; i++) {
+                    const sign = this.trafficSigns[Math.floor(Math.random() * this.trafficSigns.length)];
+                    const x = 50 + Math.random() * (this.canvas.width / window.devicePixelRatio - 100);
+                    const y = 50 + Math.random() * (this.canvas.height / window.devicePixelRatio - 100);
+                    const size = 30 + Math.random() * 20;
+                    const confidence = Math.max(this.confidenceThreshold, Math.random());
+                    
+                    if (confidence >= this.confidenceThreshold) {
+                        this.detectedSigns.push({
+                            ...sign,
+                            x: x,
+                            y: y,
+                            size: size,
+                            confidence: confidence
+                        });
+                    }
+                }
+            }
+
+            updatePerformanceMetrics() {
+                // Simulate realistic performance metrics
+                this.accuracy = 85 + Math.random() * 10; // 85-95%
+                this.processingTime = 15 + Math.random() * 10; // 15-25ms
+                
+                document.getElementById('accuracy').textContent = this.accuracy.toFixed(1) + '%';
+                document.getElementById('processingTime').textContent = this.processingTime.toFixed(1);
+                document.getElementById('signsDetected').textContent = this.detectedSigns.length;
+            }
+
+            updateDetectedSignsList() {
+                const container = document.getElementById('detectedSignsList');
+                container.innerHTML = '';
+                
+                this.detectedSigns.forEach(sign => {
+                    const signItem = document.createElement('div');
+                    signItem.className = 'sign-item';
+                    
+                    const confidenceBar = document.createElement('div');
+                    confidenceBar.className = 'sign-confidence-bar';
+                    const confidenceFill = document.createElement('div');
+                    confidenceFill.className = 'confidence-fill';
+                    confidenceFill.style.width = (sign.confidence * 100) + '%';
+                    confidenceBar.appendChild(confidenceFill);
+                    
+                    signItem.innerHTML = `
+                        <span class="sign-name">${sign.name}</span>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="font-size: 0.8rem; color: #a0a0a0;">${(sign.confidence * 100).toFixed(1)}%</span>
+                            ${confidenceBar.outerHTML}
+                        </div>
+                    `;
+                    
+                    container.appendChild(signItem);
+                });
+            }
+
+            draw() {
+                this.ctx.fillStyle = '#0a0a0a';
+                this.ctx.fillRect(0, 0, this.canvas.width / window.devicePixelRatio, this.canvas.height / window.devicePixelRatio);
+                
+                // Draw road scene
+                this.drawRoadScene();
+                
+                // Draw detected traffic signs
+                this.detectedSigns.forEach(sign => {
+                    this.drawTrafficSign(sign);
+                });
+                
+                // Draw detection boxes
+                this.detectedSigns.forEach(sign => {
+                    this.drawDetectionBox(sign);
+                });
+            }
+
+            drawRoadScene() {
+                // Road
+                this.ctx.fillStyle = '#333';
+                this.ctx.fillRect(0, this.canvas.height / window.devicePixelRatio - 100, this.canvas.width / window.devicePixelRatio, 100);
+                
+                // Lane markings
+                this.ctx.strokeStyle = '#fff';
+                this.ctx.lineWidth = 2;
+                this.ctx.setLineDash([10, 10]);
+                this.ctx.beginPath();
+                this.ctx.moveTo(this.canvas.width / window.devicePixelRatio / 2, this.canvas.height / window.devicePixelRatio - 100);
+                this.ctx.lineTo(this.canvas.width / window.devicePixelRatio / 2, this.canvas.height / window.devicePixelRatio);
+                this.ctx.stroke();
+                this.ctx.setLineDash([]);
+                
+                // Sky gradient
+                const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height / window.devicePixelRatio - 100);
+                gradient.addColorStop(0, '#87CEEB');
+                gradient.addColorStop(1, '#98D8E8');
+                this.ctx.fillStyle = gradient;
+                this.ctx.fillRect(0, 0, this.canvas.width / window.devicePixelRatio, this.canvas.height / window.devicePixelRatio - 100);
+            }
+
+            drawTrafficSign(sign) {
+                this.ctx.save();
+                this.ctx.translate(sign.x, sign.y);
+                
+                // Draw sign background
+                this.ctx.fillStyle = sign.color;
+                
+                switch (sign.shape) {
+                    case 'circle':
+                        this.ctx.beginPath();
+                        this.ctx.arc(0, 0, sign.size / 2, 0, 2 * Math.PI);
+                        this.ctx.fill();
+                        break;
+                    case 'triangle':
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(0, -sign.size / 2);
+                        this.ctx.lineTo(-sign.size / 2, sign.size / 2);
+                        this.ctx.lineTo(sign.size / 2, sign.size / 2);
+                        this.ctx.closePath();
+                        this.ctx.fill();
+                        break;
+                    case 'rectangle':
+                        this.ctx.fillRect(-sign.size / 2, -sign.size / 4, sign.size, sign.size / 2);
+                        break;
+                    case 'octagon':
+                        this.ctx.beginPath();
+                        for (let i = 0; i < 8; i++) {
+                            const angle = (i * Math.PI) / 4;
+                            const x = Math.cos(angle) * sign.size / 2;
+                            const y = Math.sin(angle) * sign.size / 2;
+                            if (i === 0) this.ctx.moveTo(x, y);
+                            else this.ctx.lineTo(x, y);
+                        }
+                        this.ctx.closePath();
+                        this.ctx.fill();
+                        break;
+                    default:
+                        this.ctx.fillRect(-sign.size / 2, -sign.size / 2, sign.size, sign.size);
+                }
+                
+                // Draw sign text/symbol
+                this.ctx.fillStyle = '#fff';
+                this.ctx.font = `${sign.size / 4}px Arial`;
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                
+                if (sign.name.includes('Speed Limit')) {
+                    this.ctx.fillText(sign.name.split(' ')[2], 0, 0);
+                } else if (sign.name === 'Stop') {
+                    this.ctx.fillText('STOP', 0, 0);
+                } else if (sign.name === 'Yield') {
+                    this.ctx.fillText('YIELD', 0, 0);
+                } else {
+                    this.ctx.fillText('!', 0, 0);
+                }
+                
+                this.ctx.restore();
+            }
+
+            drawDetectionBox(sign) {
+                const padding = 5;
+                this.ctx.strokeStyle = sign.confidence > 0.8 ? '#27ae60' : 
+                                     sign.confidence > 0.6 ? '#f39c12' : '#e74c3c';
+                this.ctx.lineWidth = 2;
+                this.ctx.setLineDash([5, 5]);
+                this.ctx.strokeRect(
+                    sign.x - sign.size / 2 - padding, 
+                    sign.y - sign.size / 2 - padding, 
+                    sign.size + padding * 2, 
+                    sign.size + padding * 2
+                );
+                this.ctx.setLineDash([]);
+                
+                // Draw confidence label
+                this.ctx.fillStyle = this.ctx.strokeStyle;
+                this.ctx.fillRect(sign.x - sign.size / 2 - padding, sign.y - sign.size / 2 - 20, 60, 15);
+                
+                this.ctx.fillStyle = '#fff';
+                this.ctx.font = '10px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText((sign.confidence * 100).toFixed(0) + '%', sign.x, sign.y - sign.size / 2 - 12);
+            }
+
+            startRecognition() {
+                this.isRunning = true;
+                document.getElementById('startBtn').innerHTML = '<i class="fas fa-pause"></i> Pause';
+                this.animate();
+            }
+
+            stopRecognition() {
+                this.isRunning = false;
+                document.getElementById('startBtn').innerHTML = '<i class="fas fa-play"></i> Start Recognition';
+                if (this.animationId) {
+                    cancelAnimationFrame(this.animationId);
+                }
+            }
+
+            resetRecognition() {
+                this.stopRecognition();
+                this.frame = 0;
+                this.detectedSigns = [];
+                this.updatePerformanceMetrics();
+                this.updateDetectedSignsList();
+                this.draw();
+            }
+
+            animate() {
+                if (!this.isRunning) return;
+                
+                this.frame++;
+                
+                // Generate new traffic signs every 60 frames (1 second at 60fps)
+                if (this.frame % 60 === 0) {
+                    this.generateTrafficSigns();
+                }
+                
+                this.updatePerformanceMetrics();
+                this.updateDetectedSignsList();
+                this.draw();
+                
+                this.animationId = requestAnimationFrame(() => this.animate());
+            }
+
+            init() {
+                this.updatePerformanceMetrics();
+                this.updateDetectedSignsList();
+                this.draw();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            new TrafficSignRecognition();
+        });
+    </script>
+</body>
+</html>

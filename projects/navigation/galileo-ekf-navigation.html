@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extended Kalman Filter - GALILEO V2.0</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0a0a0a 0%, #0a1a2a 100%); color: #e0e0e0; min-height: 100vh; }
+        .header { background: rgba(10, 10, 10, 0.95); padding: 1rem 2rem; border-bottom: 1px solid rgba(6, 182, 212, 0.3); }
+        .header-content { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        .back-btn { background: linear-gradient(135deg, #06b6d4, #0891b2); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; }
+        .main-content { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .title-section { text-align: center; margin-bottom: 2rem; }
+        .page-title { font-size: 2.5rem; font-weight: 800; background: linear-gradient(135deg, #06b6d4, #22d3ee); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .page-subtitle { font-size: 1.1rem; color: #a0a0a0; margin-top: 0.5rem; }
+        .simulator-container { display: grid; grid-template-columns: 1fr 320px; gap: 2rem; }
+        .plot-container { background: rgba(20, 20, 20, 0.8); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: 15px; padding: 1.5rem; }
+        .controls-container { background: rgba(20, 20, 20, 0.8); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: 15px; padding: 1.5rem; }
+        .control-group { margin-bottom: 1.25rem; }
+        .control-label { display: block; color: #22d3ee; font-weight: 600; margin-bottom: 0.4rem; font-size: 0.85rem; }
+        .control-value { color: #06b6d4; font-weight: bold; float: right; }
+        .control-slider { width: 100%; height: 5px; background: rgba(6, 182, 212, 0.2); border-radius: 5px; -webkit-appearance: none; }
+        .control-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; background: #06b6d4; border-radius: 50%; cursor: pointer; }
+        .control-select { width: 100%; padding: 0.4rem; background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.3); color: #e0e0e0; border-radius: 6px; }
+        .btn { background: linear-gradient(135deg, #06b6d4, #0891b2); color: white; padding: 0.6rem 1rem; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 0.5rem; }
+        .info-panel { background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.3); border-radius: 8px; padding: 1rem; margin-top: 1rem; }
+        .info-title { color: #22d3ee; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem; }
+        .info-item { display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid rgba(6, 182, 212, 0.1); font-size: 0.8rem; }
+        .info-label { color: #a0a0a0; }
+        .info-value { color: #06b6d4; font-weight: bold; }
+        .tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(6, 182, 212, 0.2); }
+        .tab { padding: 0.75rem 1.25rem; background: transparent; border: none; color: #a0a0a0; cursor: pointer; position: relative; font-size: 0.9rem; }
+        .tab.active { color: #22d3ee; }
+        .tab.active::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: #06b6d4; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .sensor-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; margin-top: 1rem; }
+        .sensor-card { background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: 6px; padding: 0.5rem; text-align: center; }
+        .sensor-name { color: #22d3ee; font-size: 0.75rem; font-weight: 600; }
+        .sensor-status { color: #22c55e; font-size: 0.7rem; }
+        @media (max-width: 1024px) { .simulator-container { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h2 style="color: #22d3ee;"><i class="fas fa-filter"></i> Extended Kalman Filter</h2>
+            <a href="galileo-project.html" class="back-btn"><i class="fas fa-arrow-left"></i> Back to GALILEO Suite</a>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="title-section">
+            <h1 class="page-title">EKF Navigation System</h1>
+            <p class="page-subtitle">Sensor Fusion for Orbit Determination with GPS, Star Trackers, and IMU</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('estimation')">State Estimation</button>
+            <button class="tab" onclick="switchTab('covariance')">Covariance Analysis</button>
+            <button class="tab" onclick="switchTab('fusion')">Sensor Fusion</button>
+        </div>
+
+        <div id="estimation" class="tab-content active">
+            <div class="simulator-container">
+                <div class="plot-container">
+                    <div id="estimation-plot" style="height: 450px;"></div>
+                </div>
+                <div class="controls-container">
+                    <h3 style="color: #22d3ee; margin-bottom: 1rem; font-size: 0.95rem;">EKF Parameters</h3>
+                    <div class="control-group">
+                        <label class="control-label">Process Noise σ_q<span class="control-value" id="proc-value">0.01</span></label>
+                        <input type="range" class="control-slider" id="proc-slider" min="0.001" max="0.1" value="0.01" step="0.001">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Measurement Noise σ_r<span class="control-value" id="meas-value">1.0</span></label>
+                        <input type="range" class="control-slider" id="meas-slider" min="0.1" max="10" value="1" step="0.1">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Initial Uncertainty (m)<span class="control-value" id="init-value">100</span></label>
+                        <input type="range" class="control-slider" id="init-slider" min="10" max="500" value="100" step="10">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Measurement Rate (Hz)<span class="control-value" id="rate-value">1</span></label>
+                        <input type="range" class="control-slider" id="rate-slider" min="0.1" max="10" value="1" step="0.1">
+                    </div>
+                    <button class="btn" onclick="runEKF()"><i class="fas fa-play"></i> Run EKF</button>
+                    <div class="info-panel">
+                        <div class="info-title">Estimation Performance</div>
+                        <div class="info-item"><span class="info-label">Position RMS</span><span class="info-value" id="pos-rms">--</span></div>
+                        <div class="info-item"><span class="info-label">Velocity RMS</span><span class="info-value" id="vel-rms">--</span></div>
+                        <div class="info-item"><span class="info-label">3σ Bound</span><span class="info-value" id="sigma3">--</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="covariance" class="tab-content">
+            <div class="simulator-container">
+                <div class="plot-container">
+                    <div id="covariance-plot" style="height: 450px;"></div>
+                </div>
+                <div class="controls-container">
+                    <h3 style="color: #22d3ee; margin-bottom: 1rem; font-size: 0.95rem;">Covariance Evolution</h3>
+                    <div class="control-group">
+                        <label class="control-label">Display Mode</label>
+                        <select class="control-select" id="cov-mode" onchange="updateCovariance()">
+                            <option value="position">Position Uncertainty</option>
+                            <option value="velocity">Velocity Uncertainty</option>
+                            <option value="correlation">Correlation Coefficients</option>
+                        </select>
+                    </div>
+                    <button class="btn" onclick="updateCovariance()"><i class="fas fa-chart-area"></i> Update</button>
+                    <div class="info-panel">
+                        <div class="info-title">Steady-State Values</div>
+                        <div class="info-item"><span class="info-label">σ_x (m)</span><span class="info-value" id="ss-x">--</span></div>
+                        <div class="info-item"><span class="info-label">σ_y (m)</span><span class="info-value" id="ss-y">--</span></div>
+                        <div class="info-item"><span class="info-label">σ_z (m)</span><span class="info-value" id="ss-z">--</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="fusion" class="tab-content">
+            <div class="simulator-container">
+                <div class="plot-container">
+                    <div id="fusion-plot" style="height: 450px;"></div>
+                </div>
+                <div class="controls-container">
+                    <h3 style="color: #22d3ee; margin-bottom: 1rem; font-size: 0.95rem;">Sensor Configuration</h3>
+                    <div class="control-group">
+                        <label class="control-label"><input type="checkbox" id="gps-check" checked> GPS Receiver</label>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label"><input type="checkbox" id="star-check" checked> Star Tracker</label>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label"><input type="checkbox" id="imu-check" checked> IMU</label>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label"><input type="checkbox" id="mag-check"> Magnetometer</label>
+                    </div>
+                    <button class="btn" onclick="runFusion()"><i class="fas fa-layer-group"></i> Fuse Sensors</button>
+                    <div class="sensor-grid">
+                        <div class="sensor-card"><div class="sensor-name">GPS</div><div class="sensor-status" id="gps-status">Active</div></div>
+                        <div class="sensor-card"><div class="sensor-name">Star Tracker</div><div class="sensor-status" id="star-status">Active</div></div>
+                        <div class="sensor-card"><div class="sensor-name">IMU</div><div class="sensor-status" id="imu-status">Active</div></div>
+                        <div class="sensor-card"><div class="sensor-name">Magnetometer</div><div class="sensor-status" id="mag-status">Inactive</div></div>
+                    </div>
+                    <div class="info-panel">
+                        <div class="info-title">Fusion Quality</div>
+                        <div class="info-item"><span class="info-label">GDOP</span><span class="info-value" id="gdop">--</span></div>
+                        <div class="info-item"><span class="info-label">Redundancy</span><span class="info-value" id="redundancy">--</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        window.addEventListener('load', () => { runEKF(); updateCovariance(); runFusion(); });
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+        }
+
+        function runEKF() {
+            const Q = parseFloat(document.getElementById('proc-slider').value);
+            const R = parseFloat(document.getElementById('meas-slider').value);
+            const P0 = parseFloat(document.getElementById('init-slider').value);
+            const measRate = parseFloat(document.getElementById('rate-slider').value);
+
+            const dt = 0.1;
+            const T = 200;
+            const time = [], truePos = [], estPos = [], measured = [], sigma = [];
+            let x = 0, v = 0.5, xHat = P0 * 0.5, vHat = 0, P = [[P0*P0, 0], [0, 1]];
+            let posError = 0, velError = 0, n = 0;
+
+            for (let t = 0; t < T; t += dt) {
+                time.push(t);
+
+                // True dynamics
+                x += v * dt;
+                v += 0.01 * Math.sin(t * 0.1);
+                truePos.push(x);
+
+                // Prediction
+                xHat += vHat * dt;
+                P[0][0] += 2 * P[0][1] * dt + P[1][1] * dt * dt + Q;
+                P[0][1] += P[1][1] * dt;
+                P[1][0] = P[0][1];
+                P[1][1] += Q * 0.1;
+
+                // Measurement update (at measurement rate)
+                if (t % (1 / measRate) < dt) {
+                    const z = x + R * (Math.random() - 0.5) * 2;
+                    measured.push(z);
+
+                    const S = P[0][0] + R * R;
+                    const K = [P[0][0] / S, P[1][0] / S];
+                    const y = z - xHat;
+
+                    xHat += K[0] * y;
+                    vHat += K[1] * y;
+
+                    P[0][0] -= K[0] * P[0][0];
+                    P[0][1] -= K[0] * P[0][1];
+                    P[1][0] -= K[1] * P[0][0];
+                    P[1][1] -= K[1] * P[0][1];
+                } else {
+                    measured.push(null);
+                }
+
+                estPos.push(xHat);
+                sigma.push(3 * Math.sqrt(P[0][0]));
+
+                posError += Math.pow(x - xHat, 2);
+                velError += Math.pow(v - vHat, 2);
+                n++;
+            }
+
+            document.getElementById('pos-rms').textContent = Math.sqrt(posError / n).toFixed(3) + ' m';
+            document.getElementById('vel-rms').textContent = Math.sqrt(velError / n).toFixed(4) + ' m/s';
+            document.getElementById('sigma3').textContent = sigma[sigma.length - 1].toFixed(2) + ' m';
+
+            const upperBound = estPos.map((e, i) => e + sigma[i]);
+            const lowerBound = estPos.map((e, i) => e - sigma[i]);
+
+            Plotly.newPlot('estimation-plot', [
+                { x: time, y: truePos, name: 'True', line: { color: '#22c55e', width: 2 } },
+                { x: time, y: estPos, name: 'Estimate', line: { color: '#06b6d4', width: 2 } },
+                { x: time, y: measured.filter(m => m !== null), mode: 'markers', name: 'Measured', marker: { color: '#666', size: 4 } },
+                { x: time, y: upperBound, name: '3σ bound', line: { color: '#ef4444', dash: 'dash', width: 1 }, showlegend: false },
+                { x: time, y: lowerBound, line: { color: '#ef4444', dash: 'dash', width: 1 }, showlegend: false }
+            ], {
+                title: 'EKF State Estimation',
+                xaxis: { title: 'Time (s)', gridcolor: '#333' },
+                yaxis: { title: 'Position (m)', gridcolor: '#333' },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' }, showlegend: true
+            }, {responsive: true});
+        }
+
+        function updateCovariance() {
+            const mode = document.getElementById('cov-mode').value;
+            const time = [], px = [], py = [], pz = [];
+            const Q = parseFloat(document.getElementById('proc-slider').value);
+            const R = parseFloat(document.getElementById('meas-slider').value);
+
+            let Px = 10000, Py = 10000, Pz = 10000;
+            for (let t = 0; t < 500; t++) {
+                time.push(t);
+
+                // Kalman covariance update
+                Px = Px + Q - Px * Px / (Px + R * R);
+                Py = Py + Q * 1.2 - Py * Py / (Py + R * R * 1.5);
+                Pz = Pz + Q * 0.8 - Pz * Pz / (Pz + R * R * 2);
+
+                px.push(Math.sqrt(Px));
+                py.push(Math.sqrt(Py));
+                pz.push(Math.sqrt(Pz));
+            }
+
+            document.getElementById('ss-x').textContent = px[px.length - 1].toFixed(2);
+            document.getElementById('ss-y').textContent = py[py.length - 1].toFixed(2);
+            document.getElementById('ss-z').textContent = pz[pz.length - 1].toFixed(2);
+
+            Plotly.newPlot('covariance-plot', [
+                { x: time, y: px, name: 'σ_x', line: { color: '#06b6d4' } },
+                { x: time, y: py, name: 'σ_y', line: { color: '#22d3ee' } },
+                { x: time, y: pz, name: 'σ_z', line: { color: '#67e8f9' } }
+            ], {
+                title: 'Covariance Evolution',
+                xaxis: { title: 'Time (s)', gridcolor: '#333' },
+                yaxis: { title: 'Standard Deviation (m)', gridcolor: '#333' },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' }, showlegend: true
+            }, {responsive: true});
+        }
+
+        function runFusion() {
+            const gps = document.getElementById('gps-check').checked;
+            const star = document.getElementById('star-check').checked;
+            const imu = document.getElementById('imu-check').checked;
+            const mag = document.getElementById('mag-check').checked;
+
+            document.getElementById('gps-status').textContent = gps ? 'Active' : 'Inactive';
+            document.getElementById('gps-status').style.color = gps ? '#22c55e' : '#666';
+            document.getElementById('star-status').textContent = star ? 'Active' : 'Inactive';
+            document.getElementById('star-status').style.color = star ? '#22c55e' : '#666';
+            document.getElementById('imu-status').textContent = imu ? 'Active' : 'Inactive';
+            document.getElementById('imu-status').style.color = imu ? '#22c55e' : '#666';
+            document.getElementById('mag-status').textContent = mag ? 'Active' : 'Inactive';
+            document.getElementById('mag-status').style.color = mag ? '#22c55e' : '#666';
+
+            const numSensors = [gps, star, imu, mag].filter(Boolean).length;
+            document.getElementById('redundancy').textContent = numSensors >= 2 ? 'Good' : 'Low';
+            document.getElementById('gdop').textContent = (5 / Math.max(numSensors, 1)).toFixed(1);
+
+            const time = [], errors = { gps: [], star: [], imu: [], fused: [] };
+            const sigmas = { gps: 10, star: 0.001, imu: 0.1 };
+
+            for (let t = 0; t < 200; t++) {
+                time.push(t);
+
+                const eGps = gps ? sigmas.gps * (Math.random() - 0.5) * 2 : null;
+                const eStar = star ? sigmas.star * (Math.random() - 0.5) * 2 * 1000 : null;
+                const eImu = imu ? sigmas.imu * (Math.random() - 0.5) * 2 * 10 + t * 0.001 : null;
+
+                errors.gps.push(eGps);
+                errors.star.push(eStar);
+                errors.imu.push(eImu);
+
+                // Weighted fusion
+                let weights = [], vals = [];
+                if (gps) { weights.push(1 / sigmas.gps); vals.push(eGps); }
+                if (star) { weights.push(1 / (sigmas.star * 1000)); vals.push(eStar); }
+                if (imu) { weights.push(1 / (sigmas.imu * 10)); vals.push(eImu - t * 0.001); }
+
+                const wSum = weights.reduce((a, b) => a + b, 1e-10);
+                const fused = vals.reduce((sum, v, i) => sum + v * weights[i], 0) / wSum;
+                errors.fused.push(fused);
+            }
+
+            const traces = [];
+            if (gps) traces.push({ x: time, y: errors.gps, name: 'GPS', line: { color: '#666', width: 1 } });
+            if (star) traces.push({ x: time, y: errors.star, name: 'Star Tracker', line: { color: '#888', width: 1 } });
+            if (imu) traces.push({ x: time, y: errors.imu, name: 'IMU', line: { color: '#aaa', width: 1 } });
+            traces.push({ x: time, y: errors.fused, name: 'Fused', line: { color: '#06b6d4', width: 2 } });
+
+            Plotly.newPlot('fusion-plot', traces, {
+                title: 'Multi-Sensor Fusion',
+                xaxis: { title: 'Time (s)', gridcolor: '#333' },
+                yaxis: { title: 'Error (m)', gridcolor: '#333' },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' }, showlegend: true
+            }, {responsive: true});
+        }
+
+        ['proc', 'meas', 'init', 'rate'].forEach(id => {
+            const s = document.getElementById(id + '-slider');
+            const v = document.getElementById(id + '-value');
+            if (s && v) s.addEventListener('input', () => v.textContent = s.value);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Gravity Models - GALILEO V2.0</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            min-height: 100vh;
+            color: #e2e8f0;
+        }
+
+        .top-nav {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(6, 182, 212, 0.2);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-brand {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #06b6d4, #22d3ee);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .nav-links a {
+            color: #94a3b8;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            color: #06b6d4;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(34, 211, 238, 0.05));
+            border-radius: 20px;
+            border: 1px solid rgba(6, 182, 212, 0.2);
+        }
+
+        .page-header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #06b6d4, #22d3ee);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .page-header p {
+            color: #94a3b8;
+            font-size: 1.1rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .tab {
+            padding: 0.75rem 1.5rem;
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            border-radius: 10px;
+            color: #94a3b8;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        .tab:hover {
+            border-color: #06b6d4;
+            color: #06b6d4;
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, #06b6d4, #0891b2);
+            color: white;
+            border-color: transparent;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .demo-section {
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid rgba(6, 182, 212, 0.2);
+            margin-bottom: 2rem;
+        }
+
+        .demo-section h2 {
+            color: #22d3ee;
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .control-group {
+            background: rgba(15, 23, 42, 0.6);
+            padding: 1.25rem;
+            border-radius: 12px;
+            border: 1px solid rgba(6, 182, 212, 0.15);
+        }
+
+        .control-group label {
+            display: block;
+            color: #06b6d4;
+            margin-bottom: 0.75rem;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            margin-bottom: 0.5rem;
+            accent-color: #06b6d4;
+        }
+
+        .control-group select {
+            width: 100%;
+            padding: 0.5rem;
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            border-radius: 6px;
+            color: #e2e8f0;
+            font-size: 0.9rem;
+        }
+
+        .value-display {
+            text-align: right;
+            color: #22d3ee;
+            font-family: 'Consolas', monospace;
+            font-size: 0.9rem;
+        }
+
+        .chart-container {
+            background: rgba(15, 23, 42, 0.4);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .chart-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(34, 211, 238, 0.05));
+            padding: 1.25rem;
+            border-radius: 12px;
+            border: 1px solid rgba(6, 182, 212, 0.2);
+            text-align: center;
+        }
+
+        .metric-card .value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #22d3ee;
+            font-family: 'Consolas', monospace;
+        }
+
+        .metric-card .label {
+            color: #94a3b8;
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+        }
+
+        .equation-box {
+            background: rgba(15, 23, 42, 0.8);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border-left: 4px solid #06b6d4;
+            margin: 1.5rem 0;
+            overflow-x: auto;
+        }
+
+        .equation-box h4 {
+            color: #06b6d4;
+            margin-bottom: 1rem;
+            font-size: 1rem;
+        }
+
+        .model-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .model-card {
+            background: rgba(15, 23, 42, 0.6);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid rgba(6, 182, 212, 0.15);
+            transition: all 0.3s ease;
+        }
+
+        .model-card:hover {
+            border-color: #06b6d4;
+            transform: translateY(-2px);
+        }
+
+        .model-card.selected {
+            border-color: #06b6d4;
+            background: rgba(6, 182, 212, 0.1);
+        }
+
+        .model-card h4 {
+            color: #22d3ee;
+            margin-bottom: 0.75rem;
+        }
+
+        .model-card p {
+            color: #94a3b8;
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .model-card .specs {
+            font-size: 0.8rem;
+            color: #64748b;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .info-card {
+            background: rgba(15, 23, 42, 0.6);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid rgba(6, 182, 212, 0.15);
+        }
+
+        .info-card h4 {
+            color: #22d3ee;
+            margin-bottom: 0.75rem;
+        }
+
+        .info-card p {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(6, 182, 212, 0.2);
+        }
+
+        th {
+            color: #06b6d4;
+            font-weight: 600;
+        }
+
+        td {
+            color: #94a3b8;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .page-header h1 {
+                font-size: 1.75rem;
+            }
+
+            .chart-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="top-nav">
+        <div class="nav-brand">GALILEO V2.0</div>
+        <div class="nav-links">
+            <a href="galileo-project.html">Back to Suite</a>
+            <a href="index.html">Portfolio</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>Global Gravity Field Models</h1>
+            <p>Exploration of Earth Gravitational Models (EGM) including EGM2008, EIGEN-6C4, and satellite-only models from GRACE and GOCE missions.</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('models')">Model Comparison</button>
+            <button class="tab" onclick="switchTab('spectra')">Spectral Analysis</button>
+            <button class="tab" onclick="switchTab('synthesis')">Field Synthesis</button>
+            <button class="tab" onclick="switchTab('applications')">Applications</button>
+        </div>
+
+        <!-- Models Tab -->
+        <div id="models" class="tab-content active">
+            <div class="demo-section">
+                <h2>Earth Gravity Field Models</h2>
+
+                <div class="equation-box">
+                    <h4>Spherical Harmonic Representation</h4>
+                    <p>\[V(r,\theta,\lambda) = \frac{GM}{r}\sum_{n=0}^{N_{max}}\left(\frac{a}{r}\right)^n\sum_{m=0}^{n}\bar{P}_{nm}(\cos\theta)[\bar{C}_{nm}\cos(m\lambda) + \bar{S}_{nm}\sin(m\lambda)]\]</p>
+                </div>
+
+                <div class="model-cards">
+                    <div class="model-card selected" onclick="selectModel('egm2008')">
+                        <h4>EGM2008</h4>
+                        <p>High-resolution combined model incorporating satellite, airborne, and terrestrial data.</p>
+                        <div class="specs">
+                            <p>Max Degree: 2190 | Resolution: ~9 km</p>
+                            <p>Release: 2008 | Agency: NGA</p>
+                        </div>
+                    </div>
+                    <div class="model-card" onclick="selectModel('eigen6c4')">
+                        <h4>EIGEN-6C4</h4>
+                        <p>Combined model from GRACE, GOCE, and surface data with improved medium wavelengths.</p>
+                        <div class="specs">
+                            <p>Max Degree: 2190 | Resolution: ~9 km</p>
+                            <p>Release: 2014 | Agency: GFZ/GRGS</p>
+                        </div>
+                    </div>
+                    <div class="model-card" onclick="selectModel('goco06s')">
+                        <h4>GOCO06s</h4>
+                        <p>Satellite-only model combining GRACE and GOCE observations.</p>
+                        <div class="specs">
+                            <p>Max Degree: 300 | Resolution: ~66 km</p>
+                            <p>Release: 2020 | Agency: TU Graz</p>
+                        </div>
+                    </div>
+                    <div class="model-card" onclick="selectModel('grace')">
+                        <h4>GRACE-FO RL06</h4>
+                        <p>Monthly gravity solutions for temporal mass variations.</p>
+                        <div class="specs">
+                            <p>Max Degree: 96 | Resolution: ~200 km</p>
+                            <p>Release: 2023 | Agency: CSR/GFZ/JPL</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-row">
+                    <div class="chart-container">
+                        <div id="modelComparisonChart" style="height: 350px;"></div>
+                    </div>
+                    <div class="chart-container">
+                        <div id="errorSpectrumChart" style="height: 350px;"></div>
+                    </div>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Model</th>
+                            <th>Max Degree</th>
+                            <th>Data Sources</th>
+                            <th>Geoid σ (cm)</th>
+                            <th>Year</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>EGM2008</td>
+                            <td>2190</td>
+                            <td>GRACE + Altimetry + Surface</td>
+                            <td>15</td>
+                            <td>2008</td>
+                        </tr>
+                        <tr>
+                            <td>EIGEN-6C4</td>
+                            <td>2190</td>
+                            <td>GRACE + GOCE + Surface</td>
+                            <td>12</td>
+                            <td>2014</td>
+                        </tr>
+                        <tr>
+                            <td>GOCO06s</td>
+                            <td>300</td>
+                            <td>GRACE + GOCE</td>
+                            <td>2 (to d/o 200)</td>
+                            <td>2020</td>
+                        </tr>
+                        <tr>
+                            <td>XGM2019e</td>
+                            <td>5540</td>
+                            <td>Multi-source</td>
+                            <td>10</td>
+                            <td>2019</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="value" id="selectedModel">EGM2008</div>
+                        <div class="label">Selected Model</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="value" id="maxDegree">2190</div>
+                        <div class="label">Max Degree</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="value" id="numCoeffs">4.8M</div>
+                        <div class="label">Coefficients</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="value" id="resolution">~9</div>
+                        <div class="label">Resolution (km)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Spectra Tab -->
+        <div id="spectra" class="tab-content">
+            <div class="demo-section">
+                <h2>Degree Variance Spectra</h2>
+
+                <div class="equation-box">
+                    <h4>Degree Variance</h4>
+                    <p>\[\sigma_n^2 = \sum_{m=0}^{n}(\bar{C}_{nm}^2 + \bar{S}_{nm}^2)\]</p>
+                    <p style="color: #94a3b8; margin-top: 1rem;">Kaula's Rule: \(\sigma_n \approx \frac{10^{-5}}{n^2}\)</p>
+                </div>
+
+                <div class="controls-grid">
+                    <div class="control-group">
+                        <label>Display Range</label>
+                        <input type="range" id="spectraRange" min="10" max="300" step="10" value="200" onchange="updateSpectra()">
+                        <div class="value-display">n = 2 to <span id="spectraRangeVal">200</span></div>
+                    </div>
+                    <div class="control-group">
+                        <label>Models to Show</label>
+                        <select id="spectraModels" onchange="updateSpectra()">
+                            <option value="all" selected>All Models</option>
+                            <option value="combined">Combined Only</option>
+                            <option value="satellite">Satellite Only</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>Quantity</label>
+                        <select id="spectraQuantity" onchange="updateSpectra()">
+                            <option value="geoid" selected>Geoid Height (m)</option>
+                            <option value="gravity">Gravity Anomaly (mGal)</option>
+                            <option value="potential">Potential (m²/s²)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div id="degreeVarianceChart" style="height: 450px;"></div>
+                </div>
+
+                <div class="chart-row">
+                    <div class="chart-container">
+                        <div id="signalNoiseChart" style="height: 300px;"></div>
+                    </div>
+                    <div class="chart-container">
+                        <div id="cumulativeChart" style="height: 300px;"></div>
+                    </div>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="value" id="totalSignal">--</div>
+                        <div class="label">Total Signal (m)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="value" id="totalError">--</div>
+                        <div class="label">Total Error (m)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="value" id="crossover">--</div>
+                        <div class="label">SNR=1 Degree</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="value" id="omission">--</div>
+                        <div class="label">Omission Error (m)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Synthesis Tab -->
+        <div id="synthesis" class="tab-content">
+            <div class="demo-section">
+                <h2>Gravity Field Synthesis</h2>
+
+                <div class="controls-grid">
+                    <div class="control-group">
+                        <label>Model</label>
+                        <select id="synthModel" onchange="updateSynthesis()">
+                            <option value="egm2008" selected>EGM2008</option>
+                            <option value="eigen6c4">EIGEN-6C4</option>
+                            <option value="goco06s">GOCO06s</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>Maximum Degree</label>
+                        <input type="range" id="synthDegree" min="10" max="360" step="10" value="120" onchange="updateSynthesis()">
+                        <div class="value-display">N = <span id="synthDegreeVal">120</span></div>
+                    </div>
+                    <div class="control-group">
+                        <label>Functional</label>
+                        <select id="synthFunctional" onchange="updateSynthesis()">
+                            <option value="geoid" selected>Geoid Height</option>
+                            <option value="anomaly">Gravity Anomaly</option>
+                            <option value="disturbance">Gravity Disturbance</option>
+                            <option value="deflection">Deflection of Vertical</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>Altitude</label>
+                        <input type="range" id="synthAlt" min="0" max="500" step="50" value="0" onchange="updateSynthesis()">
+                        <div class="value-display"><span id="synthAltVal">0</span> km</div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div id="synthesisMapChart" style="height: 450px;"></div>
+                </div>
+
+                <div class="chart-row">
+                    <div class="chart-container">
+                        <div id="profileChart" style="height: 300px;"></div>
+                    </div>
+                    <div class="chart-container">
+                        <div id="histogramChart" style="height: 300px;"></div>
+                    </div>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="value" id="synthMean">--</div>
+                        <div class="label">Mean</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="value" id="synthStd">--</div>
+                        <div class="label">Std Dev</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="value" id="synthMin">--</div>
+                        <div class="label">Minimum</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="value" id="synthMax">--</div>
+                        <div class="label">Maximum</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Applications Tab -->
+        <div id="applications" class="tab-content">
+            <div class="demo-section">
+                <h2>Geodetic Applications</h2>
+
+                <div class="info-grid">
+                    <div class="info-card">
+                        <h4>Height Systems</h4>
+                        <p>Geoid models define the reference surface for orthometric heights, enabling conversion between GPS ellipsoidal heights and practical leveling heights. Critical for engineering and construction.</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>Satellite Orbits</h4>
+                        <p>Gravity field models are essential for precise orbit determination of satellites. Higher degree models improve prediction accuracy for low-Earth orbiters.</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>Inertial Navigation</h4>
+                        <p>Gravity compensation in INS requires accurate local gravity knowledge. EGM models enable sub-mGal accuracy for precision navigation applications.</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>Oceanography</h4>
+                        <p>Mean dynamic topography (MDT) derived from altimetry minus geoid reveals ocean circulation patterns. GOCE improved MDT accuracy significantly.</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>Geophysics</h4>
+                        <p>Gravity anomalies reveal density variations in Earth's crust and mantle. Used for mineral exploration, geothermal studies, and understanding tectonics.</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>Hydrology</h4>
+                        <p>GRACE time-variable gravity tracks water mass redistribution: groundwater depletion, ice sheet mass loss, and seasonal water storage changes.</p>
+                    </div>
+                </div>
+
+                <div class="chart-row">
+                    <div class="chart-container">
+                        <div id="applicationChart" style="height: 350px;"></div>
+                    </div>
+                    <div class="chart-container">
+                        <div id="requirementsChart" style="height: 350px;"></div>
+                    </div>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Application</th>
+                            <th>Required Accuracy</th>
+                            <th>Spatial Resolution</th>
+                            <th>Recommended Model</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>GNSS Leveling</td>
+                            <td>1-2 cm</td>
+                            <td>5-10 km</td>
+                            <td>Regional + EGM2008</td>
+                        </tr>
+                        <tr>
+                            <td>LEO Orbit Determination</td>
+                            <td>1 cm</td>
+                            <td>100 km</td>
+                            <td>GOCO06s</td>
+                        </tr>
+                        <tr>
+                            <td>Oceanography</td>
+                            <td>1-2 cm</td>
+                            <td>100 km</td>
+                            <td>EIGEN-6C4</td>
+                        </tr>
+                        <tr>
+                            <td>Exploration Geophysics</td>
+                            <td>1 mGal</td>
+                            <td>1-5 km</td>
+                            <td>Local surveys</td>
+                        </tr>
+                        <tr>
+                            <td>Ice Mass Balance</td>
+                            <td>mm/yr water eq.</td>
+                            <td>300 km</td>
+                            <td>GRACE-FO monthly</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedModelName = 'egm2008';
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+            event.target.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+
+            setTimeout(() => {
+                if (tabId === 'models') updateModels();
+                else if (tabId === 'spectra') updateSpectra();
+                else if (tabId === 'synthesis') updateSynthesis();
+                else if (tabId === 'applications') updateApplications();
+            }, 100);
+        }
+
+        function selectModel(model) {
+            selectedModelName = model;
+            document.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
+            event.target.closest('.model-card').classList.add('selected');
+
+            const specs = {
+                egm2008: { name: 'EGM2008', degree: 2190, coeffs: '4.8M', res: '~9' },
+                eigen6c4: { name: 'EIGEN-6C4', degree: 2190, coeffs: '4.8M', res: '~9' },
+                goco06s: { name: 'GOCO06s', degree: 300, coeffs: '90K', res: '~66' },
+                grace: { name: 'GRACE-FO', degree: 96, coeffs: '9.4K', res: '~200' }
+            };
+
+            const s = specs[model];
+            document.getElementById('selectedModel').textContent = s.name;
+            document.getElementById('maxDegree').textContent = s.degree;
+            document.getElementById('numCoeffs').textContent = s.coeffs;
+            document.getElementById('resolution').textContent = s.res;
+
+            updateModels();
+        }
+
+        function updateModels() {
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(15,23,42,0.6)',
+                font: { color: '#94a3b8' },
+                margin: { t: 40 }
+            };
+
+            const degrees = Array.from({length: 200}, (_, i) => i + 2);
+
+            // Signal spectra
+            const egm2008 = degrees.map(n => 1e-5 / Math.pow(n, 2) * (1 + Math.random() * 0.1));
+            const eigen6c4 = degrees.map(n => 0.95e-5 / Math.pow(n, 2) * (1 + Math.random() * 0.1));
+            const goco06s = degrees.map(n => n <= 300 ? 1e-5 / Math.pow(n, 2) * (1 + Math.random() * 0.1) : null);
+            const kaula = degrees.map(n => 1e-5 / Math.pow(n, 2));
+
+            Plotly.newPlot('modelComparisonChart', [
+                { x: degrees, y: egm2008, name: 'EGM2008', line: { color: '#06b6d4' } },
+                { x: degrees, y: eigen6c4, name: 'EIGEN-6C4', line: { color: '#22d3ee' } },
+                { x: degrees, y: goco06s, name: 'GOCO06s', line: { color: '#a78bfa' } },
+                { x: degrees, y: kaula, name: 'Kaula Rule', line: { color: '#94a3b8', dash: 'dash' } }
+            ], {
+                ...layout,
+                title: 'Degree Amplitude Spectra',
+                xaxis: { title: 'Degree n', gridcolor: 'rgba(148,163,184,0.1)' },
+                yaxis: { title: 'Degree RMS', type: 'log', gridcolor: 'rgba(148,163,184,0.1)' },
+                legend: { x: 0.7, y: 0.95 }
+            });
+
+            // Error spectra
+            const errEgm = degrees.map(n => 1e-7 * Math.pow(1.02, n - 100) * (1 + Math.random() * 0.2));
+            const errEigen = degrees.map(n => 0.8e-7 * Math.pow(1.02, n - 100) * (1 + Math.random() * 0.2));
+            const errGoco = degrees.map(n => n <= 200 ? 0.5e-7 * Math.pow(1.015, n - 100) : null);
+
+            Plotly.newPlot('errorSpectrumChart', [
+                { x: degrees, y: errEgm, name: 'EGM2008 Error', line: { color: '#06b6d4' } },
+                { x: degrees, y: errEigen, name: 'EIGEN-6C4 Error', line: { color: '#22d3ee' } },
+                { x: degrees, y: errGoco, name: 'GOCO06s Error', line: { color: '#a78bfa' } }
+            ], {
+                ...layout,
+                title: 'Error Degree Variance',
+                xaxis: { title: 'Degree n', gridcolor: 'rgba(148,163,184,0.1)' },
+                yaxis: { title: 'Error σₙ', type: 'log', gridcolor: 'rgba(148,163,184,0.1)' },
+                legend: { x: 0.02, y: 0.95 }
+            });
+        }
+
+        function updateSpectra() {
+            const maxDeg = parseInt(document.getElementById('spectraRange').value);
+            const quantity = document.getElementById('spectraQuantity').value;
+
+            document.getElementById('spectraRangeVal').textContent = maxDeg;
+
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(15,23,42,0.6)',
+                font: { color: '#94a3b8' },
+                margin: { t: 40 }
+            };
+
+            const degrees = Array.from({length: maxDeg - 1}, (_, i) => i + 2);
+
+            // Scale factors
+            let scaleFactor = 1;
+            let unit = 'm';
+            if (quantity === 'gravity') { scaleFactor = 1e5; unit = 'mGal'; }
+            else if (quantity === 'potential') { scaleFactor = 100; unit = 'm²/s²'; }
+
+            const signal = degrees.map(n => scaleFactor * 1e-5 / Math.pow(n, 2));
+            const error = degrees.map(n => scaleFactor * 1e-7 * Math.pow(1.02, n - 100));
+            const kaula = degrees.map(n => scaleFactor * 1e-5 / Math.pow(n, 2));
+
+            Plotly.newPlot('degreeVarianceChart', [
+                { x: degrees, y: signal, name: 'Signal', line: { color: '#06b6d4', width: 2 } },
+                { x: degrees, y: error, name: 'Error', line: { color: '#ef4444' } },
+                { x: degrees, y: kaula, name: 'Kaula', line: { color: '#94a3b8', dash: 'dash' } }
+            ], {
+                ...layout,
+                title: `Degree Variance (${unit})`,
+                xaxis: { title: 'Degree n', gridcolor: 'rgba(148,163,184,0.1)' },
+                yaxis: { title: `σₙ (${unit})`, type: 'log', gridcolor: 'rgba(148,163,184,0.1)' },
+                legend: { x: 0.7, y: 0.95 }
+            });
+
+            // SNR
+            const snr = degrees.map((n, i) => signal[i] / error[i]);
+
+            Plotly.newPlot('signalNoiseChart', [{
+                x: degrees,
+                y: snr,
+                line: { color: '#22d3ee' }
+            }, {
+                x: [2, maxDeg],
+                y: [1, 1],
+                mode: 'lines',
+                line: { color: '#ef4444', dash: 'dash' },
+                name: 'SNR = 1'
+            }], {
+                ...layout,
+                title: 'Signal-to-Noise Ratio',
+                xaxis: { title: 'Degree n', gridcolor: 'rgba(148,163,184,0.1)' },
+                yaxis: { title: 'SNR', type: 'log', gridcolor: 'rgba(148,163,184,0.1)' },
+                showlegend: false
+            });
+
+            // Cumulative
+            let cumSignal = 0, cumError = 0;
+            const cumSig = signal.map(s => { cumSignal += s * s; return Math.sqrt(cumSignal); });
+            const cumErr = error.map(e => { cumError += e * e; return Math.sqrt(cumError); });
+
+            Plotly.newPlot('cumulativeChart', [
+                { x: degrees, y: cumSig, name: 'Cumulative Signal', line: { color: '#06b6d4' } },
+                { x: degrees, y: cumErr, name: 'Cumulative Error', line: { color: '#ef4444' } }
+            ], {
+                ...layout,
+                title: 'Cumulative RMS',
+                xaxis: { title: 'Degree n', gridcolor: 'rgba(148,163,184,0.1)' },
+                yaxis: { title: `RMS (${unit})`, type: 'log', gridcolor: 'rgba(148,163,184,0.1)' },
+                legend: { x: 0.02, y: 0.95 }
+            });
+
+            // Find crossover
+            let crossover = maxDeg;
+            for (let i = 0; i < snr.length; i++) {
+                if (snr[i] < 1) { crossover = degrees[i]; break; }
+            }
+
+            document.getElementById('totalSignal').textContent = cumSig[cumSig.length - 1].toFixed(2);
+            document.getElementById('totalError').textContent = cumErr[cumErr.length - 1].toFixed(2);
+            document.getElementById('crossover').textContent = crossover;
+            document.getElementById('omission').textContent = (scaleFactor * 0.001).toFixed(3);
+        }
+
+        function updateSynthesis() {
+            const degree = parseInt(document.getElementById('synthDegree').value);
+            const functional = document.getElementById('synthFunctional').value;
+            const alt = parseInt(document.getElementById('synthAlt').value);
+
+            document.getElementById('synthDegreeVal').textContent = degree;
+            document.getElementById('synthAltVal').textContent = alt;
+
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(15,23,42,0.6)',
+                font: { color: '#94a3b8' },
+                margin: { t: 50 }
+            };
+
+            // Generate field
+            const latSize = 61;
+            const lonSize = 121;
+            const field = [];
+
+            for (let lat = 0; lat < latSize; lat++) {
+                const row = [];
+                const latVal = -90 + lat * 3;
+                for (let lon = 0; lon < lonSize; lon++) {
+                    const lonVal = -180 + lon * 3;
+
+                    let val = 0;
+                    for (let n = 2; n <= Math.min(degree, 30); n++) {
+                        const attenuation = Math.pow((6371 / (6371 + alt)), n + 1);
+                        val += attenuation * 50 / (n * n) * Math.cos(n * latVal * Math.PI / 180) * Math.cos(n * lonVal * Math.PI / 180);
+                    }
+
+                    // Scale by functional
+                    if (functional === 'anomaly') val *= 10;
+                    else if (functional === 'disturbance') val *= 10.5;
+                    else if (functional === 'deflection') val *= 0.1;
+
+                    row.push(val);
+                }
+                field.push(row);
+            }
+
+            const units = {
+                geoid: 'm',
+                anomaly: 'mGal',
+                disturbance: 'mGal',
+                deflection: 'arcsec'
+            };
+
+            Plotly.newPlot('synthesisMapChart', [{
+                z: field,
+                type: 'heatmap',
+                colorscale: 'RdBu',
+                reversescale: true,
+                colorbar: { title: units[functional] }
+            }], {
+                ...layout,
+                title: `Synthesized ${functional.charAt(0).toUpperCase() + functional.slice(1)} (N=${degree}, h=${alt} km)`,
+                xaxis: { title: 'Longitude', dtick: 20 },
+                yaxis: { title: 'Latitude', dtick: 10 }
+            });
+
+            // Profile (equator)
+            const lons = Array.from({length: lonSize}, (_, i) => -180 + i * 3);
+            const profile = field[30]; // Equator
+
+            Plotly.newPlot('profileChart', [{
+                x: lons,
+                y: profile,
+                line: { color: '#06b6d4' }
+            }], {
+                ...layout,
+                title: 'Equatorial Profile',
+                xaxis: { title: 'Longitude (°)', gridcolor: 'rgba(148,163,184,0.1)' },
+                yaxis: { title: units[functional], gridcolor: 'rgba(148,163,184,0.1)' }
+            });
+
+            // Histogram
+            const flat = field.flat();
+
+            Plotly.newPlot('histogramChart', [{
+                x: flat,
+                type: 'histogram',
+                marker: { color: '#06b6d4' },
+                nbinsx: 50
+            }], {
+                ...layout,
+                title: 'Value Distribution',
+                xaxis: { title: units[functional], gridcolor: 'rgba(148,163,184,0.1)' },
+                yaxis: { title: 'Count', gridcolor: 'rgba(148,163,184,0.1)' }
+            });
+
+            // Statistics
+            const mean = flat.reduce((a, b) => a + b) / flat.length;
+            const std = Math.sqrt(flat.reduce((a, b) => a + (b - mean) ** 2, 0) / flat.length);
+
+            document.getElementById('synthMean').textContent = mean.toFixed(2);
+            document.getElementById('synthStd').textContent = std.toFixed(2);
+            document.getElementById('synthMin').textContent = Math.min(...flat).toFixed(2);
+            document.getElementById('synthMax').textContent = Math.max(...flat).toFixed(2);
+        }
+
+        function updateApplications() {
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(15,23,42,0.6)',
+                font: { color: '#94a3b8' },
+                margin: { t: 40 }
+            };
+
+            // Application requirements
+            const apps = ['GNSS Leveling', 'Orbit Det.', 'Oceanography', 'Geophysics', 'Hydrology'];
+            const accuracy = [2, 1, 1.5, 100, 10]; // cm or mGal equivalent
+            const resolution = [10, 200, 100, 5, 300]; // km
+
+            Plotly.newPlot('applicationChart', [{
+                x: apps,
+                y: accuracy,
+                type: 'bar',
+                marker: { color: '#06b6d4' }
+            }], {
+                ...layout,
+                title: 'Required Accuracy (cm geoid equiv.)',
+                xaxis: { gridcolor: 'rgba(148,163,184,0.1)' },
+                yaxis: { title: 'Accuracy (cm)', type: 'log', gridcolor: 'rgba(148,163,184,0.1)' }
+            });
+
+            Plotly.newPlot('requirementsChart', [{
+                x: resolution,
+                y: accuracy,
+                mode: 'markers+text',
+                text: apps,
+                textposition: 'top center',
+                marker: { size: 15, color: '#22d3ee' }
+            }], {
+                ...layout,
+                title: 'Resolution vs Accuracy Requirements',
+                xaxis: { title: 'Spatial Resolution (km)', type: 'log', gridcolor: 'rgba(148,163,184,0.1)' },
+                yaxis: { title: 'Required Accuracy (cm)', type: 'log', gridcolor: 'rgba(148,163,184,0.1)' }
+            });
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            updateModels();
+        });
+    </script>
+</body>
+</html>

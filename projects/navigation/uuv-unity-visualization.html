@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unity Visualization - Mini-UUV Systems</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%);
+        }
+        #unityViewer {
+            background: linear-gradient(180deg, #0a2540 0%, #0d3b66 50%, #1a1a2e 100%);
+        }
+        .camera-btn.active {
+            background-color: #10b981;
+        }
+        .telemetry-value {
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-emerald-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="mini-uuv-complete-project.html" class="flex items-center text-emerald-400 hover:text-emerald-300 transition-colors">
+                    <i class="fas fa-arrow-left mr-2"></i>
+                    Back to Mini-UUV Project
+                </a>
+                <span class="text-emerald-400 font-semibold">Unity Visualization</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="gradient-bg py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4">
+                <i class="fas fa-cube mr-4 text-emerald-400"></i>
+                3D Visualization Environment
+            </h1>
+            <p class="text-xl text-emerald-100 max-w-3xl mx-auto">
+                Interactive 3D underwater environment simulation with real-time UUV visualization,
+                mission playback, and environment rendering
+            </p>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- 3D Viewer -->
+        <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-4 mb-8">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-emerald-400">
+                    <i class="fas fa-video mr-2"></i>3D Environment View
+                </h2>
+                <div class="flex gap-2">
+                    <button onclick="setCamera('follow')" id="camFollow" class="camera-btn active px-3 py-1 rounded bg-gray-700 text-sm transition-colors">
+                        <i class="fas fa-eye mr-1"></i>Follow
+                    </button>
+                    <button onclick="setCamera('top')" id="camTop" class="camera-btn px-3 py-1 rounded bg-gray-700 text-sm transition-colors">
+                        <i class="fas fa-arrow-down mr-1"></i>Top
+                    </button>
+                    <button onclick="setCamera('side')" id="camSide" class="camera-btn px-3 py-1 rounded bg-gray-700 text-sm transition-colors">
+                        <i class="fas fa-arrow-right mr-1"></i>Side
+                    </button>
+                    <button onclick="setCamera('free')" id="camFree" class="camera-btn px-3 py-1 rounded bg-gray-700 text-sm transition-colors">
+                        <i class="fas fa-hand-paper mr-1"></i>Free
+                    </button>
+                </div>
+            </div>
+            <div id="unityViewer" class="w-full h-96 rounded-lg relative overflow-hidden">
+                <!-- Three.js canvas will be inserted here -->
+                <!-- Overlay HUD -->
+                <div class="absolute top-4 left-4 bg-gray-900/80 rounded-lg p-3 text-xs">
+                    <div class="text-emerald-400 font-semibold mb-2">TELEMETRY</div>
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+                        <span class="text-gray-400">Depth:</span>
+                        <span id="hudDepth" class="telemetry-value text-white">-15.2 m</span>
+                        <span class="text-gray-400">Heading:</span>
+                        <span id="hudHeading" class="telemetry-value text-white">045°</span>
+                        <span class="text-gray-400">Speed:</span>
+                        <span id="hudSpeed" class="telemetry-value text-white">1.2 m/s</span>
+                        <span class="text-gray-400">Battery:</span>
+                        <span id="hudBattery" class="telemetry-value text-emerald-400">87%</span>
+                    </div>
+                </div>
+                <!-- Compass -->
+                <div class="absolute top-4 right-4 w-16 h-16">
+                    <svg id="compass" viewBox="0 0 60 60" class="w-full h-full">
+                        <circle cx="30" cy="30" r="28" fill="rgba(0,0,0,0.5)" stroke="#10b981" stroke-width="2"/>
+                        <text x="30" y="12" fill="#10b981" font-size="8" text-anchor="middle">N</text>
+                        <text x="52" y="33" fill="#9ca3af" font-size="6" text-anchor="middle">E</text>
+                        <text x="30" y="54" fill="#9ca3af" font-size="6" text-anchor="middle">S</text>
+                        <text x="8" y="33" fill="#9ca3af" font-size="6" text-anchor="middle">W</text>
+                        <g id="compassNeedle">
+                            <line x1="30" y1="30" x2="30" y2="16" stroke="#ef4444" stroke-width="2"/>
+                            <line x1="30" y1="30" x2="30" y2="44" stroke="#9ca3af" stroke-width="1"/>
+                        </g>
+                    </svg>
+                </div>
+                <!-- Depth gauge -->
+                <div class="absolute bottom-4 right-4 w-8 h-32 bg-gray-900/80 rounded">
+                    <div class="h-full relative">
+                        <div id="depthGauge" class="absolute bottom-0 left-0 right-0 bg-blue-500/50 rounded-b transition-all" style="height: 30%"></div>
+                        <div class="absolute inset-0 flex flex-col justify-between p-1 text-xs text-gray-400">
+                            <span>0</span>
+                            <span>50</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Playback controls -->
+            <div class="mt-4 flex items-center gap-4">
+                <button onclick="togglePlayback()" id="playBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg">
+                    <i class="fas fa-play mr-2"></i>Play
+                </button>
+                <button onclick="resetSimulation()" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
+                    <i class="fas fa-undo mr-2"></i>Reset
+                </button>
+                <div class="flex-1">
+                    <input type="range" id="timeSlider" min="0" max="100" value="0" class="w-full" oninput="seekTime()">
+                </div>
+                <span id="timeDisplay" class="text-gray-400 text-sm w-24">00:00 / 05:00</span>
+                <select id="playbackSpeed" class="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm">
+                    <option value="0.5">0.5x</option>
+                    <option value="1" selected>1x</option>
+                    <option value="2">2x</option>
+                    <option value="4">4x</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Environment and UUV Controls -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <!-- Environment Settings -->
+            <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                <h2 class="text-xl font-semibold text-emerald-400 mb-4">
+                    <i class="fas fa-water mr-2"></i>Environment
+                </h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1">
+                            <span>Water Visibility</span>
+                            <span id="visValue" class="text-emerald-400">20 m</span>
+                        </label>
+                        <input type="range" id="visibility" min="5" max="50" value="20" class="w-full" oninput="updateEnvironment()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1">
+                            <span>Current Strength</span>
+                            <span id="currentValue" class="text-emerald-400">0.5 m/s</span>
+                        </label>
+                        <input type="range" id="currentStrength" min="0" max="2" step="0.1" value="0.5" class="w-full" oninput="updateEnvironment()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1">
+                            <span>Ambient Light</span>
+                            <span id="lightValue" class="text-emerald-400">50%</span>
+                        </label>
+                        <input type="range" id="ambientLight" min="0" max="100" value="50" class="w-full" oninput="updateEnvironment()">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-300 mb-1">Sea Floor Type</label>
+                        <select id="seaFloor" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2" onchange="updateEnvironment()">
+                            <option value="sand">Sandy</option>
+                            <option value="rock" selected>Rocky</option>
+                            <option value="coral">Coral Reef</option>
+                            <option value="mud">Muddy</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-300">Show Particles</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="particlesToggle" checked class="sr-only peer" onchange="toggleParticles()">
+                            <div class="w-11 h-6 bg-gray-600 peer-checked:bg-emerald-600 rounded-full"></div>
+                            <div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition peer-checked:translate-x-5"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- UUV Control -->
+            <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                <h2 class="text-xl font-semibold text-emerald-400 mb-4">
+                    <i class="fas fa-gamepad mr-2"></i>UUV Control
+                </h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1">
+                            <span>Forward Speed</span>
+                            <span id="speedValue" class="text-emerald-400">0.5 m/s</span>
+                        </label>
+                        <input type="range" id="forwardSpeed" min="-2" max="2" step="0.1" value="0.5" class="w-full" oninput="updateUUV()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1">
+                            <span>Heading</span>
+                            <span id="headingValue" class="text-emerald-400">45°</span>
+                        </label>
+                        <input type="range" id="heading" min="0" max="360" value="45" class="w-full" oninput="updateUUV()">
+                    </div>
+                    <div>
+                        <label class="flex justify-between text-sm text-gray-300 mb-1">
+                            <span>Target Depth</span>
+                            <span id="targetDepthValue" class="text-emerald-400">15 m</span>
+                        </label>
+                        <input type="range" id="targetDepth" min="0" max="50" value="15" class="w-full" oninput="updateUUV()">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 mt-4">
+                        <button onclick="setMode('manual')" class="bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm">
+                            Manual
+                        </button>
+                        <button onclick="setMode('auto')" class="bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg text-sm">
+                            Autopilot
+                        </button>
+                        <button onclick="setMode('waypoint')" class="bg-yellow-600 hover:bg-yellow-700 text-white py-2 rounded-lg text-sm">
+                            Waypoint
+                        </button>
+                        <button onclick="emergencyStop()" class="bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg text-sm">
+                            E-STOP
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Visualization Options -->
+            <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                <h2 class="text-xl font-semibold text-emerald-400 mb-4">
+                    <i class="fas fa-eye mr-2"></i>Visualization
+                </h2>
+                <div class="space-y-3">
+                    <label class="flex items-center justify-between cursor-pointer">
+                        <span class="text-gray-300">Show Trajectory</span>
+                        <input type="checkbox" id="showTrajectory" checked class="form-checkbox h-5 w-5 text-emerald-600" onchange="updateVisualization()">
+                    </label>
+                    <label class="flex items-center justify-between cursor-pointer">
+                        <span class="text-gray-300">Show Velocity Vectors</span>
+                        <input type="checkbox" id="showVelocity" class="form-checkbox h-5 w-5 text-emerald-600" onchange="updateVisualization()">
+                    </label>
+                    <label class="flex items-center justify-between cursor-pointer">
+                        <span class="text-gray-300">Show Sensor Cones</span>
+                        <input type="checkbox" id="showSensors" checked class="form-checkbox h-5 w-5 text-emerald-600" onchange="updateVisualization()">
+                    </label>
+                    <label class="flex items-center justify-between cursor-pointer">
+                        <span class="text-gray-300">Show Waypoints</span>
+                        <input type="checkbox" id="showWaypoints" checked class="form-checkbox h-5 w-5 text-emerald-600" onchange="updateVisualization()">
+                    </label>
+                    <label class="flex items-center justify-between cursor-pointer">
+                        <span class="text-gray-300">Show Obstacles</span>
+                        <input type="checkbox" id="showObstacles" checked class="form-checkbox h-5 w-5 text-emerald-600" onchange="updateVisualization()">
+                    </label>
+                    <label class="flex items-center justify-between cursor-pointer">
+                        <span class="text-gray-300">Show Grid</span>
+                        <input type="checkbox" id="showGrid" class="form-checkbox h-5 w-5 text-emerald-600" onchange="updateVisualization()">
+                    </label>
+                    <div class="pt-2">
+                        <label class="block text-sm text-gray-300 mb-1">Render Quality</label>
+                        <select id="renderQuality" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2" onchange="updateVisualization()">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                            <option value="ultra">Ultra</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Telemetry Charts -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Position Plot -->
+            <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                <h2 class="text-xl font-semibold text-emerald-400 mb-4">
+                    <i class="fas fa-map-marker-alt mr-2"></i>3D Position
+                </h2>
+                <div id="position3DChart" class="h-64"></div>
+            </div>
+
+            <!-- State Plot -->
+            <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+                <h2 class="text-xl font-semibold text-emerald-400 mb-4">
+                    <i class="fas fa-chart-line mr-2"></i>State Variables
+                </h2>
+                <div id="stateChart" class="h-64"></div>
+            </div>
+        </div>
+
+        <!-- Mission Data -->
+        <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6 mb-8">
+            <h2 class="text-xl font-semibold text-emerald-400 mb-4">
+                <i class="fas fa-clipboard-list mr-2"></i>Mission Status
+            </h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+                <div class="bg-gray-700 rounded-lg p-3 text-center">
+                    <div class="text-xs text-gray-400">Mission Time</div>
+                    <div id="missionTime" class="text-lg font-bold text-emerald-400">00:32:15</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-3 text-center">
+                    <div class="text-xs text-gray-400">Distance</div>
+                    <div id="distance" class="text-lg font-bold text-blue-400">245 m</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-3 text-center">
+                    <div class="text-xs text-gray-400">Waypoints</div>
+                    <div id="waypoints" class="text-lg font-bold text-yellow-400">3/8</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-3 text-center">
+                    <div class="text-xs text-gray-400">Coverage</div>
+                    <div id="coverage" class="text-lg font-bold text-purple-400">42%</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-3 text-center">
+                    <div class="text-xs text-gray-400">Battery</div>
+                    <div id="batteryLevel" class="text-lg font-bold text-emerald-400">87%</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-3 text-center">
+                    <div class="text-xs text-gray-400">Power</div>
+                    <div id="powerConsumption" class="text-lg font-bold text-orange-400">45 W</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-3 text-center">
+                    <div class="text-xs text-gray-400">Comms</div>
+                    <div id="commsStatus" class="text-lg font-bold text-cyan-400">OK</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-3 text-center">
+                    <div class="text-xs text-gray-400">Mode</div>
+                    <div id="modeDisplay" class="text-lg font-bold text-pink-400">AUTO</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screenshot and Export -->
+        <div class="bg-gray-800 rounded-xl border border-emerald-500/30 p-6">
+            <h2 class="text-xl font-semibold text-emerald-400 mb-4">
+                <i class="fas fa-camera mr-2"></i>Capture & Export
+            </h2>
+            <div class="flex flex-wrap gap-4">
+                <button onclick="takeScreenshot()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg">
+                    <i class="fas fa-camera mr-2"></i>Screenshot
+                </button>
+                <button onclick="startRecording()" id="recordBtn" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg">
+                    <i class="fas fa-circle mr-2"></i>Record Video
+                </button>
+                <button onclick="exportTrajectory()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                    <i class="fas fa-download mr-2"></i>Export Trajectory
+                </button>
+                <button onclick="exportTelemetry()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg">
+                    <i class="fas fa-file-csv mr-2"></i>Export Telemetry
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 border-t border-emerald-500/20 py-6 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center text-gray-400">
+            <p>Mini-UUV 3D Visualization - Unity-Style Environment Rendering</p>
+        </div>
+    </footer>
+
+    <script>
+        // Three.js setup
+        let scene, camera, renderer, uuv, trajectory, particles;
+        let isPlaying = false;
+        let currentCamera = 'follow';
+        let animationId;
+        let time = 0;
+
+        // UUV state
+        let uuvState = {
+            x: 0, y: 0, z: -15,
+            vx: 0.5, vy: 0, vz: 0,
+            heading: 45,
+            roll: 0, pitch: 0,
+            speed: 0.5,
+            battery: 87,
+            depth: 15
+        };
+
+        // Trajectory history
+        let trajectoryPoints = [];
+
+        function initThreeJS() {
+            const container = document.getElementById('unityViewer');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a2540);
+            scene.fog = new THREE.FogExp2(0x0a2540, 0.02);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000);
+            camera.position.set(10, 5, 10);
+            camera.lookAt(0, 0, 0);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0x404060, 0.5);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0x88ccff, 0.8);
+            directionalLight.position.set(10, 20, 10);
+            scene.add(directionalLight);
+
+            // Water caustics (simplified)
+            const causticGeometry = new THREE.PlaneGeometry(100, 100);
+            const causticMaterial = new THREE.MeshBasicMaterial({
+                color: 0x2080ff,
+                transparent: true,
+                opacity: 0.1,
+                side: THREE.DoubleSide
+            });
+            const caustics = new THREE.Mesh(causticGeometry, causticMaterial);
+            caustics.rotation.x = Math.PI / 2;
+            caustics.position.y = 0;
+            scene.add(caustics);
+
+            // Sea floor
+            const floorGeometry = new THREE.PlaneGeometry(100, 100, 50, 50);
+            const floorMaterial = new THREE.MeshStandardMaterial({
+                color: 0x3d4a5c,
+                roughness: 0.9,
+                metalness: 0.1
+            });
+            // Add some height variation
+            const vertices = floorGeometry.attributes.position.array;
+            for (let i = 2; i < vertices.length; i += 3) {
+                vertices[i] = Math.random() * 2 - 1;
+            }
+            floorGeometry.computeVertexNormals();
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.y = -50;
+            scene.add(floor);
+
+            // UUV model (simplified)
+            createUUV();
+
+            // Waypoints
+            createWaypoints();
+
+            // Obstacles
+            createObstacles();
+
+            // Trajectory line
+            const trajectoryMaterial = new THREE.LineBasicMaterial({ color: 0x10b981 });
+            const trajectoryGeometry = new THREE.BufferGeometry();
+            trajectory = new THREE.Line(trajectoryGeometry, trajectoryMaterial);
+            scene.add(trajectory);
+
+            // Particles
+            createParticles();
+
+            // Handle resize
+            window.addEventListener('resize', onWindowResize);
+
+            // Start animation
+            animate();
+        }
+
+        function createUUV() {
+            const uuvGroup = new THREE.Group();
+
+            // Body (cylinder)
+            const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.3, 2, 16);
+            const bodyMaterial = new THREE.MeshStandardMaterial({
+                color: 0x10b981,
+                metalness: 0.5,
+                roughness: 0.3
+            });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.rotation.z = Math.PI / 2;
+            uuvGroup.add(body);
+
+            // Nose cone
+            const noseGeometry = new THREE.ConeGeometry(0.3, 0.5, 16);
+            const noseMaterial = new THREE.MeshStandardMaterial({
+                color: 0x34d399,
+                metalness: 0.5,
+                roughness: 0.3
+            });
+            const nose = new THREE.Mesh(noseGeometry, noseMaterial);
+            nose.rotation.z = -Math.PI / 2;
+            nose.position.x = 1.25;
+            uuvGroup.add(nose);
+
+            // Tail
+            const tailGeometry = new THREE.ConeGeometry(0.3, 0.3, 16);
+            const tail = new THREE.Mesh(tailGeometry, noseMaterial);
+            tail.rotation.z = Math.PI / 2;
+            tail.position.x = -1.15;
+            uuvGroup.add(tail);
+
+            // Propeller
+            const propGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.5, 8);
+            const propMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
+            for (let i = 0; i < 4; i++) {
+                const blade = new THREE.Mesh(propGeometry, propMaterial);
+                blade.rotation.z = Math.PI / 2;
+                blade.rotation.y = (i * Math.PI) / 2;
+                blade.position.x = -1.4;
+                uuvGroup.add(blade);
+            }
+
+            // Sensor cone (sonar)
+            const coneGeometry = new THREE.ConeGeometry(2, 8, 16, 1, true);
+            const coneMaterial = new THREE.MeshBasicMaterial({
+                color: 0x10b981,
+                transparent: true,
+                opacity: 0.1,
+                side: THREE.DoubleSide
+            });
+            const sensorCone = new THREE.Mesh(coneGeometry, coneMaterial);
+            sensorCone.rotation.z = -Math.PI / 2;
+            sensorCone.position.x = 5;
+            sensorCone.name = 'sensorCone';
+            uuvGroup.add(sensorCone);
+
+            uuvGroup.position.set(uuvState.x, uuvState.z, uuvState.y);
+            uuv = uuvGroup;
+            scene.add(uuv);
+        }
+
+        function createWaypoints() {
+            const waypointPositions = [
+                [10, -15, 5],
+                [20, -18, 15],
+                [15, -20, 25],
+                [5, -12, 30],
+                [-10, -15, 25],
+                [-15, -18, 10],
+                [-5, -14, 0],
+                [0, -15, -5]
+            ];
+
+            waypointPositions.forEach((pos, i) => {
+                const wpGeometry = new THREE.SphereGeometry(0.5, 16, 16);
+                const wpMaterial = new THREE.MeshStandardMaterial({
+                    color: i < 3 ? 0x10b981 : 0xf59e0b,
+                    emissive: i < 3 ? 0x10b981 : 0xf59e0b,
+                    emissiveIntensity: 0.3
+                });
+                const waypoint = new THREE.Mesh(wpGeometry, wpMaterial);
+                waypoint.position.set(pos[0], pos[1], pos[2]);
+                waypoint.name = 'waypoint';
+                scene.add(waypoint);
+            });
+        }
+
+        function createObstacles() {
+            const obstaclePositions = [
+                [8, -25, 8, 3],
+                [18, -22, 12, 2],
+                [-5, -30, 20, 4],
+                [12, -28, 22, 2.5]
+            ];
+
+            obstaclePositions.forEach(pos => {
+                const obsGeometry = new THREE.SphereGeometry(pos[3], 8, 8);
+                const obsMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x6b7280,
+                    roughness: 0.9
+                });
+                const obstacle = new THREE.Mesh(obsGeometry, obsMaterial);
+                obstacle.position.set(pos[0], pos[1], pos[2]);
+                obstacle.name = 'obstacle';
+                scene.add(obstacle);
+            });
+        }
+
+        function createParticles() {
+            const particleCount = 500;
+            const particleGeometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+
+            for (let i = 0; i < particleCount * 3; i += 3) {
+                positions[i] = (Math.random() - 0.5) * 50;
+                positions[i + 1] = Math.random() * -50;
+                positions[i + 2] = (Math.random() - 0.5) * 50;
+            }
+
+            particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+            const particleMaterial = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 0.1,
+                transparent: true,
+                opacity: 0.5
+            });
+
+            particles = new THREE.Points(particleGeometry, particleMaterial);
+            particles.name = 'particles';
+            scene.add(particles);
+        }
+
+        function updateUUVPosition() {
+            if (!isPlaying) return;
+
+            const dt = 0.016;
+            const speed = parseFloat(document.getElementById('forwardSpeed').value);
+            const heading = parseFloat(document.getElementById('heading').value);
+            const targetDepth = parseFloat(document.getElementById('targetDepth').value);
+
+            // Update position
+            uuvState.heading = heading;
+            uuvState.speed = speed;
+            uuvState.x += speed * Math.sin(heading * Math.PI / 180) * dt * 2;
+            uuvState.y += speed * Math.cos(heading * Math.PI / 180) * dt * 2;
+            uuvState.depth += (targetDepth - uuvState.depth) * 0.02;
+
+            // Update Three.js model
+            uuv.position.set(uuvState.x, -uuvState.depth, uuvState.y);
+            uuv.rotation.y = -heading * Math.PI / 180;
+
+            // Store trajectory
+            trajectoryPoints.push(new THREE.Vector3(uuvState.x, -uuvState.depth, uuvState.y));
+            if (trajectoryPoints.length > 500) trajectoryPoints.shift();
+
+            // Update trajectory line
+            if (trajectoryPoints.length > 1) {
+                const positions = new Float32Array(trajectoryPoints.length * 3);
+                trajectoryPoints.forEach((p, i) => {
+                    positions[i * 3] = p.x;
+                    positions[i * 3 + 1] = p.y;
+                    positions[i * 3 + 2] = p.z;
+                });
+                trajectory.geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            }
+
+            // Update camera
+            updateCamera();
+
+            // Update HUD
+            updateHUD();
+
+            // Update charts
+            time += dt;
+            if (Math.floor(time * 10) % 5 === 0) {
+                updateCharts();
+            }
+        }
+
+        function updateCamera() {
+            switch (currentCamera) {
+                case 'follow':
+                    const offset = new THREE.Vector3(-8, 3, 0);
+                    offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), -uuvState.heading * Math.PI / 180);
+                    camera.position.set(
+                        uuv.position.x + offset.x,
+                        uuv.position.y + offset.y,
+                        uuv.position.z + offset.z
+                    );
+                    camera.lookAt(uuv.position);
+                    break;
+                case 'top':
+                    camera.position.set(uuv.position.x, 20, uuv.position.z);
+                    camera.lookAt(uuv.position);
+                    break;
+                case 'side':
+                    camera.position.set(uuv.position.x + 15, uuv.position.y, uuv.position.z);
+                    camera.lookAt(uuv.position);
+                    break;
+            }
+        }
+
+        function updateHUD() {
+            document.getElementById('hudDepth').textContent = uuvState.depth.toFixed(1) + ' m';
+            document.getElementById('hudHeading').textContent = Math.round(uuvState.heading) + '°';
+            document.getElementById('hudSpeed').textContent = Math.abs(uuvState.speed).toFixed(1) + ' m/s';
+
+            // Battery drain
+            if (isPlaying) {
+                uuvState.battery -= 0.001;
+            }
+            document.getElementById('hudBattery').textContent = Math.round(uuvState.battery) + '%';
+            document.getElementById('batteryLevel').textContent = Math.round(uuvState.battery) + '%';
+
+            // Depth gauge
+            document.getElementById('depthGauge').style.height = (uuvState.depth / 50 * 100) + '%';
+
+            // Compass
+            document.getElementById('compassNeedle').setAttribute('transform', `rotate(${uuvState.heading}, 30, 30)`);
+        }
+
+        function animate() {
+            animationId = requestAnimationFrame(animate);
+
+            updateUUVPosition();
+
+            // Animate particles
+            if (particles && document.getElementById('particlesToggle').checked) {
+                const positions = particles.geometry.attributes.position.array;
+                for (let i = 1; i < positions.length; i += 3) {
+                    positions[i] += 0.02;
+                    if (positions[i] > 0) positions[i] = -50;
+                }
+                particles.geometry.attributes.position.needsUpdate = true;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('unityViewer');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function setCamera(mode) {
+            currentCamera = mode;
+            document.querySelectorAll('.camera-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('cam' + mode.charAt(0).toUpperCase() + mode.slice(1)).classList.add('active');
+        }
+
+        function togglePlayback() {
+            isPlaying = !isPlaying;
+            const btn = document.getElementById('playBtn');
+            if (isPlaying) {
+                btn.innerHTML = '<i class="fas fa-pause mr-2"></i>Pause';
+            } else {
+                btn.innerHTML = '<i class="fas fa-play mr-2"></i>Play';
+            }
+        }
+
+        function resetSimulation() {
+            uuvState = { x: 0, y: 0, z: -15, vx: 0.5, vy: 0, vz: 0, heading: 45, roll: 0, pitch: 0, speed: 0.5, battery: 87, depth: 15 };
+            trajectoryPoints = [];
+            time = 0;
+            uuv.position.set(0, -15, 0);
+            updateHUD();
+        }
+
+        function seekTime() {
+            // Placeholder for timeline seeking
+        }
+
+        function updateEnvironment() {
+            document.getElementById('visValue').textContent = document.getElementById('visibility').value + ' m';
+            document.getElementById('currentValue').textContent = document.getElementById('currentStrength').value + ' m/s';
+            document.getElementById('lightValue').textContent = document.getElementById('ambientLight').value + '%';
+
+            // Update fog
+            scene.fog.density = 0.04 - (parseFloat(document.getElementById('visibility').value) / 50) * 0.03;
+        }
+
+        function updateUUV() {
+            document.getElementById('speedValue').textContent = document.getElementById('forwardSpeed').value + ' m/s';
+            document.getElementById('headingValue').textContent = document.getElementById('heading').value + '°';
+            document.getElementById('targetDepthValue').textContent = document.getElementById('targetDepth').value + ' m';
+        }
+
+        function updateVisualization() {
+            // Toggle visibility of scene elements
+            scene.traverse(obj => {
+                if (obj.name === 'sensorCone') {
+                    obj.visible = document.getElementById('showSensors').checked;
+                }
+                if (obj.name === 'waypoint') {
+                    obj.visible = document.getElementById('showWaypoints').checked;
+                }
+                if (obj.name === 'obstacle') {
+                    obj.visible = document.getElementById('showObstacles').checked;
+                }
+                if (obj.name === 'particles') {
+                    obj.visible = document.getElementById('particlesToggle').checked;
+                }
+            });
+
+            trajectory.visible = document.getElementById('showTrajectory').checked;
+        }
+
+        function toggleParticles() {
+            updateVisualization();
+        }
+
+        function setMode(mode) {
+            document.getElementById('modeDisplay').textContent = mode.toUpperCase();
+        }
+
+        function emergencyStop() {
+            isPlaying = false;
+            document.getElementById('forwardSpeed').value = 0;
+            updateUUV();
+            document.getElementById('playBtn').innerHTML = '<i class="fas fa-play mr-2"></i>Play';
+            document.getElementById('modeDisplay').textContent = 'E-STOP';
+            document.getElementById('modeDisplay').classList.remove('text-pink-400');
+            document.getElementById('modeDisplay').classList.add('text-red-400');
+        }
+
+        // Initialize charts
+        function initCharts() {
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#d1d5db' },
+                margin: { t: 30, r: 20, b: 40, l: 50 },
+                scene: {
+                    xaxis: { color: '#9ca3af', gridcolor: 'rgba(156,163,175,0.2)' },
+                    yaxis: { color: '#9ca3af', gridcolor: 'rgba(156,163,175,0.2)' },
+                    zaxis: { color: '#9ca3af', gridcolor: 'rgba(156,163,175,0.2)' },
+                    bgcolor: 'rgba(0,0,0,0)'
+                }
+            };
+
+            // 3D Position
+            Plotly.newPlot('position3DChart', [{
+                x: [0], y: [0], z: [-15],
+                type: 'scatter3d',
+                mode: 'lines',
+                line: { color: '#10b981', width: 3 }
+            }], {
+                ...layout,
+                scene: {
+                    ...layout.scene,
+                    xaxis: { ...layout.scene.xaxis, title: 'X (m)' },
+                    yaxis: { ...layout.scene.yaxis, title: 'Y (m)' },
+                    zaxis: { ...layout.scene.zaxis, title: 'Depth (m)' }
+                }
+            }, { responsive: true, displayModeBar: false });
+
+            // State variables
+            const stateLayout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#d1d5db' },
+                margin: { t: 20, r: 20, b: 40, l: 50 },
+                xaxis: { color: '#9ca3af', gridcolor: 'rgba(156,163,175,0.2)', title: 'Time (s)' },
+                yaxis: { color: '#9ca3af', gridcolor: 'rgba(156,163,175,0.2)' },
+                legend: { x: 0, y: 1, bgcolor: 'rgba(0,0,0,0)' }
+            };
+
+            Plotly.newPlot('stateChart', [
+                { x: [], y: [], name: 'Depth', line: { color: '#3b82f6' } },
+                { x: [], y: [], name: 'Speed', line: { color: '#10b981' } },
+                { x: [], y: [], name: 'Heading/10', line: { color: '#f59e0b' } }
+            ], stateLayout, { responsive: true, displayModeBar: false });
+        }
+
+        let chartHistory = { time: [], depth: [], speed: [], heading: [] };
+
+        function updateCharts() {
+            chartHistory.time.push(time);
+            chartHistory.depth.push(uuvState.depth);
+            chartHistory.speed.push(Math.abs(uuvState.speed));
+            chartHistory.heading.push(uuvState.heading / 10);
+
+            if (chartHistory.time.length > 200) {
+                Object.keys(chartHistory).forEach(k => chartHistory[k].shift());
+            }
+
+            Plotly.update('stateChart', {
+                x: [chartHistory.time, chartHistory.time, chartHistory.time],
+                y: [chartHistory.depth, chartHistory.speed, chartHistory.heading]
+            });
+
+            if (trajectoryPoints.length > 1) {
+                Plotly.update('position3DChart', {
+                    x: [trajectoryPoints.map(p => p.x)],
+                    y: [trajectoryPoints.map(p => p.z)],
+                    z: [trajectoryPoints.map(p => p.y)]
+                });
+            }
+        }
+
+        function takeScreenshot() {
+            renderer.render(scene, camera);
+            const link = document.createElement('a');
+            link.download = 'uuv-screenshot.png';
+            link.href = renderer.domElement.toDataURL();
+            link.click();
+        }
+
+        function startRecording() {
+            const btn = document.getElementById('recordBtn');
+            if (btn.classList.contains('recording')) {
+                btn.innerHTML = '<i class="fas fa-circle mr-2"></i>Record Video';
+                btn.classList.remove('recording');
+            } else {
+                btn.innerHTML = '<i class="fas fa-stop mr-2"></i>Stop Recording';
+                btn.classList.add('recording');
+            }
+        }
+
+        function exportTrajectory() {
+            const data = trajectoryPoints.map(p => `${p.x.toFixed(3)},${p.z.toFixed(3)},${p.y.toFixed(3)}`);
+            const csv = 'x,y,z\n' + data.join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const link = document.createElement('a');
+            link.download = 'trajectory.csv';
+            link.href = URL.createObjectURL(blob);
+            link.click();
+        }
+
+        function exportTelemetry() {
+            const csv = 'time,depth,speed,heading\n' +
+                chartHistory.time.map((t, i) =>
+                    `${t.toFixed(2)},${chartHistory.depth[i].toFixed(2)},${chartHistory.speed[i].toFixed(2)},${(chartHistory.heading[i] * 10).toFixed(1)}`
+                ).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const link = document.createElement('a');
+            link.download = 'telemetry.csv';
+            link.href = URL.createObjectURL(blob);
+            link.click();
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', () => {
+            initThreeJS();
+            initCharts();
+            updateHUD();
+        });
+    </script>
+</body>
+</html>

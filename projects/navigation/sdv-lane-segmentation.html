@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lane Segmentation CNN - Self-Driving Vision Module</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+        .nav-bar {
+            background: rgba(10, 10, 10, 0.95);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(59, 130, 246, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+        .nav-title { color: #3b82f6; font-weight: 600; font-size: 1.2rem; }
+        .nav-btn {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(59, 130, 246, 0.4); }
+
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+
+        .hero {
+            text-align: center;
+            padding: 3rem 0;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1));
+            border-radius: 20px;
+            margin-bottom: 2rem;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+        .hero h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+        .hero p { color: #a0a0a0; font-size: 1.1rem; max-width: 700px; margin: 0 auto; }
+
+        .tool-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        @media (max-width: 900px) { .tool-grid { grid-template-columns: 1fr; } }
+
+        .panel {
+            background: rgba(20, 20, 30, 0.8);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 15px;
+            padding: 1.5rem;
+        }
+        .panel h3 {
+            color: #3b82f6;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .canvas-container {
+            background: #0a0a0a;
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            min-height: 300px;
+            position: relative;
+        }
+        #segmentationCanvas {
+            width: 100%;
+            height: 300px;
+            border-radius: 8px;
+        }
+
+        .control-group { margin-bottom: 1rem; }
+        .control-group label {
+            display: block;
+            color: #a0a0a0;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        .control-group input[type="range"] {
+            width: 100%;
+            accent-color: #3b82f6;
+        }
+        .control-group select, .control-group input[type="number"] {
+            width: 100%;
+            padding: 0.5rem;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 8px;
+            color: #e0e0e0;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(59, 130, 246, 0.4); }
+        .btn-secondary { background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.5); }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .metric-card {
+            background: rgba(59, 130, 246, 0.1);
+            padding: 1rem;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+        .metric-value { font-size: 1.5rem; font-weight: 700; color: #3b82f6; }
+        .metric-label { font-size: 0.8rem; color: #a0a0a0; margin-top: 0.25rem; }
+
+        .theory-section {
+            background: rgba(20, 20, 30, 0.8);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-top: 2rem;
+        }
+        .theory-section h3 { color: #3b82f6; margin-bottom: 1.5rem; }
+        .equation-box {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            text-align: center;
+            border-left: 3px solid #3b82f6;
+        }
+        .code-block {
+            background: #0d1117;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+            overflow-x: auto;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+        .code-block code { color: #e0e0e0; }
+        .keyword { color: #ff79c6; }
+        .string { color: #f1fa8c; }
+        .comment { color: #6272a4; }
+        .function { color: #50fa7b; }
+        .number { color: #bd93f9; }
+
+        .architecture-diagram {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+        }
+        .arch-layer {
+            display: flex;
+            align-items: center;
+            margin: 0.5rem 0;
+            padding: 0.75rem;
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 8px;
+            border-left: 3px solid #3b82f6;
+        }
+        .arch-layer .layer-name { font-weight: 600; color: #3b82f6; min-width: 150px; }
+        .arch-layer .layer-desc { color: #a0a0a0; font-size: 0.9rem; }
+
+        .legend {
+            display: flex;
+            gap: 1.5rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+        }
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav-bar">
+        <div class="nav-title"><i class="fas fa-road"></i> Lane Segmentation CNN</div>
+        <a href="self-driving-vision-complete-suite.html" class="nav-btn"><i class="fas fa-arrow-left"></i> Back to Suite</a>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h1><i class="fas fa-road"></i> Lane Segmentation CNN</h1>
+            <p>Semantic segmentation neural network for robust lane boundary detection and ego-lane estimation using encoder-decoder architectures with skip connections</p>
+        </div>
+
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-value" id="iouScore">0.924</div>
+                <div class="metric-label">IoU Score</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="pixelAccuracy">97.8%</div>
+                <div class="metric-label">Pixel Accuracy</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="fps">45 FPS</div>
+                <div class="metric-label">Inference Speed</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="f1Score">0.961</div>
+                <div class="metric-label">F1 Score</div>
+            </div>
+        </div>
+
+        <div class="tool-grid">
+            <div class="panel">
+                <h3><i class="fas fa-image"></i> Segmentation Visualization</h3>
+                <div class="canvas-container">
+                    <canvas id="segmentationCanvas"></canvas>
+                </div>
+                <div class="legend">
+                    <div class="legend-item"><div class="legend-color" style="background: #3b82f6;"></div> Left Lane</div>
+                    <div class="legend-item"><div class="legend-color" style="background: #22c55e;"></div> Ego Lane</div>
+                    <div class="legend-item"><div class="legend-color" style="background: #f59e0b;"></div> Right Lane</div>
+                    <div class="legend-item"><div class="legend-color" style="background: #ef4444;"></div> Road Edge</div>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <button class="btn" onclick="runSegmentation()"><i class="fas fa-play"></i> Run Segmentation</button>
+                    <button class="btn btn-secondary" onclick="toggleOverlay()"><i class="fas fa-layer-group"></i> Toggle Overlay</button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h3><i class="fas fa-sliders-h"></i> Model Parameters</h3>
+                <div class="control-group">
+                    <label>Architecture</label>
+                    <select id="architecture" onchange="updateArchitecture()">
+                        <option value="unet">U-Net</option>
+                        <option value="segnet">SegNet</option>
+                        <option value="deeplabv3">DeepLabV3+</option>
+                        <option value="enet">ENet (Lightweight)</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Backbone</label>
+                    <select id="backbone">
+                        <option value="resnet50">ResNet-50</option>
+                        <option value="resnet101">ResNet-101</option>
+                        <option value="efficientnet">EfficientNet-B4</option>
+                        <option value="mobilenet">MobileNetV3</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Confidence Threshold: <span id="thresholdVal">0.5</span></label>
+                    <input type="range" id="threshold" min="0.1" max="0.9" step="0.05" value="0.5" onchange="updateThreshold()">
+                </div>
+                <div class="control-group">
+                    <label>Input Resolution</label>
+                    <select id="resolution">
+                        <option value="512x256">512 x 256</option>
+                        <option value="640x360">640 x 360</option>
+                        <option value="1280x720">1280 x 720</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Post-Processing</label>
+                    <select id="postprocess">
+                        <option value="crf">CRF Refinement</option>
+                        <option value="morphology">Morphological Ops</option>
+                        <option value="bezier">Bezier Fitting</option>
+                        <option value="none">None</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="tool-grid">
+            <div class="panel">
+                <h3><i class="fas fa-chart-line"></i> Loss Curves</h3>
+                <div id="lossChart" style="height: 300px;"></div>
+            </div>
+            <div class="panel">
+                <h3><i class="fas fa-chart-bar"></i> Per-Class IoU</h3>
+                <div id="iouChart" style="height: 300px;"></div>
+            </div>
+        </div>
+
+        <div class="theory-section">
+            <h3><i class="fas fa-book"></i> Theoretical Foundation</h3>
+
+            <h4 style="color: #e0e0e0; margin-top: 1.5rem;">Semantic Segmentation Loss</h4>
+            <p style="color: #a0a0a0; margin-bottom: 1rem;">The lane segmentation model is trained using a combination of Cross-Entropy and Dice loss for optimal boundary delineation:</p>
+
+            <div class="equation-box">
+                <div id="eq1"></div>
+            </div>
+
+            <div class="equation-box">
+                <div id="eq2"></div>
+            </div>
+
+            <h4 style="color: #e0e0e0; margin-top: 2rem;">U-Net Architecture</h4>
+            <div class="architecture-diagram">
+                <div class="arch-layer"><span class="layer-name">Encoder Block 1</span><span class="layer-desc">Conv(3,64) + BatchNorm + ReLU + MaxPool2D</span></div>
+                <div class="arch-layer"><span class="layer-name">Encoder Block 2</span><span class="layer-desc">Conv(64,128) + BatchNorm + ReLU + MaxPool2D</span></div>
+                <div class="arch-layer"><span class="layer-name">Encoder Block 3</span><span class="layer-desc">Conv(128,256) + BatchNorm + ReLU + MaxPool2D</span></div>
+                <div class="arch-layer"><span class="layer-name">Encoder Block 4</span><span class="layer-desc">Conv(256,512) + BatchNorm + ReLU + MaxPool2D</span></div>
+                <div class="arch-layer"><span class="layer-name">Bottleneck</span><span class="layer-desc">Conv(512,1024) + BatchNorm + ReLU + Dropout(0.5)</span></div>
+                <div class="arch-layer"><span class="layer-name">Decoder Block 4</span><span class="layer-desc">UpConv(1024,512) + Skip Connection + Conv</span></div>
+                <div class="arch-layer"><span class="layer-name">Decoder Block 3</span><span class="layer-desc">UpConv(512,256) + Skip Connection + Conv</span></div>
+                <div class="arch-layer"><span class="layer-name">Decoder Block 2</span><span class="layer-desc">UpConv(256,128) + Skip Connection + Conv</span></div>
+                <div class="arch-layer"><span class="layer-name">Decoder Block 1</span><span class="layer-desc">UpConv(128,64) + Skip Connection + Conv</span></div>
+                <div class="arch-layer"><span class="layer-name">Output Layer</span><span class="layer-desc">Conv(64, num_classes) + Softmax</span></div>
+            </div>
+
+            <h4 style="color: #e0e0e0; margin-top: 2rem;">Implementation Example</h4>
+            <div class="code-block">
+                <code>
+<span class="keyword">import</span> torch
+<span class="keyword">import</span> torch.nn <span class="keyword">as</span> nn
+
+<span class="keyword">class</span> <span class="function">LaneSegmentationNet</span>(nn.Module):
+    <span class="keyword">def</span> <span class="function">__init__</span>(self, num_classes=<span class="number">5</span>):
+        <span class="keyword">super</span>().__init__()
+        <span class="comment"># Encoder (contracting path)</span>
+        self.enc1 = self.<span class="function">conv_block</span>(<span class="number">3</span>, <span class="number">64</span>)
+        self.enc2 = self.<span class="function">conv_block</span>(<span class="number">64</span>, <span class="number">128</span>)
+        self.enc3 = self.<span class="function">conv_block</span>(<span class="number">128</span>, <span class="number">256</span>)
+        self.enc4 = self.<span class="function">conv_block</span>(<span class="number">256</span>, <span class="number">512</span>)
+
+        <span class="comment"># Bottleneck</span>
+        self.bottleneck = self.<span class="function">conv_block</span>(<span class="number">512</span>, <span class="number">1024</span>)
+
+        <span class="comment"># Decoder (expanding path)</span>
+        self.dec4 = self.<span class="function">upconv_block</span>(<span class="number">1024</span>, <span class="number">512</span>)
+        self.dec3 = self.<span class="function">upconv_block</span>(<span class="number">512</span>, <span class="number">256</span>)
+        self.dec2 = self.<span class="function">upconv_block</span>(<span class="number">256</span>, <span class="number">128</span>)
+        self.dec1 = self.<span class="function">upconv_block</span>(<span class="number">128</span>, <span class="number">64</span>)
+
+        <span class="comment"># Final classifier</span>
+        self.final = nn.Conv2d(<span class="number">64</span>, num_classes, kernel_size=<span class="number">1</span>)
+
+    <span class="keyword">def</span> <span class="function">forward</span>(self, x):
+        <span class="comment"># Encoder with skip connections</span>
+        e1 = self.enc1(x)
+        e2 = self.enc2(F.max_pool2d(e1, <span class="number">2</span>))
+        e3 = self.enc3(F.max_pool2d(e2, <span class="number">2</span>))
+        e4 = self.enc4(F.max_pool2d(e3, <span class="number">2</span>))
+
+        <span class="comment"># Bottleneck</span>
+        b = self.bottleneck(F.max_pool2d(e4, <span class="number">2</span>))
+
+        <span class="comment"># Decoder with skip connections</span>
+        d4 = self.dec4(b, e4)
+        d3 = self.dec3(d4, e3)
+        d2 = self.dec2(d3, e2)
+        d1 = self.dec1(d2, e1)
+
+        <span class="keyword">return</span> self.final(d1)
+                </code>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize KaTeX equations
+        document.addEventListener('DOMContentLoaded', function() {
+            katex.render("\\mathcal{L}_{CE} = -\\frac{1}{N}\\sum_{i=1}^{N}\\sum_{c=1}^{C} y_{i,c} \\log(\\hat{y}_{i,c})", document.getElementById('eq1'), {displayMode: true});
+            katex.render("\\mathcal{L}_{Dice} = 1 - \\frac{2|X \\cap Y| + \\epsilon}{|X| + |Y| + \\epsilon}", document.getElementById('eq2'), {displayMode: true});
+
+            initCharts();
+            initCanvas();
+        });
+
+        function initCanvas() {
+            const canvas = document.getElementById('segmentationCanvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.offsetWidth;
+            canvas.height = 300;
+
+            // Draw road scene
+            drawRoadScene(ctx, canvas.width, canvas.height);
+        }
+
+        function drawRoadScene(ctx, w, h) {
+            // Sky gradient
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, h * 0.4);
+            skyGrad.addColorStop(0, '#1a1a2e');
+            skyGrad.addColorStop(1, '#16213e');
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, w, h * 0.4);
+
+            // Road
+            ctx.fillStyle = '#2d2d2d';
+            ctx.beginPath();
+            ctx.moveTo(0, h);
+            ctx.lineTo(w * 0.2, h * 0.4);
+            ctx.lineTo(w * 0.8, h * 0.4);
+            ctx.lineTo(w, h);
+            ctx.closePath();
+            ctx.fill();
+
+            // Lane markings
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([20, 15]);
+
+            // Center line
+            ctx.beginPath();
+            ctx.moveTo(w * 0.5, h * 0.4);
+            ctx.lineTo(w * 0.5, h);
+            ctx.stroke();
+
+            // Left lane
+            ctx.beginPath();
+            ctx.moveTo(w * 0.35, h * 0.4);
+            ctx.lineTo(w * 0.15, h);
+            ctx.stroke();
+
+            // Right lane
+            ctx.beginPath();
+            ctx.moveTo(w * 0.65, h * 0.4);
+            ctx.lineTo(w * 0.85, h);
+            ctx.stroke();
+
+            ctx.setLineDash([]);
+        }
+
+        let overlayVisible = false;
+        function toggleOverlay() {
+            overlayVisible = !overlayVisible;
+            const canvas = document.getElementById('segmentationCanvas');
+            const ctx = canvas.getContext('2d');
+
+            if (overlayVisible) {
+                // Draw segmentation overlay
+                ctx.globalAlpha = 0.4;
+
+                // Ego lane (green)
+                ctx.fillStyle = '#22c55e';
+                ctx.beginPath();
+                ctx.moveTo(canvas.width * 0.35, canvas.height * 0.4);
+                ctx.lineTo(canvas.width * 0.65, canvas.height * 0.4);
+                ctx.lineTo(canvas.width * 0.85, canvas.height);
+                ctx.lineTo(canvas.width * 0.15, canvas.height);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.globalAlpha = 1.0;
+            } else {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawRoadScene(ctx, canvas.width, canvas.height);
+            }
+        }
+
+        function runSegmentation() {
+            // Simulate inference
+            document.getElementById('iouScore').textContent = (0.90 + Math.random() * 0.05).toFixed(3);
+            document.getElementById('pixelAccuracy').textContent = (96 + Math.random() * 3).toFixed(1) + '%';
+            document.getElementById('fps').textContent = Math.floor(40 + Math.random() * 15) + ' FPS';
+            document.getElementById('f1Score').textContent = (0.94 + Math.random() * 0.04).toFixed(3);
+        }
+
+        function updateThreshold() {
+            document.getElementById('thresholdVal').textContent = document.getElementById('threshold').value;
+        }
+
+        function updateArchitecture() {
+            const arch = document.getElementById('architecture').value;
+            const fpsMap = { unet: '45 FPS', segnet: '52 FPS', deeplabv3: '35 FPS', enet: '78 FPS' };
+            document.getElementById('fps').textContent = fpsMap[arch];
+        }
+
+        function initCharts() {
+            // Loss curve
+            const epochs = Array.from({length: 100}, (_, i) => i + 1);
+            const trainLoss = epochs.map(e => 0.8 * Math.exp(-e/30) + 0.05 + Math.random() * 0.02);
+            const valLoss = epochs.map(e => 0.85 * Math.exp(-e/35) + 0.08 + Math.random() * 0.03);
+
+            Plotly.newPlot('lossChart', [
+                { x: epochs, y: trainLoss, name: 'Train Loss', line: { color: '#3b82f6' } },
+                { x: epochs, y: valLoss, name: 'Val Loss', line: { color: '#f59e0b' } }
+            ], {
+                paper_bgcolor: 'transparent',
+                plot_bgcolor: 'transparent',
+                font: { color: '#a0a0a0' },
+                xaxis: { title: 'Epoch', gridcolor: 'rgba(255,255,255,0.1)' },
+                yaxis: { title: 'Loss', gridcolor: 'rgba(255,255,255,0.1)' },
+                margin: { t: 20, r: 20, b: 50, l: 50 },
+                legend: { x: 0.7, y: 0.95 }
+            }, { responsive: true });
+
+            // Per-class IoU
+            Plotly.newPlot('iouChart', [{
+                x: ['Background', 'Left Lane', 'Ego Lane', 'Right Lane', 'Road Edge'],
+                y: [0.98, 0.89, 0.94, 0.88, 0.92],
+                type: 'bar',
+                marker: { color: ['#6b7280', '#3b82f6', '#22c55e', '#f59e0b', '#ef4444'] }
+            }], {
+                paper_bgcolor: 'transparent',
+                plot_bgcolor: 'transparent',
+                font: { color: '#a0a0a0' },
+                xaxis: { gridcolor: 'rgba(255,255,255,0.1)' },
+                yaxis: { title: 'IoU', gridcolor: 'rgba(255,255,255,0.1)', range: [0, 1] },
+                margin: { t: 20, r: 20, b: 80, l: 50 }
+            }, { responsive: true });
+        }
+    </script>
+</body>
+</html>

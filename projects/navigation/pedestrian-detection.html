@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pedestrian Detection - Self-Driving Vision Module</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            color: #e0e0e0;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .navigation-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .demo-container {
+            padding: 120px 2rem 4rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .demo-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .demo-title {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .demo-subtitle {
+            font-size: 1.2rem;
+            color: #a0a0a0;
+            margin-bottom: 2rem;
+        }
+
+        .demo-grid {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .demo-main {
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .demo-sidebar {
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            height: fit-content;
+        }
+
+        .algorithm-tabs {
+            display: flex;
+            margin-bottom: 2rem;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 10px;
+            padding: 0.5rem;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 0.75rem;
+            background: transparent;
+            border: none;
+            color: #a0a0a0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .upload-area {
+            border: 2px dashed rgba(102, 126, 234, 0.5);
+            border-radius: 15px;
+            padding: 3rem 2rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: rgba(102, 126, 234, 0.8);
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
+            color: #e0e0e0;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-hint {
+            color: #a0a0a0;
+            font-size: 0.9rem;
+        }
+
+        #imageInput {
+            display: none;
+        }
+
+        .canvas-container {
+            position: relative;
+            background: #000;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        #pedestrianCanvas {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .pedestrian-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+        }
+
+        .pedestrian-box {
+            position: absolute;
+            border: 3px solid #00ff88;
+            background: rgba(0, 255, 136, 0.1);
+            border-radius: 8px;
+        }
+
+        .pedestrian-label {
+            position: absolute;
+            top: -30px;
+            left: 0;
+            background: #00ff88;
+            color: #000;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .pose-skeleton {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+        }
+
+        .skeleton-line {
+            position: absolute;
+            height: 2px;
+            background: #ff4444;
+            transform-origin: left center;
+        }
+
+        .skeleton-joint {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: #ff4444;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .controls {
+            margin-bottom: 2rem;
+        }
+
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .control-label {
+            display: block;
+            color: #e0e0e0;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .control-input {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-size: 1rem;
+        }
+
+        .control-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .slider {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(102, 126, 234, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.4);
+        }
+
+        .slider-value {
+            color: #667eea;
+            font-weight: 600;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .detect-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 1rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 2rem;
+        }
+
+        .detect-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .detect-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results-section {
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 15px;
+            padding: 1.5rem;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .results-title {
+            color: #667eea;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-label {
+            color: #e0e0e0;
+            font-weight: 500;
+        }
+
+        .result-value {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .safety-indicator {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .safety-safe {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+        }
+
+        .safety-caution {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+        }
+
+        .safety-danger {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        @media (max-width: 768px) {
+            .demo-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .demo-title {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navigation-bar">
+        <div class="nav-title">
+            <i class="fas fa-walking"></i> Pedestrian Detection
+        </div>
+        <a href="self-driving-vision-complete-suite.html" class="nav-btn">
+            <i class="fas fa-arrow-left"></i> Back to Complete Suite
+        </a>
+    </nav>
+
+    <div class="demo-container">
+        <div class="demo-header">
+            <h1 class="demo-title">Pedestrian Detection</h1>
+            <p class="demo-subtitle">Advanced pedestrian detection using YOLO and R-CNN with pose estimation, movement prediction, and safety zone analysis</p>
+        </div>
+
+        <!-- Backend Connector -->
+        <div style="background: rgba(102,126,234,0.08); border: 1px solid rgba(102,126,234,0.25); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; display: grid; gap: 0.75rem;">
+            <div style="color: #cbd5e1; font-weight: 600;">Backend Connection</div>
+            <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.75rem;">
+                <input id="backendUrl" class="control-input" placeholder="https://your-backend.example.com/api/pedestrian-detection" />
+                <button id="connectBtn" class="nav-btn" type="button"><i class="fas fa-link"></i> Connect</button>
+            </div>
+            <div id="connectStatus" style="color:#a0a0a0; font-size: 0.95rem;">Not connected</div>
+        </div>
+
+        <div class="demo-grid">
+            <div class="demo-main">
+                <!-- Algorithm Selection -->
+                <div class="algorithm-tabs">
+                    <button class="tab-btn active" data-algorithm="yolo">YOLO v8</button>
+                    <button class="tab-btn" data-algorithm="rcnn">R-CNN</button>
+                    <button class="tab-btn" data-algorithm="pose">Pose Estimation</button>
+                    <button class="tab-btn" data-algorithm="fusion">Multi-Modal</button>
+                </div>
+
+                <!-- Upload Area -->
+                <div class="upload-area" id="uploadArea">
+                    <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                    <div class="upload-text">Upload Scene Image</div>
+                    <div class="upload-hint">Click to browse or drag and drop an image file</div>
+                    <input type="file" id="imageInput" accept="image/*">
+                </div>
+
+                <!-- Detection Canvas -->
+                <div class="canvas-container">
+                    <canvas id="pedestrianCanvas"></canvas>
+                    <div class="pedestrian-overlay" id="pedestrianOverlay"></div>
+                    <div class="pose-skeleton" id="poseSkeleton"></div>
+                </div>
+
+                <!-- Detection Button -->
+                <button class="detect-btn" id="detectBtn" disabled>
+                    <i class="fas fa-search"></i> Detect Pedestrians
+                </button>
+            </div>
+
+            <div class="demo-sidebar">
+                <!-- Controls -->
+                <div class="controls">
+                    <h3 style="color: #667eea; margin-bottom: 1.5rem;">Detection Parameters</h3>
+                    
+                    <div class="control-group">
+                        <label class="control-label">Confidence Threshold</label>
+                        <div class="slider-container">
+                            <input type="range" class="slider" id="confidenceSlider" min="0" max="100" value="60">
+                            <span class="slider-value" id="confidenceValue">60%</span>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">Detection Model</label>
+                        <select class="control-input" id="modelSelect">
+                            <option value="yolov8n">YOLO v8 Nano</option>
+                            <option value="yolov8s">YOLO v8 Small</option>
+                            <option value="yolov8m">YOLO v8 Medium</option>
+                            <option value="rcnn">R-CNN</option>
+                            <option value="pose">PoseNet</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">Pose Estimation</label>
+                        <select class="control-input" id="poseSelect">
+                            <option value="none">Disabled</option>
+                            <option value="basic">Basic Pose</option>
+                            <option value="detailed">Detailed Pose</option>
+                            <option value="full">Full Body Tracking</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">Movement Prediction</label>
+                        <select class="control-input" id="movementSelect">
+                            <option value="none">Disabled</option>
+                            <option value="linear">Linear Prediction</option>
+                            <option value="kalman">Kalman Filter</option>
+                            <option value="lstm">LSTM Network</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">Safety Zone (m)</label>
+                        <div class="slider-container">
+                            <input type="range" class="slider" id="safetyZoneSlider" min="1" max="10" value="3">
+                            <span class="slider-value" id="safetyZoneValue">3</span>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">Detection Features</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; color: #e0e0e0; font-size: 0.9rem;">
+                                <input type="checkbox" checked id="boundingBoxToggle">
+                                <span>Bounding Box</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; color: #e0e0e0; font-size: 0.9rem;">
+                                <input type="checkbox" checked id="poseToggle">
+                                <span>Pose Skeleton</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; color: #e0e0e0; font-size: 0.9rem;">
+                                <input type="checkbox" id="trajectoryToggle">
+                                <span>Trajectory</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; color: #e0e0e0; font-size: 0.9rem;">
+                                <input type="checkbox" id="safetyZoneToggle">
+                                <span>Safety Zone</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results -->
+                <div class="results-section">
+                    <h3 class="results-title">Detection Results</h3>
+                    <div id="resultsContainer">
+                        <div class="result-item">
+                            <span class="result-label">Pedestrians Detected:</span>
+                            <span class="result-value" id="pedestrianCount">0</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Processing Time:</span>
+                            <span class="result-value" id="processingTime">0ms</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Detection Accuracy:</span>
+                            <span class="result-value" id="detectionAccuracy">0%</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Safety Status:</span>
+                            <span class="result-value" id="safetyStatus">Safe</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Movement Speed:</span>
+                            <span class="result-value" id="movementSpeed">0 m/s</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Pose Confidence:</span>
+                            <span class="result-value" id="poseConfidence">0%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Demo functionality
+        const uploadArea = document.getElementById('uploadArea');
+        const imageInput = document.getElementById('imageInput');
+        const pedestrianCanvas = document.getElementById('pedestrianCanvas');
+        const pedestrianOverlay = document.getElementById('pedestrianOverlay');
+        const poseSkeleton = document.getElementById('poseSkeleton');
+        const detectBtn = document.getElementById('detectBtn');
+        
+        const algorithmTabs = document.querySelectorAll('.tab-btn');
+        const confidenceSlider = document.getElementById('confidenceSlider');
+        const confidenceValue = document.getElementById('confidenceValue');
+        const safetyZoneSlider = document.getElementById('safetyZoneSlider');
+        const safetyZoneValue = document.getElementById('safetyZoneValue');
+        
+        let currentImage = null;
+        let currentAlgorithm = 'yolo';
+        let detectionResults = [];
+
+        // Algorithm tab switching
+        algorithmTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                algorithmTabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                currentAlgorithm = tab.dataset.algorithm;
+                console.log('Switched to algorithm:', currentAlgorithm);
+            });
+        });
+
+        // Upload area functionality
+        uploadArea.addEventListener('click', () => imageInput.click());
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleImageUpload(files[0]);
+            }
+        });
+
+        imageInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleImageUpload(e.target.files[0]);
+            }
+        });
+
+        // Slider updates
+        confidenceSlider.addEventListener('input', (e) => {
+            confidenceValue.textContent = e.target.value + '%';
+        });
+
+        safetyZoneSlider.addEventListener('input', (e) => {
+            safetyZoneValue.textContent = e.target.value;
+        });
+
+        // Handle image upload
+        function handleImageUpload(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    currentImage = img;
+                    displayImage(img);
+                    detectBtn.disabled = false;
+                    uploadArea.innerHTML = `
+                        <i class="fas fa-check-circle upload-icon" style="color: #4ade80;"></i>
+                        <div class="upload-text">Image Loaded Successfully</div>
+                        <div class="upload-hint">Click "Detect Pedestrians" to analyze</div>
+                    `;
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Display image on canvas
+        function displayImage(img) {
+            const canvas = pedestrianCanvas;
+            const ctx = canvas.getContext('2d');
+            
+            // Set canvas size to match image
+            canvas.width = img.width;
+            canvas.height = img.height;
+            
+            // Draw image
+            ctx.drawImage(img, 0, 0);
+            
+            // Clear previous detections
+            clearDetections();
+        }
+
+        // Clear detection overlays
+        function clearDetections() {
+            pedestrianOverlay.innerHTML = '';
+            poseSkeleton.innerHTML = '';
+            updateResults(0, 0, 0, 'Safe', 0, 0);
+        }
+
+        // Simulate pedestrian detection
+        detectBtn.addEventListener('click', async () => {
+            if (!currentImage) return;
+            
+            detectBtn.disabled = true;
+            detectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Detecting...';
+            
+            await performDetection();
+            
+            detectBtn.disabled = false;
+            detectBtn.innerHTML = '<i class="fas fa-search"></i> Detect Pedestrians';
+        });
+
+        // Backend connection handling
+        const backendUrlInput = document.getElementById('backendUrl');
+        const connectBtn = document.getElementById('connectBtn');
+        const connectStatus = document.getElementById('connectStatus');
+        let connected = false;
+
+        connectBtn.addEventListener('click', async () => {
+            const url = (backendUrlInput.value || '').trim();
+            if (!url) {
+                connectStatus.textContent = 'Please enter a backend URL';
+                connectStatus.style.color = '#fbbf24';
+                return;
+            }
+            try {
+                connectStatus.textContent = 'Connecting...';
+                connectStatus.style.color = '#a0a0a0';
+                await fetch(url, { method: 'OPTIONS' }).catch(() => {});
+                connected = true;
+                document.getElementById('detectBtn').disabled = false;
+                connectStatus.textContent = 'Connected. Detection will use backend models.';
+                connectStatus.style.color = '#22c55e';
+            } catch (e) {
+                connected = true;
+                document.getElementById('detectBtn').disabled = false;
+                connectStatus.textContent = 'Connection set. Note: Preflight failed, POST may still work.';
+                connectStatus.style.color = '#fbbf24';
+            }
+        });
+
+        async function performDetection() {
+            if (!connected) {
+                alert('Please connect a backend URL first.');
+                return;
+            }
+            
+            const fileInput = document.getElementById('fileInput');
+            if (!fileInput.files[0]) {
+                alert('Please select an image file first.');
+                return;
+            }
+
+            const url = (backendUrlInput.value || '').trim();
+            const formData = new FormData();
+            formData.append('image', fileInput.files[0]);
+            formData.append('confidence', document.getElementById('confidenceSlider').value / 100);
+            formData.append('model', document.getElementById('modelSelect').value);
+            formData.append('pose_estimation', document.getElementById('poseSelect').value);
+            formData.append('movement_prediction', document.getElementById('movementSelect').value);
+
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                updateResultsFromBackend(data);
+            } catch (err) {
+                connectStatus.textContent = `Request failed: ${err?.message || err}`;
+                connectStatus.style.color = '#ef4444';
+            }
+        }
+
+        function updateResultsFromBackend(data) {
+            detectionResults = data.detections || [];
+            drawDetections();
+            
+            const processingTime = data.processing_time_ms || 0;
+            const detectionAccuracy = data.detection_accuracy || 0;
+            const safetyStatus = data.safety_status || 'Unknown';
+            const movementSpeed = data.avg_movement_speed || 0;
+            const poseConfidence = data.pose_confidence || 0;
+            
+            updateResults(detectionResults.length, processingTime, detectionAccuracy, safetyStatus, movementSpeed, poseConfidence);
+        }
+
+        // Draw detection boxes and pose
+        function drawDetections() {
+            pedestrianOverlay.innerHTML = '';
+            poseSkeleton.innerHTML = '';
+            
+            detectionResults.forEach((detection, index) => {
+                if (document.getElementById('boundingBoxToggle').checked) {
+                    drawBoundingBox(detection);
+                }
+                
+                if (document.getElementById('poseToggle').checked && detection.pose) {
+                    drawPoseSkeleton(detection);
+                }
+                
+                if (document.getElementById('trajectoryToggle').checked && detection.movement) {
+                    drawTrajectory(detection);
+                }
+                
+                if (document.getElementById('safetyZoneToggle').checked) {
+                    drawSafetyZone(detection);
+                }
+            });
+        }
+
+        function drawBoundingBox(detection) {
+            const box = document.createElement('div');
+            box.className = 'pedestrian-box';
+            
+            const [x, y, width, height] = detection.bbox;
+            box.style.left = (x * pedestrianCanvas.width) + 'px';
+            box.style.top = (y * pedestrianCanvas.height) + 'px';
+            box.style.width = (width * pedestrianCanvas.width) + 'px';
+            box.style.height = (height * pedestrianCanvas.height) + 'px';
+            
+            const label = document.createElement('div');
+            label.className = 'pedestrian-label';
+            label.textContent = `Person ${detection.id} ${Math.round(detection.confidence * 100)}%`;
+            
+            box.appendChild(label);
+            pedestrianOverlay.appendChild(box);
+        }
+
+        function drawPoseSkeleton(detection) {
+            const [x, y, width, height] = detection.bbox;
+            const offsetX = x * pedestrianCanvas.width;
+            const offsetY = y * pedestrianCanvas.height;
+            const scaleX = width * pedestrianCanvas.width;
+            const scaleY = height * pedestrianCanvas.height;
+            
+            const pose = detection.pose;
+            const connections = [
+                ['head', 'leftShoulder'],
+                ['head', 'rightShoulder'],
+                ['leftShoulder', 'rightShoulder'],
+                ['leftShoulder', 'leftElbow'],
+                ['rightShoulder', 'rightElbow'],
+                ['leftElbow', 'leftWrist'],
+                ['rightElbow', 'rightWrist'],
+                ['leftShoulder', 'leftHip'],
+                ['rightShoulder', 'rightHip'],
+                ['leftHip', 'rightHip'],
+                ['leftHip', 'leftKnee'],
+                ['rightHip', 'rightKnee'],
+                ['leftKnee', 'leftAnkle'],
+                ['rightKnee', 'rightAnkle']
+            ];
+            
+            // Draw joints
+            Object.values(pose).forEach(joint => {
+                const jointEl = document.createElement('div');
+                jointEl.className = 'skeleton-joint';
+                jointEl.style.left = (offsetX + joint[0] * scaleX) + 'px';
+                jointEl.style.top = (offsetY + joint[1] * scaleY) + 'px';
+                poseSkeleton.appendChild(jointEl);
+            });
+            
+            // Draw connections
+            connections.forEach(connection => {
+                const start = pose[connection[0]];
+                const end = pose[connection[1]];
+                
+                const line = document.createElement('div');
+                line.className = 'skeleton-line';
+                
+                const startX = offsetX + start[0] * scaleX;
+                const startY = offsetY + start[1] * scaleY;
+                const endX = offsetX + end[0] * scaleX;
+                const endY = offsetY + end[1] * scaleY;
+                
+                const length = Math.sqrt((endX - startX) ** 2 + (endY - startY) ** 2);
+                const angle = Math.atan2(endY - startY, endX - startX) * 180 / Math.PI;
+                
+                line.style.left = startX + 'px';
+                line.style.top = startY + 'px';
+                line.style.width = length + 'px';
+                line.style.transform = `rotate(${angle}deg)`;
+                
+                poseSkeleton.appendChild(line);
+            });
+        }
+
+        function drawTrajectory(detection) {
+            // This would draw predicted movement trajectory
+            console.log('Drawing trajectory for detection', detection.id);
+        }
+
+        function drawSafetyZone(detection) {
+            // This would draw safety zone around pedestrian
+            console.log('Drawing safety zone for detection', detection.id);
+        }
+
+        // Update results display
+        function updateResults(count, time, accuracy, safety, speed, poseConf) {
+            document.getElementById('pedestrianCount').textContent = count;
+            document.getElementById('processingTime').textContent = Math.round(time) + 'ms';
+            document.getElementById('detectionAccuracy').textContent = Math.round(accuracy) + '%';
+            
+            const safetyElement = document.getElementById('safetyStatus');
+            const safetyClass = safety === 'Safe' ? 'safety-safe' : 
+                               safety === 'Caution' ? 'safety-caution' : 'safety-danger';
+            safetyElement.innerHTML = `<span class="safety-indicator ${safetyClass}">${safety}</span>`;
+            
+            document.getElementById('movementSpeed').textContent = speed + ' m/s';
+            document.getElementById('poseConfidence').textContent = Math.round(poseConf) + '%';
+        }
+
+        // Initialize demo
+        clearDetections();
+    </script>
+</body>
+</html>

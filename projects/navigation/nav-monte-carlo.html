@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monte Carlo Simulator - Undersea Navigation Suite</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #0a0a0a;
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+
+        .navbar {
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid rgba(59, 130, 246, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-title {
+            color: #60a5fa;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #1e40af, #3b82f6);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 3rem 0;
+            background: linear-gradient(135deg, rgba(30, 64, 175, 0.1), rgba(59, 130, 246, 0.1));
+            border-radius: 20px;
+            margin-bottom: 3rem;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            background: linear-gradient(135deg, #1e40af, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+
+        .hero-subtitle {
+            font-size: 1.2rem;
+            color: #a0a0a0;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .controls-panel {
+            background: rgba(59, 130, 246, 0.05);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .controls-title {
+            color: #60a5fa;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .control-label {
+            display: block;
+            color: #c0c0c0;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .control-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .slider {
+            flex: 1;
+            height: 8px;
+            border-radius: 5px;
+            background: rgba(59, 130, 246, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            border: none;
+        }
+
+        .value-display {
+            min-width: 120px;
+            background: rgba(59, 130, 246, 0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            color: #60a5fa;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 1rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #1e40af, #3b82f6);
+            color: white;
+            margin-top: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .plot-container {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .plot-title {
+            color: #60a5fa;
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+        }
+
+        .info-box {
+            background: rgba(16, 185, 129, 0.1);
+            border-left: 4px solid #10b981;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+
+        .info-box h3 {
+            color: #10b981;
+            margin-bottom: 0.5rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #3b82f6;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: #a0a0a0;
+            font-size: 0.9rem;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #1e40af, #3b82f6);
+            width: 0%;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-title">
+            <i class="fas fa-dice"></i> Monte Carlo Simulator
+        </div>
+        <a href="undersea-navigation-complete-project.html" class="nav-btn">
+            <i class="fas fa-arrow-left"></i> Back to Suite
+        </a>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h1><i class="fas fa-dice"></i> Monte Carlo Navigation Performance Analysis</h1>
+            <p class="hero-subtitle">
+                Statistical analysis of navigation performance through thousands of randomized mission simulations
+            </p>
+        </div>
+
+        <div class="info-box">
+            <h3><i class="fas fa-info-circle"></i> About This Demo</h3>
+            <p>
+                Monte Carlo simulation runs hundreds of missions with randomized sensor errors to characterize statistical
+                navigation performance. This reveals mean errors, variance, worst-case scenarios, and reliability metrics.
+                Configure sensor parameters and run large-scale simulations to understand system robustness and predict
+                real-world performance distributions.
+            </p>
+        </div>
+
+        <div class="controls-panel">
+            <h2 class="controls-title"><i class="fas fa-sliders-h"></i> Simulation Configuration</h2>
+
+            <div class="control-group">
+                <label class="control-label">Number of Runs</label>
+                <div class="control-row">
+                    <input type="range" id="num-runs" class="slider" min="100" max="2000" step="100" value="500">
+                    <span class="value-display" id="num-runs-val">500</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Mission Duration (minutes)</label>
+                <div class="control-row">
+                    <input type="range" id="duration" class="slider" min="30" max="180" step="30" value="60">
+                    <span class="value-display" id="duration-val">60 min</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">IMU Quality Variation (±%)</label>
+                <div class="control-row">
+                    <input type="range" id="imu-var" class="slider" min="5" max="50" step="5" value="20">
+                    <span class="value-display" id="imu-var-val">±20%</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">DVL Altitude Variation (meters)</label>
+                <div class="control-row">
+                    <input type="range" id="alt-var" class="slider" min="10" max="100" step="10" value="50">
+                    <span class="value-display" id="alt-var-val">±50 m</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">LBL Update Rate Reliability (%)</label>
+                <div class="control-row">
+                    <input type="range" id="lbl-reliability" class="slider" min="50" max="100" step="5" value="90">
+                    <span class="value-display" id="lbl-reliability-val">90%</span>
+                </div>
+            </div>
+
+            <div class="progress-bar" id="progress-bar" style="display: none;">
+                <div class="progress-fill" id="progress-fill">0%</div>
+            </div>
+
+            <button class="btn" id="run-btn" onclick="runMonteCarlo()">
+                <i class="fas fa-play"></i> Run Monte Carlo Simulation
+            </button>
+        </div>
+
+        <div class="stats-grid" id="stats-container" style="display: none;">
+            <div class="stat-card">
+                <div class="stat-value" id="mean-error">--</div>
+                <div class="stat-label">Mean Final Error</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="std-error">--</div>
+                <div class="stat-label">Std Deviation</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="percentile-95">--</div>
+                <div class="stat-label">95th Percentile</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="max-error">--</div>
+                <div class="stat-label">Worst Case</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="success-rate">--</div>
+                <div class="stat-label">Success Rate (< 10m)</div>
+            </div>
+        </div>
+
+        <div class="plot-container">
+            <h3 class="plot-title"><i class="fas fa-chart-bar"></i> Final Position Error Distribution</h3>
+            <div id="histogram-plot"></div>
+        </div>
+
+        <div class="plot-container">
+            <h3 class="plot-title"><i class="fas fa-chart-line"></i> Error Evolution Envelope</h3>
+            <div id="envelope-plot"></div>
+        </div>
+
+        <div class="plot-container">
+            <h3 class="plot-title"><i class="fas fa-braille"></i> 2D Error Scatter Plot</h3>
+            <div id="scatter-plot"></div>
+        </div>
+
+        <div class="plot-container">
+            <h3 class="plot-title"><i class="fas fa-chart-pie"></i> CDF - Cumulative Distribution Function</h3>
+            <div id="cdf-plot"></div>
+        </div>
+
+        <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 15px; padding: 2rem; margin-top: 2rem;">
+            <h2 style="color: #60a5fa; margin-bottom: 1rem;"><i class="fas fa-book-open"></i> Monte Carlo Analysis</h2>
+            <p style="color: #c0c0c0;">
+                Monte Carlo simulation is essential for understanding real-world navigation performance where sensor
+                characteristics vary, environmental conditions change, and random errors accumulate differently in each mission.
+                By running thousands of simulations with randomized parameters, we can:
+            </p>
+            <ul style="margin-left: 2rem; color: #c0c0c0; margin-top: 1rem;">
+                <li>Characterize mean performance and variance</li>
+                <li>Identify worst-case scenarios and failure modes</li>
+                <li>Compute reliability metrics and success probabilities</li>
+                <li>Validate filter tuning and sensor redundancy strategies</li>
+                <li>Predict performance under varying environmental conditions</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const sliders = ['num-runs', 'duration', 'imu-var', 'alt-var', 'lbl-reliability'];
+        const units = {
+            'num-runs': '',
+            'duration': ' min',
+            'imu-var': '%',
+            'alt-var': ' m',
+            'lbl-reliability': '%'
+        };
+
+        sliders.forEach(id => {
+            document.getElementById(id).addEventListener('input', function(e) {
+                const prefix = id === 'imu-var' || id === 'alt-var' ? '±' : '';
+                document.getElementById(id + '-val').textContent = prefix + e.target.value + units[id];
+            });
+        });
+
+        async function runMonteCarlo() {
+            const numRuns = parseInt(document.getElementById('num-runs').value);
+            const duration = parseFloat(document.getElementById('duration').value);
+            const imuVar = parseFloat(document.getElementById('imu-var').value) / 100;
+            const altVar = parseFloat(document.getElementById('alt-var').value);
+            const lblReliability = parseFloat(document.getElementById('lbl-reliability').value) / 100;
+
+            // Disable button and show progress
+            document.getElementById('run-btn').disabled = true;
+            document.getElementById('progress-bar').style.display = 'block';
+            document.getElementById('progress-fill').style.width = '0%';
+            document.getElementById('progress-fill').textContent = '0%';
+
+            const results = [];
+            const trajectories = [];
+
+            // Run simulations in batches
+            const batchSize = 50;
+            for (let batch = 0; batch < numRuns; batch += batchSize) {
+                const batchResults = await simulateBatch(
+                    Math.min(batchSize, numRuns - batch),
+                    duration, imuVar, altVar, lblReliability
+                );
+                results.push(...batchResults);
+
+                // Update progress
+                const progress = Math.floor(((batch + batchSize) / numRuns) * 100);
+                document.getElementById('progress-fill').style.width = progress + '%';
+                document.getElementById('progress-fill').textContent = progress + '%';
+
+                // Allow UI to update
+                await new Promise(resolve => setTimeout(resolve, 10));
+            }
+
+            // Calculate statistics
+            const finalErrors = results.map(r => r.finalError);
+            const mean = finalErrors.reduce((a, b) => a + b) / finalErrors.length;
+            const variance = finalErrors.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / finalErrors.length;
+            const std = Math.sqrt(variance);
+
+            const sorted = [...finalErrors].sort((a, b) => a - b);
+            const p95 = sorted[Math.floor(sorted.length * 0.95)];
+            const max = Math.max(...finalErrors);
+            const successRate = (finalErrors.filter(e => e < 10).length / finalErrors.length) * 100;
+
+            // Update stats
+            document.getElementById('stats-container').style.display = 'grid';
+            document.getElementById('mean-error').textContent = mean.toFixed(1) + ' m';
+            document.getElementById('std-error').textContent = std.toFixed(1) + ' m';
+            document.getElementById('percentile-95').textContent = p95.toFixed(1) + ' m';
+            document.getElementById('max-error').textContent = max.toFixed(1) + ' m';
+            document.getElementById('success-rate').textContent = successRate.toFixed(1) + '%';
+
+            // Plot histogram
+            const histTrace = {
+                x: finalErrors,
+                type: 'histogram',
+                nbinsx: 30,
+                marker: { color: '#3b82f6' },
+                name: 'Distribution'
+            };
+
+            const histLayout = {
+                title: { text: `Distribution of Final Errors (n=${numRuns})`, font: { color: '#e0e0e0' }},
+                xaxis: { title: 'Final Position Error (m)', gridcolor: '#333', color: '#e0e0e0' },
+                yaxis: { title: 'Frequency', gridcolor: '#333', color: '#e0e0e0' },
+                plot_bgcolor: '#0a0a0a',
+                paper_bgcolor: '#0a0a0a',
+                font: { color: '#e0e0e0' },
+                shapes: [{
+                    type: 'line',
+                    x0: mean,
+                    x1: mean,
+                    y0: 0,
+                    y1: 1,
+                    yref: 'paper',
+                    line: { color: '#10b981', width: 3, dash: 'dash' }
+                }],
+                annotations: [{
+                    x: mean,
+                    y: 0.9,
+                    yref: 'paper',
+                    text: `Mean: ${mean.toFixed(1)}m`,
+                    showarrow: false,
+                    font: { color: '#10b981', size: 14 }
+                }]
+            };
+
+            Plotly.newPlot('histogram-plot', [histTrace], histLayout, {responsive: true});
+
+            // Plot error envelope
+            const sampleSize = 20;
+            const samples = [];
+            for (let i = 0; i < sampleSize; i++) {
+                samples.push(results[Math.floor(Math.random() * results.length)]);
+            }
+
+            const envelopeTraces = samples.map((sample, i) => ({
+                x: sample.timeHistory,
+                y: sample.errorHistory,
+                mode: 'lines',
+                line: { color: `rgba(59, 130, 246, ${0.3 + i * 0.02})`, width: 1 },
+                showlegend: false
+            }));
+
+            const envelopeLayout = {
+                title: { text: 'Error Evolution (20 sample trajectories)', font: { color: '#e0e0e0' }},
+                xaxis: { title: 'Time (minutes)', gridcolor: '#333', color: '#e0e0e0' },
+                yaxis: { title: 'Position Error (m)', gridcolor: '#333', color: '#e0e0e0' },
+                plot_bgcolor: '#0a0a0a',
+                paper_bgcolor: '#0a0a0a',
+                font: { color: '#e0e0e0' }
+            };
+
+            Plotly.newPlot('envelope-plot', envelopeTraces, envelopeLayout, {responsive: true});
+
+            // 2D scatter plot
+            const scatterTrace = {
+                x: results.map(r => r.errorX),
+                y: results.map(r => r.errorY),
+                mode: 'markers',
+                type: 'scatter',
+                marker: {
+                    size: 5,
+                    color: finalErrors,
+                    colorscale: 'Viridis',
+                    showscale: true,
+                    colorbar: {
+                        title: 'Error (m)',
+                        titlefont: { color: '#e0e0e0' },
+                        tickfont: { color: '#e0e0e0' }
+                    }
+                }
+            };
+
+            const scatterLayout = {
+                title: { text: '2D Final Position Error Distribution', font: { color: '#e0e0e0' }},
+                xaxis: { title: 'East Error (m)', gridcolor: '#333', color: '#e0e0e0', zeroline: true },
+                yaxis: { title: 'North Error (m)', gridcolor: '#333', color: '#e0e0e0', zeroline: true, scaleanchor: 'x' },
+                plot_bgcolor: '#0a0a0a',
+                paper_bgcolor: '#0a0a0a',
+                font: { color: '#e0e0e0' }
+            };
+
+            Plotly.newPlot('scatter-plot', [scatterTrace], scatterLayout, {responsive: true});
+
+            // CDF plot
+            const cdfX = [];
+            const cdfY = [];
+            for (let i = 0; i < sorted.length; i++) {
+                cdfX.push(sorted[i]);
+                cdfY.push((i + 1) / sorted.length * 100);
+            }
+
+            const cdfTrace = {
+                x: cdfX,
+                y: cdfY,
+                mode: 'lines',
+                line: { color: '#f59e0b', width: 3 }
+            };
+
+            const cdfLayout = {
+                title: { text: 'Cumulative Distribution Function', font: { color: '#e0e0e0' }},
+                xaxis: { title: 'Position Error (m)', gridcolor: '#333', color: '#e0e0e0' },
+                yaxis: { title: 'Cumulative Probability (%)', gridcolor: '#333', color: '#e0e0e0' },
+                plot_bgcolor: '#0a0a0a',
+                paper_bgcolor: '#0a0a0a',
+                font: { color: '#e0e0e0' },
+                shapes: [
+                    {
+                        type: 'line',
+                        x0: 0,
+                        x1: Math.max(...cdfX),
+                        y0: 50,
+                        y1: 50,
+                        line: { color: '#10b981', width: 1, dash: 'dot' }
+                    },
+                    {
+                        type: 'line',
+                        x0: 0,
+                        x1: Math.max(...cdfX),
+                        y0: 95,
+                        y1: 95,
+                        line: { color: '#ef4444', width: 1, dash: 'dot' }
+                    }
+                ]
+            };
+
+            Plotly.newPlot('cdf-plot', [cdfTrace], cdfLayout, {responsive: true});
+
+            // Re-enable button
+            document.getElementById('run-btn').disabled = false;
+            document.getElementById('progress-bar').style.display = 'none';
+        }
+
+        function simulateBatch(batchSize, duration, imuVar, altVar, lblReliability) {
+            return new Promise(resolve => {
+                const results = [];
+
+                for (let run = 0; run < batchSize; run++) {
+                    // Randomize parameters
+                    const gyroBias = (1.0 + (Math.random() - 0.5) * 2 * imuVar) * (Math.PI/180) / 3600;
+                    const accelBias = (50 + (Math.random() - 0.5) * 2 * imuVar * 50) * 9.81e-6;
+                    const altitude = 50 + (Math.random() - 0.5) * 2 * altVar;
+                    const dvlAccuracy = 0.01 * (1 + altitude / 100);
+
+                    const dt = 1.0; // 1 minute timestep
+                    const numSteps = Math.floor(duration / dt);
+
+                    let error = 0;
+                    const timeHistory = [];
+                    const errorHistory = [];
+
+                    for (let i = 0; i <= numSteps; i++) {
+                        const t = i * dt;
+                        timeHistory.push(t);
+
+                        // INS drift
+                        error += 0.5 * accelBias * Math.pow(60, 2) * dt;
+
+                        // DVL updates reduce error
+                        if (i % 1 === 0) {
+                            error *= 0.95;
+                            error += dvlAccuracy * (Math.random() - 0.5) * 2;
+                        }
+
+                        // LBL updates (with reliability)
+                        if (i % 5 === 0 && Math.random() < lblReliability) {
+                            error *= 0.7;
+                            error += 1.0 * (Math.random() - 0.5) * 2;
+                        }
+
+                        errorHistory.push(Math.abs(error));
+                    }
+
+                    const finalError = Math.abs(error);
+                    const angle = Math.random() * 2 * Math.PI;
+
+                    results.push({
+                        finalError,
+                        errorX: finalError * Math.cos(angle),
+                        errorY: finalError * Math.sin(angle),
+                        timeHistory,
+                        errorHistory
+                    });
+                }
+
+                resolve(results);
+            });
+        }
+    </script>
+</body>
+</html>

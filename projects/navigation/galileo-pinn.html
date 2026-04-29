@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physics-Informed Neural Networks - GALILEO V2.0</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            min-height: 100vh;
+            color: #e2e8f0;
+        }
+
+        .top-nav {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(6, 182, 212, 0.2);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-brand {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #06b6d4, #22d3ee);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .nav-links a {
+            color: #94a3b8;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            color: #06b6d4;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(34, 211, 238, 0.05));
+            border-radius: 20px;
+            border: 1px solid rgba(6, 182, 212, 0.2);
+        }
+
+        .page-header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #06b6d4, #22d3ee);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .page-header p {
+            color: #94a3b8;
+            font-size: 1.1rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .tab {
+            padding: 0.75rem 1.5rem;
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            border-radius: 10px;
+            color: #94a3b8;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        .tab:hover {
+            border-color: #06b6d4;
+            color: #06b6d4;
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, #06b6d4, #0891b2);
+            color: white;
+            border-color: transparent;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .demo-section {
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid rgba(6, 182, 212, 0.2);
+            margin-bottom: 2rem;
+        }
+
+        .demo-section h2 {
+            color: #22d3ee;
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .control-group {
+            background: rgba(15, 23, 42, 0.6);
+            padding: 1.25rem;
+            border-radius: 12px;
+            border: 1px solid rgba(6, 182, 212, 0.15);
+        }
+
+        .control-group label {
+            display: block;
+            color: #06b6d4;
+            margin-bottom: 0.75rem;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            margin-bottom: 0.5rem;
+            accent-color: #06b6d4;
+        }
+
+        .control-group select {
+            width: 100%;
+            padding: 0.5rem;
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            border-radius: 6px;
+            color: #e2e8f0;
+            font-size: 0.9rem;
+        }
+
+        .value-display {
+            text-align: right;
+            color: #22d3ee;
+            font-family: 'Consolas', monospace;
+            font-size: 0.9rem;
+        }
+
+        .chart-container {
+            background: rgba(15, 23, 42, 0.4);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .chart-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(34, 211, 238, 0.05));
+            padding: 1.25rem;
+            border-radius: 12px;
+            border: 1px solid rgba(6, 182, 212, 0.2);
+            text-align: center;
+        }
+
+        .metric-card .value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #22d3ee;
+            font-family: 'Consolas', monospace;
+        }
+
+        .metric-card .label {
+            color: #94a3b8;
+            font-size: 0.85rem;
+            margin-top: 0.25rem;
+        }
+
+        .equation-box {
+            background: rgba(15, 23, 42, 0.8);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border-left: 4px solid #06b6d4;
+            margin: 1.5rem 0;
+            overflow-x: auto;
+        }
+
+        .equation-box h4 {
+            color: #06b6d4;
+            margin-bottom: 1rem;
+            font-size: 1rem;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .info-card {
+            background: rgba(15, 23, 42, 0.6);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid rgba(6, 182, 212, 0.15);
+        }
+
+        .info-card h4 {
+            color: #22d3ee;
+            margin-bottom: 0.75rem;
+        }
+
+        .info-card p {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin: 1rem 0;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #06b6d4, #0891b2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(6, 182, 212, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(30, 41, 59, 0.8);
+            color: #06b6d4;
+            border: 1px solid rgba(6, 182, 212, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(6, 182, 212, 0.1);
+        }
+
+        .network-viz {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            background: rgba(15, 23, 42, 0.4);
+            border-radius: 12px;
+            margin: 1rem 0;
+            overflow-x: auto;
+        }
+
+        .layer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0 1.5rem;
+        }
+
+        .layer-label {
+            color: #94a3b8;
+            font-size: 0.8rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .neurons {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .neuron {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #06b6d4, #0891b2);
+            border: 2px solid #22d3ee;
+        }
+
+        .connections {
+            position: relative;
+            width: 60px;
+            display: flex;
+            align-items: center;
+        }
+
+        .connection-line {
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, #06b6d4, rgba(6, 182, 212, 0.3));
+        }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #22c55e;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .training-progress {
+            flex: 1;
+            height: 8px;
+            background: rgba(6, 182, 212, 0.2);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .training-progress .bar {
+            height: 100%;
+            background: linear-gradient(90deg, #06b6d4, #22d3ee);
+            transition: width 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .page-header h1 {
+                font-size: 1.75rem;
+            }
+
+            .chart-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="top-nav">
+        <div class="nav-brand">GALILEO V2.0</div>
+        <div class="nav-links">
+            <a href="galileo-project.html">Back to Suite</a>
+            <a href="index.html">Portfolio</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>Physics-Informed Neural Networks (PINNs)</h1>
+            <p>Neural networks that incorporate physical laws directly into the loss function, enabling data-efficient learning of gravity field solutions while respecting fundamental equations of satellite dynamics.</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('architecture')">Network Architecture</button>
+            <button class="tab" onclick="switchTab('training')">Training Dynamics</button>
+            <button class="tab" onclick="switchTab('gravity')">Gravity Field Learning</button>
+            <button class="tab" onclick="switchTab('comparison')">vs Traditional Methods</button>
+        </div>
+
+        <!-- Architecture Tab -->
+        <div id="architecture" class="tab-content active">
+            <div class="demo-section">
+                <h2>PINN Architecture for Satellite Gravimetry</h2>
+
+                <div class="equation-box">
+                    <h4>Physics-Informed Loss Function</h4>
+                    <p>\[\mathcal{L}_{total} = \mathcal{L}_{data} + \lambda_{physics}\mathcal{L}_{physics} + \lambda_{BC}\mathcal{L}_{BC}\]</p>
+                    <p style="color: #94a3b8; margin-top: 1rem;">Where physics loss enforces Laplace's equation: \(\nabla^2 V = 0\) in free space</p>
+                </div>
+
+                <div class="controls-grid">
+                    <div class="control-group">
+                        <label>Hidden Layers</label>
+                        <input type="range" id="hiddenLayers" min="2" max="8" value="4" onchange="updateArchitecture()">
+                        <div class="value-display"><span id="hiddenLayersVal">4</span> layers</div>
+                    </div>
+                    <div class="control-group">
+                        <label>Neurons per Layer</label>
+                        <input type="range" id="neuronsPerLayer" min="16" max="128" step="16" value="64" onchange="updateArchitecture()">
+                        <div class="value-display"><span id="neuronsPerLayerVal">64</span> neurons</div>
+                    </div>
+                    <div class="control-group">
+                        <label>Activation Function</label>
+                        <select id="activationFunc" onchange="updateArchitecture()">
+                            <option value="tanh">Tanh (Smooth)</option>
+                            <option value="swish" selected>Swish (Modern)</option>
+                            <option value="gelu">GELU (Gaussian)</option>
+                            <option value="sin">Sinusoidal (SIREN)</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>Physics Weight (λ)</label>
+                        <input type="range" id="physicsWeight" min="0.01" max="1" step="0.01" value="0.1" onchange="updateArchitecture()">
+                        <div class="value-display">λ = <span id="physicsWeightVal">0.10</span></div>
+                    </div>
+                </div>
+
+                <div class="network-viz" id="networkVisualization">
+                    <!-- Network visualization will be generated here -->
+                </div>
+
+                <div class="chart-row">
+                    <div class="chart-container">
+                        <div id="activationChart" style="height: 300px;"></div>
+                    </div>
+                    <div class="chart-container">
+                        <div id="gradientFlowChart" style="height: 300px;"></div>
+                    </div>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="value" id="totalParams">--</div>
+                        <div class="label">Total Parameters</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="value" id="inputDim">3</div>
+                        <div class="label">Input Dimensions (r,θ,φ)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="value" id="outputDim">4</div>
+                        <div class="label">Output (V, ∂V/∂r, ∂V/∂θ, ∂V/∂φ)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="value" id="memoryUsage">--</div>
+                        <div class="label">Memory (MB)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Training Tab -->
+        <div id="training" class="tab-content">
+            <div class="demo-section">
+                <h2>Training Dynamics & Loss Convergence</h2>
+
+                <div class="controls-grid">
+                    <div class="control-group">
+                        <label>Learning Rate</label>
+                        <input type="range" id="learningRate" min="-5" max="-2" step="0.1" value="-3" onchange="updateTraining()">
+                        <div class="value-display"><span id="learningRateVal">1e-3</span></div>
+                    </div>
+                    <div class="control-group">
+                        <label>Batch Size</label>
+                        <select id="batchSize" onchange="updateTraining()">
+                            <option value="32">32</option>
+                            <option value="64">64</option>
+                            <option value="128" selected>128</option>
+                            <option value="256">256</option>
+                            <option value="512">512</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>Optimizer</label>
+                        <select id="optimizer" onchange="updateTraining()">
+                            <option value="adam" selected>Adam</option>
+                            <option value="lbfgs">L-BFGS</option>
+                            <option value="sgd">SGD + Momentum</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>Physics Collocation Points</label>
+                        <input type="range" id="collocationPoints" min="1000" max="10000" step="1000" value="5000" onchange="updateTraining()">
+                        <div class="value-display"><span id="collocationPointsVal">5000</span> points</div>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="startTraining()">Start Training</button>
+                    <button class="btn btn-secondary" onclick="resetTraining()">Reset</button>
+                </div>
+
+                <div class="status-bar">
+                    <div class="status-indicator" id="trainingIndicator"></div>
+                    <span id="trainingStatus">Ready to train</span>
+                    <div class="training-progress">
+                        <div class="bar" id="progressBar" style="width: 0%"></div>
+                    </div>
+                    <span id="epochCounter">0 / 1000 epochs</span>
+                </div>
+
+                <div class="chart-row">
+                    <div class="chart-container">
+                        <div id="lossChart" style="height: 350px;"></div>
+                    </div>
+                    <div class="chart-container">
+                        <div id="componentLossChart" style="height: 350px;"></div>
+                    </div>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="value" id="currentEpoch">0</div>
+                        <div class="label">Current Epoch</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="value" id="totalLoss">--</div>
+                        <div class="label">Total Loss</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="value" id="physicsLoss">--</div>
+                        <div class="label">Physics Loss</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="value" id="dataLoss">--</div>
+                        <div class="label">Data Loss</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gravity Field Tab -->
+        <div id="gravity" class="tab-content">
+            <div class="demo-section">
+                <h2>Gravity Field Reconstruction</h2>
+
+                <div class="equation-box">
+                    <h4>Spherical Harmonic Expansion</h4>
+                    <p>\[V(r,\theta,\phi) = \frac{GM}{r}\sum_{n=0}^{N}\sum_{m=0}^{n}\left(\frac{R}{r}\right)^n P_{nm}(\cos\theta)[C_{nm}\cos(m\phi) + S_{nm}\sin(m\phi)]\]</p>
+                </div>
+
+                <div class="controls-grid">
+                    <div class="control-group">
+                        <label>Maximum Degree (N)</label>
+                        <input type="range" id="maxDegree" min="10" max="120" step="10" value="60" onchange="updateGravityField()">
+                        <div class="value-display">N = <span id="maxDegreeVal">60</span></div>
+                    </div>
+                    <div class="control-group">
+                        <label>Altitude (km)</label>
+                        <input type="range" id="altitude" min="200" max="800" step="50" value="450" onchange="updateGravityField()">
+                        <div class="value-display"><span id="altitudeVal">450</span> km</div>
+                    </div>
+                    <div class="control-group">
+                        <label>Field Component</label>
+                        <select id="fieldComponent" onchange="updateGravityField()">
+                            <option value="potential">Gravitational Potential (V)</option>
+                            <option value="geoid" selected>Geoid Height (N)</option>
+                            <option value="anomaly">Gravity Anomaly (Δg)</option>
+                            <option value="gradient">Gravity Gradient (Txx)</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>Training Data Density</label>
+                        <input type="range" id="dataDensity" min="10" max="100" step="10" value="50" onchange="updateGravityField()">
+                        <div class="value-display"><span id="dataDensityVal">50</span>%</div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div id="gravityFieldChart" style="height: 450px;"></div>
+                </div>
+
+                <div class="chart-row">
+                    <div class="chart-container">
+                        <div id="spectrumChart" style="height: 300px;"></div>
+                    </div>
+                    <div class="chart-container">
+                        <div id="errorMapChart" style="height: 300px;"></div>
+                    </div>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="value" id="rmsError">--</div>
+                        <div class="label">RMS Error (mGal)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="value" id="maxError">--</div>
+                        <div class="label">Max Error (mGal)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="value" id="coeffRecovered">--</div>
+                        <div class="label">Coefficients Recovered</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="value" id="spatialRes">--</div>
+                        <div class="label">Spatial Resolution (km)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Comparison Tab -->
+        <div id="comparison" class="tab-content">
+            <div class="demo-section">
+                <h2>PINN vs Traditional Methods</h2>
+
+                <div class="controls-grid">
+                    <div class="control-group">
+                        <label>Noise Level (σ)</label>
+                        <input type="range" id="noiseLevel" min="0" max="10" step="0.5" value="2" onchange="updateComparison()">
+                        <div class="value-display"><span id="noiseLevelVal">2.0</span> mGal</div>
+                    </div>
+                    <div class="control-group">
+                        <label>Data Gap (%)</label>
+                        <input type="range" id="dataGap" min="0" max="50" step="5" value="20" onchange="updateComparison()">
+                        <div class="value-display"><span id="dataGapVal">20</span>%</div>
+                    </div>
+                    <div class="control-group">
+                        <label>Compare With</label>
+                        <select id="compareMethod" onchange="updateComparison()">
+                            <option value="lsq">Least Squares</option>
+                            <option value="tikhonov" selected>Tikhonov Regularization</option>
+                            <option value="kalman">Kalman Smoothing</option>
+                            <option value="all">All Methods</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="chart-row">
+                    <div class="chart-container">
+                        <div id="methodComparisonChart" style="height: 350px;"></div>
+                    </div>
+                    <div class="chart-container">
+                        <div id="dataEfficiencyChart" style="height: 350px;"></div>
+                    </div>
+                </div>
+
+                <div class="info-grid">
+                    <div class="info-card">
+                        <h4>PINN Advantages</h4>
+                        <p>• Physics constraints reduce required training data by 60-80%<br>
+                        • Automatic differentiation ensures exact derivative computation<br>
+                        • Handles irregular data distributions naturally<br>
+                        • Implicit regularization from physics loss</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>Traditional Method Strengths</h4>
+                        <p>• Established error propagation theory<br>
+                        • Faster for simple linear problems<br>
+                        • Well-understood convergence properties<br>
+                        • Mature software implementations</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>Hybrid Approach</h4>
+                        <p>• Use traditional methods for initial solution<br>
+                        • Apply PINN for gap-filling and refinement<br>
+                        • Combine uncertainties using ensemble methods<br>
+                        • Best of both worlds for operational use</p>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div id="convergenceComparisonChart" style="height: 350px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let trainingInterval = null;
+        let currentEpoch = 0;
+        let lossHistory = { total: [], physics: [], data: [], bc: [] };
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+            event.target.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+
+            // Initialize charts for the active tab
+            setTimeout(() => {
+                if (tabId === 'architecture') updateArchitecture();
+                else if (tabId === 'training') initTrainingCharts();
+                else if (tabId === 'gravity') updateGravityField();
+                else if (tabId === 'comparison') updateComparison();
+            }, 100);
+        }
+
+        function updateArchitecture() {
+            const hiddenLayers = parseInt(document.getElementById('hiddenLayers').value);
+            const neuronsPerLayer = parseInt(document.getElementById('neuronsPerLayer').value);
+            const activation = document.getElementById('activationFunc').value;
+            const physicsWeight = parseFloat(document.getElementById('physicsWeight').value);
+
+            document.getElementById('hiddenLayersVal').textContent = hiddenLayers;
+            document.getElementById('neuronsPerLayerVal').textContent = neuronsPerLayer;
+            document.getElementById('physicsWeightVal').textContent = physicsWeight.toFixed(2);
+
+            // Calculate parameters
+            const inputDim = 3;
+            const outputDim = 4;
+            let totalParams = inputDim * neuronsPerLayer + neuronsPerLayer; // First layer
+            totalParams += (hiddenLayers - 1) * (neuronsPerLayer * neuronsPerLayer + neuronsPerLayer);
+            totalParams += neuronsPerLayer * outputDim + outputDim; // Output layer
+
+            document.getElementById('totalParams').textContent = totalParams.toLocaleString();
+            document.getElementById('memoryUsage').textContent = (totalParams * 4 / 1024 / 1024).toFixed(2);
+
+            // Generate network visualization
+            generateNetworkVisualization(hiddenLayers, neuronsPerLayer);
+
+            // Plot activation function
+            plotActivationFunction(activation);
+
+            // Plot gradient flow
+            plotGradientFlow(hiddenLayers, activation);
+        }
+
+        function generateNetworkVisualization(layers, neurons) {
+            const viz = document.getElementById('networkVisualization');
+            const displayNeurons = Math.min(neurons, 6);
+
+            let html = '';
+
+            // Input layer
+            html += `<div class="layer">
+                <div class="layer-label">Input (r,θ,φ)</div>
+                <div class="neurons">
+                    ${[1,2,3].map(() => '<div class="neuron"></div>').join('')}
+                </div>
+            </div>`;
+
+            // Hidden layers
+            for (let i = 0; i < layers; i++) {
+                html += `<div class="connections"><div class="connection-line"></div></div>`;
+                html += `<div class="layer">
+                    <div class="layer-label">Hidden ${i+1}</div>
+                    <div class="neurons">
+                        ${Array(displayNeurons).fill().map(() => '<div class="neuron"></div>').join('')}
+                        ${neurons > 6 ? '<div style="color: #94a3b8; font-size: 0.8rem;">...</div>' : ''}
+                    </div>
+                </div>`;
+            }
+
+            // Output layer
+            html += `<div class="connections"><div class="connection-line"></div></div>`;
+            html += `<div class="layer">
+                <div class="layer-label">Output (V, ∇V)</div>
+                <div class="neurons">
+                    ${[1,2,3,4].map(() => '<div class="neuron"></div>').join('')}
+                </div>
+            </div>`;
+
+            viz.innerHTML = html;
+        }
+
+        function plotActivationFunction(activation) {
+            const x = [];
+            const y = [];
+            const dy = [];
+
+            for (let i = -5; i <= 5; i += 0.1) {
+                x.push(i);
+                let val, deriv;
+
+                switch(activation) {
+                    case 'tanh':
+                        val = Math.tanh(i);
+                        deriv = 1 - val * val;
+                        break;
+                    case 'swish':
+                        const sig = 1 / (1 + Math.exp(-i));
+                        val = i * sig;
+                        deriv = sig + i * sig * (1 - sig);
+                        break;
+                    case 'gelu':
+                        const cdf = 0.5 * (1 + Math.tanh(Math.sqrt(2/Math.PI) * (i + 0.044715 * i*i*i)));
+                        val = i * cdf;
+                        deriv = cdf + i * 0.5 * (1 - Math.tanh(Math.sqrt(2/Math.PI) * (i + 0.044715 * i*i*i))**2) * Math.sqrt(2/Math.PI) * (1 + 0.134145 * i*i);
+                        break;
+                    case 'sin':
+                        val = Math.sin(i);
+                        deriv = Math.cos(i);
+                        break;
+                }
+                y.push(val);
+                dy.push(deriv);
+            }
+
+            Plotly.newPlot('activationChart', [
+                { x: x, y: y, name: 'σ(x)', line: { color: '#06b6d4', width: 2 } },
+                { x: x, y: dy, name: "σ'(x)", line: { color: '#22d3ee', width: 2, dash: 'dash' } }
+            ], {
+                title: `Activation Function: ${activation.toUpperCase()}`,
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(15,23,42,0.6)',
+                font: { color: '#94a3b8' },
+                xaxis: { title: 'Input', gridcolor: 'rgba(148,163,184,0.1)' },
+                yaxis: { title: 'Output', gridcolor: 'rgba(148,163,184,0.1)' },
+                legend: { x: 0.02, y: 0.98 },
+                margin: { t: 40 }
+            });
+        }
+
+        function plotGradientFlow(layers, activation) {
+            const layerIndices = Array.from({length: layers + 2}, (_, i) => i);
+
+            // Simulate gradient magnitudes through layers
+            const gradients = [1];
+            let grad = 1;
+
+            for (let i = 0; i < layers + 1; i++) {
+                let factor;
+                switch(activation) {
+                    case 'tanh': factor = 0.65; break;
+                    case 'swish': factor = 0.85; break;
+                    case 'gelu': factor = 0.82; break;
+                    case 'sin': factor = 0.9; break;
+                }
+                grad *= factor * (0.9 + Math.random() * 0.2);
+                gradients.push(Math.max(grad, 0.01));
+            }
+
+            Plotly.newPlot('gradientFlowChart', [{
+                x: layerIndices,
+                y: gradients,
+                type: 'bar',
+                marker: {
+                    color: gradients.map(g => `rgba(6, 182, 212, ${Math.min(g + 0.2, 1)})`),
+                    line: { color: '#22d3ee', width: 1 }
+                }
+            }], {
+                title: 'Gradient Flow Through Network',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(15,23,42,0.6)',
+                font: { color: '#94a3b8' },
+                xaxis: { title: 'Layer', gridcolor: 'rgba(148,163,184,0.1)' },
+                yaxis: { title: 'Relative Gradient Magnitude', gridcolor: 'rgba(148,163,184,0.1)', type: 'log' },
+                margin: { t: 40 }
+            });
+        }
+
+        function initTrainingCharts() {
+            Plotly.newPlot('lossChart', [], {
+                title: 'Training Loss',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(15,23,42,0.6)',
+                font: { color: '#94a3b8' },
+                xaxis: { title: 'Epoch', gridcolor: 'rgba(148,163,184,0.1)' },
+                yaxis: { title: 'Loss', type: 'log', gridcolor: 'rgba(148,163,184,0.1)' },
+                margin: { t: 40 }
+            });
+
+            Plotly.newPlot('componentLossChart', [], {
+                title: 'Loss Components',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(15,23,42,0.6)',
+                font: { color: '#94a3b8' },
+                xaxis: { title: 'Epoch', gridcolor: 'rgba(148,163,184,0.1)' },
+                yaxis: { title: 'Loss', type: 'log', gridcolor: 'rgba(148,163,184,0.1)' },
+                margin: { t: 40 }
+            });
+        }
+
+        function updateTraining() {
+            const lr = parseFloat(document.getElementById('learningRate').value);
+            const collocation = parseInt(document.getElementById('collocationPoints').value);
+
+            document.getElementById('learningRateVal').textContent = Math.pow(10, lr).toExponential(0);
+            document.getElementById('collocationPointsVal').textContent = collocation;
+        }
+
+        function startTraining() {
+            if (trainingInterval) return;
+
+            const lr = Math.pow(10, parseFloat(document.getElementById('learningRate').value));
+            const optimizer = document.getElementById('optimizer').value;
+
+            document.getElementById('trainingIndicator').style.background = '#22c55e';
+            document.getElementById('trainingStatus').textContent = 'Training...';
+
+            // Initialize loss values
+            let totalLoss = 1.0;
+            let physicsLoss = 0.5;
+            let dataLoss = 0.5;
+
+            trainingInterval = setInterval(() => {
+                currentEpoch++;
+
+                // Simulate loss decay
+                const decayRate = optimizer === 'lbfgs' ? 0.995 : (optimizer === 'adam' ? 0.99 : 0.985);
+                const noise = 1 + (Math.random() - 0.5) * 0.1;
+
+                totalLoss *= decayRate * noise;
+                physicsLoss *= (decayRate + 0.002) * noise;
+                dataLoss *= (decayRate - 0.002) * noise;
+
+                totalLoss = Math.max(totalLoss, 1e-5);
+                physicsLoss = Math.max(physicsLoss, 1e-6);
+                dataLoss = Math.max(dataLoss, 1e-6);
+
+                lossHistory.total.push(totalLoss);
+                lossHistory.physics.push(physicsLoss);
+                lossHistory.data.push(dataLoss);
+
+                // Update UI
+                document.getElementById('currentEpoch').textContent = currentEpoch;
+                document.getElementById('totalLoss').textContent = totalLoss.toExponential(2);
+                document.getElementById('physicsLoss').textContent = physicsLoss.toExponential(2);
+                document.getElementById('dataLoss').textContent = dataLoss.toExponential(2);
+                document.getElementById('progressBar').style.width = `${(currentEpoch / 1000) * 100}%`;
+                document.getElementById('epochCounter').textContent = `${currentEpoch} / 1000 epochs`;
+
+                // Update charts
+                const epochs = Array.from({length: lossHistory.total.length}, (_, i) => i + 1);
+
+                Plotly.react('lossChart', [{
+                    x: epochs,
+                    y: lossHistory.total,
+                    name: 'Total Loss',
+                    line: { color: '#06b6d4', width: 2 }
+                }], {
+                    title: 'Training Loss',
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(15,23,42,0.6)',
+                    font: { color: '#94a3b8' },
+                    xaxis: { title: 'Epoch', gridcolor: 'rgba(148,163,184,0.1)' },
+                    yaxis: { title: 'Loss', type: 'log', gridcolor: 'rgba(148,163,184,0.1)' },
+                    margin: { t: 40 }
+                });
+
+                Plotly.react('componentLossChart', [
+                    { x: epochs, y: lossHistory.physics, name: 'Physics Loss', line: { color: '#22d3ee' } },
+                    { x: epochs, y: lossHistory.data, name: 'Data Loss', line: { color: '#a78bfa' } }
+                ], {
+                    title: 'Loss Components',
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(15,23,42,0.6)',
+                    font: { color: '#94a3b8' },
+                    xaxis: { title: 'Epoch', gridcolor: 'rgba(148,163,184,0.1)' },
+                    yaxis: { title: 'Loss', type: 'log', gridcolor: 'rgba(148,163,184,0.1)' },
+                    margin: { t: 40 }
+                });
+
+                if (currentEpoch >= 1000) {
+                    clearInterval(trainingInterval);
+                    trainingInterval = null;
+                    document.getElementById('trainingIndicator').style.background = '#3b82f6';
+                    document.getElementById('trainingStatus').textContent = 'Training complete';
+                }
+            }, 50);
+        }
+
+        function resetTraining() {
+            if (trainingInterval) {
+                clearInterval(trainingInterval);
+                trainingInterval = null;
+            }
+            currentEpoch = 0;
+            lossHistory = { total: [], physics: [], data: [], bc: [] };
+
+            document.getElementById('currentEpoch').textContent = '0';
+            document.getElementById('totalLoss').textContent = '--';
+            document.getElementById('physicsLoss').textContent = '--';
+            document.getElementById('dataLoss').textContent = '--';
+            document.getElementById('progressBar').style.width = '0%';
+            document.getElementById('epochCounter').textContent = '0 / 1000 epochs';
+            document.getElementById('trainingIndicator').style.background = '#94a3b8';
+            document.getElementById('trainingStatus').textContent = 'Ready to train';
+
+            initTrainingCharts();
+        }
+
+        function updateGravityField() {
+            const maxDegree = parseInt(document.getElementById('maxDegree').value);
+            const altitude = parseInt(document.getElementById('altitude').value);
+            const component = document.getElementById('fieldComponent').value;
+            const dataDensity = parseInt(document.getElementById('dataDensity').value);
+
+            document.getElementById('maxDegreeVal').textContent = maxDegree;
+            document.getElementById('altitudeVal').textContent = altitude;
+            document.getElementById('dataDensityVal').textContent = dataDensity;
+
+            // Generate gravity field
+            const lats = [];
+            const lons = [];
+            const values = [];
+
+            for (let lat = -90; lat <= 90; lat += 3) {
+                const latRow = [];
+                const lonRow = [];
+                const valRow = [];
+                for (let lon = -180; lon <= 180; lon += 3) {
+                    latRow.push(lat);
+                    lonRow.push(lon);
+
+                    // Simulate gravity field with harmonics
+                    let val = 0;
+                    for (let n = 2; n <= Math.min(maxDegree, 20); n++) {
+                        for (let m = 0; m <= n; m++) {
+                            const Pnm = Math.cos((n - m) * lat * Math.PI / 180);
+                            val += (1 / n**2) * Pnm * Math.cos(m * lon * Math.PI / 180);
+                        }
+                    }
+
+                    // Scale based on component
+                    switch(component) {
+                        case 'potential': val *= 1000; break;
+                        case 'geoid': val *= 50; break;
+                        case 'anomaly': val *= 100; break;
+                        case 'gradient': val *= 0.5; break;
+                    }
+
+                    valRow.push(val * (1 + (Math.random() - 0.5) * 0.1));
+                }
+                values.push(valRow);
+            }
+
+            const componentLabels = {
+                potential: 'Gravitational Potential (m²/s²)',
+                geoid: 'Geoid Height (m)',
+                anomaly: 'Gravity Anomaly (mGal)',
+                gradient: 'Gravity Gradient (E)'
+            };
+
+            Plotly.newPlot('gravityFieldChart', [{
+                z: values,
+                type: 'heatmap',
+                colorscale: 'RdBu',
+                reversescale: true,
+                colorbar: { title: componentLabels[component] }
+            }], {
+                title: `PINN-Reconstructed ${componentLabels[component]} at ${altitude} km`,
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(15,23,42,0.6)',
+                font: { color: '#94a3b8' },
+                xaxis: { title: 'Longitude (°)', dtick: 30 },
+                yaxis: { title: 'Latitude (°)', dtick: 30 },
+                margin: { t: 50 }
+            });
+
+            // Degree variance spectrum
+            const degrees = Array.from({length: maxDegree}, (_, i) => i + 2);
+            const variance = degrees.map(n => 1e-6 * Math.pow(0.999, n) * (1 + Math.random() * 0.2));
+            const signal = degrees.map(n => 1e-5 * Math.pow(0.998, n));
+            const error = degrees.map(n => 1e-8 * Math.pow(1.01, n) * (100 - dataDensity) / 50);
+
+            Plotly.newPlot('spectrumChart', [
+                { x: degrees, y: signal, name: 'Signal', line: { color: '#06b6d4' } },
+                { x: degrees, y: variance, name: 'PINN Estimate', line: { color: '#22d3ee', dash: 'dash' } },
+                { x: degrees, y: error, name: 'Error', line: { color: '#ef4444' } }
+            ], {
+                title: 'Degree Variance Spectrum',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(15,23,42,0.6)',
+                font: { color: '#94a3b8' },
+                xaxis: { title: 'Spherical Harmonic Degree', gridcolor: 'rgba(148,163,184,0.1)' },
+                yaxis: { title: 'Degree Variance', type: 'log', gridcolor: 'rgba(148,163,184,0.1)' },
+                legend: { x: 0.7, y: 0.95 },
+                margin: { t: 40 }
+            });
+
+            // Error map
+            const errorMap = values.map(row => row.map(v => Math.abs(v * (100 - dataDensity) / 500 * (Math.random() + 0.5))));
+
+            Plotly.newPlot('errorMapChart', [{
+                z: errorMap,
+                type: 'heatmap',
+                colorscale: 'YlOrRd',
+                colorbar: { title: 'Error' }
+            }], {
+                title: 'Reconstruction Error',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(15,23,42,0.6)',
+                font: { color: '#94a3b8' },
+                xaxis: { title: 'Longitude (°)', dtick: 30 },
+                yaxis: { title: 'Latitude (°)', dtick: 30 },
+                margin: { t: 40 }
+            });
+
+            // Update metrics
+            const rms = Math.sqrt(errorMap.flat().reduce((a, b) => a + b * b, 0) / errorMap.flat().length);
+            document.getElementById('rmsError').textContent = rms.toFixed(2);
+            document.getElementById('maxError').textContent = Math.max(...errorMap.flat()).toFixed(2);
+            document.getElementById('coeffRecovered').textContent = ((maxDegree + 1) ** 2 - 4).toLocaleString();
+            document.getElementById('spatialRes').textContent = Math.round(40000 / (2 * maxDegree));
+        }
+
+        function updateComparison() {
+            const noiseLevel = parseFloat(document.getElementById('noiseLevel').value);
+            const dataGap = parseInt(document.getElementById('dataGap').value);
+            const method = document.getElementById('compareMethod').value;
+
+            document.getElementById('noiseLevelVal').textContent = noiseLevel.toFixed(1);
+            document.getElementById('dataGapVal').textContent = dataGap;
+
+            // Method comparison chart
+            const methods = ['Least Squares', 'Tikhonov', 'Kalman', 'PINN'];
+            const baseErrors = [1.0, 0.7, 0.6, 0.4];
+
+            const errors = methods.map((m, i) => {
+                let err = baseErrors[i];
+                err *= (1 + noiseLevel * 0.1);
+                err *= (1 + dataGap * 0.02);
+                if (i === 3) err *= 0.7; // PINN handles gaps better
+                return err;
+            });
+
+            const colors = method === 'all'
+                ? ['#94a3b8', '#94a3b8', '#94a3b8', '#06b6d4']
+                : methods.map((m, i) => {
+                    if (m.toLowerCase().includes(method.replace('lsq', 'least').replace('kalman', 'kalman'))) return '#a78bfa';
+                    if (i === 3) return '#06b6d4';
+                    return '#94a3b8';
+                });
+
+            Plotly.newPlot('methodComparisonChart', [{
+                x: methods,
+                y: errors,
+                type: 'bar',
+                marker: { color: colors }
+            }], {
+                title: 'RMS Error Comparison',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(15,23,42,0.6)',
+                font: { color: '#94a3b8' },
+                xaxis: { gridcolor: 'rgba(148,163,184,0.1)' },
+                yaxis: { title: 'Relative RMS Error', gridcolor: 'rgba(148,163,184,0.1)' },
+                margin: { t: 40 }
+            });
+
+            // Data efficiency
+            const dataFractions = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+            const pinnAccuracy = dataFractions.map(d => 0.95 * (1 - Math.exp(-d / 30)));
+            const traditionalAccuracy = dataFractions.map(d => 0.95 * (1 - Math.exp(-d / 60)));
+
+            Plotly.newPlot('dataEfficiencyChart', [
+                { x: dataFractions, y: pinnAccuracy, name: 'PINN', line: { color: '#06b6d4', width: 2 } },
+                { x: dataFractions, y: traditionalAccuracy, name: 'Traditional', line: { color: '#a78bfa', width: 2 } }
+            ], {
+                title: 'Data Efficiency',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(15,23,42,0.6)',
+                font: { color: '#94a3b8' },
+                xaxis: { title: 'Training Data (%)', gridcolor: 'rgba(148,163,184,0.1)' },
+                yaxis: { title: 'Accuracy', gridcolor: 'rgba(148,163,184,0.1)' },
+                legend: { x: 0.7, y: 0.3 },
+                margin: { t: 40 }
+            });
+
+            // Convergence comparison
+            const iterations = Array.from({length: 100}, (_, i) => i + 1);
+            const pinnConv = iterations.map(i => Math.exp(-i / 20) + 0.01);
+            const tikhonovConv = iterations.map(i => Math.exp(-i / 40) + 0.05);
+            const kalmanConv = iterations.map(i => Math.exp(-i / 30) + 0.03);
+
+            Plotly.newPlot('convergenceComparisonChart', [
+                { x: iterations, y: pinnConv, name: 'PINN', line: { color: '#06b6d4' } },
+                { x: iterations, y: tikhonovConv, name: 'Tikhonov (iterative)', line: { color: '#a78bfa' } },
+                { x: iterations, y: kalmanConv, name: 'Kalman', line: { color: '#22d3ee' } }
+            ], {
+                title: 'Convergence Rate Comparison',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(15,23,42,0.6)',
+                font: { color: '#94a3b8' },
+                xaxis: { title: 'Iteration', gridcolor: 'rgba(148,163,184,0.1)' },
+                yaxis: { title: 'Relative Error', type: 'log', gridcolor: 'rgba(148,163,184,0.1)' },
+                legend: { x: 0.7, y: 0.95 },
+                margin: { t: 40 }
+            });
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            updateArchitecture();
+        });
+    </script>
+</body>
+</html>

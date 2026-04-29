@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terrain-Aided Navigation - Undersea Navigation Suite</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #0a0a0a;
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+
+        .navbar {
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid rgba(59, 130, 246, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-title {
+            color: #60a5fa;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #1e40af, #3b82f6);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 3rem 0;
+            background: linear-gradient(135deg, rgba(30, 64, 175, 0.1), rgba(59, 130, 246, 0.1));
+            border-radius: 20px;
+            margin-bottom: 3rem;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            background: linear-gradient(135deg, #1e40af, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+
+        .hero-subtitle {
+            font-size: 1.2rem;
+            color: #a0a0a0;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .controls-panel {
+            background: rgba(59, 130, 246, 0.05);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .controls-title {
+            color: #60a5fa;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .control-label {
+            display: block;
+            color: #c0c0c0;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .control-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .slider {
+            flex: 1;
+            height: 8px;
+            border-radius: 5px;
+            background: rgba(59, 130, 246, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            border: none;
+        }
+
+        .value-display {
+            min-width: 120px;
+            background: rgba(59, 130, 246, 0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            color: #60a5fa;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 1rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #1e40af, #3b82f6);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(59, 130, 246, 0.1);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(59, 130, 246, 0.2);
+        }
+
+        .plot-container {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .plot-title {
+            color: #60a5fa;
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+        }
+
+        .info-box {
+            background: rgba(16, 185, 129, 0.1);
+            border-left: 4px solid #10b981;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+
+        .info-box h3 {
+            color: #10b981;
+            margin-bottom: 0.5rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #3b82f6;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: #a0a0a0;
+            font-size: 0.9rem;
+        }
+
+        .terrain-presets {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .preset-btn {
+            padding: 0.8rem;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 8px;
+            color: #60a5fa;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .preset-btn:hover {
+            background: rgba(59, 130, 246, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .equation-box {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+            font-size: 1.1rem;
+            color: #60a5fa;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-title">
+            <i class="fas fa-mountain"></i> Terrain-Aided Navigation
+        </div>
+        <a href="undersea-navigation-complete-project.html" class="nav-btn">
+            <i class="fas fa-arrow-left"></i> Back to Suite
+        </a>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h1><i class="fas fa-mountain"></i> Terrain-Aided Navigation (TAN) Simulator</h1>
+            <p class="hero-subtitle">
+                Passive positioning through bathymetric correlation - match measured depth profiles with seafloor maps for covert navigation
+            </p>
+        </div>
+
+        <div class="info-box">
+            <h3><i class="fas fa-info-circle"></i> About This Demo</h3>
+            <p>
+                Terrain-Aided Navigation (TAN) provides passive positioning by correlating real-time depth measurements
+                with a priori bathymetric maps. Unlike acoustic beacons, TAN is completely passive (no transmissions),
+                making it ideal for covert operations. Performance depends critically on terrain variability - flat
+                seafloors provide poor observability while rugged terrain enables accurate positioning.
+            </p>
+        </div>
+
+        <div class="controls-panel">
+            <h2 class="controls-title"><i class="fas fa-sliders-h"></i> Terrain Configuration</h2>
+
+            <div class="control-group">
+                <label class="control-label">Terrain Variability</label>
+                <div class="control-row">
+                    <input type="range" id="terrain-var" class="slider" min="1" max="50" step="1" value="20">
+                    <span class="value-display" id="terrain-var-val">20 m</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Terrain Wavelength (meters)</label>
+                <div class="control-row">
+                    <input type="range" id="terrain-wave" class="slider" min="50" max="500" step="50" value="200">
+                    <span class="value-display" id="terrain-wave-val">200 m</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Depth Sensor Noise (meters)</label>
+                <div class="control-row">
+                    <input type="range" id="depth-noise" class="slider" min="0.1" max="2" step="0.1" value="0.5">
+                    <span class="value-display" id="depth-noise-val">0.5 m</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Initial Position Uncertainty (meters)</label>
+                <div class="control-row">
+                    <input type="range" id="position-unc" class="slider" min="10" max="200" step="10" value="50">
+                    <span class="value-display" id="position-unc-val">50 m</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">Correlation Window Length (meters)</label>
+                <div class="control-row">
+                    <input type="range" id="window-length" class="slider" min="100" max="1000" step="100" value="500">
+                    <span class="value-display" id="window-length-val">500 m</span>
+                </div>
+            </div>
+
+            <h3 style="color: #60a5fa; margin-top: 2rem; margin-bottom: 1rem;">Terrain Presets</h3>
+            <div class="terrain-presets">
+                <button class="preset-btn" onclick="loadTerrain('rugged')">Rugged Terrain</button>
+                <button class="preset-btn" onclick="loadTerrain('rolling')">Rolling Hills</button>
+                <button class="preset-btn" onclick="loadTerrain('flat')">Flat Abyssal</button>
+                <button class="preset-btn" onclick="loadTerrain('canyon')">Undersea Canyon</button>
+            </div>
+
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="runCorrelation()">
+                    <i class="fas fa-sync"></i> Run Correlation
+                </button>
+                <button class="btn btn-secondary" onclick="resetDefaults()">
+                    <i class="fas fa-undo"></i> Reset Defaults
+                </button>
+            </div>
+        </div>
+
+        <div class="stats-grid" id="stats-container" style="display: none;">
+            <div class="stat-card">
+                <div class="stat-value" id="correlation-peak">--</div>
+                <div class="stat-label">Peak Correlation</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="position-error">--</div>
+                <div class="stat-label">Position Error</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="confidence">--</div>
+                <div class="stat-label">Match Confidence</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="terrain-gradient">--</div>
+                <div class="stat-label">Terrain Gradient</div>
+            </div>
+        </div>
+
+        <div class="plot-container">
+            <h3 class="plot-title"><i class="fas fa-water"></i> Bathymetric Map & Vehicle Track</h3>
+            <div id="bathymetry-plot"></div>
+        </div>
+
+        <div class="plot-container">
+            <h3 class="plot-title"><i class="fas fa-chart-line"></i> Depth Profile Correlation</h3>
+            <div id="depth-profile-plot"></div>
+        </div>
+
+        <div class="plot-container">
+            <h3 class="plot-title"><i class="fas fa-crosshairs"></i> Correlation Function</h3>
+            <div id="correlation-plot"></div>
+        </div>
+
+        <div class="plot-container">
+            <h3 class="plot-title"><i class="fas fa-map-marked-alt"></i> Position Solution Over Time</h3>
+            <div id="position-plot"></div>
+        </div>
+
+        <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 15px; padding: 2rem; margin-top: 2rem;">
+            <h2 style="color: #60a5fa; margin-bottom: 1rem;"><i class="fas fa-book-open"></i> TAN Theory</h2>
+
+            <h3 style="color: #c0c0c0; margin-top: 1.5rem;">Correlation Principle</h3>
+            <p>TAN matches measured depth to map depth over a trajectory window:</p>
+            <div class="equation-box">
+                z<sub>TAN</sub> = d<sub>measured</sub> - d<sub>map</sub>(p<sub>INS</sub>)
+            </div>
+
+            <h3 style="color: #c0c0c0; margin-top: 1.5rem;">TERCOM Algorithm</h3>
+            <p>Position offset that maximizes correlation between measured and map depths:</p>
+            <div class="equation-box">
+                Δp = argmax<sub>δp</sub> Σ w<sub>i</sub> · (d<sub>meas,i</sub> - d<sub>map</sub>(p<sub>i</sub> + δp))²
+            </div>
+
+            <h3 style="color: #c0c0c0; margin-top: 1.5rem;">Observability Requirements</h3>
+            <ul style="margin-left: 2rem; color: #c0c0c0;">
+                <li>Map resolution: 5-50m grid spacing (finer than position uncertainty)</li>
+                <li>Map vertical accuracy: < 1m RMS</li>
+                <li>Terrain gradient: > 10m relief per km for unique matching</li>
+                <li>Depth sensor: < 0.5m accuracy (high-precision pressure sensor)</li>
+                <li>Vehicle altitude control: constant altitude ± 2m for stable measurements</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const sliders = ['terrain-var', 'terrain-wave', 'depth-noise', 'position-unc', 'window-length'];
+        const units = {
+            'terrain-var': ' m',
+            'terrain-wave': ' m',
+            'depth-noise': ' m',
+            'position-unc': ' m',
+            'window-length': ' m'
+        };
+
+        sliders.forEach(id => {
+            document.getElementById(id).addEventListener('input', function(e) {
+                document.getElementById(id + '-val').textContent = e.target.value + units[id];
+            });
+        });
+
+        function resetDefaults() {
+            document.getElementById('terrain-var').value = 20;
+            document.getElementById('terrain-wave').value = 200;
+            document.getElementById('depth-noise').value = 0.5;
+            document.getElementById('position-unc').value = 50;
+            document.getElementById('window-length').value = 500;
+            sliders.forEach(id => document.getElementById(id).dispatchEvent(new Event('input')));
+        }
+
+        function loadTerrain(type) {
+            if (type === 'rugged') {
+                document.getElementById('terrain-var').value = 40;
+                document.getElementById('terrain-wave').value = 150;
+            } else if (type === 'rolling') {
+                document.getElementById('terrain-var').value = 20;
+                document.getElementById('terrain-wave').value = 300;
+            } else if (type === 'flat') {
+                document.getElementById('terrain-var').value = 5;
+                document.getElementById('terrain-wave').value = 500;
+            } else if (type === 'canyon') {
+                document.getElementById('terrain-var').value = 50;
+                document.getElementById('terrain-wave').value = 100;
+            }
+            document.getElementById('terrain-var').dispatchEvent(new Event('input'));
+            document.getElementById('terrain-wave').dispatchEvent(new Event('input'));
+            runCorrelation();
+        }
+
+        function generateTerrain(length, variance, wavelength) {
+            const numPoints = 500;
+            const x = [];
+            const depth = [];
+            const baseDepth = 100;
+
+            for (let i = 0; i < numPoints; i++) {
+                const xi = (length / numPoints) * i;
+                x.push(xi);
+
+                // Multi-scale terrain using multiple sine waves
+                let d = baseDepth;
+                d += variance * Math.sin(2 * Math.PI * xi / wavelength);
+                d += (variance * 0.5) * Math.sin(2 * Math.PI * xi / (wavelength * 0.5));
+                d += (variance * 0.25) * Math.sin(2 * Math.PI * xi / (wavelength * 0.25));
+                d += (variance * 0.1) * (Math.random() - 0.5) * 2; // Small-scale roughness
+
+                depth.push(d);
+            }
+
+            return { x, depth };
+        }
+
+        function runCorrelation() {
+            const terrainVar = parseFloat(document.getElementById('terrain-var').value);
+            const terrainWave = parseFloat(document.getElementById('terrain-wave').value);
+            const depthNoise = parseFloat(document.getElementById('depth-noise').value);
+            const positionUnc = parseFloat(document.getElementById('position-unc').value);
+            const windowLength = parseFloat(document.getElementById('window-length').value);
+
+            const mapLength = 2000;
+            const terrain = generateTerrain(mapLength, terrainVar, terrainWave);
+
+            // True vehicle position (center of map)
+            const truePosition = mapLength / 2;
+            const vehicleTrack = [];
+            const measuredDepth = [];
+
+            // Generate measured depth profile along track
+            const trackStart = truePosition - windowLength / 2;
+            const numMeasurements = 50;
+            for (let i = 0; i < numMeasurements; i++) {
+                const pos = trackStart + (windowLength / numMeasurements) * i;
+                vehicleTrack.push(pos);
+
+                // Interpolate map depth at this position
+                const idx = Math.floor((pos / mapLength) * terrain.depth.length);
+                if (idx >= 0 && idx < terrain.depth.length) {
+                    const mapDepth = terrain.depth[idx];
+                    const noise = depthNoise * (Math.random() - 0.5) * 2;
+                    measuredDepth.push(mapDepth + noise);
+                }
+            }
+
+            // Correlation search
+            const searchRange = positionUnc * 2;
+            const searchSteps = 100;
+            const correlationOffsets = [];
+            const correlationValues = [];
+            let bestOffset = 0;
+            let bestCorr = -Infinity;
+
+            for (let i = 0; i < searchSteps; i++) {
+                const offset = -searchRange + (2 * searchRange / searchSteps) * i;
+                correlationOffsets.push(offset);
+
+                // Compute correlation at this offset
+                let correlation = 0;
+                for (let j = 0; j < measuredDepth.length; j++) {
+                    const testPos = vehicleTrack[j] + offset;
+                    const idx = Math.floor((testPos / mapLength) * terrain.depth.length);
+
+                    if (idx >= 0 && idx < terrain.depth.length) {
+                        const mapDepth = terrain.depth[idx];
+                        const error = measuredDepth[j] - mapDepth;
+                        correlation -= error * error; // Negative sum of squared errors
+                    }
+                }
+
+                correlationValues.push(correlation);
+                if (correlation > bestCorr) {
+                    bestCorr = correlation;
+                    bestOffset = offset;
+                }
+            }
+
+            // Normalize correlation
+            const maxCorr = Math.max(...correlationValues);
+            const minCorr = Math.min(...correlationValues);
+            const normCorr = correlationValues.map(c => (c - minCorr) / (maxCorr - minCorr));
+
+            // Calculate statistics
+            const positionError = Math.abs(bestOffset);
+            const peakCorr = normCorr[correlationOffsets.indexOf(bestOffset)];
+            const confidence = peakCorr > 0.8 ? 'High' : peakCorr > 0.5 ? 'Medium' : 'Low';
+
+            // Calculate terrain gradient
+            let totalGradient = 0;
+            for (let i = 1; i < terrain.depth.length; i++) {
+                totalGradient += Math.abs(terrain.depth[i] - terrain.depth[i-1]);
+            }
+            const avgGradient = (totalGradient / terrain.depth.length) * 1000 / mapLength;
+
+            // Update stats
+            document.getElementById('stats-container').style.display = 'grid';
+            document.getElementById('correlation-peak').textContent = peakCorr.toFixed(2);
+            document.getElementById('position-error').textContent = positionError.toFixed(1) + ' m';
+            document.getElementById('confidence').textContent = confidence;
+            document.getElementById('terrain-gradient').textContent = avgGradient.toFixed(1) + ' m/km';
+
+            // Plot bathymetry
+            const bathTrace = {
+                x: terrain.x,
+                y: terrain.depth,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Bathymetric Map',
+                line: { color: '#6366f1', width: 2 },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(99, 102, 241, 0.3)'
+            };
+
+            const trackTrace = {
+                x: vehicleTrack,
+                y: measuredDepth,
+                type: 'scatter',
+                mode: 'markers',
+                name: 'Vehicle Measurements',
+                marker: { size: 8, color: '#f59e0b' }
+            };
+
+            const layout1 = {
+                title: { text: 'Bathymetric Map', font: { color: '#e0e0e0' }},
+                xaxis: { title: 'Distance (m)', gridcolor: '#333', color: '#e0e0e0' },
+                yaxis: { title: 'Depth (m)', gridcolor: '#333', color: '#e0e0e0', autorange: 'reversed' },
+                plot_bgcolor: '#0a0a0a',
+                paper_bgcolor: '#0a0a0a',
+                font: { color: '#e0e0e0' },
+                showlegend: true
+            };
+
+            Plotly.newPlot('bathymetry-plot', [bathTrace, trackTrace], layout1, {responsive: true});
+
+            // Plot depth profiles comparison
+            const mapProfile = [];
+            for (let j = 0; j < vehicleTrack.length; j++) {
+                const idx = Math.floor((vehicleTrack[j] / mapLength) * terrain.depth.length);
+                if (idx >= 0 && idx < terrain.depth.length) {
+                    mapProfile.push(terrain.depth[idx]);
+                }
+            }
+
+            const trace2a = {
+                y: measuredDepth,
+                name: 'Measured',
+                line: { color: '#3b82f6', width: 3 }
+            };
+
+            const trace2b = {
+                y: mapProfile,
+                name: 'Map (at true position)',
+                line: { color: '#10b981', width: 2, dash: 'dash' }
+            };
+
+            const layout2 = {
+                title: { text: 'Depth Profile Comparison', font: { color: '#e0e0e0' }},
+                xaxis: { title: 'Measurement Index', gridcolor: '#333', color: '#e0e0e0' },
+                yaxis: { title: 'Depth (m)', gridcolor: '#333', color: '#e0e0e0', autorange: 'reversed' },
+                plot_bgcolor: '#0a0a0a',
+                paper_bgcolor: '#0a0a0a',
+                font: { color: '#e0e0e0' },
+                showlegend: true
+            };
+
+            Plotly.newPlot('depth-profile-plot', [trace2a, trace2b], layout2, {responsive: true});
+
+            // Plot correlation function
+            const corrTrace = {
+                x: correlationOffsets,
+                y: normCorr,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#f59e0b', width: 3 },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(245, 158, 11, 0.3)'
+            };
+
+            const layout3 = {
+                title: { text: 'Correlation Function', font: { color: '#e0e0e0' }},
+                xaxis: { title: 'Position Offset (m)', gridcolor: '#333', color: '#e0e0e0' },
+                yaxis: { title: 'Normalized Correlation', gridcolor: '#333', color: '#e0e0e0' },
+                plot_bgcolor: '#0a0a0a',
+                paper_bgcolor: '#0a0a0a',
+                font: { color: '#e0e0e0' },
+                annotations: [{
+                    x: bestOffset,
+                    y: peakCorr,
+                    text: 'Peak',
+                    showarrow: true,
+                    arrowhead: 2,
+                    ax: 40,
+                    ay: -40,
+                    font: { color: '#60a5fa' },
+                    arrowcolor: '#60a5fa'
+                }],
+                shapes: [{
+                    type: 'line',
+                    x0: 0,
+                    x1: 0,
+                    y0: 0,
+                    y1: 1,
+                    line: { color: '#10b981', width: 2, dash: 'dot' }
+                }]
+            };
+
+            Plotly.newPlot('correlation-plot', [corrTrace], layout3, {responsive: true});
+
+            // Simulate position solution over time
+            const time = [];
+            const truePos = [];
+            const estimatedPos = [];
+            const uncertainty = [];
+
+            for (let t = 0; t <= 10; t++) {
+                time.push(t);
+                truePos.push(0); // True position is reference
+
+                // Position error decreases as more measurements accumulated
+                const err = positionError * Math.exp(-t / 5);
+                estimatedPos.push(err * (Math.random() - 0.5) * 2);
+
+                // Uncertainty bounds
+                uncertainty.push(positionUnc * Math.exp(-t / 3));
+            }
+
+            const trace4a = {
+                x: time,
+                y: truePos,
+                name: 'True Position',
+                line: { color: '#10b981', width: 2, dash: 'dash' }
+            };
+
+            const trace4b = {
+                x: time,
+                y: estimatedPos,
+                name: 'TAN Estimate',
+                line: { color: '#3b82f6', width: 3 }
+            };
+
+            const trace4c = {
+                x: time.concat(time.slice().reverse()),
+                y: uncertainty.concat(uncertainty.map(u => -u).reverse()),
+                fill: 'toself',
+                fillcolor: 'rgba(59, 130, 246, 0.2)',
+                line: { color: 'transparent' },
+                name: '1σ Uncertainty',
+                showlegend: true
+            };
+
+            const layout4 = {
+                title: { text: 'Position Error Convergence', font: { color: '#e0e0e0' }},
+                xaxis: { title: 'Time (min)', gridcolor: '#333', color: '#e0e0e0' },
+                yaxis: { title: 'Position Error (m)', gridcolor: '#333', color: '#e0e0e0' },
+                plot_bgcolor: '#0a0a0a',
+                paper_bgcolor: '#0a0a0a',
+                font: { color: '#e0e0e0' },
+                showlegend: true
+            };
+
+            Plotly.newPlot('position-plot', [trace4c, trace4a, trace4b], layout4, {responsive: true});
+        }
+
+        window.addEventListener('load', runCorrelation);
+    </script>
+</body>
+</html>
