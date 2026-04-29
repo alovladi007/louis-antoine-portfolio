@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neural OPC - Deep Learning Pattern Correction</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #2a0a1a 100%);
+            color: #e0e0e0;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: rgba(239, 68, 68, 0.05);
+            border-radius: 20px;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+        h1 {
+            font-size: 3rem;
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+        .main-layout {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 2rem;
+        }
+        .control-panel {
+            background: rgba(20, 20, 20, 0.9);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 15px;
+            padding: 1.5rem;
+        }
+        .panel-title {
+            color: #ef4444;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
+        .btn {
+            width: 100%;
+            padding: 0.75rem;
+            margin-top: 0.5rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            font-weight: 500;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(239, 68, 68, 0.3);
+        }
+        .viz-panel {
+            background: rgba(20, 20, 20, 0.9);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .viz-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1.5rem;
+        }
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+        .control-group label {
+            display: block;
+            color: #ef4444;
+            margin-bottom: 0.5rem;
+        }
+        .control-group select, .control-group input {
+            width: 100%;
+            padding: 0.5rem;
+            background: #222;
+            border: 1px solid #444;
+            color: #e0e0e0;
+            border-radius: 5px;
+        }
+        .network-diagram {
+            background: #111;
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+            margin: 1rem 0;
+        }
+        .accuracy-meter {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 1rem;
+            padding: 0.5rem;
+            background: #222;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Neural OPC</h1>
+            <p>Deep Learning-Based Optical Proximity Correction</p>
+        </div>
+        
+        <div class="main-layout">
+            <div class="control-panel">
+                <h3 class="panel-title">
+                    <i class="fas fa-brain"></i> Neural Network Setup
+                </h3>
+                
+                <div class="control-group">
+                    <label>Network Architecture</label>
+                    <select id="architecture">
+                        <option value="unet">U-Net</option>
+                        <option value="resnet">ResNet</option>
+                        <option value="gan">GAN</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>Training Epochs</label>
+                    <input type="range" id="epochs" min="10" max="100" value="50">
+                    <div style="text-align: right; color: #888;">50 epochs</div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Pattern Type</label>
+                    <select id="pattern">
+                        <option value="lines">Line/Space</option>
+                        <option value="contact">Contact Holes</option>
+                        <option value="complex">Complex 2D</option>
+                    </select>
+                </div>
+                
+                <button class="btn" onclick="trainNetwork()">
+                    <i class="fas fa-graduation-cap"></i> Train Network
+                </button>
+                
+                <button class="btn" onclick="runInference()">
+                    <i class="fas fa-play"></i> Run Inference
+                </button>
+                
+                <button class="btn" onclick="compareOPC()">
+                    <i class="fas fa-balance-scale"></i> Compare vs Traditional
+                </button>
+                
+                <div class="network-diagram">
+                    <div style="color: #ef4444; font-weight: bold;">CNN Architecture</div>
+                    <div style="margin-top: 0.5rem; font-size: 0.9rem;">
+                        Input → Conv → Pool → Conv → Pool<br>
+                        → Dense → Dense → Output
+                    </div>
+                </div>
+                
+                <div class="accuracy-meter">
+                    <span>Accuracy:</span>
+                    <span id="accuracy" style="color: #10b981;">0%</span>
+                </div>
+            </div>
+            
+            <div class="viz-area">
+                <div class="viz-grid">
+                    <div class="viz-panel">
+                        <h3 class="panel-title">Original Pattern</h3>
+                        <div id="original"></div>
+                    </div>
+                    <div class="viz-panel">
+                        <h3 class="panel-title">Neural OPC Result</h3>
+                        <div id="neural-result"></div>
+                    </div>
+                    <div class="viz-panel">
+                        <h3 class="panel-title">Traditional OPC</h3>
+                        <div id="traditional"></div>
+                    </div>
+                </div>
+                
+                <div class="viz-panel">
+                    <h3 class="panel-title">Training Progress</h3>
+                    <div id="training-plot"></div>
+                </div>
+                
+                <div class="viz-panel">
+                    <h3 class="panel-title">Performance Comparison</h3>
+                    <div id="performance"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let trainingData = [];
+        
+        function trainNetwork() {
+            alert('Training Neural Network...');
+            document.getElementById('accuracy').textContent = '0%';
+            
+            // Simulate training progress
+            let epoch = 0;
+            const interval = setInterval(() => {
+                epoch += 10;
+                const accuracy = Math.min(95, epoch * 1.8);
+                document.getElementById('accuracy').textContent = accuracy.toFixed(0) + '%';
+                
+                if (epoch >= 50) {
+                    clearInterval(interval);
+                    generateTrainingPlot();
+                }
+            }, 200);
+        }
+        
+        function runInference() {
+            alert('Running Neural OPC Inference...');
+            generatePatterns();
+        }
+        
+        function compareOPC() {
+            alert('Comparing Neural vs Traditional OPC...');
+            generateComparison();
+        }
+        
+        function generatePatterns() {
+            const size = 50;
+            
+            // Original pattern
+            const original = [];
+            for (let i = 0; i < size; i++) {
+                const row = [];
+                for (let j = 0; j < size; j++) {
+                    row.push((j % 10 < 5) ? 1 : 0);
+                }
+                original.push(row);
+            }
+            
+            Plotly.newPlot('original', [{
+                z: original,
+                type: 'heatmap',
+                colorscale: [[0, '#000'], [1, '#fff']],
+                showscale: false
+            }], {
+                title: 'Target',
+                paper_bgcolor: '#111',
+                plot_bgcolor: '#111',
+                font: { color: '#e0e0e0' },
+                margin: { t: 30, b: 20, l: 20, r: 20 }
+            });
+            
+            // Neural OPC result (with corrections)
+            const neural = original.map(row => 
+                row.map(v => v > 0.5 ? v + Math.random() * 0.2 : v)
+            );
+            
+            Plotly.newPlot('neural-result', [{
+                z: neural,
+                type: 'heatmap',
+                colorscale: 'Hot',
+                showscale: false
+            }], {
+                title: 'Neural OPC',
+                paper_bgcolor: '#111',
+                plot_bgcolor: '#111',
+                font: { color: '#e0e0e0' },
+                margin: { t: 30, b: 20, l: 20, r: 20 }
+            });
+            
+            // Traditional OPC
+            const traditional = original.map(row => 
+                row.map(v => v > 0.5 ? v + Math.random() * 0.3 - 0.1 : v)
+            );
+            
+            Plotly.newPlot('traditional', [{
+                z: traditional,
+                type: 'heatmap',
+                colorscale: 'Viridis',
+                showscale: false
+            }], {
+                title: 'Traditional',
+                paper_bgcolor: '#111',
+                plot_bgcolor: '#111',
+                font: { color: '#e0e0e0' },
+                margin: { t: 30, b: 20, l: 20, r: 20 }
+            });
+        }
+        
+        function generateTrainingPlot() {
+            const epochs = [];
+            const loss = [];
+            const accuracy = [];
+            
+            for (let i = 0; i <= 50; i += 5) {
+                epochs.push(i);
+                loss.push(1 / (1 + i/10));
+                accuracy.push(Math.min(95, i * 1.8));
+            }
+            
+            Plotly.newPlot('training-plot', [
+                {
+                    x: epochs,
+                    y: loss,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Loss',
+                    line: { color: '#ef4444' }
+                },
+                {
+                    x: epochs,
+                    y: accuracy.map(a => a/100),
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Accuracy',
+                    line: { color: '#10b981' },
+                    yaxis: 'y2'
+                }
+            ], {
+                title: 'Training Progress',
+                paper_bgcolor: '#111',
+                plot_bgcolor: '#111',
+                font: { color: '#e0e0e0' },
+                xaxis: { title: 'Epoch' },
+                yaxis: { title: 'Loss', side: 'left' },
+                yaxis2: { title: 'Accuracy', side: 'right', overlaying: 'y' }
+            });
+        }
+        
+        function generateComparison() {
+            const methods = ['Neural OPC', 'Traditional OPC', 'No OPC'];
+            const epe = [2.1, 3.5, 8.2];
+            const time = [0.5, 10, 0];
+            
+            Plotly.newPlot('performance', [{
+                x: methods,
+                y: epe,
+                type: 'bar',
+                name: 'EPE (nm)',
+                marker: { color: '#ef4444' }
+            }, {
+                x: methods,
+                y: time,
+                type: 'bar',
+                name: 'Time (s)',
+                marker: { color: '#f59e0b' },
+                yaxis: 'y2'
+            }], {
+                title: 'Performance Metrics',
+                paper_bgcolor: '#111',
+                plot_bgcolor: '#111',
+                font: { color: '#e0e0e0' },
+                yaxis: { title: 'EPE (nm)' },
+                yaxis2: { title: 'Time (s)', side: 'right', overlaying: 'y' }
+            });
+        }
+        
+        window.onload = function() {
+            generatePatterns();
+            generateTrainingPlot();
+            generateComparison();
+        };
+    </script>
+</body>
+</html>

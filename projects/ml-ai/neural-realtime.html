@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Engine - Neural Interface Decoder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%); }
+        .card-gradient { background: linear-gradient(180deg, rgba(99, 102, 241, 0.1) 0%, rgba(79, 70, 229, 0.05) 100%); border: 1px solid rgba(99, 102, 241, 0.2); }
+        .nav-blur { backdrop-filter: blur(12px); background: rgba(15, 15, 35, 0.8); }
+        .pulse-dot { animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen text-gray-100">
+    <nav class="fixed top-0 w-full z-50 nav-blur border-b border-indigo-500/20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-4">
+                    <a href="neural-complete-project.html" class="text-indigo-400 hover:text-indigo-300"><i class="fas fa-arrow-left mr-2"></i>Back to Suite</a>
+                    <span class="text-gray-500">|</span>
+                    <span class="text-xl font-bold bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">Real-Time Engine</span>
+                </div>
+                <div id="statusBar" class="flex items-center space-x-2">
+                    <span class="w-3 h-3 bg-gray-500 rounded-full"></span>
+                    <span class="text-gray-400">Offline</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="pt-20 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold mb-4"><i class="fas fa-bolt text-pink-400 mr-3"></i>Real-Time Engine</h1>
+            <p class="text-xl text-gray-400">Sub-millisecond processing for closed-loop BCI applications</p>
+        </div>
+
+        <div class="grid lg:grid-cols-4 gap-6">
+            <div class="lg:col-span-1 space-y-6">
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-indigo-300 mb-4"><i class="fas fa-power-off mr-2"></i>System Control</h3>
+                    <div class="space-y-4">
+                        <button id="startBtn" class="w-full py-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg font-semibold hover:from-green-600 hover:to-emerald-700">
+                            <i class="fas fa-play mr-2"></i>Start Engine
+                        </button>
+                        <button id="stopBtn" class="w-full py-3 bg-gradient-to-r from-red-500 to-rose-600 rounded-lg font-semibold hover:from-red-600 hover:to-rose-700" disabled>
+                            <i class="fas fa-stop mr-2"></i>Stop Engine
+                        </button>
+                        <div class="border-t border-indigo-500/20 pt-4">
+                            <label class="block text-sm text-gray-400 mb-2">Processing Mode</label>
+                            <select id="procMode" class="w-full bg-gray-800 border border-indigo-500/30 rounded-lg px-4 py-2 text-white">
+                                <option value="threshold">Threshold Detection</option>
+                                <option value="template">Template Matching</option>
+                                <option value="online_sort">Online Sorting</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-indigo-300 mb-4"><i class="fas fa-tachometer-alt mr-2"></i>Performance</h3>
+                    <div class="space-y-3">
+                        <div class="bg-gray-900/50 rounded-lg p-3">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-400">Loop Time</span>
+                                <span class="text-green-400" id="loopTime">-- µs</span>
+                            </div>
+                            <div class="w-full bg-gray-700 rounded-full h-1.5 mt-2">
+                                <div id="loopBar" class="bg-green-500 h-1.5 rounded-full" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-900/50 rounded-lg p-3">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-400">Buffer Fill</span>
+                                <span class="text-cyan-400" id="bufferFill">0%</span>
+                            </div>
+                            <div class="w-full bg-gray-700 rounded-full h-1.5 mt-2">
+                                <div id="bufferBar" class="bg-cyan-500 h-1.5 rounded-full" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-900/50 rounded-lg p-3">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-400">CPU Load</span>
+                                <span class="text-indigo-400" id="cpuLoad">0%</span>
+                            </div>
+                            <div class="w-full bg-gray-700 rounded-full h-1.5 mt-2">
+                                <div id="cpuBar" class="bg-indigo-500 h-1.5 rounded-full" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-indigo-300 mb-4"><i class="fas fa-exclamation-triangle mr-2"></i>Alerts</h3>
+                    <div id="alertsContainer" class="space-y-2 max-h-40 overflow-y-auto">
+                        <p class="text-gray-500 text-sm">No alerts</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-3 space-y-6">
+                <!-- Pipeline Status -->
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-indigo-300 mb-4"><i class="fas fa-sitemap mr-2"></i>Processing Pipeline</h3>
+                    <div class="grid grid-cols-6 gap-4">
+                        <div class="bg-gray-900/50 rounded-lg p-4 text-center relative" id="stage1">
+                            <div class="w-3 h-3 rounded-full bg-gray-500 absolute top-2 right-2" id="stage1_dot"></div>
+                            <i class="fas fa-wave-square text-indigo-400 text-2xl mb-2"></i>
+                            <div class="text-sm font-semibold">Acquisition</div>
+                            <div class="text-xs text-gray-500" id="stage1_time">--</div>
+                        </div>
+                        <div class="bg-gray-900/50 rounded-lg p-4 text-center relative" id="stage2">
+                            <div class="w-3 h-3 rounded-full bg-gray-500 absolute top-2 right-2" id="stage2_dot"></div>
+                            <i class="fas fa-filter text-violet-400 text-2xl mb-2"></i>
+                            <div class="text-sm font-semibold">Filter</div>
+                            <div class="text-xs text-gray-500" id="stage2_time">--</div>
+                        </div>
+                        <div class="bg-gray-900/50 rounded-lg p-4 text-center relative" id="stage3">
+                            <div class="w-3 h-3 rounded-full bg-gray-500 absolute top-2 right-2" id="stage3_dot"></div>
+                            <i class="fas fa-bolt text-purple-400 text-2xl mb-2"></i>
+                            <div class="text-sm font-semibold">Detect</div>
+                            <div class="text-xs text-gray-500" id="stage3_time">--</div>
+                        </div>
+                        <div class="bg-gray-900/50 rounded-lg p-4 text-center relative" id="stage4">
+                            <div class="w-3 h-3 rounded-full bg-gray-500 absolute top-2 right-2" id="stage4_dot"></div>
+                            <i class="fas fa-layer-group text-pink-400 text-2xl mb-2"></i>
+                            <div class="text-sm font-semibold">Sort</div>
+                            <div class="text-xs text-gray-500" id="stage4_time">--</div>
+                        </div>
+                        <div class="bg-gray-900/50 rounded-lg p-4 text-center relative" id="stage5">
+                            <div class="w-3 h-3 rounded-full bg-gray-500 absolute top-2 right-2" id="stage5_dot"></div>
+                            <i class="fas fa-calculator text-rose-400 text-2xl mb-2"></i>
+                            <div class="text-sm font-semibold">Decode</div>
+                            <div class="text-xs text-gray-500" id="stage5_time">--</div>
+                        </div>
+                        <div class="bg-gray-900/50 rounded-lg p-4 text-center relative" id="stage6">
+                            <div class="w-3 h-3 rounded-full bg-gray-500 absolute top-2 right-2" id="stage6_dot"></div>
+                            <i class="fas fa-paper-plane text-orange-400 text-2xl mb-2"></i>
+                            <div class="text-sm font-semibold">Output</div>
+                            <div class="text-xs text-gray-500" id="stage6_time">--</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Statistics -->
+                <div class="grid md:grid-cols-4 gap-4">
+                    <div class="card-gradient rounded-xl p-4 text-center">
+                        <div class="text-3xl font-bold text-indigo-400" id="sampleRate">--</div>
+                        <div class="text-sm text-gray-400">Sample Rate (kHz)</div>
+                    </div>
+                    <div class="card-gradient rounded-xl p-4 text-center">
+                        <div class="text-3xl font-bold text-violet-400" id="spikesPerSec">--</div>
+                        <div class="text-sm text-gray-400">Spikes/sec</div>
+                    </div>
+                    <div class="card-gradient rounded-xl p-4 text-center">
+                        <div class="text-3xl font-bold text-purple-400" id="activeUnits">--</div>
+                        <div class="text-sm text-gray-400">Active Units</div>
+                    </div>
+                    <div class="card-gradient rounded-xl p-4 text-center">
+                        <div class="text-3xl font-bold text-pink-400" id="decodeRate">--</div>
+                        <div class="text-sm text-gray-400">Decode Rate (Hz)</div>
+                    </div>
+                </div>
+
+                <!-- Channel Monitor -->
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-indigo-300 mb-4"><i class="fas fa-th mr-2"></i>Channel Activity Monitor</h3>
+                    <div id="channelGrid" class="grid grid-cols-16 gap-1">
+                        <!-- 64 channels -->
+                    </div>
+                </div>
+
+                <!-- Timing Histogram -->
+                <div class="card-gradient rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-indigo-300 mb-4"><i class="fas fa-clock mr-2"></i>Loop Timing Distribution</h3>
+                    <div id="timingHist" class="h-40 flex items-end justify-around gap-1">
+                        <!-- Histogram bars -->
+                    </div>
+                    <div class="flex justify-between text-xs text-gray-500 mt-2">
+                        <span>0 µs</span>
+                        <span>200 µs</span>
+                        <span>400 µs</span>
+                        <span>600 µs</span>
+                        <span>800 µs</span>
+                        <span>1000 µs</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="border-t border-indigo-500/20 mt-12 py-8">
+        <div class="max-w-7xl mx-auto px-4 text-center text-gray-500"><p>Real-Time Engine - Neural Interface Decoder Suite</p></div>
+    </footer>
+
+    <script>
+        var startBtn = document.getElementById('startBtn');
+        var stopBtn = document.getElementById('stopBtn');
+        var statusBar = document.getElementById('statusBar');
+        var channelGrid = document.getElementById('channelGrid');
+        var timingHist = document.getElementById('timingHist');
+
+        var isRunning = false;
+        var updateInterval = null;
+        var loopTimes = [];
+
+        // Initialize channel grid
+        for (var i = 0; i < 64; i++) {
+            var ch = document.createElement('div');
+            ch.className = 'aspect-square bg-gray-800 rounded';
+            ch.id = 'ch' + i;
+            channelGrid.appendChild(ch);
+        }
+
+        // Initialize timing histogram
+        for (var i = 0; i < 20; i++) {
+            var bar = document.createElement('div');
+            bar.className = 'w-full bg-indigo-500/30 rounded-t';
+            bar.style.height = '0%';
+            bar.id = 'histBar' + i;
+            timingHist.appendChild(bar);
+        }
+
+        function updateStatus(status, color, animate) {
+            var dotClass = animate ? 'w-3 h-3 rounded-full bg-' + color + '-500 pulse-dot' : 'w-3 h-3 rounded-full bg-' + color + '-500';
+            statusBar.innerHTML = '<span class="' + dotClass + '"></span><span class="text-' + color + '-400">' + status + '</span>';
+        }
+
+        function updatePipeline() {
+            var stages = ['stage1', 'stage2', 'stage3', 'stage4', 'stage5', 'stage6'];
+            var times = [50, 80, 120, 200, 150, 30];
+
+            stages.forEach(function(stage, i) {
+                var time = times[i] + Math.floor(Math.random() * 50);
+                document.getElementById(stage + '_time').textContent = time + ' µs';
+                document.getElementById(stage + '_dot').className = 'w-3 h-3 rounded-full bg-green-500 pulse-dot absolute top-2 right-2';
+            });
+        }
+
+        function updateMetrics() {
+            if (!isRunning) return;
+
+            var loopTime = 400 + Math.floor(Math.random() * 200);
+            loopTimes.push(loopTime);
+            if (loopTimes.length > 100) loopTimes.shift();
+
+            document.getElementById('loopTime').textContent = loopTime + ' µs';
+            document.getElementById('loopBar').style.width = Math.min(100, loopTime / 10) + '%';
+            document.getElementById('loopBar').className = loopTime < 800 ? 'bg-green-500 h-1.5 rounded-full' : 'bg-yellow-500 h-1.5 rounded-full';
+
+            var bufferFill = 20 + Math.floor(Math.random() * 30);
+            document.getElementById('bufferFill').textContent = bufferFill + '%';
+            document.getElementById('bufferBar').style.width = bufferFill + '%';
+
+            var cpuLoad = 30 + Math.floor(Math.random() * 20);
+            document.getElementById('cpuLoad').textContent = cpuLoad + '%';
+            document.getElementById('cpuBar').style.width = cpuLoad + '%';
+
+            document.getElementById('sampleRate').textContent = '30';
+            document.getElementById('spikesPerSec').textContent = Math.floor(500 + Math.random() * 200);
+            document.getElementById('activeUnits').textContent = Math.floor(45 + Math.random() * 15);
+            document.getElementById('decodeRate').textContent = '50';
+
+            // Update channel activity
+            for (var i = 0; i < 64; i++) {
+                var activity = Math.random();
+                var brightness = Math.floor(activity * 200 + 30);
+                document.getElementById('ch' + i).style.backgroundColor = activity > 0.3 ?
+                    'rgb(' + Math.floor(brightness * 0.4) + ',' + Math.floor(brightness * 0.4) + ',' + brightness + ')' :
+                    '#1f2937';
+            }
+
+            // Update timing histogram
+            var histBins = new Array(20).fill(0);
+            loopTimes.forEach(function(t) {
+                var bin = Math.min(19, Math.floor(t / 50));
+                histBins[bin]++;
+            });
+            var maxBin = Math.max.apply(null, histBins);
+
+            for (var i = 0; i < 20; i++) {
+                var height = maxBin > 0 ? (histBins[i] / maxBin * 100) : 0;
+                document.getElementById('histBar' + i).style.height = height + '%';
+            }
+
+            updatePipeline();
+        }
+
+        startBtn.addEventListener('click', function() {
+            isRunning = true;
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            updateStatus('Running', 'green', true);
+            updateInterval = setInterval(updateMetrics, 100);
+        });
+
+        stopBtn.addEventListener('click', function() {
+            isRunning = false;
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            updateStatus('Stopped', 'red', false);
+            if (updateInterval) clearInterval(updateInterval);
+
+            // Reset pipeline dots
+            for (var i = 1; i <= 6; i++) {
+                document.getElementById('stage' + i + '_dot').className = 'w-3 h-3 rounded-full bg-gray-500 absolute top-2 right-2';
+            }
+        });
+
+        updateStatus('Ready', 'gray', false);
+    </script>
+</body>
+</html>

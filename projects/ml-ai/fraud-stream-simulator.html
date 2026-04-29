@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transaction Stream - Fraud Detection</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>.gradient-bg { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }</style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-red-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="fraud-complete-project.html" class="flex items-center text-red-400 hover:text-red-300">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Fraud Suite
+                </a>
+                <span class="text-red-400 font-semibold">Transaction Stream</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-3xl font-bold"><i class="fas fa-broadcast-tower mr-4"></i>Live Transaction Stream</h1>
+            <p class="text-red-100 mt-2">Real-time fraud detection on streaming transactions</p>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <!-- Controls -->
+        <div class="bg-gray-800 rounded-xl p-4 border border-red-500/30 mb-6">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center gap-4">
+                    <button id="startBtn" onclick="toggleStream()" class="px-6 py-2 bg-red-600 hover:bg-red-500 rounded-lg font-semibold">
+                        <i class="fas fa-play mr-2"></i>Start Stream
+                    </button>
+                    <button onclick="clearAll()" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
+                        <i class="fas fa-trash mr-2"></i>Clear
+                    </button>
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm text-gray-400">Speed:</label>
+                        <select id="speed" class="bg-gray-700 rounded px-2 py-1">
+                            <option value="500">Fast</option>
+                            <option value="1000" selected>Normal</option>
+                            <option value="2000">Slow</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex items-center gap-6">
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-white" id="totalTx">0</div>
+                        <div class="text-xs text-gray-400">Transactions</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-red-400" id="fraudCount">0</div>
+                        <div class="text-xs text-gray-400">Fraud Detected</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-green-400" id="avgLatency">0ms</div>
+                        <div class="text-xs text-gray-400">Avg Latency</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stream and Charts -->
+        <div class="grid lg:grid-cols-3 gap-6 mb-6">
+            <div class="lg:col-span-2 bg-gray-800 rounded-xl p-4 border border-red-500/30">
+                <h3 class="text-lg font-semibold text-red-400 mb-3">Transaction Feed</h3>
+                <div id="transactionLog" class="h-80 overflow-y-auto bg-gray-900 rounded-lg p-3 font-mono text-sm space-y-2">
+                    <div class="text-gray-500 text-center py-4">Click Start to begin streaming...</div>
+                </div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-4 border border-red-500/30">
+                <h3 class="text-lg font-semibold text-red-400 mb-3">Fraud Rate (Rolling)</h3>
+                <div id="fraudRateChart" style="height: 300px;"></div>
+            </div>
+        </div>
+
+        <!-- More Charts -->
+        <div class="grid lg:grid-cols-2 gap-6">
+            <div class="bg-gray-800 rounded-xl p-4 border border-red-500/30">
+                <h3 class="text-lg font-semibold text-red-400 mb-3">Amount Distribution</h3>
+                <div id="amountChart" style="height: 280px;"></div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-4 border border-red-500/30">
+                <h3 class="text-lg font-semibold text-red-400 mb-3">Latency Distribution</h3>
+                <div id="latencyChart" style="height: 280px;"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        var streamInterval = null;
+        var totalTransactions = 0;
+        var fraudDetected = 0;
+        var latencies = [];
+        var fraudRates = [];
+        var amounts = { fraud: [], legit: [] };
+
+        function toggleStream() {
+            var btn = document.getElementById('startBtn');
+            if (streamInterval) {
+                clearInterval(streamInterval);
+                streamInterval = null;
+                btn.innerHTML = '<i class="fas fa-play mr-2"></i>Start Stream';
+                btn.classList.remove('bg-gray-600');
+                btn.classList.add('bg-red-600');
+            } else {
+                var speed = parseInt(document.getElementById('speed').value);
+                streamInterval = setInterval(generateTransaction, speed);
+                btn.innerHTML = '<i class="fas fa-stop mr-2"></i>Stop Stream';
+                btn.classList.remove('bg-red-600');
+                btn.classList.add('bg-gray-600');
+                document.getElementById('transactionLog').innerHTML = '';
+            }
+        }
+
+        function generateTransaction() {
+            var log = document.getElementById('transactionLog');
+            var txId = 'TXN' + Math.random().toString(36).substr(2, 8).toUpperCase();
+            var amount = Math.round(Math.random() * Math.random() * 5000 + 10);
+            var latency = Math.round(20 + Math.random() * 60);
+            var isFraud = Math.random() < 0.03 || amount > 3500;
+            var merchants = ['Amazon', 'Walmart', 'Target', 'BestBuy', 'Apple', 'Gas Station', 'Restaurant', 'ATM'];
+            var merchant = merchants[Math.floor(Math.random() * merchants.length)];
+
+            totalTransactions++;
+            if (isFraud) { fraudDetected++; amounts.fraud.push(amount); }
+            else { amounts.legit.push(amount); }
+            latencies.push(latency);
+            if (latencies.length > 100) latencies.shift();
+
+            var rate = totalTransactions > 0 ? (fraudDetected / totalTransactions * 100) : 0;
+            fraudRates.push(rate);
+            if (fraudRates.length > 50) fraudRates.shift();
+
+            var div = document.createElement('div');
+            div.className = 'flex justify-between items-center p-2 rounded ' + (isFraud ? 'bg-red-900/50 border border-red-500/50' : 'bg-gray-800');
+            div.innerHTML = '<div class="flex items-center gap-3">' +
+                '<span class="text-gray-500 text-xs">' + new Date().toLocaleTimeString() + '</span>' +
+                '<span class="text-gray-400">' + txId + '</span>' +
+                '<span class="text-gray-500">' + merchant + '</span>' +
+                '</div>' +
+                '<div class="flex items-center gap-4">' +
+                '<span class="' + (isFraud ? 'text-red-400' : 'text-green-400') + ' font-semibold">$' + amount + '</span>' +
+                '<span class="text-gray-500 text-xs">' + latency + 'ms</span>' +
+                '<span class="px-2 py-0.5 rounded text-xs font-medium ' + (isFraud ? 'bg-red-600' : 'bg-green-600') + '">' + (isFraud ? 'FRAUD' : 'OK') + '</span>' +
+                '</div>';
+
+            log.insertBefore(div, log.firstChild);
+            if (log.children.length > 50) log.removeChild(log.lastChild);
+
+            updateStats();
+            updateCharts();
+        }
+
+        function updateStats() {
+            document.getElementById('totalTx').textContent = totalTransactions.toLocaleString();
+            document.getElementById('fraudCount').textContent = fraudDetected.toLocaleString();
+            var avgLat = latencies.length > 0 ? Math.round(latencies.reduce(function(a,b){return a+b;}, 0) / latencies.length) : 0;
+            document.getElementById('avgLatency').textContent = avgLat + 'ms';
+        }
+
+        function updateCharts() {
+            Plotly.react('fraudRateChart', [{
+                y: fraudRates,
+                type: 'scatter',
+                mode: 'lines',
+                fill: 'tozeroy',
+                line: { color: '#ef4444' }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' }, margin: { l: 40, r: 10, t: 10, b: 30 },
+                yaxis: { title: '%', gridcolor: '#374151' }, xaxis: { gridcolor: '#374151' }
+            }, { responsive: true });
+
+            Plotly.react('amountChart', [
+                { x: amounts.legit.slice(-100), name: 'Legit', type: 'histogram', marker: { color: '#10b981' }, opacity: 0.7 },
+                { x: amounts.fraud.slice(-100), name: 'Fraud', type: 'histogram', marker: { color: '#ef4444' }, opacity: 0.7 }
+            ], {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' }, margin: { l: 40, r: 10, t: 10, b: 40 },
+                barmode: 'overlay', xaxis: { title: 'Amount ($)', gridcolor: '#374151' },
+                yaxis: { gridcolor: '#374151' }, legend: { x: 0.7, y: 1 }
+            }, { responsive: true });
+
+            Plotly.react('latencyChart', [{
+                x: latencies,
+                type: 'histogram',
+                nbinsx: 20,
+                marker: { color: '#f59e0b' }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' }, margin: { l: 40, r: 10, t: 10, b: 40 },
+                xaxis: { title: 'Latency (ms)', gridcolor: '#374151' }, yaxis: { gridcolor: '#374151' }
+            }, { responsive: true });
+        }
+
+        function clearAll() {
+            if (streamInterval) toggleStream();
+            totalTransactions = 0; fraudDetected = 0;
+            latencies = []; fraudRates = [];
+            amounts = { fraud: [], legit: [] };
+            document.getElementById('transactionLog').innerHTML = '<div class="text-gray-500 text-center py-4">Click Start to begin streaming...</div>';
+            updateStats();
+        }
+
+        function checkPlotly() {
+            if (typeof Plotly !== 'undefined') { updateCharts(); }
+            else { setTimeout(checkPlotly, 100); }
+        }
+        checkPlotly();
+    </script>
+</body>
+</html>

@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Model Trainer - Customer Churn Prediction</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-amber-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="churn-complete-project.html" class="flex items-center text-amber-400 hover:text-amber-300">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Churn Suite
+                </a>
+                <span class="text-amber-400 font-semibold">Model Trainer</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl font-bold mb-4"><i class="fas fa-graduation-cap mr-4"></i>Model Trainer</h1>
+            <p class="text-xl text-amber-100">Train and tune XGBoost models with hyperparameter optimization</p>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Training Configuration -->
+        <div class="grid lg:grid-cols-3 gap-6 mb-8">
+            <div class="lg:col-span-2 bg-gray-800 rounded-xl p-6 border border-amber-500/30">
+                <h3 class="text-lg font-semibold text-amber-400 mb-4"><i class="fas fa-sliders-h mr-2"></i>Hyperparameters</h3>
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">n_estimators</label>
+                        <input type="range" id="nEstimators" min="50" max="500" value="200" class="w-full" oninput="updateParams()">
+                        <div class="flex justify-between text-sm"><span class="text-gray-500">50</span><span class="text-amber-400" id="nEstVal">200</span><span class="text-gray-500">500</span></div>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">max_depth</label>
+                        <input type="range" id="maxDepth" min="3" max="12" value="6" class="w-full" oninput="updateParams()">
+                        <div class="flex justify-between text-sm"><span class="text-gray-500">3</span><span class="text-amber-400" id="depthVal">6</span><span class="text-gray-500">12</span></div>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">learning_rate</label>
+                        <input type="range" id="learningRate" min="0.01" max="0.3" step="0.01" value="0.1" class="w-full" oninput="updateParams()">
+                        <div class="flex justify-between text-sm"><span class="text-gray-500">0.01</span><span class="text-amber-400" id="lrVal">0.1</span><span class="text-gray-500">0.3</span></div>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">scale_pos_weight</label>
+                        <input type="range" id="scaleWeight" min="1" max="10" value="3" class="w-full" oninput="updateParams()">
+                        <div class="flex justify-between text-sm"><span class="text-gray-500">1</span><span class="text-amber-400" id="weightVal">3</span><span class="text-gray-500">10</span></div>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">min_child_weight</label>
+                        <input type="range" id="minChild" min="1" max="10" value="1" class="w-full" oninput="updateParams()">
+                        <div class="flex justify-between text-sm"><span class="text-gray-500">1</span><span class="text-amber-400" id="childVal">1</span><span class="text-gray-500">10</span></div>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">subsample</label>
+                        <input type="range" id="subsample" min="0.5" max="1" step="0.05" value="0.8" class="w-full" oninput="updateParams()">
+                        <div class="flex justify-between text-sm"><span class="text-gray-500">0.5</span><span class="text-amber-400" id="subVal">0.8</span><span class="text-gray-500">1.0</span></div>
+                    </div>
+                </div>
+                <div class="mt-6 flex gap-4">
+                    <button id="trainBtn" onclick="startTraining()" class="px-6 py-3 bg-amber-600 hover:bg-amber-500 rounded-lg font-semibold">
+                        <i class="fas fa-play mr-2"></i>Start Training
+                    </button>
+                    <button onclick="runOptuna()" class="px-6 py-3 bg-purple-600 hover:bg-purple-500 rounded-lg font-semibold">
+                        <i class="fas fa-magic mr-2"></i>Auto-Tune (Optuna)
+                    </button>
+                </div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-6 border border-amber-500/30">
+                <h3 class="text-lg font-semibold text-amber-400 mb-4"><i class="fas fa-database mr-2"></i>Dataset</h3>
+                <div class="space-y-4">
+                    <div class="p-3 bg-gray-900 rounded-lg">
+                        <div class="text-gray-400 text-sm">Training Samples</div>
+                        <div class="text-xl font-bold text-white">5,634</div>
+                    </div>
+                    <div class="p-3 bg-gray-900 rounded-lg">
+                        <div class="text-gray-400 text-sm">Validation Samples</div>
+                        <div class="text-xl font-bold text-white">1,409</div>
+                    </div>
+                    <div class="p-3 bg-gray-900 rounded-lg">
+                        <div class="text-gray-400 text-sm">Features</div>
+                        <div class="text-xl font-bold text-white">21</div>
+                    </div>
+                    <div class="p-3 bg-gray-900 rounded-lg">
+                        <div class="text-gray-400 text-sm">Class Balance</div>
+                        <div class="text-xl font-bold text-amber-400">26.5% / 73.5%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Training Progress -->
+        <div class="bg-gray-800 rounded-xl p-6 border border-amber-500/30 mb-8">
+            <h3 class="text-lg font-semibold text-amber-400 mb-4"><i class="fas fa-chart-line mr-2"></i>Training Progress</h3>
+            <div class="mb-4">
+                <div class="flex justify-between text-sm mb-1">
+                    <span class="text-gray-400">Progress</span>
+                    <span class="text-amber-400" id="progressText">0%</span>
+                </div>
+                <div class="h-3 bg-gray-700 rounded-full overflow-hidden">
+                    <div id="progressBar" class="h-full bg-gradient-to-r from-amber-600 to-amber-400 transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+            <div id="trainingChart" style="height: 300px;"></div>
+        </div>
+
+        <!-- Results -->
+        <div class="grid lg:grid-cols-2 gap-6 mb-8">
+            <div class="bg-gray-800 rounded-xl p-6 border border-amber-500/30">
+                <h3 class="text-lg font-semibold text-amber-400 mb-4"><i class="fas fa-trophy mr-2"></i>Model Performance</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="p-4 bg-gray-900 rounded-lg text-center">
+                        <div class="text-3xl font-bold text-green-400" id="accuracy">--</div>
+                        <div class="text-gray-400 text-sm">Accuracy</div>
+                    </div>
+                    <div class="p-4 bg-gray-900 rounded-lg text-center">
+                        <div class="text-3xl font-bold text-cyan-400" id="aucRoc">--</div>
+                        <div class="text-gray-400 text-sm">AUC-ROC</div>
+                    </div>
+                    <div class="p-4 bg-gray-900 rounded-lg text-center">
+                        <div class="text-3xl font-bold text-purple-400" id="precision">--</div>
+                        <div class="text-gray-400 text-sm">Precision</div>
+                    </div>
+                    <div class="p-4 bg-gray-900 rounded-lg text-center">
+                        <div class="text-3xl font-bold text-pink-400" id="recall">--</div>
+                        <div class="text-gray-400 text-sm">Recall</div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-6 border border-amber-500/30">
+                <h3 class="text-lg font-semibold text-amber-400 mb-4"><i class="fas fa-th mr-2"></i>Confusion Matrix</h3>
+                <div id="confusionChart" style="height: 250px;"></div>
+            </div>
+        </div>
+
+        <!-- ROC Curve -->
+        <div class="bg-gray-800 rounded-xl p-6 border border-amber-500/30">
+            <h3 class="text-lg font-semibold text-amber-400 mb-4"><i class="fas fa-chart-area mr-2"></i>ROC Curve</h3>
+            <div id="rocChart" style="height: 350px;"></div>
+        </div>
+    </main>
+
+    <script>
+        var trainLoss = [];
+        var valLoss = [];
+        var epoch = 0;
+        var trainingInterval = null;
+
+        function updateParams() {
+            document.getElementById('nEstVal').textContent = document.getElementById('nEstimators').value;
+            document.getElementById('depthVal').textContent = document.getElementById('maxDepth').value;
+            document.getElementById('lrVal').textContent = document.getElementById('learningRate').value;
+            document.getElementById('weightVal').textContent = document.getElementById('scaleWeight').value;
+            document.getElementById('childVal').textContent = document.getElementById('minChild').value;
+            document.getElementById('subVal').textContent = document.getElementById('subsample').value;
+        }
+
+        function startTraining() {
+            trainLoss = [];
+            valLoss = [];
+            epoch = 0;
+            var totalEpochs = parseInt(document.getElementById('nEstimators').value);
+            var btn = document.getElementById('trainBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Training...';
+
+            trainingInterval = setInterval(function() {
+                epoch += 5;
+                var progress = Math.min(100, (epoch / totalEpochs) * 100);
+                document.getElementById('progressBar').style.width = progress + '%';
+                document.getElementById('progressText').textContent = Math.round(progress) + '%';
+
+                trainLoss.push(0.7 * Math.exp(-epoch / 80) + 0.15 + Math.random() * 0.02);
+                valLoss.push(0.7 * Math.exp(-epoch / 100) + 0.18 + Math.random() * 0.03);
+
+                updateTrainingChart();
+
+                if (epoch >= totalEpochs) {
+                    clearInterval(trainingInterval);
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-play mr-2"></i>Start Training';
+                    showResults();
+                }
+            }, 50);
+        }
+
+        function updateTrainingChart() {
+            Plotly.react('trainingChart', [
+                { y: trainLoss, name: 'Train Loss', line: { color: '#f59e0b' } },
+                { y: valLoss, name: 'Val Loss', line: { color: '#3b82f6' } }
+            ], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 50, r: 20, t: 10, b: 40 },
+                xaxis: { title: 'Epoch', gridcolor: '#374151' },
+                yaxis: { title: 'Loss', gridcolor: '#374151' },
+                legend: { x: 0.8, y: 1 }
+            }, { responsive: true });
+        }
+
+        function showResults() {
+            document.getElementById('accuracy').textContent = '94.2%';
+            document.getElementById('aucRoc').textContent = '0.89';
+            document.getElementById('precision').textContent = '87.3%';
+            document.getElementById('recall').textContent = '79.6%';
+
+            // Confusion matrix
+            Plotly.react('confusionChart', [{
+                z: [[3821, 353], [458, 1411]],
+                x: ['Pred: Retained', 'Pred: Churned'],
+                y: ['Actual: Churned', 'Actual: Retained'],
+                type: 'heatmap',
+                colorscale: [[0, '#1f2937'], [1, '#f59e0b']],
+                showscale: false,
+                text: [['TN: 3821', 'FP: 353'], ['FN: 458', 'TP: 1411']],
+                texttemplate: '%{text}',
+                textfont: { color: '#fff', size: 12 }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 100, r: 20, t: 10, b: 60 }
+            }, { responsive: true });
+
+            // ROC curve
+            var fpr = [0, 0.02, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1];
+            var tpr = [0, 0.35, 0.55, 0.72, 0.80, 0.85, 0.90, 0.93, 0.95, 0.96, 0.97, 0.98, 0.99, 1];
+            Plotly.react('rocChart', [
+                { x: fpr, y: tpr, name: 'XGBoost (AUC=0.89)', line: { color: '#f59e0b', width: 3 } },
+                { x: [0, 1], y: [0, 1], name: 'Random', line: { color: '#6b7280', dash: 'dash' } }
+            ], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 50, r: 20, t: 10, b: 40 },
+                xaxis: { title: 'False Positive Rate', gridcolor: '#374151' },
+                yaxis: { title: 'True Positive Rate', gridcolor: '#374151' },
+                legend: { x: 0.6, y: 0.2 }
+            }, { responsive: true });
+        }
+
+        function runOptuna() {
+            alert('Optuna hyperparameter optimization would run 100 trials to find optimal parameters. This demo simulates instant results.');
+            document.getElementById('nEstimators').value = 247;
+            document.getElementById('maxDepth').value = 7;
+            document.getElementById('learningRate').value = 0.08;
+            document.getElementById('scaleWeight').value = 4;
+            updateParams();
+        }
+
+        function checkPlotly() {
+            if (typeof Plotly !== 'undefined') {
+                updateTrainingChart();
+            } else {
+                setTimeout(checkPlotly, 100);
+            }
+        }
+        checkPlotly();
+    </script>
+</body>
+</html>

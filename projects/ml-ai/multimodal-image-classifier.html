@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zero-Shot Image Classifier - Multimodal AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>.gradient-bg { background: linear-gradient(135deg, #ec4899 0%, #f472b6 50%, #fb7185 100%); }</style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-pink-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="multimodal-ai-complete-project.html" class="flex items-center text-pink-400 hover:text-pink-300">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Multimodal AI
+                </a>
+                <span class="text-pink-400 font-semibold">Zero-Shot Classifier</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4"><i class="fas fa-image mr-4"></i>Zero-Shot Image Classification</h1>
+            <p class="text-xl text-pink-100">Classify images using natural language descriptions with CLIP</p>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-1 space-y-6">
+                <div class="bg-gray-800 rounded-xl border border-pink-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-pink-400 mb-4"><i class="fas fa-upload mr-2"></i>Input Image</h3>
+                    <div id="imagePreview" class="w-full h-48 bg-gray-700 rounded-lg flex items-center justify-center mb-4 border-2 border-dashed border-gray-600">
+                        <div class="text-center text-gray-400">
+                            <i class="fas fa-cloud-upload-alt text-4xl mb-2"></i>
+                            <p>Click to upload or drag image</p>
+                        </div>
+                    </div>
+                    <select id="sampleImage" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white mb-4">
+                        <option value="cat">Sample: Cat</option>
+                        <option value="dog">Sample: Dog</option>
+                        <option value="car">Sample: Sports Car</option>
+                        <option value="bird">Sample: Bird</option>
+                        <option value="flower">Sample: Flower</option>
+                        <option value="building">Sample: Building</option>
+                    </select>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-pink-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-pink-400 mb-4"><i class="fas fa-tags mr-2"></i>Class Labels</h3>
+                    <textarea id="classLabels" rows="6" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white text-sm" placeholder="Enter class labels, one per line">a photo of a cat
+a photo of a dog
+a photo of a bird
+a photo of a car
+a photo of a flower
+a photo of a building</textarea>
+                    <p class="text-xs text-gray-400 mt-2">Tip: Use descriptive prompts like "a photo of a [class]"</p>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-pink-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-pink-400 mb-4"><i class="fas fa-cog mr-2"></i>Model Settings</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">CLIP Model</label>
+                            <select id="clipModel" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white">
+                                <option value="ViT-B/32">ViT-B/32 (Fast)</option>
+                                <option value="ViT-B/16" selected>ViT-B/16 (Balanced)</option>
+                                <option value="ViT-L/14">ViT-L/14 (Accurate)</option>
+                                <option value="ViT-L/14@336">ViT-L/14@336px (Best)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-300 mb-1">Temperature: <span id="tempValue">1.0</span></label>
+                            <input type="range" id="temperature" min="0.1" max="5" step="0.1" value="1" class="w-full accent-pink-500">
+                        </div>
+                    </div>
+                    <button onclick="classify()" class="w-full mt-4 bg-pink-600 hover:bg-pink-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors">
+                        <i class="fas fa-play mr-2"></i>Classify Image
+                    </button>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2 space-y-6">
+                <div class="bg-gray-800 rounded-xl border border-pink-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-pink-400 mb-4"><i class="fas fa-chart-bar mr-2"></i>Classification Results</h3>
+                    <div id="probabilityChart" style="height: 300px;"></div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="bg-gray-800 rounded-xl border border-pink-500/30 p-6">
+                        <h3 class="text-lg font-semibold text-pink-400 mb-4"><i class="fas fa-bullseye mr-2"></i>Top Prediction</h3>
+                        <div id="topPrediction" class="text-center">
+                            <div class="text-4xl font-bold text-white mb-2" id="topClass">-</div>
+                            <div class="text-2xl text-pink-400" id="topConfidence">-</div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-pink-500/30 p-6">
+                        <h3 class="text-lg font-semibold text-pink-400 mb-4"><i class="fas fa-tachometer-alt mr-2"></i>Metrics</h3>
+                        <div class="space-y-3">
+                            <div class="flex justify-between">
+                                <span class="text-gray-400">Inference Time</span>
+                                <span class="text-white font-semibold" id="inferenceTime">-</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-400">Entropy</span>
+                                <span class="text-white font-semibold" id="entropy">-</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-400">Confidence Margin</span>
+                                <span class="text-white font-semibold" id="margin">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-pink-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-pink-400 mb-4"><i class="fas fa-project-diagram mr-2"></i>Embedding Similarity</h3>
+                    <div id="similarityChart" style="height: 300px;"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const temperature = document.getElementById('temperature');
+        const tempValue = document.getElementById('tempValue');
+        temperature.addEventListener('input', () => tempValue.textContent = temperature.value);
+
+        function classify() {
+            const labels = document.getElementById('classLabels').value.split('\n').filter(l => l.trim());
+            const temp = parseFloat(temperature.value);
+            const sample = document.getElementById('sampleImage').value;
+
+            // Simulate CLIP classification based on sample image
+            const groundTruth = {
+                'cat': 0, 'dog': 1, 'car': 3, 'bird': 2, 'flower': 4, 'building': 5
+            };
+
+            // Generate simulated logits with ground truth having highest
+            const logits = labels.map((_, i) => {
+                if (i === groundTruth[sample]) return 2.5 + Math.random() * 0.5;
+                return Math.random() * 1.5 - 0.5;
+            });
+
+            // Apply temperature scaling and softmax
+            const scaledLogits = logits.map(l => l / temp);
+            const maxLogit = Math.max(...scaledLogits);
+            const expLogits = scaledLogits.map(l => Math.exp(l - maxLogit));
+            const sumExp = expLogits.reduce((a, b) => a + b, 0);
+            const probs = expLogits.map(e => e / sumExp);
+
+            // Sort for display
+            const sorted = labels.map((label, i) => ({
+                label: label.replace('a photo of ', '').replace('a ', ''),
+                prob: probs[i],
+                logit: logits[i]
+            })).sort((a, b) => b.prob - a.prob);
+
+            // Update probability chart
+            Plotly.newPlot('probabilityChart', [{
+                y: sorted.map(s => s.label),
+                x: sorted.map(s => s.prob * 100),
+                type: 'bar',
+                orientation: 'h',
+                marker: {
+                    color: sorted.map((_, i) => i === 0 ? '#ec4899' : '#6b7280'),
+                    line: { color: '#f472b6', width: 1 }
+                },
+                text: sorted.map(s => (s.prob * 100).toFixed(1) + '%'),
+                textposition: 'outside',
+                textfont: { color: '#fff' }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 120, r: 60, t: 20, b: 40 },
+                xaxis: { title: 'Probability (%)', gridcolor: '#374151', range: [0, 100] },
+                yaxis: { gridcolor: '#374151' }
+            }, {responsive: true});
+
+            // Update top prediction
+            document.getElementById('topClass').textContent = sorted[0].label;
+            document.getElementById('topConfidence').textContent = (sorted[0].prob * 100).toFixed(1) + '% confidence';
+
+            // Calculate metrics
+            const entropy = -probs.reduce((sum, p) => sum + (p > 0 ? p * Math.log2(p) : 0), 0);
+            const margin = sorted[0].prob - sorted[1].prob;
+            const inferenceTime = 15 + Math.random() * 30;
+
+            document.getElementById('inferenceTime').textContent = inferenceTime.toFixed(1) + ' ms';
+            document.getElementById('entropy').textContent = entropy.toFixed(3) + ' bits';
+            document.getElementById('margin').textContent = (margin * 100).toFixed(1) + '%';
+
+            // Similarity heatmap
+            const n = labels.length;
+            const similarities = [];
+            for (let i = 0; i < n; i++) {
+                const row = [];
+                for (let j = 0; j < n; j++) {
+                    if (i === j) row.push(1);
+                    else row.push(0.3 + Math.random() * 0.4);
+                }
+                similarities.push(row);
+            }
+
+            Plotly.newPlot('similarityChart', [{
+                z: similarities,
+                x: labels.map(l => l.replace('a photo of ', '').substring(0, 10)),
+                y: labels.map(l => l.replace('a photo of ', '').substring(0, 10)),
+                type: 'heatmap',
+                colorscale: [[0, '#1f2937'], [0.5, '#be185d'], [1, '#ec4899']],
+                showscale: true,
+                colorbar: { title: 'Similarity', tickfont: { color: '#fff' } }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 100, r: 60, t: 20, b: 80 },
+                xaxis: { tickangle: -45 },
+                yaxis: {}
+            }, {responsive: true});
+        }
+
+        // Initial classification
+        classify();
+    </script>
+</body>
+</html>

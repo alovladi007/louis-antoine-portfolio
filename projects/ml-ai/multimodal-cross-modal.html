@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cross-Modal Retrieval - Multimodal AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>.gradient-bg { background: linear-gradient(135deg, #ec4899 0%, #f472b6 50%, #fb7185 100%); }</style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-pink-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="multimodal-ai-complete-project.html" class="flex items-center text-pink-400 hover:text-pink-300">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Multimodal AI
+                </a>
+                <span class="text-pink-400 font-semibold">Cross-Modal Retrieval</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4"><i class="fas fa-exchange-alt mr-4"></i>Cross-Modal Retrieval</h1>
+            <p class="text-xl text-pink-100">Search across images, text, and audio using unified embeddings</p>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid lg:grid-cols-4 gap-6">
+            <div class="lg:col-span-1 space-y-6">
+                <div class="bg-gray-800 rounded-xl border border-pink-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-pink-400 mb-4"><i class="fas fa-upload mr-2"></i>Query Input</h3>
+                    <div class="space-y-3">
+                        <button onclick="setQueryMode('text')" class="w-full py-3 px-4 rounded-lg bg-pink-600 text-white font-semibold query-mode" id="btn-text">
+                            <i class="fas fa-font mr-2"></i>Text Query
+                        </button>
+                        <button onclick="setQueryMode('image')" class="w-full py-3 px-4 rounded-lg bg-gray-700 text-white font-semibold query-mode" id="btn-image">
+                            <i class="fas fa-image mr-2"></i>Image Query
+                        </button>
+                        <button onclick="setQueryMode('audio')" class="w-full py-3 px-4 rounded-lg bg-gray-700 text-white font-semibold query-mode" id="btn-audio">
+                            <i class="fas fa-music mr-2"></i>Audio Query
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-pink-500/30 p-6" id="textInput">
+                    <h3 class="text-lg font-semibold text-pink-400 mb-4"><i class="fas fa-keyboard mr-2"></i>Text Query</h3>
+                    <textarea id="queryText" rows="3" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white" placeholder="Describe what you're looking for...">a dog playing in the park</textarea>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-pink-500/30 p-6 hidden" id="imageInput">
+                    <h3 class="text-lg font-semibold text-pink-400 mb-4"><i class="fas fa-image mr-2"></i>Image Query</h3>
+                    <select id="queryImage" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white">
+                        <option value="dog">Sample: Dog Photo</option>
+                        <option value="beach">Sample: Beach Scene</option>
+                        <option value="city">Sample: City View</option>
+                    </select>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-pink-500/30 p-6 hidden" id="audioInput">
+                    <h3 class="text-lg font-semibold text-pink-400 mb-4"><i class="fas fa-music mr-2"></i>Audio Query</h3>
+                    <select id="queryAudio" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white">
+                        <option value="dog_bark">Sample: Dog Barking</option>
+                        <option value="waves">Sample: Ocean Waves</option>
+                        <option value="traffic">Sample: City Traffic</option>
+                    </select>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-pink-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-pink-400 mb-4"><i class="fas fa-filter mr-2"></i>Retrieve</h3>
+                    <div class="space-y-2 mb-4">
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" id="retrieveImages" checked class="accent-pink-500">
+                            <span>Images</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" id="retrieveText" checked class="accent-pink-500">
+                            <span>Text</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" id="retrieveAudio" checked class="accent-pink-500">
+                            <span>Audio</span>
+                        </label>
+                    </div>
+                    <button onclick="retrieve()" class="w-full bg-pink-600 hover:bg-pink-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors">
+                        <i class="fas fa-search mr-2"></i>Retrieve
+                    </button>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-pink-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-pink-400 mb-4"><i class="fas fa-tachometer-alt mr-2"></i>Metrics</h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Query Encoding</span>
+                            <span class="text-white font-semibold" id="encodeTime">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Retrieval</span>
+                            <span class="text-white font-semibold" id="retrieveTime">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Recall@5</span>
+                            <span class="text-green-400 font-semibold" id="recall">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-3 space-y-6">
+                <div class="grid md:grid-cols-3 gap-6">
+                    <div class="bg-gray-800 rounded-xl border border-pink-500/30 p-6">
+                        <h3 class="text-lg font-semibold text-pink-400 mb-4"><i class="fas fa-image mr-2"></i>Image Results</h3>
+                        <div id="imageResults" class="space-y-3"></div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-pink-500/30 p-6">
+                        <h3 class="text-lg font-semibold text-pink-400 mb-4"><i class="fas fa-file-alt mr-2"></i>Text Results</h3>
+                        <div id="textResults" class="space-y-3"></div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-pink-500/30 p-6">
+                        <h3 class="text-lg font-semibold text-pink-400 mb-4"><i class="fas fa-music mr-2"></i>Audio Results</h3>
+                        <div id="audioResults" class="space-y-3"></div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl border border-pink-500/30 p-6">
+                    <h3 class="text-lg font-semibold text-pink-400 mb-4"><i class="fas fa-project-diagram mr-2"></i>Unified Embedding Space</h3>
+                    <div id="embeddingChart" style="height: 350px;"></div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="bg-gray-800 rounded-xl border border-pink-500/30 p-6">
+                        <h3 class="text-lg font-semibold text-pink-400 mb-4"><i class="fas fa-th mr-2"></i>Cross-Modal Similarity Matrix</h3>
+                        <div id="similarityMatrix" style="height: 250px;"></div>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-pink-500/30 p-6">
+                        <h3 class="text-lg font-semibold text-pink-400 mb-4"><i class="fas fa-chart-bar mr-2"></i>Modality Distribution</h3>
+                        <div id="modalityChart" style="height: 250px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let queryMode = 'text';
+
+        function setQueryMode(mode) {
+            queryMode = mode;
+            document.querySelectorAll('.query-mode').forEach(btn => {
+                btn.classList.remove('bg-pink-600');
+                btn.classList.add('bg-gray-700');
+            });
+            document.getElementById(`btn-${mode}`).classList.remove('bg-gray-700');
+            document.getElementById(`btn-${mode}`).classList.add('bg-pink-600');
+
+            document.getElementById('textInput').classList.add('hidden');
+            document.getElementById('imageInput').classList.add('hidden');
+            document.getElementById('audioInput').classList.add('hidden');
+            document.getElementById(`${mode}Input`).classList.remove('hidden');
+        }
+
+        const sampleData = {
+            images: [
+                { icon: 'fa-dog', label: 'Dog in Park', concepts: ['dog', 'park', 'play', 'animal', 'outdoor'] },
+                { icon: 'fa-cat', label: 'Cat Sleeping', concepts: ['cat', 'sleep', 'pet', 'indoor', 'cozy'] },
+                { icon: 'fa-umbrella-beach', label: 'Beach Sunset', concepts: ['beach', 'sunset', 'ocean', 'waves', 'sand'] },
+                { icon: 'fa-city', label: 'City Skyline', concepts: ['city', 'urban', 'buildings', 'skyline', 'traffic'] },
+                { icon: 'fa-tree', label: 'Forest Path', concepts: ['forest', 'trees', 'nature', 'path', 'green'] }
+            ],
+            texts: [
+                { text: 'A playful golden retriever running in the grass', concepts: ['dog', 'play', 'outdoor', 'animal'] },
+                { text: 'Waves crashing on sandy beach at sunset', concepts: ['beach', 'waves', 'sunset', 'ocean', 'sand'] },
+                { text: 'Busy city street with cars and pedestrians', concepts: ['city', 'traffic', 'urban', 'street'] },
+                { text: 'A cat napping on a warm windowsill', concepts: ['cat', 'sleep', 'indoor', 'pet'] },
+                { text: 'Birds singing in the morning forest', concepts: ['forest', 'birds', 'nature', 'trees'] }
+            ],
+            audios: [
+                { icon: 'fa-dog', label: 'Dog Barking', concepts: ['dog', 'animal', 'bark', 'outdoor'] },
+                { icon: 'fa-water', label: 'Ocean Waves', concepts: ['ocean', 'waves', 'beach', 'nature'] },
+                { icon: 'fa-car', label: 'Traffic Sounds', concepts: ['traffic', 'city', 'urban', 'cars'] },
+                { icon: 'fa-dove', label: 'Bird Songs', concepts: ['birds', 'nature', 'forest', 'sing'] },
+                { icon: 'fa-cat', label: 'Cat Meowing', concepts: ['cat', 'pet', 'animal', 'meow'] }
+            ]
+        };
+
+        function retrieve() {
+            const query = queryMode === 'text' ? document.getElementById('queryText').value.toLowerCase() :
+                          queryMode === 'image' ? document.getElementById('queryImage').value :
+                          document.getElementById('queryAudio').value;
+
+            const queryConcepts = getQueryConcepts(query);
+
+            // Score and rank results
+            const imageResults = scoreResults(sampleData.images, queryConcepts, 'icon');
+            const textResults = scoreResults(sampleData.texts, queryConcepts, 'text');
+            const audioResults = scoreResults(sampleData.audios, queryConcepts, 'icon');
+
+            // Display results
+            if (document.getElementById('retrieveImages').checked) {
+                displayImageResults(imageResults);
+            } else {
+                document.getElementById('imageResults').innerHTML = '<p class="text-gray-500 text-sm">Disabled</p>';
+            }
+
+            if (document.getElementById('retrieveText').checked) {
+                displayTextResults(textResults);
+            } else {
+                document.getElementById('textResults').innerHTML = '<p class="text-gray-500 text-sm">Disabled</p>';
+            }
+
+            if (document.getElementById('retrieveAudio').checked) {
+                displayAudioResults(audioResults);
+            } else {
+                document.getElementById('audioResults').innerHTML = '<p class="text-gray-500 text-sm">Disabled</p>';
+            }
+
+            // Update metrics
+            document.getElementById('encodeTime').textContent = (15 + Math.random() * 10).toFixed(1) + ' ms';
+            document.getElementById('retrieveTime').textContent = (5 + Math.random() * 5).toFixed(1) + ' ms';
+            document.getElementById('recall').textContent = (85 + Math.random() * 10).toFixed(1) + '%';
+
+            // Update visualizations
+            updateEmbeddingChart(imageResults, textResults, audioResults);
+            updateSimilarityMatrix();
+            updateModalityChart();
+        }
+
+        function getQueryConcepts(query) {
+            const concepts = ['dog', 'cat', 'park', 'play', 'beach', 'ocean', 'city', 'traffic', 'forest', 'nature', 'birds', 'animal'];
+            return concepts.filter(c => query.toLowerCase().includes(c));
+        }
+
+        function scoreResults(items, queryConcepts, type) {
+            return items.map(item => {
+                const overlap = item.concepts.filter(c => queryConcepts.some(q => c.includes(q) || q.includes(c)));
+                const score = overlap.length / Math.max(queryConcepts.length, 1) + Math.random() * 0.2;
+                return { ...item, score: Math.min(score, 1) };
+            }).sort((a, b) => b.score - a.score);
+        }
+
+        function displayImageResults(results) {
+            document.getElementById('imageResults').innerHTML = results.slice(0, 4).map(r => `
+                <div class="bg-gray-700/50 rounded-lg p-3 flex items-center gap-3">
+                    <div class="w-12 h-12 bg-pink-500/20 rounded flex items-center justify-center">
+                        <i class="fas ${r.icon} text-pink-400"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-sm font-semibold">${r.label}</div>
+                        <div class="text-xs text-pink-400">${(r.score * 100).toFixed(0)}%</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function displayTextResults(results) {
+            document.getElementById('textResults').innerHTML = results.slice(0, 4).map(r => `
+                <div class="bg-gray-700/50 rounded-lg p-3">
+                    <div class="text-sm text-gray-300 mb-1">${r.text}</div>
+                    <div class="text-xs text-pink-400">${(r.score * 100).toFixed(0)}% match</div>
+                </div>
+            `).join('');
+        }
+
+        function displayAudioResults(results) {
+            document.getElementById('audioResults').innerHTML = results.slice(0, 4).map(r => `
+                <div class="bg-gray-700/50 rounded-lg p-3 flex items-center gap-3">
+                    <div class="w-10 h-10 bg-pink-500/20 rounded flex items-center justify-center">
+                        <i class="fas ${r.icon} text-pink-400"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-sm font-semibold">${r.label}</div>
+                        <div class="text-xs text-pink-400">${(r.score * 100).toFixed(0)}%</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateEmbeddingChart(images, texts, audios) {
+            const imgTrace = {
+                x: images.map(() => Math.random() * 2 - 1),
+                y: images.map(() => Math.random() * 2 - 1),
+                mode: 'markers+text',
+                type: 'scatter',
+                name: 'Images',
+                marker: { size: images.map(r => r.score * 20 + 10), color: '#ec4899' },
+                text: images.map(r => r.label.substring(0, 8)),
+                textposition: 'top'
+            };
+
+            const textTrace = {
+                x: texts.map(() => Math.random() * 2 - 1),
+                y: texts.map(() => Math.random() * 2 - 1),
+                mode: 'markers+text',
+                type: 'scatter',
+                name: 'Text',
+                marker: { size: texts.map(r => r.score * 20 + 10), color: '#8b5cf6', symbol: 'square' },
+                text: texts.map(r => r.text.substring(0, 8) + '...'),
+                textposition: 'top'
+            };
+
+            const audioTrace = {
+                x: audios.map(() => Math.random() * 2 - 1),
+                y: audios.map(() => Math.random() * 2 - 1),
+                mode: 'markers+text',
+                type: 'scatter',
+                name: 'Audio',
+                marker: { size: audios.map(r => r.score * 20 + 10), color: '#10b981', symbol: 'diamond' },
+                text: audios.map(r => r.label.substring(0, 8)),
+                textposition: 'top'
+            };
+
+            const queryTrace = {
+                x: [0], y: [0],
+                mode: 'markers',
+                type: 'scatter',
+                name: 'Query',
+                marker: { size: 20, color: '#fbbf24', symbol: 'star' }
+            };
+
+            Plotly.newPlot('embeddingChart', [imgTrace, textTrace, audioTrace, queryTrace], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff', size: 10 },
+                margin: { l: 40, r: 40, t: 40, b: 40 },
+                xaxis: { showgrid: false, zeroline: false },
+                yaxis: { showgrid: false, zeroline: false },
+                legend: { x: 0, y: 1, bgcolor: 'rgba(0,0,0,0)' },
+                showlegend: true
+            }, {responsive: true});
+        }
+
+        function updateSimilarityMatrix() {
+            const modalities = ['Image', 'Text', 'Audio'];
+            const matrix = [
+                [1.0, 0.82, 0.71],
+                [0.82, 1.0, 0.68],
+                [0.71, 0.68, 1.0]
+            ];
+
+            Plotly.newPlot('similarityMatrix', [{
+                z: matrix,
+                x: modalities,
+                y: modalities,
+                type: 'heatmap',
+                colorscale: [[0, '#1f2937'], [0.5, '#be185d'], [1, '#ec4899']],
+                showscale: true,
+                text: matrix.map(row => row.map(v => v.toFixed(2))),
+                texttemplate: '%{text}',
+                textfont: { color: '#fff' }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 60, r: 40, t: 20, b: 60 }
+            }, {responsive: true});
+        }
+
+        function updateModalityChart() {
+            Plotly.newPlot('modalityChart', [{
+                labels: ['Images', 'Text', 'Audio'],
+                values: [45, 35, 20],
+                type: 'pie',
+                hole: 0.4,
+                marker: { colors: ['#ec4899', '#8b5cf6', '#10b981'] },
+                textfont: { color: '#fff' }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' },
+                margin: { l: 20, r: 20, t: 20, b: 20 },
+                showlegend: true,
+                legend: { font: { color: '#fff' } }
+            }, {responsive: true});
+        }
+
+        // Initial retrieval
+        retrieve();
+    </script>
+</body>
+</html>
