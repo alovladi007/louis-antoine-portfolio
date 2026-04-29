@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback Optimization - Nonlinear Photonics Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>.gradient-bg { background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); }</style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-violet-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="nonlinear-photonics-complete-project.html" class="flex items-center text-violet-400 hover:text-violet-300">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Nonlinear Photonics
+                </a>
+                <span class="text-violet-400 font-semibold">Feedback Optimization</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-3xl font-bold"><i class="fas fa-sync-alt mr-4"></i>Real-Time Feedback Optimization</h1>
+            <p class="text-violet-100 mt-2">Closed-loop optimization with drift compensation and adaptive control</p>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <!-- Control Panel -->
+        <div class="bg-gray-800 rounded-xl p-6 border border-violet-500/30 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-violet-400">Optimization Control</h3>
+                <div class="flex gap-3">
+                    <button onclick="startOptimization()" id="startBtn" class="px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg transition-colors">
+                        <i class="fas fa-play mr-2"></i>Start
+                    </button>
+                    <button onclick="stopOptimization()" id="stopBtn" class="px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg transition-colors hidden">
+                        <i class="fas fa-stop mr-2"></i>Stop
+                    </button>
+                    <button onclick="resetOptimization()" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-lg transition-colors">
+                        <i class="fas fa-redo mr-2"></i>Reset
+                    </button>
+                </div>
+            </div>
+            <div class="grid md:grid-cols-4 gap-6">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2">Target Metric</label>
+                    <select id="targetMetric" class="w-full bg-gray-700 rounded px-3 py-2">
+                        <option value="shg_power">SHG Power</option>
+                        <option value="spectral_purity">Spectral Purity</option>
+                        <option value="beam_quality">Beam Quality</option>
+                        <option value="efficiency">Conversion Efficiency</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2">Algorithm</label>
+                    <select id="algorithm" class="w-full bg-gray-700 rounded px-3 py-2">
+                        <option value="gradient">Gradient Descent</option>
+                        <option value="genetic">Genetic Algorithm</option>
+                        <option value="bayesian">Bayesian Optimization</option>
+                        <option value="spgd">SPGD</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2">Learning Rate</label>
+                    <input type="range" id="learningRate" min="0.01" max="0.5" value="0.1" step="0.01" class="w-full">
+                    <div class="text-center text-violet-400 font-semibold mt-1" id="lrValue">0.10</div>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-2">Drift Compensation</label>
+                    <select id="driftComp" class="w-full bg-gray-700 rounded px-3 py-2">
+                        <option value="off">Off</option>
+                        <option value="slow">Slow (1 Hz)</option>
+                        <option value="fast" selected>Fast (10 Hz)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Metrics -->
+        <div class="grid md:grid-cols-5 gap-4 mb-6">
+            <div class="bg-gray-800 rounded-xl p-4 border border-violet-500/30 text-center">
+                <div class="text-gray-400 text-sm">Current Value</div>
+                <div class="text-2xl font-bold text-violet-400" id="currentValue">0.00</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-4 border border-violet-500/30 text-center">
+                <div class="text-gray-400 text-sm">Best Value</div>
+                <div class="text-2xl font-bold text-green-400" id="bestValue">0.00</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-4 border border-violet-500/30 text-center">
+                <div class="text-gray-400 text-sm">Iteration</div>
+                <div class="text-2xl font-bold text-amber-400" id="iteration">0</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-4 border border-violet-500/30 text-center">
+                <div class="text-gray-400 text-sm">Improvement</div>
+                <div class="text-2xl font-bold text-cyan-400" id="improvement">0%</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-4 border border-violet-500/30 text-center">
+                <div class="text-gray-400 text-sm">Status</div>
+                <div class="text-xl font-bold text-gray-400" id="status">Idle</div>
+            </div>
+        </div>
+
+        <!-- Optimization Charts -->
+        <div class="grid lg:grid-cols-2 gap-6 mb-6">
+            <div class="bg-gray-800 rounded-xl p-6 border border-violet-500/30">
+                <h3 class="text-lg font-semibold text-violet-400 mb-4">Convergence History</h3>
+                <div id="convergenceChart" style="height: 280px;"></div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-6 border border-violet-500/30">
+                <h3 class="text-lg font-semibold text-violet-400 mb-4">Parameter Space Exploration</h3>
+                <div id="parameterChart" style="height: 280px;"></div>
+            </div>
+        </div>
+
+        <!-- Pattern Visualization -->
+        <div class="grid lg:grid-cols-2 gap-6 mb-6">
+            <div class="bg-gray-800 rounded-xl p-6 border border-violet-500/30">
+                <h3 class="text-lg font-semibold text-violet-400 mb-4">Current χ⁽²⁾ Pattern</h3>
+                <div id="patternChart" style="height: 250px;"></div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-6 border border-violet-500/30">
+                <h3 class="text-lg font-semibold text-violet-400 mb-4">Output Spectrum</h3>
+                <div id="outputChart" style="height: 250px;"></div>
+            </div>
+        </div>
+
+        <!-- Drift Monitoring -->
+        <div class="bg-gray-800 rounded-xl p-6 border border-violet-500/30 mb-6">
+            <h3 class="text-lg font-semibold text-violet-400 mb-4">Drift Monitoring & Compensation</h3>
+            <div id="driftChart" style="height: 200px;"></div>
+        </div>
+
+        <!-- Algorithm Details -->
+        <div class="bg-gray-800 rounded-xl p-6 border border-violet-500/30">
+            <h3 class="text-lg font-semibold text-violet-400 mb-4">Optimization Algorithms</h3>
+            <div class="grid md:grid-cols-2 gap-6">
+                <div>
+                    <h4 class="font-medium text-white mb-2">Stochastic Parallel Gradient Descent (SPGD)</h4>
+                    <p class="text-gray-400 text-sm mb-3">Model-free optimization for high-dimensional phase control:</p>
+                    <div class="bg-gray-900 rounded-lg p-3 font-mono text-sm">
+                        δu<sub>n+1</sub> = γ · sign(δJ) · δu<sub>n</sub>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="font-medium text-white mb-2">Bayesian Optimization</h4>
+                    <p class="text-gray-400 text-sm mb-3">Gaussian process surrogate with acquisition function:</p>
+                    <div class="bg-gray-900 rounded-lg p-3 font-mono text-sm">
+                        x<sub>next</sub> = argmax EI(x)
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        var optimizing = false;
+        var iteration = 0;
+        var history = [];
+        var bestHistory = [];
+        var paramHistory = [];
+        var driftHistory = [];
+        var bestValue = 0;
+        var startValue = 0;
+        var animationId;
+
+        function startOptimization() {
+            optimizing = true;
+            document.getElementById('startBtn').classList.add('hidden');
+            document.getElementById('stopBtn').classList.remove('hidden');
+            document.getElementById('status').textContent = 'Running';
+            document.getElementById('status').className = 'text-xl font-bold text-green-400';
+            startValue = history.length > 0 ? history[0] : 0.1;
+            runOptimization();
+        }
+
+        function stopOptimization() {
+            optimizing = false;
+            document.getElementById('startBtn').classList.remove('hidden');
+            document.getElementById('stopBtn').classList.add('hidden');
+            document.getElementById('status').textContent = 'Paused';
+            document.getElementById('status').className = 'text-xl font-bold text-amber-400';
+            if (animationId) cancelAnimationFrame(animationId);
+        }
+
+        function resetOptimization() {
+            stopOptimization();
+            iteration = 0;
+            history = [];
+            bestHistory = [];
+            paramHistory = [];
+            driftHistory = [];
+            bestValue = 0;
+            document.getElementById('currentValue').textContent = '0.00';
+            document.getElementById('bestValue').textContent = '0.00';
+            document.getElementById('iteration').textContent = '0';
+            document.getElementById('improvement').textContent = '0%';
+            document.getElementById('status').textContent = 'Idle';
+            document.getElementById('status').className = 'text-xl font-bold text-gray-400';
+            updateCharts();
+        }
+
+        function runOptimization() {
+            if (!optimizing) return;
+
+            iteration++;
+            var lr = parseFloat(document.getElementById('learningRate').value);
+            document.getElementById('lrValue').textContent = lr.toFixed(2);
+
+            // Simulate optimization
+            var target = 1.0;
+            var noise = (Math.random() - 0.5) * 0.05;
+            var currentVal;
+
+            if (history.length === 0) {
+                currentVal = 0.1 + Math.random() * 0.1;
+            } else {
+                var lastVal = history[history.length - 1];
+                var gradient = (target - lastVal) * lr;
+                currentVal = lastVal + gradient + noise;
+                currentVal = Math.max(0, Math.min(1, currentVal));
+            }
+
+            history.push(currentVal);
+
+            if (currentVal > bestValue) {
+                bestValue = currentVal;
+            }
+            bestHistory.push(bestValue);
+
+            // Parameter exploration
+            paramHistory.push({
+                x: Math.cos(iteration * 0.1) * (1 - currentVal) + Math.random() * 0.1,
+                y: Math.sin(iteration * 0.1) * (1 - currentVal) + Math.random() * 0.1,
+                val: currentVal
+            });
+
+            // Drift simulation
+            var drift = Math.sin(iteration * 0.02) * 0.1 + (Math.random() - 0.5) * 0.02;
+            driftHistory.push(drift);
+
+            // Update UI
+            document.getElementById('currentValue').textContent = currentVal.toFixed(3);
+            document.getElementById('bestValue').textContent = bestValue.toFixed(3);
+            document.getElementById('iteration').textContent = iteration;
+
+            var improvement = startValue > 0 ? ((bestValue - startValue) / startValue * 100) : 0;
+            document.getElementById('improvement').textContent = improvement.toFixed(0) + '%';
+
+            updateCharts();
+
+            if (iteration < 200 && optimizing) {
+                animationId = requestAnimationFrame(function() {
+                    setTimeout(runOptimization, 50);
+                });
+            } else if (iteration >= 200) {
+                stopOptimization();
+                document.getElementById('status').textContent = 'Converged';
+                document.getElementById('status').className = 'text-xl font-bold text-green-400';
+            }
+        }
+
+        function updateCharts() {
+            var iterations = history.map(function(_, i) { return i + 1; });
+
+            // Convergence chart
+            Plotly.react('convergenceChart', [
+                { x: iterations, y: history, name: 'Current', line: { color: '#8b5cf6', width: 2 } },
+                { x: iterations, y: bestHistory, name: 'Best', line: { color: '#10b981', width: 2, dash: 'dash' } }
+            ], {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' }, margin: { l: 50, r: 20, t: 10, b: 50 },
+                xaxis: { title: 'Iteration', gridcolor: '#374151' },
+                yaxis: { title: 'Metric Value', gridcolor: '#374151', range: [0, 1.1] },
+                legend: { x: 0.7, y: 0.1 }
+            }, { responsive: true });
+
+            // Parameter space
+            if (paramHistory.length > 0) {
+                var lastN = paramHistory.slice(-50);
+                Plotly.react('parameterChart', [{
+                    x: lastN.map(function(p) { return p.x; }),
+                    y: lastN.map(function(p) { return p.y; }),
+                    mode: 'markers',
+                    marker: {
+                        size: 8,
+                        color: lastN.map(function(p) { return p.val; }),
+                        colorscale: [[0, '#ef4444'], [0.5, '#f59e0b'], [1, '#10b981']],
+                        showscale: true
+                    }
+                }], {
+                    paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                    font: { color: '#fff' }, margin: { l: 50, r: 60, t: 10, b: 50 },
+                    xaxis: { title: 'Parameter 1', gridcolor: '#374151' },
+                    yaxis: { title: 'Parameter 2', gridcolor: '#374151' }
+                }, { responsive: true });
+            }
+
+            // Pattern
+            var patternZ = [];
+            for (var i = 0; i < 20; i++) {
+                var row = [];
+                for (var j = 0; j < 100; j++) {
+                    var phase = 2 * Math.PI * j / 20;
+                    var val = Math.sin(phase + (bestValue * 2 * Math.PI)) > 0 ? 1 : 0;
+                    row.push(val);
+                }
+                patternZ.push(row);
+            }
+
+            Plotly.react('patternChart', [{
+                z: patternZ, type: 'heatmap',
+                colorscale: [[0, '#1f2937'], [1, '#8b5cf6']],
+                showscale: false
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' }, margin: { l: 40, r: 20, t: 10, b: 40 },
+                xaxis: { showticklabels: false }, yaxis: { showticklabels: false }
+            }, { responsive: true });
+
+            // Output spectrum
+            var wl = [];
+            var spec = [];
+            for (var w = 760; w <= 800; w++) {
+                wl.push(w);
+                var center = 775 + (bestValue - 0.5) * 10;
+                spec.push(bestValue * Math.exp(-Math.pow((w - center) / 5, 2)));
+            }
+
+            Plotly.react('outputChart', [{
+                x: wl, y: spec,
+                fill: 'tozeroy', fillcolor: 'rgba(139, 92, 246, 0.3)',
+                line: { color: '#8b5cf6', width: 2 }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' }, margin: { l: 50, r: 20, t: 10, b: 50 },
+                xaxis: { title: 'Wavelength (nm)', gridcolor: '#374151' },
+                yaxis: { title: 'Power (a.u.)', gridcolor: '#374151' }
+            }, { responsive: true });
+
+            // Drift
+            Plotly.react('driftChart', [{
+                x: iterations, y: driftHistory,
+                line: { color: '#f59e0b', width: 2 }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#fff' }, margin: { l: 50, r: 20, t: 10, b: 50 },
+                xaxis: { title: 'Time (iterations)', gridcolor: '#374151' },
+                yaxis: { title: 'Drift (a.u.)', gridcolor: '#374151' }
+            }, { responsive: true });
+        }
+
+        function checkPlotly() {
+            if (typeof Plotly !== 'undefined') { updateCharts(); }
+            else { setTimeout(checkPlotly, 100); }
+        }
+        checkPlotly();
+    </script>
+</body>
+</html>

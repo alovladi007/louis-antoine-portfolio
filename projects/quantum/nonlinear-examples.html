@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Examples - Nonlinear Photonics Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <style>.gradient-bg { background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); }</style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-violet-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="nonlinear-photonics-complete-project.html" class="flex items-center text-violet-400 hover:text-violet-300">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Nonlinear Photonics
+                </a>
+                <span class="text-violet-400 font-semibold">Code Examples</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl font-bold mb-4"><i class="fas fa-flask mr-4"></i>Code Examples</h1>
+            <p class="text-xl text-violet-100">Production-ready code reproducing Nature publication results</p>
+        </div>
+    </section>
+
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Basic SHG -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-violet-400 mb-4">
+                <i class="fas fa-wave-square mr-2"></i>Basic SHG Simulation
+            </h2>
+            <div class="bg-gray-800 rounded-xl p-6 border border-violet-500/30">
+                <p class="text-gray-300 mb-4">Simple second harmonic generation with uniform χ⁽²⁾ pattern.</p>
+                <pre><code class="language-python">import numpy as np
+import matplotlib.pyplot as plt
+from nonlinear_photonics import Device, SHGSimulator, QPMGrating
+
+# Create device with silicon nitride waveguide parameters
+device = Device(
+    length=7e-3,           # 7 mm waveguide
+    width=1.2e-6,          # 1.2 μm width
+    height=400e-9,         # 400 nm height
+    chi3=2.5e-19,          # Si3N4 χ³
+    n_pump=1.89,           # neff at 1550 nm
+    n_shg=1.95             # neff at 775 nm
+)
+
+# Set bias voltage (1000 V across 200 nm gap)
+device.set_bias_voltage(1000)
+print(f"Induced χ²: {device.get_chi2_effective()*1e12:.2f} pm/V")
+
+# Create SHG simulator
+shg = SHGSimulator(
+    device=device,
+    pump_wavelength=1550e-9,
+    pump_power=50e-3  # 50 mW
+)
+
+# Design QPM grating for phase matching
+delta_k = shg.compute_phase_mismatch()
+qpm_period = 2 * np.pi / abs(delta_k)
+print(f"Phase mismatch Δk: {delta_k:.0f} /m")
+print(f"QPM period: {qpm_period*1e6:.1f} μm")
+
+# Create uniform grating
+grating = QPMGrating(
+    period=qpm_period,
+    duty_cycle=0.5,
+    num_periods=int(device.length / qpm_period)
+)
+chi2_pattern = grating.generate_pattern()
+
+# Run simulation
+result = shg.simulate(chi2_pattern)
+
+# Results
+print(f"\nResults:")
+print(f"SHG wavelength: {result.shg_wavelength*1e9:.1f} nm")
+print(f"SHG power: {result.shg_power*1e6:.1f} μW")
+print(f"Conversion efficiency: {result.efficiency*100:.3f}%")
+
+# Plot power evolution
+plt.figure(figsize=(10, 4))
+plt.subplot(1, 2, 1)
+plt.plot(result.z*1e3, result.pump_power*1e3, 'r-', label='Pump')
+plt.plot(result.z*1e3, result.shg_power*1e6, 'b-', label='SHG')
+plt.xlabel('Position (mm)')
+plt.ylabel('Power (mW / μW)')
+plt.legend()
+plt.title('Power Evolution')
+
+plt.subplot(1, 2, 2)
+plt.plot(chi2_pattern[:500])
+plt.xlabel('Position (pixels)')
+plt.ylabel('χ² (normalized)')
+plt.title('QPM Grating Pattern')
+plt.tight_layout()
+plt.show()</code></pre>
+            </div>
+        </section>
+
+        <!-- Multi-Wavelength -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-violet-400 mb-4">
+                <i class="fas fa-rainbow mr-2"></i>Multi-Wavelength Spectral Engineering
+            </h2>
+            <div class="bg-gray-800 rounded-xl p-6 border border-violet-500/30">
+                <p class="text-gray-300 mb-4">Generate broadband SHG output from multiple C-band wavelengths.</p>
+                <pre><code class="language-python">from nonlinear_photonics import Device, SpectralEngine
+
+# Initialize device
+device = Device()
+device.set_bias_voltage(1000)
+
+# Create spectral engineering engine
+spectral = SpectralEngine(device)
+
+# Add pump wavelength channels (C-band)
+channels = [
+    (1530e-9, 0.8),   # (wavelength, relative power)
+    (1545e-9, 1.0),
+    (1560e-9, 0.9),
+    (1575e-9, 0.7),
+    (1590e-9, 0.5)
+]
+
+for wavelength, power in channels:
+    spectral.add_channel(wavelength, power)
+
+# Design multi-period grating
+chi2_pattern = spectral.design_multiperiod_grating()
+
+# Simulate output spectrum
+wavelengths, powers = spectral.simulate_output_spectrum(resolution=0.1e-9)
+
+# Visualize
+import matplotlib.pyplot as plt
+
+fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+
+# Input spectrum
+ax1 = axes[0, 0]
+for wl, p in channels:
+    ax1.bar(wl*1e9, p, width=2, color='red', alpha=0.7)
+ax1.set_xlabel('Wavelength (nm)')
+ax1.set_ylabel('Power (a.u.)')
+ax1.set_title('Input Pump Spectrum')
+
+# Output SHG spectrum
+ax2 = axes[0, 1]
+ax2.plot(wavelengths*1e9, powers, 'b-')
+ax2.fill_between(wavelengths*1e9, powers, alpha=0.3)
+ax2.set_xlabel('Wavelength (nm)')
+ax2.set_ylabel('SHG Power (a.u.)')
+ax2.set_title('Output SHG Spectrum')
+
+# Multi-period grating
+ax3 = axes[1, 0]
+ax3.plot(chi2_pattern[:1000])
+ax3.set_xlabel('Position (pixels)')
+ax3.set_ylabel('χ² (normalized)')
+ax3.set_title('Superposed Multi-Period Grating')
+
+# Fourier analysis
+ax4 = axes[1, 1]
+fft = np.abs(np.fft.fft(chi2_pattern))
+freqs = np.fft.fftfreq(len(chi2_pattern))
+ax4.semilogy(freqs[:len(freqs)//2], fft[:len(fft)//2])
+ax4.set_xlabel('Spatial Frequency')
+ax4.set_ylabel('Amplitude')
+ax4.set_title('Grating Fourier Spectrum')
+
+plt.tight_layout()
+plt.show()</code></pre>
+            </div>
+        </section>
+
+        <!-- Airy Beam -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-violet-400 mb-4">
+                <i class="fas fa-bezier-curve mr-2"></i>Airy Beam Generation
+            </h2>
+            <div class="bg-gray-800 rounded-xl p-6 border border-violet-500/30">
+                <p class="text-gray-300 mb-4">Generate non-diffracting Airy beams via spatial χ⁽²⁾ programming.</p>
+                <pre><code class="language-python">from nonlinear_photonics import Device, SpatialBeam, SHGSimulator
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Create device
+device = Device()
+device.set_bias_voltage(1000)
+
+# Configure Airy beam
+airy = SpatialBeam(mode='airy', device=device)
+airy.set_airy_scale(20e-6)  # 20 μm characteristic scale
+
+# Generate cubic phase pattern for χ² programming
+phase_pattern = airy.generate_phase_pattern()
+print(f"Phase pattern shape: {phase_pattern.shape}")
+
+# Simulate beam propagation
+z_positions = np.linspace(0, 5e-3, 100)  # 0 to 5 mm
+propagation = []
+
+for z in z_positions:
+    intensity = airy.propagate(z)
+    propagation.append(intensity)
+
+propagation = np.array(propagation)
+
+# Visualization
+fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+
+# 2D phase pattern (light intensity for programming)
+ax1 = axes[0, 0]
+im1 = ax1.imshow(phase_pattern, cmap='viridis', aspect='auto')
+ax1.set_title('χ² Phase Pattern (Light Intensity)')
+ax1.set_xlabel('x (pixels)')
+ax1.set_ylabel('y (pixels)')
+plt.colorbar(im1, ax=ax1)
+
+# Airy beam at output
+ax2 = axes[0, 1]
+output_intensity = airy.propagate(5e-3)
+ax2.plot(np.linspace(-100, 100, len(output_intensity)), output_intensity)
+ax2.set_xlabel('Position (μm)')
+ax2.set_ylabel('Intensity (a.u.)')
+ax2.set_title('Airy Beam Cross-Section at z=5mm')
+
+# Propagation (side view)
+ax3 = axes[1, 0]
+im3 = ax3.imshow(propagation.T, aspect='auto', cmap='inferno',
+                  extent=[0, 5, -100, 100])
+ax3.set_xlabel('Propagation z (mm)')
+ax3.set_ylabel('Transverse x (μm)')
+ax3.set_title('Airy Beam Propagation (Self-Accelerating)')
+plt.colorbar(im3, ax=ax3)
+
+# Comparison with Gaussian
+ax4 = axes[1, 1]
+gaussian = SpatialBeam(mode='gaussian', device=device)
+gaussian.set_focal_length(2.5e-3)  # 2.5 mm focal length
+
+gauss_prop = []
+for z in z_positions:
+    gauss_prop.append(gaussian.propagate(z))
+gauss_prop = np.array(gauss_prop)
+
+# Peak intensity vs z
+ax4.plot(z_positions*1e3, np.max(propagation, axis=1), 'b-', label='Airy')
+ax4.plot(z_positions*1e3, np.max(gauss_prop, axis=1), 'r--', label='Gaussian')
+ax4.set_xlabel('Propagation z (mm)')
+ax4.set_ylabel('Peak Intensity (a.u.)')
+ax4.set_title('Non-Diffracting Property')
+ax4.legend()
+
+plt.tight_layout()
+plt.show()</code></pre>
+            </div>
+        </section>
+
+        <!-- Feedback Optimization -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-violet-400 mb-4">
+                <i class="fas fa-sync-alt mr-2"></i>Feedback Optimization Loop
+            </h2>
+            <div class="bg-gray-800 rounded-xl p-6 border border-violet-500/30">
+                <p class="text-gray-300 mb-4">Real-time adaptive optimization using SPGD algorithm.</p>
+                <pre><code class="language-python">from nonlinear_photonics import Device, FeedbackOptimizer, SHGSimulator
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Initialize system
+device = Device()
+device.set_bias_voltage(1000)
+
+shg = SHGSimulator(device, pump_wavelength=1550e-9, pump_power=50e-3)
+
+# Define target metric (maximize SHG power)
+def target_metric(chi2_pattern):
+    result = shg.simulate(chi2_pattern)
+    return result.shg_power
+
+# Create optimizer
+optimizer = FeedbackOptimizer(
+    algorithm='spgd',        # Stochastic Parallel Gradient Descent
+    learning_rate=0.1,
+    num_pixels=1000          # Number of controllable pixels
+)
+
+optimizer.set_target(target_metric)
+optimizer.enable_drift_compensation(rate=10)  # 10 Hz
+
+# Run optimization
+print("Starting optimization...")
+history = []
+best_history = []
+
+for i in range(100):
+    current_value = optimizer.step()
+    history.append(current_value)
+    best_history.append(max(history))
+
+    if i % 20 == 0:
+        print(f"Iteration {i}: Current = {current_value*1e6:.2f} μW, "
+              f"Best = {max(history)*1e6:.2f} μW")
+
+# Get optimal pattern
+optimal_pattern = optimizer.get_optimal_pattern()
+
+# Final results
+final_result = shg.simulate(optimal_pattern)
+print(f"\nOptimization complete!")
+print(f"Final SHG power: {final_result.shg_power*1e6:.2f} μW")
+print(f"Improvement: {(max(history)/history[0] - 1)*100:.1f}%")
+
+# Visualization
+fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+
+# Convergence
+ax1 = axes[0, 0]
+ax1.plot(history, 'b-', alpha=0.5, label='Current')
+ax1.plot(best_history, 'r-', linewidth=2, label='Best')
+ax1.set_xlabel('Iteration')
+ax1.set_ylabel('SHG Power (W)')
+ax1.set_title('Optimization Convergence')
+ax1.legend()
+
+# Optimal pattern
+ax2 = axes[0, 1]
+ax2.plot(optimal_pattern[:200])
+ax2.set_xlabel('Position (pixels)')
+ax2.set_ylabel('χ² (normalized)')
+ax2.set_title('Optimal χ² Pattern')
+
+# Power evolution with optimal pattern
+ax3 = axes[1, 0]
+ax3.plot(final_result.z*1e3, final_result.pump_power*1e3, 'r-', label='Pump')
+ax3.plot(final_result.z*1e3, final_result.shg_power*1e6, 'b-', label='SHG')
+ax3.set_xlabel('Position (mm)')
+ax3.set_ylabel('Power')
+ax3.set_title('Optimized Power Evolution')
+ax3.legend()
+
+# Output spectrum
+ax4 = axes[1, 1]
+wavelengths = np.linspace(770, 780, 100) * 1e-9
+spectrum = []
+for wl in wavelengths:
+    shg.pump_wavelength = wl * 2
+    r = shg.simulate(optimal_pattern)
+    spectrum.append(r.shg_power)
+
+ax4.plot(wavelengths*1e9, spectrum)
+ax4.set_xlabel('SHG Wavelength (nm)')
+ax4.set_ylabel('Power (W)')
+ax4.set_title('Output Spectrum')
+
+plt.tight_layout()
+plt.show()</code></pre>
+            </div>
+        </section>
+
+        <!-- Reproducing Figure -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-violet-400 mb-4">
+                <i class="fas fa-file-alt mr-2"></i>Reproducing Nature Figure 2
+            </h2>
+            <div class="bg-gray-800 rounded-xl p-6 border border-violet-500/30">
+                <p class="text-gray-300 mb-4">Complete example reproducing spectral shaping results from the publication.</p>
+                <pre><code class="language-python">"""
+Reproduce Nature 2025 Figure 2: Multi-wavelength spectral engineering
+"""
+import numpy as np
+import matplotlib.pyplot as plt
+from nonlinear_photonics import Device, SpectralEngine, SHGSimulator
+
+# Exact experimental parameters from paper
+device = Device(
+    length=7e-3,
+    width=1.2e-6,
+    height=400e-9,
+    chi3=2.5e-19,
+    n_pump=1.89,
+    n_shg=1.95,
+    pixel_size=7.5e-6
+)
+device.set_bias_voltage(1000)
+
+# Target wavelengths from Figure 2c
+target_wavelengths = [
+    1524e-9, 1532e-9, 1540e-9, 1548e-9, 1556e-9,
+    1564e-9, 1572e-9, 1580e-9, 1588e-9, 1596e-9
+]
+
+# Create spectral engine
+spectral = SpectralEngine(device)
+
+# Add channels with equal amplitude
+for wl in target_wavelengths:
+    spectral.add_channel(wl, power=1.0)
+
+# Generate optimized grating pattern
+pattern = spectral.design_multiperiod_grating()
+
+# Simulate
+pump_wl, pump_power = spectral.get_input_spectrum()
+shg_wl, shg_power = spectral.simulate_output_spectrum(resolution=0.05e-9)
+
+# Create publication-quality figure
+fig = plt.figure(figsize=(14, 10))
+
+# Panel a: Light programming pattern
+ax1 = fig.add_subplot(2, 2, 1)
+# 2D representation of programming light
+pattern_2d = np.tile(pattern[:1000], (50, 1))
+im = ax1.imshow(pattern_2d, aspect='auto', cmap='gray',
+                extent=[0, 7, 0, 0.4])
+ax1.set_xlabel('Position along waveguide (mm)')
+ax1.set_ylabel('Width (mm)')
+ax1.set_title('(a) Optical programming pattern')
+
+# Panel b: χ² profile
+ax2 = fig.add_subplot(2, 2, 2)
+z = np.linspace(0, 7, len(pattern))
+ax2.fill_between(z, pattern, alpha=0.7, color='purple')
+ax2.set_xlabel('Position (mm)')
+ax2.set_ylabel('χ² (normalized)')
+ax2.set_title('(b) Induced χ² spatial distribution')
+ax2.set_xlim(0, 7)
+
+# Panel c: Input pump spectrum
+ax3 = fig.add_subplot(2, 2, 3)
+for wl in target_wavelengths:
+    ax3.axvline(wl*1e9, color='red', alpha=0.7, linewidth=2)
+ax3.set_xlabel('Pump wavelength (nm)')
+ax3.set_ylabel('Power (a.u.)')
+ax3.set_title('(c) Input C-band pump spectrum')
+ax3.set_xlim(1520, 1600)
+
+# Panel d: Output SHG spectrum
+ax4 = fig.add_subplot(2, 2, 4)
+ax4.plot(shg_wl*1e9, shg_power/max(shg_power), 'b-', linewidth=1.5)
+ax4.fill_between(shg_wl*1e9, shg_power/max(shg_power), alpha=0.3)
+# Mark expected SHG positions
+for wl in target_wavelengths:
+    ax4.axvline(wl*1e9/2, color='gray', alpha=0.3, linestyle='--')
+ax4.set_xlabel('SHG wavelength (nm)')
+ax4.set_ylabel('Normalized power')
+ax4.set_title('(d) Output SHG spectrum')
+ax4.set_xlim(760, 800)
+
+plt.tight_layout()
+plt.savefig('nature_figure2_reproduction.png', dpi=300, bbox_inches='tight')
+plt.show()
+
+print("Figure saved as 'nature_figure2_reproduction.png'")</code></pre>
+            </div>
+        </section>
+
+        <!-- Quick Reference -->
+        <section class="mb-8">
+            <h2 class="text-2xl font-bold text-violet-400 mb-4">Quick Reference</h2>
+            <div class="grid md:grid-cols-2 gap-4">
+                <div class="bg-gray-800 rounded-xl p-4 border border-violet-500/30">
+                    <h3 class="font-semibold text-white mb-2">Installation</h3>
+                    <pre><code class="language-bash">git clone https://github.com/alovladi007/Programmable-on-chip-nonlinear-photonics.git
+cd Programmable-on-chip-nonlinear-photonics
+pip install -r requirements.txt</code></pre>
+                </div>
+                <div class="bg-gray-800 rounded-xl p-4 border border-violet-500/30">
+                    <h3 class="font-semibold text-white mb-2">Key Constants</h3>
+                    <pre><code class="language-python"># Silicon nitride parameters
+CHI3_SIN = 2.5e-19  # m²/V²
+N_SIN_1550 = 1.996
+N_SIO2 = 1.444
+PIXEL_SIZE = 7.5e-6  # m</code></pre>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>hljs.highlightAll();</script>
+</body>
+</html>

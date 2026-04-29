@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Examples - CV-QKD Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>.gradient-bg { background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%); }</style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="bg-gray-900/95 backdrop-blur-sm border-b border-cyan-500/20 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="cvqkd-complete-project.html" class="flex items-center text-cyan-400 hover:text-cyan-300">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to CV-QKD Suite
+                </a>
+                <span class="text-cyan-400 font-semibold">Examples</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="gradient-bg py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl font-bold mb-4"><i class="fas fa-flask mr-4"></i>Code Examples</h1>
+            <p class="text-xl text-cyan-100">Production-ready code for CV-QKD simulations</p>
+        </div>
+    </section>
+
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Quick Start -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-cyan-400 mb-6">Quick Start</h2>
+
+            <div class="bg-gray-800 rounded-xl p-6 border border-cyan-500/30">
+                <h3 class="text-lg font-semibold text-white mb-4">Installation & Basic Usage</h3>
+                <div class="bg-gray-900 rounded-lg p-4 font-mono text-sm overflow-x-auto">
+<pre class="text-green-400"># Install dependencies
+pip install numpy scipy matplotlib
+
+# Clone repository
+git clone https://github.com/alovladi007/PIC-Based-CV-QKD-Link-Optimizer.git
+cd PIC-Based-CV-QKD-Link-Optimizer
+
+# Run basic simulation
+python -m qkd.cli simulate --distance 25 --variance 4
+
+# Output:
+# Distance: 25.0 km
+# Key rate: 0.0892 bits/symbol
+# Throughput @ 16 GBaud: 1427 Mbps</pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Example 1: Basic Key Rate -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-cyan-400 mb-6">Example 1: Basic Key Rate Calculation</h2>
+
+            <div class="bg-gray-800 rounded-xl p-6 border border-cyan-500/30">
+                <p class="text-gray-400 mb-4">Calculate asymptotic secret key rate for a metropolitan CV-QKD link.</p>
+                <div class="bg-gray-900 rounded-lg p-4 font-mono text-sm overflow-x-auto mb-4">
+<pre class="text-green-400">"""
+Basic CV-QKD Key Rate Calculation
+Metropolitan link example (25 km)
+"""
+import numpy as np
+from qkd.secret_key import KeyRateCalculator, ChannelParams
+
+# System parameters
+params = ChannelParams(
+    distance_km=25,          # Fiber distance
+    fiber_loss_db_km=0.2,    # Standard SMF-28
+    pic_loss_db=6.0,         # PIC insertion loss
+    excess_noise=0.01,       # SNU
+    variance=4.0,            # Modulation variance (SNU)
+    detector_qe=0.60,        # Balanced detector QE
+    electronic_noise=0.01    # SNU
+)
+
+# Calculate key rate
+calc = KeyRateCalculator(reconciliation_efficiency=0.95)
+key_rate = calc.asymptotic_rate(params)
+
+# Results
+symbol_rate = 16e9  # 16 GBaud
+throughput = key_rate * symbol_rate / 1e6  # Mbps
+
+print(f"=== Metropolitan CV-QKD Link ===")
+print(f"Distance: {params.distance_km} km")
+print(f"Key rate: {key_rate:.4f} bits/symbol")
+print(f"Throughput: {throughput:.0f} Mbps")
+print(f"\nBreakdown:")
+print(f"  I_AB: {calc.mutual_information(params):.4f}")
+print(f"  χ_BE: {calc.holevo_bound(params):.4f}")</pre>
+                </div>
+                <div class="text-gray-500 text-sm">
+                    <strong>Expected output:</strong> Key rate ~0.089 bits/symbol, Throughput ~1424 Mbps
+                </div>
+            </div>
+        </section>
+
+        <!-- Example 2: Distance Sweep -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-cyan-400 mb-6">Example 2: Distance Sweep Analysis</h2>
+
+            <div class="bg-gray-800 rounded-xl p-6 border border-cyan-500/30">
+                <p class="text-gray-400 mb-4">Generate key rate vs distance curves for performance analysis.</p>
+                <div class="bg-gray-900 rounded-lg p-4 font-mono text-sm overflow-x-auto mb-4">
+<pre class="text-green-400">"""
+Distance Sweep Analysis
+Generate key rate vs distance curves
+"""
+import numpy as np
+import matplotlib.pyplot as plt
+from qkd.secret_key import KeyRateCalculator, ChannelParams
+
+calc = KeyRateCalculator(reconciliation_efficiency=0.95)
+
+# Sweep parameters
+distances = np.arange(1, 101)
+excess_noise_values = [0.005, 0.01, 0.02]
+
+plt.figure(figsize=(10, 6))
+
+for xi in excess_noise_values:
+    key_rates = []
+    for d in distances:
+        params = ChannelParams(
+            distance_km=d,
+            excess_noise=xi,
+            variance=4.0,
+            detector_qe=0.6
+        )
+        key_rates.append(calc.asymptotic_rate(params))
+
+    plt.semilogy(distances, key_rates, label=f'ξ = {xi} SNU')
+
+plt.xlabel('Distance (km)')
+plt.ylabel('Key Rate (bits/symbol)')
+plt.title('CV-QKD Key Rate vs Distance')
+plt.legend()
+plt.grid(True, alpha=0.3)
+plt.xlim([0, 100])
+plt.ylim([1e-4, 1])
+plt.savefig('distance_sweep.png', dpi=150)
+plt.show()</pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Example 3: PIC Design -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-cyan-400 mb-6">Example 3: PIC Loss Budget Design</h2>
+
+            <div class="bg-gray-800 rounded-xl p-6 border border-cyan-500/30">
+                <p class="text-gray-400 mb-4">Design and analyze a photonic integrated circuit loss budget.</p>
+                <div class="bg-gray-900 rounded-lg p-4 font-mono text-sm overflow-x-auto mb-4">
+<pre class="text-green-400">"""
+PIC Loss Budget Analysis
+Design transmitter and receiver PICs
+"""
+from qkd.pic_budget import PICLossBudget
+
+# Create transmitter budget
+tx_budget = PICLossBudget(name="Alice TX")
+tx_budget.add_component("Edge coupler", 2.0)
+tx_budget.add_component("Si waveguide (1cm)", 0.5)
+tx_budget.add_component("IQ modulator (LiNbO3)", 3.5)
+tx_budget.add_component("VOA", 0.5)
+tx_budget.add_component("Output edge coupler", 2.0)
+
+# Create receiver budget
+rx_budget = PICLossBudget(name="Bob RX")
+rx_budget.add_component("Edge coupler", 2.0)
+rx_budget.add_component("Polarization controller", 0.5)
+rx_budget.add_component("90° optical hybrid", 1.0)
+rx_budget.add_component("LO tap & routing", 3.0)
+rx_budget.add_component("Balanced PD coupling", 0.5)
+
+# Total system PIC loss
+total_pic_loss = tx_budget.total_loss() + rx_budget.total_loss()
+
+print("=== Transmitter PIC ===")
+print(tx_budget.summary())
+print(f"Total: {tx_budget.total_loss():.1f} dB\n")
+
+print("=== Receiver PIC ===")
+print(rx_budget.summary())
+print(f"Total: {rx_budget.total_loss():.1f} dB\n")
+
+print(f"=== System PIC Loss: {total_pic_loss:.1f} dB ===")
+print(f"Transmittance: {10**(-total_pic_loss/10):.4f}")</pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Example 4: Finite-Size Security -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-cyan-400 mb-6">Example 4: Finite-Size Security Analysis</h2>
+
+            <div class="bg-gray-800 rounded-xl p-6 border border-cyan-500/30">
+                <p class="text-gray-400 mb-4">Calculate secure key rates with finite-size corrections.</p>
+                <div class="bg-gray-900 rounded-lg p-4 font-mono text-sm overflow-x-auto mb-4">
+<pre class="text-green-400">"""
+Finite-Size Security Analysis
+Compare asymptotic vs practical key rates
+"""
+import numpy as np
+from qkd.secret_key import KeyRateCalculator, ChannelParams
+from qkd.finite_size import FiniteSizeAnalyzer
+
+# Channel parameters
+params = ChannelParams(
+    distance_km=25,
+    excess_noise=0.01,
+    variance=4.0,
+    detector_qe=0.6
+)
+
+# Asymptotic calculation
+calc = KeyRateCalculator(reconciliation_efficiency=0.95)
+k_asymptotic = calc.asymptotic_rate(params)
+
+# Finite-size for different block sizes
+block_sizes = [1e6, 1e7, 1e8, 1e9, 1e10]
+
+print("=== Finite-Size Analysis ===")
+print(f"{'Block Size':<12} {'Key Rate':<12} {'Penalty':<10}")
+print("-" * 34)
+
+for N in block_sizes:
+    analyzer = FiniteSizeAnalyzer(
+        block_size=N,
+        pe_fraction=0.10,
+        epsilon_sec=1e-10,
+        attack_model="collective"
+    )
+    k_finite = analyzer.key_rate(params)
+    penalty = (k_asymptotic - k_finite) / k_asymptotic * 100
+
+    print(f"10^{int(np.log10(N)):<10} {k_finite:.4f}      {penalty:.1f}%")
+
+print(f"\nAsymptotic: {k_asymptotic:.4f} bits/symbol")</pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Example 5: Detector Optimization -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-cyan-400 mb-6">Example 5: Detector Parameter Optimization</h2>
+
+            <div class="bg-gray-800 rounded-xl p-6 border border-cyan-500/30">
+                <p class="text-gray-400 mb-4">Optimize detector parameters for maximum performance.</p>
+                <div class="bg-gray-900 rounded-lg p-4 font-mono text-sm overflow-x-auto mb-4">
+<pre class="text-green-400">"""
+Detector Optimization
+Find optimal detector parameters for given channel
+"""
+import numpy as np
+from scipy.optimize import minimize
+from qkd.secret_key import KeyRateCalculator, ChannelParams
+
+calc = KeyRateCalculator(reconciliation_efficiency=0.95)
+
+def neg_key_rate(x, distance):
+    """Negative key rate (for minimization)"""
+    qe, v_el = x
+    if qe < 0.3 or qe > 0.95 or v_el < 0.001 or v_el > 0.05:
+        return 1.0  # Penalty for out of bounds
+
+    params = ChannelParams(
+        distance_km=distance,
+        excess_noise=0.01,
+        variance=4.0,
+        detector_qe=qe,
+        electronic_noise=v_el
+    )
+    return -calc.asymptotic_rate(params)
+
+# Optimize for 50 km link
+result = minimize(
+    neg_key_rate,
+    x0=[0.6, 0.01],  # Initial guess
+    args=(50,),
+    method='Nelder-Mead',
+    options={'xatol': 1e-4}
+)
+
+opt_qe, opt_vel = result.x
+opt_rate = -result.fun
+
+print("=== Detector Optimization (50 km) ===")
+print(f"Optimal QE: {opt_qe:.2f}")
+print(f"Optimal electronic noise: {opt_vel:.4f} SNU")
+print(f"Maximum key rate: {opt_rate:.4f} bits/symbol")
+
+# Compare with typical values
+typical_params = ChannelParams(
+    distance_km=50, excess_noise=0.01,
+    variance=4.0, detector_qe=0.6, electronic_noise=0.01
+)
+typical_rate = calc.asymptotic_rate(typical_params)
+improvement = (opt_rate - typical_rate) / typical_rate * 100
+print(f"Improvement over typical: {improvement:.1f}%")</pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Example 6: Complete Simulation -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-cyan-400 mb-6">Example 6: Complete End-to-End Simulation</h2>
+
+            <div class="bg-gray-800 rounded-xl p-6 border border-cyan-500/30">
+                <p class="text-gray-400 mb-4">Full CV-QKD simulation with state preparation, transmission, and key extraction.</p>
+                <div class="bg-gray-900 rounded-lg p-4 font-mono text-sm overflow-x-auto mb-4">
+<pre class="text-green-400">"""
+Complete CV-QKD Simulation
+End-to-end key generation pipeline
+"""
+import numpy as np
+from qkd.gmcs import GMCSTransmitter, GMCSReceiver, QuantumChannel
+from qkd.post_processing import ParameterEstimator, Reconciliation
+from qkd.secret_key import KeyRateCalculator
+
+# Simulation parameters
+N_SYMBOLS = 100000
+DISTANCE_KM = 25
+VARIANCE = 4.0
+SEED = 42
+
+print("=== CV-QKD End-to-End Simulation ===\n")
+
+# 1. Alice prepares states
+print("1. State Preparation (Alice)")
+alice = GMCSTransmitter(variance=VARIANCE, seed=SEED)
+states = alice.prepare_states(N_SYMBOLS)
+x_alice, p_alice = alice.get_modulation_data()
+print(f"   Generated {N_SYMBOLS} coherent states")
+print(f"   Variance: {np.var(x_alice):.2f} SNU")
+
+# 2. Quantum channel transmission
+print("\n2. Quantum Channel")
+channel = QuantumChannel(
+    distance_km=DISTANCE_KM,
+    fiber_loss_db_km=0.2,
+    excess_noise=0.01
+)
+print(f"   Distance: {DISTANCE_KM} km")
+print(f"   Transmittance: {channel.transmittance():.4f}")
+
+# 3. Bob measures
+print("\n3. Measurement (Bob)")
+bob = GMCSReceiver(
+    detection_mode="homodyne",
+    quantum_efficiency=0.6,
+    electronic_noise=0.01
+)
+x_bob = bob.measure(states, channel)
+print(f"   Detection mode: homodyne")
+print(f"   Correlation: {np.corrcoef(x_alice, x_bob)[0,1]:.4f}")
+
+# 4. Parameter estimation
+print("\n4. Parameter Estimation")
+estimator = ParameterEstimator(pe_fraction=0.10)
+estimated_params = estimator.estimate(x_alice, x_bob)
+print(f"   Estimated transmittance: {estimated_params['T']:.4f}")
+print(f"   Estimated excess noise: {estimated_params['xi']:.4f} SNU")
+
+# 5. Key rate calculation
+print("\n5. Key Rate")
+calc = KeyRateCalculator(reconciliation_efficiency=0.95)
+key_rate = calc.asymptotic_rate_from_estimates(estimated_params)
+print(f"   Asymptotic rate: {key_rate:.4f} bits/symbol")
+
+# 6. Summary
+print("\n=== Summary ===")
+n_key_bits = int(key_rate * N_SYMBOLS * 0.9)  # 90% for key gen
+print(f"Expected key length: {n_key_bits} bits")
+print(f"Throughput @ 16 GBaud: {key_rate * 16000:.0f} Mbps")</pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Example 7: Export Results -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-cyan-400 mb-6">Example 7: Export Results to CSV</h2>
+
+            <div class="bg-gray-800 rounded-xl p-6 border border-cyan-500/30">
+                <p class="text-gray-400 mb-4">Export simulation results for further analysis.</p>
+                <div class="bg-gray-900 rounded-lg p-4 font-mono text-sm overflow-x-auto mb-4">
+<pre class="text-green-400">"""
+Export Results to CSV
+Generate comprehensive parameter sweep data
+"""
+import pandas as pd
+import numpy as np
+from qkd.secret_key import KeyRateCalculator, ChannelParams
+from datetime import datetime
+
+calc = KeyRateCalculator(reconciliation_efficiency=0.95)
+
+# Parameter ranges
+distances = np.arange(1, 101, 5)
+excess_noises = [0.005, 0.01, 0.015, 0.02]
+variances = [2, 4, 8]
+
+# Generate results
+results = []
+for d in distances:
+    for xi in excess_noises:
+        for va in variances:
+            params = ChannelParams(
+                distance_km=d,
+                excess_noise=xi,
+                variance=va,
+                detector_qe=0.6
+            )
+            kr = calc.asymptotic_rate(params)
+            results.append({
+                'distance_km': d,
+                'excess_noise_snu': xi,
+                'variance_snu': va,
+                'key_rate': kr,
+                'throughput_mbps': kr * 16000
+            })
+
+# Create DataFrame
+df = pd.DataFrame(results)
+
+# Add metadata
+metadata = {
+    'generated': datetime.now().isoformat(),
+    'reconciliation_efficiency': 0.95,
+    'detector_qe': 0.6,
+    'fiber_loss_db_km': 0.2,
+    'pic_loss_db': 6.0
+}
+
+# Save to CSV
+filename = f"cvqkd_results_{datetime.now():%Y%m%d_%H%M%S}.csv"
+df.to_csv(filename, index=False)
+
+print(f"Results saved to {filename}")
+print(f"Total configurations: {len(df)}")
+print(f"\nSample data:")
+print(df.head(10))</pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- More Examples Link -->
+        <div class="bg-cyan-900/20 rounded-xl p-6 border border-cyan-500/30">
+            <h3 class="text-lg font-semibold text-cyan-400 mb-4">More Resources</h3>
+            <div class="grid md:grid-cols-2 gap-4">
+                <a href="https://github.com/alovladi007/PIC-Based-CV-QKD-Link-Optimizer" target="_blank" class="p-4 bg-gray-800 rounded-lg hover:bg-gray-700">
+                    <i class="fab fa-github text-2xl text-cyan-400 mb-2"></i>
+                    <div class="font-semibold">GitHub Repository</div>
+                    <p class="text-xs text-gray-400">Full source code and tests</p>
+                </a>
+                <a href="cvqkd-tutorials.html" class="p-4 bg-gray-800 rounded-lg hover:bg-gray-700">
+                    <i class="fas fa-chalkboard-teacher text-2xl text-cyan-400 mb-2"></i>
+                    <div class="font-semibold">Tutorials</div>
+                    <p class="text-xs text-gray-400">Step-by-step learning guides</p>
+                </a>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
