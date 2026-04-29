@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optical Performance - Interactive Demo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #0a0a0a;
+            color: #e0e0e0;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .navigation-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .hero-section {
+            position: relative;
+            min-height: 50vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem 2rem;
+            margin-top: 60px;
+            overflow: hidden;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .hero-title {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-subtitle {
+            font-size: 1.2rem;
+            color: #a0a0a0;
+            margin-bottom: 2rem;
+        }
+
+        .hero-description {
+            font-size: 1.1rem;
+            color: #b0b0b0;
+            max-width: 800px;
+            margin: 0 auto 2rem;
+        }
+
+        .section {
+            padding: 4rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .section-subtitle {
+            font-size: 1.3rem;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .section-description {
+            font-size: 1.1rem;
+            color: #b0b0b0;
+            margin-bottom: 2rem;
+        }
+
+        .demo-container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 2rem;
+            margin: 2rem 0;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .control-group {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 1.5rem;
+            border-radius: 10px;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .control-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #667eea;
+        }
+
+        .control-slider {
+            width: 100%;
+            margin: 0.5rem 0;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 6px;
+            border-radius: 3px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            outline: none;
+        }
+
+        .control-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+        }
+
+        .control-value {
+            font-size: 0.9rem;
+            color: #a0a0a0;
+            margin-top: 0.5rem;
+        }
+
+        .control-button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 0.5rem 0.5rem 0.5rem 0;
+        }
+
+        .control-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .metric-card {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 1.5rem;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            color: #a0a0a0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 1.5rem;
+            border-radius: 10px;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .feature-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #e0e0e0;
+        }
+
+        .feature-description {
+            color: #b0b0b0;
+            font-size: 0.95rem;
+        }
+
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2rem;
+            }
+            
+            .controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navigation-bar">
+        <a href="silicon-photonics-transceiver.html" class="nav-btn">
+            <i class="fas fa-arrow-left"></i> Back to Project
+        </a>
+        <h2>Optical Performance</h2>
+    </nav>
+
+    <section class="hero-section">
+        <div class="hero-content">
+            <h1 class="hero-title">Optical Performance</h1>
+            <p class="hero-subtitle">Comprehensive Optical Characterization & Analysis</p>
+            <p class="hero-description">
+                Comprehensive optical characterization including insertion loss, extinction ratio, 
+                wavelength response, and polarization sensitivity analysis for silicon photonics transceivers.
+            </p>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="section-title">Interactive Performance Parameters</h2>
+        <p class="section-description">
+            Adjust optical parameters to analyze different performance characteristics and operating conditions.
+        </p>
+
+        <div class="demo-container">
+            <div class="controls">
+                <div class="control-group">
+                    <label class="control-label">Wavelength (nm)</label>
+                    <input type="range" class="control-slider" id="wavelength" min="1500" max="1600" value="1550" step="5">
+                    <div class="control-value" id="wavelengthValue">1550 nm</div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Temperature (°C)</label>
+                    <input type="range" class="control-slider" id="temperature" min="0" max="100" value="25" step="5">
+                    <div class="control-value" id="temperatureValue">25°C</div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Polarization Angle (°)</label>
+                    <input type="range" class="control-slider" id="polarization" min="0" max="180" value="0" step="10">
+                    <div class="control-value" id="polarizationValue">0°</div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Input Power (dBm)</label>
+                    <input type="range" class="control-slider" id="inputPower" min="-10" max="10" value="0" step="1">
+                    <div class="control-value" id="inputPowerValue">0 dBm</div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Modulation Frequency (GHz)</label>
+                    <input type="range" class="control-slider" id="modFreq" min="1" max="50" value="25" step="1">
+                    <div class="control-value" id="modFreqValue">25 GHz</div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Device Type</label>
+                    <select id="deviceType" style="width: 100%; padding: 0.5rem; background: rgba(255,255,255,0.1); border: 1px solid rgba(102,126,234,0.3); border-radius: 5px; color: #e0e0e0;">
+                        <option value="modulator">Modulator</option>
+                        <option value="detector">Detector</option>
+                        <option value="waveguide">Waveguide</option>
+                        <option value="coupler">Coupler</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin: 1rem 0;">
+                <button class="control-button" onclick="updateAnalysis()">Update Analysis</button>
+                <button class="control-button" onclick="resetParameters()">Reset Parameters</button>
+                <button class="control-button" onclick="runMeasurement()">Run Measurement</button>
+            </div>
+        </div>
+
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-value" id="insertionLossValue">2.1</div>
+                <div class="metric-label">Insertion Loss (dB)</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="extinctionRatioValue">25.3</div>
+                <div class="metric-label">Extinction Ratio (dB)</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="responsivityValue">0.8</div>
+                <div class="metric-label">Responsivity (A/W)</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="bandwidthValue">35.2</div>
+                <div class="metric-label">3-dB Bandwidth (GHz)</div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <div id="wavelengthResponse" style="height: 400px;"></div>
+        </div>
+
+        <div class="chart-container">
+            <div id="polarizationResponse" style="height: 400px;"></div>
+        </div>
+
+        <div class="chart-container">
+            <div id="temperatureResponse" style="height: 400px;"></div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="section-title">Analysis Features</h2>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-eye"></i></div>
+                <h3 class="feature-title">Insertion Loss Analysis</h3>
+                <p class="feature-description">
+                    Comprehensive insertion loss measurement and analysis including wavelength dependence, 
+                    temperature effects, and polarization sensitivity.
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-chart-line"></i></div>
+                <h3 class="feature-title">Extinction Ratio</h3>
+                <p class="feature-description">
+                    High-precision extinction ratio measurement for modulator characterization 
+                    with excellent linearity and dynamic range analysis.
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-broadcast-tower"></i></div>
+                <h3 class="feature-title">Responsivity Analysis</h3>
+                <p class="feature-description">
+                    Photodetector responsivity characterization including wavelength response, 
+                    temperature dependence, and linearity measurements.
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-tachometer-alt"></i></div>
+                <h3 class="feature-title">Bandwidth Analysis</h3>
+                <p class="feature-description">
+                    High-frequency response analysis including 3-dB bandwidth measurement, 
+                    group delay analysis, and dispersion characterization.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="section-title">Optical Models</h2>
+        <p class="section-description">
+            The optical performance analysis uses comprehensive models for accurate characterization:
+        </p>
+        
+        <div class="demo-container">
+            <h3 class="section-subtitle">Insertion Loss Model</h3>
+            <p>The insertion loss is calculated as:</p>
+            <p style="text-align: center; font-size: 1.2rem; margin: 1rem 0;">
+                $$IL = 10\log_{10}\left(\frac{P_{out}}{P_{in}}\right) = \alpha L + L_{coupling} + L_{bend}$$
+            </p>
+            <p>Where α is the propagation loss, L is the device length, and L<sub>coupling</sub> and L<sub>bend</sub> are coupling and bend losses.</p>
+            
+            <h3 class="section-subtitle">Extinction Ratio</h3>
+            <p>The extinction ratio is given by:</p>
+            <p style="text-align: center; font-size: 1.2rem; margin: 1rem 0;">
+                $$ER = 10\log_{10}\left(\frac{P_{max}}{P_{min}}\right) = 10\log_{10}\left(\frac{1 + \cos(\pi V/V_\pi)}{1 - \cos(\pi V/V_\pi)}\right)$$
+            </p>
+            <p>Where V is the applied voltage and V<sub>π</sub> is the half-wave voltage.</p>
+            
+            <h3 class="section-subtitle">Responsivity</h3>
+            <p>The responsivity is calculated as:</p>
+            <p style="text-align: center; font-size: 1.2rem; margin: 1rem 0;">
+                $$R = \frac{\eta q \lambda}{hc} = \frac{\eta \lambda}{1.24}$$
+            </p>
+            <p>Where η is the quantum efficiency, q is the electron charge, λ is the wavelength, h is Planck's constant, and c is the speed of light.</p>
+        </div>
+    </section>
+
+    <script>
+        // Initialize analysis
+        function initializeAnalysis() {
+            updateAnalysis();
+        }
+
+        // Update analysis based on current parameters
+        function updateAnalysis() {
+            const wavelength = parseFloat(document.getElementById('wavelength').value);
+            const temperature = parseFloat(document.getElementById('temperature').value);
+            const polarization = parseFloat(document.getElementById('polarization').value);
+            const inputPower = parseFloat(document.getElementById('inputPower').value);
+            const modFreq = parseFloat(document.getElementById('modFreq').value);
+            const deviceType = document.getElementById('deviceType').value;
+
+            // Calculate performance metrics
+            const insertionLoss = calculateInsertionLoss(wavelength, temperature, deviceType);
+            const extinctionRatio = calculateExtinctionRatio(wavelength, temperature);
+            const responsivity = calculateResponsivity(wavelength, temperature);
+            const bandwidth = calculateBandwidth(modFreq, deviceType);
+
+            // Update metric displays
+            document.getElementById('insertionLossValue').textContent = insertionLoss.toFixed(1);
+            document.getElementById('extinctionRatioValue').textContent = extinctionRatio.toFixed(1);
+            document.getElementById('responsivityValue').textContent = responsivity.toFixed(1);
+            document.getElementById('bandwidthValue').textContent = bandwidth.toFixed(1);
+
+            // Update charts
+            updateWavelengthResponse(wavelength, deviceType);
+            updatePolarizationResponse(polarization, deviceType);
+            updateTemperatureResponse(temperature, deviceType);
+        }
+
+        // Calculate insertion loss
+        function calculateInsertionLoss(wavelength, temperature, deviceType) {
+            let baseLoss = 1.0;
+            if (deviceType === 'modulator') baseLoss = 2.0;
+            if (deviceType === 'detector') baseLoss = 1.5;
+            if (deviceType === 'waveguide') baseLoss = 0.5;
+            if (deviceType === 'coupler') baseLoss = 3.0;
+            
+            const wavelengthLoss = 0.1 * Math.abs(wavelength - 1550) / 50;
+            const tempLoss = 0.01 * Math.abs(temperature - 25) / 10;
+            return baseLoss + wavelengthLoss + tempLoss;
+        }
+
+        // Calculate extinction ratio
+        function calculateExtinctionRatio(wavelength, temperature) {
+            const baseER = 25;
+            const wavelengthEffect = 2 * Math.sin((wavelength - 1550) * Math.PI / 100);
+            const tempEffect = 0.1 * (temperature - 25);
+            return baseER + wavelengthEffect - tempEffect;
+        }
+
+        // Calculate responsivity
+        function calculateResponsivity(wavelength, temperature) {
+            const baseResponsivity = 0.8;
+            const wavelengthEffect = 0.1 * Math.sin((wavelength - 1550) * Math.PI / 100);
+            const tempEffect = 0.01 * (temperature - 25);
+            return baseResponsivity + wavelengthEffect - tempEffect;
+        }
+
+        // Calculate bandwidth
+        function calculateBandwidth(modFreq, deviceType) {
+            let baseBandwidth = 30;
+            if (deviceType === 'modulator') baseBandwidth = 35;
+            if (deviceType === 'detector') baseBandwidth = 25;
+            if (deviceType === 'waveguide') baseBandwidth = 40;
+            if (deviceType === 'coupler') baseBandwidth = 20;
+            
+            return baseBandwidth + 0.2 * modFreq;
+        }
+
+        // Update wavelength response chart
+        function updateWavelengthResponse(wavelength, deviceType) {
+            const wavelengths = Array.from({length: 101}, (_, i) => 1500 + i);
+            const responses = wavelengths.map(wl => {
+                const baseResponse = 1.0;
+                const wavelengthEffect = 0.1 * Math.sin((wl - 1550) * Math.PI / 100);
+                const deviceEffect = deviceType === 'modulator' ? 0.05 * Math.cos((wl - 1550) * Math.PI / 50) : 0;
+                return baseResponse + wavelengthEffect + deviceEffect;
+            });
+
+            const trace = {
+                x: wavelengths,
+                y: responses,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Wavelength Response',
+                line: { color: '#667eea', width: 3 }
+            };
+
+            const layout = {
+                title: 'Wavelength Response',
+                xaxis: { title: 'Wavelength (nm)', gridcolor: 'rgba(102, 126, 234, 0.2)' },
+                yaxis: { title: 'Normalized Response', gridcolor: 'rgba(102, 126, 234, 0.2)' },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                showlegend: false
+            };
+
+            Plotly.newPlot('wavelengthResponse', [trace], layout);
+        }
+
+        // Update polarization response chart
+        function updatePolarizationResponse(polarization, deviceType) {
+            const angles = Array.from({length: 181}, (_, i) => i);
+            const responses = angles.map(angle => {
+                const baseResponse = 1.0;
+                const polarizationEffect = 0.1 * Math.cos(2 * angle * Math.PI / 180);
+                const deviceEffect = deviceType === 'modulator' ? 0.05 * Math.sin(4 * angle * Math.PI / 180) : 0;
+                return baseResponse + polarizationEffect + deviceEffect;
+            });
+
+            const trace = {
+                x: angles,
+                y: responses,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Polarization Response',
+                line: { color: '#c084fc', width: 3 }
+            };
+
+            const layout = {
+                title: 'Polarization Response',
+                xaxis: { title: 'Polarization Angle (degrees)', gridcolor: 'rgba(102, 126, 234, 0.2)' },
+                yaxis: { title: 'Normalized Response', gridcolor: 'rgba(102, 126, 234, 0.2)' },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                showlegend: false
+            };
+
+            Plotly.newPlot('polarizationResponse', [trace], layout);
+        }
+
+        // Update temperature response chart
+        function updateTemperatureResponse(temperature, deviceType) {
+            const temperatures = Array.from({length: 101}, (_, i) => i);
+            const responses = temperatures.map(temp => {
+                const baseResponse = 1.0;
+                const tempEffect = 0.001 * (temp - 25);
+                const deviceEffect = deviceType === 'modulator' ? 0.0005 * Math.pow(temp - 25, 2) : 0;
+                return baseResponse + tempEffect + deviceEffect;
+            });
+
+            const trace = {
+                x: temperatures,
+                y: responses,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Temperature Response',
+                line: { color: '#10b981', width: 3 }
+            };
+
+            const layout = {
+                title: 'Temperature Response',
+                xaxis: { title: 'Temperature (°C)', gridcolor: 'rgba(102, 126, 234, 0.2)' },
+                yaxis: { title: 'Normalized Response', gridcolor: 'rgba(102, 126, 234, 0.2)' },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                showlegend: false
+            };
+
+            Plotly.newPlot('temperatureResponse', [trace], layout);
+        }
+
+        // Run measurement
+        function runMeasurement() {
+            const button = event.target;
+            const originalText = button.textContent;
+            button.textContent = 'Measuring...';
+            button.disabled = true;
+            
+            // Store original values
+            const originalWavelength = parseFloat(document.getElementById('wavelength').value);
+            const originalTemperature = parseFloat(document.getElementById('temperature').value);
+            const originalPower = parseFloat(document.getElementById('inputPower').value);
+            
+            // Simulate measurement progress with real data changes
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += 20;
+                button.textContent = `Measuring... ${progress}%`;
+                
+                // Update parameters during simulation to show progress
+                const wavelength = originalWavelength + (Math.random() - 0.5) * 5;
+                const temperature = originalTemperature + (Math.random() - 0.5) * 1;
+                const power = originalPower + (Math.random() - 0.5) * 0.5;
+                
+                document.getElementById('wavelength').value = wavelength.toFixed(1);
+                document.getElementById('temperature').value = temperature.toFixed(1);
+                document.getElementById('inputPower').value = power.toFixed(2);
+                
+                // Update charts in real-time
+                updateAnalysis();
+                
+                if (progress >= 100) {
+                    clearInterval(progressInterval);
+                    button.textContent = originalText;
+                    button.disabled = false;
+                    
+                    // Restore original values
+                    document.getElementById('wavelength').value = originalWavelength;
+                    document.getElementById('temperature').value = originalTemperature;
+                    document.getElementById('inputPower').value = originalPower;
+                    updateAnalysis();
+                    
+                    // Show completion message
+                    const completionMsg = document.createElement('div');
+                    completionMsg.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #10b981; color: white; padding: 1rem; border-radius: 8px; z-index: 10000;';
+                    completionMsg.textContent = 'Optical Measurement Complete!';
+                    document.body.appendChild(completionMsg);
+                    setTimeout(() => completionMsg.remove(), 3000);
+                }
+            }, 200);
+        }
+
+        // Reset parameters to default values
+        function resetParameters() {
+            document.getElementById('wavelength').value = 1550;
+            document.getElementById('temperature').value = 25;
+            document.getElementById('polarization').value = 0;
+            document.getElementById('inputPower').value = 0;
+            document.getElementById('modFreq').value = 25;
+            document.getElementById('deviceType').value = 'modulator';
+            
+            updateSliderValues();
+            updateAnalysis();
+        }
+
+        // Update slider value displays
+        function updateSliderValues() {
+            document.getElementById('wavelengthValue').textContent = document.getElementById('wavelength').value + ' nm';
+            document.getElementById('temperatureValue').textContent = document.getElementById('temperature').value + '°C';
+            document.getElementById('polarizationValue').textContent = document.getElementById('polarization').value + '°';
+            document.getElementById('inputPowerValue').textContent = document.getElementById('inputPower').value + ' dBm';
+            document.getElementById('modFreqValue').textContent = document.getElementById('modFreq').value + ' GHz';
+        }
+
+        // Add event listeners to sliders
+        document.addEventListener('DOMContentLoaded', function() {
+            const sliders = document.querySelectorAll('.control-slider');
+            sliders.forEach(slider => {
+                slider.addEventListener('input', updateSliderValues);
+                slider.addEventListener('input', updateAnalysis);
+            });
+            
+            const select = document.getElementById('deviceType');
+            select.addEventListener('change', updateAnalysis);
+            
+            initializeAnalysis();
+        });
+    </script>
+</body>
+</html>

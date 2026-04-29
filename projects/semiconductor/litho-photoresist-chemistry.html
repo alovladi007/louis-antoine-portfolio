@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photoresist Chemistry Simulation - Advanced Lithography</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.26.0/plotly.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #e0e0e0; line-height: 1.6; }
+        .navbar { background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(10px); padding: 1rem 2rem; border-bottom: 1px solid rgba(102, 126, 234, 0.3); position: sticky; top: 0; z-index: 100; }
+        .nav-content { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        .nav-title { color: #667eea; font-size: 1.3rem; font-weight: 600; }
+        .nav-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; transition: all 0.3s ease; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .header { text-align: center; margin-bottom: 3rem; }
+        .header h1 { font-size: 2.8rem; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 1rem; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 3rem; }
+        .stat-card { background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.3); padding: 1.5rem; border-radius: 12px; text-align: center; }
+        .stat-value { font-size: 2rem; font-weight: bold; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .stat-label { color: #a0a0a0; font-size: 0.9rem; margin-top: 0.5rem; }
+        .controls-section { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; margin-bottom: 2rem; }
+        .section-title { color: #667eea; font-size: 1.5rem; margin-bottom: 1.5rem; }
+        .controls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+        .control-group { background: rgba(102, 126, 234, 0.05); padding: 1.2rem; border-radius: 10px; }
+        .control-group label { display: block; color: #667eea; margin-bottom: 0.5rem; font-weight: 500; }
+        .control-group input[type="range"] { width: 100%; height: 6px; border-radius: 3px; background: rgba(102, 126, 234, 0.3); outline: none; }
+        .control-group input[type="range"]::-webkit-slider-thumb { appearance: none; width: 18px; height: 18px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #f39c12); cursor: pointer; }
+        .control-value { display: flex; justify-content: space-between; margin-top: 0.5rem; color: #a0a0a0; font-size: 0.9rem; }
+        .button-group { display: flex; gap: 1rem; margin-bottom: 2rem; }
+        .btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; padding: 0.8rem 2rem; border-radius: 8px; cursor: pointer; font-size: 1rem; }
+        .btn-secondary { background: linear-gradient(135deg, #f39c12, #e67e22); }
+        .visualization { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; margin-bottom: 2rem; }
+        .chart-container { background: rgba(0, 0, 0, 0.3); border-radius: 10px; padding: 1rem; margin-top: 1rem; }
+        #three-container { width: 100%; height: 500px; background: rgba(0, 0, 0, 0.3); border-radius: 10px; margin-top: 1rem; }
+        .equation-box { background: rgba(102, 126, 234, 0.1); border-left: 4px solid #667eea; padding: 1.5rem; border-radius: 8px; margin: 2rem 0; }
+        .equation { color: #e0e0e0; font-family: 'Courier New', monospace; font-size: 1.1rem; line-height: 2; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-content">
+            <div class="nav-title"><i class="fas fa-flask"></i> Photoresist Chemistry</div>
+            <a href="lithography-research.html" class="nav-btn"><i class="fas fa-arrow-left"></i> Back</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="header">
+            <h1>Photoresist Chemistry Simulation</h1>
+            <p>PAG diffusion, acid catalysis, dissolution kinetics with Dill ABC parameters</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card"><div class="stat-value" id="pag-stat">85%</div><div class="stat-label">PAG Conversion</div></div>
+            <div class="stat-card"><div class="stat-value" id="diff-stat">15 nm</div><div class="stat-label">Acid Diffusion</div></div>
+            <div class="stat-card"><div class="stat-value" id="dill-a-stat">0.65</div><div class="stat-label">Dill A Parameter</div></div>
+            <div class="stat-card"><div class="stat-value" id="rate-stat">120 nm/s</div><div class="stat-label">Dev Rate</div></div>
+        </div>
+
+        <div class="controls-section">
+            <h2 class="section-title">Chemistry Parameters</h2>
+            <div class="controls-grid">
+                <div class="control-group"><label>PAG Concentration (wt%)</label><input type="range" id="pag" min="1" max="10" step="0.5" value="5"><div class="control-value"><span>1%</span><span id="pag-val">5%</span></div></div>
+                <div class="control-group"><label>Diffusion Length (nm)</label><input type="range" id="diff" min="5" max="30" step="1" value="15"><div class="control-value"><span>5</span><span id="diff-val">15</span></div></div>
+                <div class="control-group"><label>PEB Temperature (°C)</label><input type="range" id="peb" min="90" max="140" step="5" value="115"><div class="control-value"><span>90</span><span id="peb-val">115</span></div></div>
+                <div class="control-group"><label>PEB Time (s)</label><input type="range" id="peb-time" min="30" max="120" step="10" value="60"><div class="control-value"><span>30</span><span id="peb-time-val">60</span></div></div>
+                <div class="control-group"><label>Dill A (absorption)</label><input type="range" id="dill-a" min="0.3" max="1.0" step="0.05" value="0.65"><div class="control-value"><span>0.3</span><span id="dill-a-val">0.65</span></div></div>
+                <div class="control-group"><label>Dill B (bleaching)</label><input type="range" id="dill-b" min="0.01" max="0.1" step="0.01" value="0.05"><div class="control-value"><span>0.01</span><span id="dill-b-val">0.05</span></div></div>
+                <div class="control-group"><label>Dill C (rate)</label><input type="range" id="dill-c" min="0.001" max="0.02" step="0.001" value="0.008"><div class="control-value"><span>0.001</span><span id="dill-c-val">0.008</span></div></div>
+                <div class="control-group"><label>Developer Conc (N)</label><input type="range" id="dev" min="0.15" max="0.35" step="0.05" value="0.26"><div class="control-value"><span>0.15</span><span id="dev-val">0.26</span></div></div>
+            </div>
+        </div>
+
+        <div class="button-group">
+            <button class="btn" id="play-btn"><i class="fas fa-play"></i> Play</button>
+            <button class="btn" id="pause-btn"><i class="fas fa-pause"></i> Pause</button>
+            <button class="btn btn-secondary" id="reset-btn"><i class="fas fa-redo"></i> Reset</button>
+        </div>
+
+        <div class="equation-box">
+            <div class="equation">
+Dill Model: I(z,t) = I₀·exp(-∫A(z',t)dz')
+<br>A(z,t) = A + B·M(z,t), dM/dt = -C·I(z,t)·M(z,t)
+<br>Acid Diffusion: ∂[H⁺]/∂t = D·∇²[H⁺] + k·[PAG*]
+<br>Development Rate: R = Rmax·(1-exp(-k·[H⁺]))
+            </div>
+        </div>
+
+        <div class="visualization"><h2 class="section-title">Resist Profile Evolution</h2><div class="chart-container"><div id="profile-chart"></div></div></div>
+        <div class="visualization"><h2 class="section-title">PAG Conversion vs Depth</h2><div class="chart-container"><div id="pag-chart"></div></div></div>
+        <div class="visualization"><h2 class="section-title">Acid Concentration</h2><div class="chart-container"><div id="acid-chart"></div></div></div>
+        <div class="visualization"><h2 class="section-title">Development Rate</h2><div class="chart-container"><div id="dev-rate-chart"></div></div></div>
+        <div class="visualization"><h2 class="section-title">Absorption vs Time</h2><div class="chart-container"><div id="absorption-chart"></div></div></div>
+        <div class="visualization"><h2 class="section-title">3D Resist Surface</h2><div id="three-container"></div></div>
+        <div class="visualization"><h2 class="section-title">Contrast Curve</h2><div class="chart-container"><div id="contrast-chart"></div></div></div>
+    </div>
+
+    <script>
+        let params = { pag: 5, diff: 15, peb: 115, pebTime: 60, dillA: 0.65, dillB: 0.05, dillC: 0.008, dev: 0.26 };
+        let isPlaying = true, time = 0;
+
+        ['pag','diff','peb','peb-time','dill-a','dill-b','dill-c','dev'].forEach(id => {
+            document.getElementById(id).addEventListener('input', e => {
+                params[id.replace('-','')] = parseFloat(e.target.value);
+                document.getElementById(id+'-val').textContent = e.target.value + (id==='pag'?'%':id.includes('dill')?'':'');
+                if(id==='dill-a') document.getElementById('dill-a-stat').textContent = e.target.value;
+                update();
+            });
+        });
+
+        document.getElementById('play-btn').onclick = () => isPlaying = true;
+        document.getElementById('pause-btn').onclick = () => isPlaying = false;
+        document.getElementById('reset-btn').onclick = () => { params = { pag: 5, diff: 15, peb: 115, pebTime: 60, dillA: 0.65, dillB: 0.05, dillC: 0.008, dev: 0.26 }; update(); };
+
+        function update() {
+            const z = Array.from({length: 100}, (_,i) => i*2);
+
+            const profile = z.map(d => Math.max(0, 200 - d - 20*Math.sin(d/20)));
+            Plotly.newPlot('profile-chart', [{x:z, y:profile, type:'scatter', mode:'lines', line:{color:'#667eea',width:3}, fill:'tozeroy', fillcolor:'rgba(102,126,234,0.3)'}],
+                {paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{color:'#e0e0e0'}, xaxis:{title:'Depth (nm)',gridcolor:'rgba(102,126,234,0.2)'}, yaxis:{title:'Thickness (nm)',gridcolor:'rgba(102,126,234,0.2)'}, margin:{t:20,r:20,b:50,l:60}}, {responsive:true});
+
+            const pag = z.map(d => params.pag * Math.exp(-params.dillA * d / 100));
+            const pagConv = (1 - Math.min(...pag)/params.pag)*100;
+            document.getElementById('pag-stat').textContent = pagConv.toFixed(0) + '%';
+            Plotly.newPlot('pag-chart', [{x:z, y:pag, type:'scatter', mode:'lines', line:{color:'#f39c12',width:3}}],
+                {paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{color:'#e0e0e0'}, xaxis:{title:'Depth (nm)',gridcolor:'rgba(102,126,234,0.2)'}, yaxis:{title:'PAG (wt%)',gridcolor:'rgba(102,126,234,0.2)'}, margin:{t:20,r:20,b:50,l:60}}, {responsive:true});
+
+            const acid = z.map(d => (params.pag - pag[z.indexOf(d)]) * Math.exp(-Math.pow(d-50,2)/(2*params.diff*params.diff)));
+            document.getElementById('diff-stat').textContent = params.diff + ' nm';
+            Plotly.newPlot('acid-chart', [{x:z, y:acid, type:'scatter', mode:'lines', line:{color:'#764ba2',width:3}, fill:'tozeroy', fillcolor:'rgba(118,75,162,0.3)'}],
+                {paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{color:'#e0e0e0'}, xaxis:{title:'Depth (nm)',gridcolor:'rgba(102,126,234,0.2)'}, yaxis:{title:'[H⁺] (a.u.)',gridcolor:'rgba(102,126,234,0.2)'}, margin:{t:20,r:20,b:50,l:60}}, {responsive:true});
+
+            const devRate = acid.map(a => 200 * params.dev * (1 - Math.exp(-5*a)));
+            const avgRate = devRate.reduce((a,b)=>a+b,0)/devRate.length;
+            document.getElementById('rate-stat').textContent = avgRate.toFixed(0) + ' nm/s';
+            Plotly.newPlot('dev-rate-chart', [{x:z, y:devRate, type:'scatter', mode:'lines', line:{color:'#667eea',width:3}}],
+                {paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{color:'#e0e0e0'}, xaxis:{title:'Depth (nm)',gridcolor:'rgba(102,126,234,0.2)'}, yaxis:{title:'Rate (nm/s)',gridcolor:'rgba(102,126,234,0.2)'}, margin:{t:20,r:20,b:50,l:60}}, {responsive:true});
+
+            const t = Array.from({length:50}, (_,i)=>i*2);
+            const abs = t.map(ti => params.dillA * Math.exp(-params.dillB * ti));
+            Plotly.newPlot('absorption-chart', [{x:t, y:abs, type:'scatter', mode:'lines', line:{color:'#f39c12',width:3}}],
+                {paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{color:'#e0e0e0'}, xaxis:{title:'Time (s)',gridcolor:'rgba(102,126,234,0.2)'}, yaxis:{title:'Absorption',gridcolor:'rgba(102,126,234,0.2)'}, margin:{t:20,r:20,b:50,l:60}}, {responsive:true});
+
+            const dose = Array.from({length:40}, (_,i)=>5+i*2);
+            const thickness = dose.map(d => 100 * Math.exp(-d/30));
+            Plotly.newPlot('contrast-chart', [{x:dose, y:thickness, type:'scatter', mode:'lines+markers', line:{color:'#764ba2',width:3}, marker:{size:6}}],
+                {paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{color:'#e0e0e0'}, xaxis:{title:'Dose (mJ/cm²)',gridcolor:'rgba(102,126,234,0.2)'}, yaxis:{title:'Thickness (nm)',gridcolor:'rgba(102,126,234,0.2)'}, margin:{t:20,r:20,b:50,l:60}}, {responsive:true});
+        }
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+        const container = document.getElementById('three-container');
+        renderer.setSize(container.offsetWidth, 500);
+        renderer.setClearColor(0x0a0a0a, 1);
+        container.appendChild(renderer.domElement);
+
+        const geo = new THREE.PlaneGeometry(15, 15, 40, 40);
+        const mat = new THREE.MeshPhongMaterial({color: 0x667eea, side: THREE.DoubleSide});
+        const mesh = new THREE.Mesh(geo, mat);
+        scene.add(mesh);
+        scene.add(new THREE.PointLight(0xffffff, 1, 100).add(new THREE.Object3D().position.set(10,10,10)));
+        scene.add(new THREE.AmbientLight(0x404040));
+        camera.position.set(12, 8, 12);
+        camera.lookAt(0,0,0);
+
+        function anim() {
+            requestAnimationFrame(anim);
+            if(isPlaying) { mesh.rotation.z += 0.005; time += 0.02; }
+            const v = geo.attributes.position;
+            for(let i=0; i<v.count; i++) {
+                const x = v.getX(i), y = v.getY(i);
+                v.setZ(i, 2*Math.sin(x/2 + time)*Math.cos(y/2));
+            }
+            v.needsUpdate = true;
+            geo.computeVertexNormals();
+            renderer.render(scene, camera);
+        }
+        anim();
+        update();
+        window.addEventListener('resize', () => { camera.aspect = container.offsetWidth/500; camera.updateProjectionMatrix(); renderer.setSize(container.offsetWidth, 500); });
+    </script>
+</body>
+</html>

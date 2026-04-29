@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Process Window Analyzer - Bossung Curves & Focus-Exposure Matrix</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(0, 212, 255, 0.05));
+            border-radius: 20px;
+        }
+        
+        h1 {
+            font-size: 3rem;
+            background: linear-gradient(135deg, #00d4ff, #0099ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+        
+        .pw-layout {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 2rem;
+        }
+        
+        .control-panel {
+            background: rgba(20, 20, 20, 0.8);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 15px;
+            padding: 1.5rem;
+            height: fit-content;
+        }
+        
+        .viz-area {
+            display: grid;
+            gap: 2rem;
+        }
+        
+        .viz-panel {
+            background: rgba(20, 20, 20, 0.8);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 15px;
+            padding: 1.5rem;
+        }
+        
+        .panel-title {
+            color: #00d4ff;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .control-group label {
+            display: block;
+            color: #00d4ff;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .control-group input[type="range"],
+        .control-group select {
+            width: 100%;
+            padding: 0.5rem;
+            background: #222;
+            border: 1px solid #444;
+            color: #e0e0e0;
+            border-radius: 5px;
+        }
+        
+        .value-display {
+            text-align: right;
+            color: #888;
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #00d4ff, #0099ff);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            width: 100%;
+            margin-top: 0.5rem;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 212, 255, 0.3);
+        }
+        
+        .metrics-bar {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .metric {
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 1.5rem;
+            color: #00d4ff;
+            font-weight: bold;
+        }
+        
+        .metric-label {
+            color: #888;
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+        }
+        
+        .spec-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        
+        .spec-inputs input {
+            padding: 0.3rem;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Process Window Analyzer</h1>
+            <p>Bossung Curves • Focus-Exposure Matrix • Overlapping Process Window • DOF/EL Analysis</p>
+        </div>
+        
+        <div class="metrics-bar">
+            <div class="metric">
+                <div class="metric-value" id="dof">±0</div>
+                <div class="metric-label">DOF (nm)</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="el">0</div>
+                <div class="metric-label">EL (%)</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="pw-area">0</div>
+                <div class="metric-label">PW Area</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="best-dose">100</div>
+                <div class="metric-label">Best Dose (%)</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="best-focus">0</div>
+                <div class="metric-label">Best Focus (nm)</div>
+            </div>
+        </div>
+        
+        <div class="pw-layout">
+            <div class="control-panel">
+                <h3 class="panel-title">
+                    <i class="fas fa-sliders-h"></i> Process Parameters
+                </h3>
+                
+                <div class="control-group">
+                    <label>Feature Type</label>
+                    <select id="feature-type" onchange="updateProcessWindow()">
+                        <option value="lines">Lines/Spaces</option>
+                        <option value="contacts">Contact Holes</option>
+                        <option value="isolated">Isolated Lines</option>
+                        <option value="dense">Dense Lines</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>Target CD (nm)</label>
+                    <input type="range" id="cd-target" min="20" max="100" value="45" oninput="updateValue('cd'); updateProcessWindow()">
+                    <div class="value-display" id="cd-val">45 nm</div>
+                    <div class="spec-inputs">
+                        <input type="number" id="cd-min" placeholder="Min CD" value="40">
+                        <input type="number" id="cd-max" placeholder="Max CD" value="50">
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Wavelength (nm)</label>
+                    <select id="wavelength" onchange="updateProcessWindow()">
+                        <option value="193">193nm (ArF)</option>
+                        <option value="248">248nm (KrF)</option>
+                        <option value="365">365nm (i-line)</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>NA: <span id="na-val">1.35</span></label>
+                    <input type="range" id="na" min="0.5" max="1.5" step="0.05" value="1.35" oninput="updateValue('na'); updateProcessWindow()">
+                </div>
+                
+                <div class="control-group">
+                    <label>Sigma: <span id="sigma-val">0.85</span></label>
+                    <input type="range" id="sigma" min="0.1" max="1.2" step="0.05" value="0.85" oninput="updateValue('sigma'); updateProcessWindow()">
+                </div>
+                
+                <div class="control-group">
+                    <label>Focus Range (nm)</label>
+                    <input type="range" id="focus-range" min="100" max="500" step="50" value="200" oninput="updateValue('focus-range'); updateProcessWindow()">
+                    <div class="value-display" id="focus-range-val">±200 nm</div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Dose Range (%)</label>
+                    <input type="range" id="dose-range" min="10" max="30" value="20" oninput="updateValue('dose-range'); updateProcessWindow()">
+                    <div class="value-display" id="dose-range-val">±20%</div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Analysis Points</label>
+                    <select id="points" onchange="updateProcessWindow()">
+                        <option value="11">11×11</option>
+                        <option value="21" selected>21×21</option>
+                        <option value="31">31×31</option>
+                    </select>
+                </div>
+                
+                <button class="btn" onclick="calculateProcessWindow()">
+                    <i class="fas fa-calculator"></i> Calculate PW
+                </button>
+                
+                <button class="btn" onclick="optimizeWindow()">
+                    <i class="fas fa-magic"></i> Optimize
+                </button>
+                
+                <button class="btn" onclick="exportPW()">
+                    <i class="fas fa-download"></i> Export Data
+                </button>
+            </div>
+            
+            <div class="viz-area">
+                <div class="viz-panel">
+                    <h3 class="panel-title">
+                        <i class="fas fa-chart-line"></i> Bossung Curves
+                    </h3>
+                    <div id="bossung-plot"></div>
+                </div>
+                
+                <div class="viz-panel">
+                    <h3 class="panel-title">
+                        <i class="fas fa-th"></i> Focus-Exposure Matrix
+                    </h3>
+                    <div id="fem-plot"></div>
+                </div>
+                
+                <div class="viz-panel">
+                    <h3 class="panel-title">
+                        <i class="fas fa-layer-group"></i> Overlapping Process Window
+                    </h3>
+                    <div id="opw-plot"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let processWindowData = null;
+        
+        function updateValue(param) {
+            const element = document.getElementById(param);
+            const value = element.value;
+            
+            if (param === 'cd') {
+                document.getElementById('cd-val').textContent = value + ' nm';
+            } else if (param === 'na' || param === 'sigma') {
+                document.getElementById(param + '-val').textContent = value;
+            } else if (param === 'focus-range') {
+                document.getElementById('focus-range-val').textContent = '±' + value + ' nm';
+            } else if (param === 'dose-range') {
+                document.getElementById('dose-range-val').textContent = '±' + value + '%';
+            }
+        }
+        
+        function calculateProcessWindow() {
+            const cdTarget = parseFloat(document.getElementById('cd-target').value);
+            const cdMin = parseFloat(document.getElementById('cd-min').value);
+            const cdMax = parseFloat(document.getElementById('cd-max').value);
+            const wavelength = parseFloat(document.getElementById('wavelength').value);
+            const NA = parseFloat(document.getElementById('na').value);
+            const sigma = parseFloat(document.getElementById('sigma').value);
+            const focusRange = parseFloat(document.getElementById('focus-range').value);
+            const doseRange = parseFloat(document.getElementById('dose-range').value);
+            const points = parseInt(document.getElementById('points').value);
+            
+            // Generate Bossung curves
+            const bossungData = generateBossungCurves(cdTarget, wavelength, NA, focusRange, doseRange, points);
+            
+            // Generate FEM
+            const femData = generateFEM(cdTarget, cdMin, cdMax, wavelength, NA, focusRange, doseRange, points);
+            
+            // Calculate overlapping PW
+            const opwData = calculateOPW(femData, cdMin, cdMax);
+            
+            // Update metrics
+            updateMetrics(opwData);
+            
+            // Plot results
+            plotBossung(bossungData);
+            plotFEM(femData);
+            plotOPW(opwData);
+            
+            processWindowData = {
+                bossung: bossungData,
+                fem: femData,
+                opw: opwData
+            };
+        }
+        
+        function generateBossungCurves(cdTarget, wavelength, NA, focusRange, doseRange, points) {
+            const curves = [];
+            const doses = [90, 95, 100, 105, 110];  // % of nominal
+            
+            for (let dose of doses) {
+                const focusValues = [];
+                const cdValues = [];
+                
+                for (let f = -focusRange; f <= focusRange; f += focusRange / 10) {
+                    focusValues.push(f);
+                    
+                    // CD model (simplified)
+                    const k1 = 0.35;
+                    const baseCD = k1 * wavelength / NA;
+                    const doseEffect = (dose - 100) * 0.005 * cdTarget;
+                    const focusEffect = Math.sqrt(1 + (f / (wavelength / (NA * NA))) ** 2);
+                    
+                    const cd = baseCD * focusEffect + doseEffect + cdTarget - baseCD;
+                    cdValues.push(cd);
+                }
+                
+                curves.push({
+                    dose: dose,
+                    focus: focusValues,
+                    cd: cdValues
+                });
+            }
+            
+            return curves;
+        }
+        
+        function generateFEM(cdTarget, cdMin, cdMax, wavelength, NA, focusRange, doseRange, points) {
+            const focusValues = [];
+            const doseValues = [];
+            const cdMatrix = [];
+            
+            // Generate focus and dose arrays
+            for (let i = 0; i < points; i++) {
+                focusValues.push(-focusRange + (2 * focusRange * i) / (points - 1));
+                doseValues.push(100 - doseRange + (2 * doseRange * i) / (points - 1));
+            }
+            
+            // Calculate CD at each focus/dose combination
+            for (let i = 0; i < points; i++) {
+                const row = [];
+                for (let j = 0; j < points; j++) {
+                    const focus = focusValues[i];
+                    const dose = doseValues[j];
+                    
+                    // CD model
+                    const k1 = 0.35;
+                    const baseCD = k1 * wavelength / NA;
+                    const doseEffect = (dose - 100) * 0.005 * cdTarget;
+                    const focusEffect = Math.sqrt(1 + (focus / (wavelength / (NA * NA))) ** 2);
+                    
+                    const cd = baseCD * focusEffect + doseEffect + cdTarget - baseCD;
+                    row.push(cd);
+                }
+                cdMatrix.push(row);
+            }
+            
+            return {
+                focus: focusValues,
+                dose: doseValues,
+                cd: cdMatrix
+            };
+        }
+        
+        function calculateOPW(femData, cdMin, cdMax) {
+            const pwMatrix = [];
+            
+            // Determine if each point is within spec
+            for (let i = 0; i < femData.cd.length; i++) {
+                const row = [];
+                for (let j = 0; j < femData.cd[0].length; j++) {
+                    const cd = femData.cd[i][j];
+                    row.push(cd >= cdMin && cd <= cdMax ? 1 : 0);
+                }
+                pwMatrix.push(row);
+            }
+            
+            // Find largest rectangular process window
+            let maxArea = 0;
+            let bestDose = 100;
+            let bestFocus = 0;
+            let dof = 0;
+            let el = 0;
+            
+            // Find center of PW
+            for (let i = 0; i < pwMatrix.length; i++) {
+                for (let j = 0; j < pwMatrix[0].length; j++) {
+                    if (pwMatrix[i][j] === 1) {
+                        // Check size of window around this point
+                        let focusExtent = 0;
+                        let doseExtent = 0;
+                        
+                        // Check focus extent
+                        for (let fi = i; fi >= 0 && pwMatrix[fi][j] === 1; fi--) focusExtent++;
+                        for (let fi = i + 1; fi < pwMatrix.length && pwMatrix[fi][j] === 1; fi++) focusExtent++;
+                        
+                        // Check dose extent
+                        for (let di = j; di >= 0 && pwMatrix[i][di] === 1; di--) doseExtent++;
+                        for (let di = j + 1; di < pwMatrix[0].length && pwMatrix[i][di] === 1; di++) doseExtent++;
+                        
+                        const area = focusExtent * doseExtent;
+                        if (area > maxArea) {
+                            maxArea = area;
+                            bestFocus = femData.focus[i];
+                            bestDose = femData.dose[j];
+                            dof = focusExtent * (femData.focus[1] - femData.focus[0]);
+                            el = doseExtent * (femData.dose[1] - femData.dose[0]);
+                        }
+                    }
+                }
+            }
+            
+            return {
+                matrix: pwMatrix,
+                focus: femData.focus,
+                dose: femData.dose,
+                area: maxArea,
+                bestDose: bestDose,
+                bestFocus: bestFocus,
+                dof: dof,
+                el: el
+            };
+        }
+        
+        function updateMetrics(opwData) {
+            document.getElementById('dof').textContent = '±' + Math.abs(opwData.dof / 2).toFixed(0);
+            document.getElementById('el').textContent = opwData.el.toFixed(1);
+            document.getElementById('pw-area').textContent = opwData.area;
+            document.getElementById('best-dose').textContent = opwData.bestDose.toFixed(1);
+            document.getElementById('best-focus').textContent = opwData.bestFocus.toFixed(0);
+        }
+        
+        function plotBossung(data) {
+            const traces = data.map(curve => ({
+                x: curve.focus,
+                y: curve.cd,
+                type: 'scatter',
+                mode: 'lines',
+                name: curve.dose + '% Dose',
+                line: { width: 2 }
+            }));
+            
+            // Add spec limits
+            const cdMin = parseFloat(document.getElementById('cd-min').value);
+            const cdMax = parseFloat(document.getElementById('cd-max').value);
+            const focusRange = parseFloat(document.getElementById('focus-range').value);
+            
+            traces.push({
+                x: [-focusRange, focusRange],
+                y: [cdMin, cdMin],
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Min CD',
+                line: { color: '#ef4444', width: 2, dash: 'dash' }
+            });
+            
+            traces.push({
+                x: [-focusRange, focusRange],
+                y: [cdMax, cdMax],
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Max CD',
+                line: { color: '#ef4444', width: 2, dash: 'dash' }
+            });
+            
+            Plotly.newPlot('bossung-plot', traces, {
+                paper_bgcolor: '#111',
+                plot_bgcolor: '#111',
+                font: { color: '#e0e0e0' },
+                xaxis: { title: 'Focus (nm)' },
+                yaxis: { title: 'CD (nm)' },
+                showlegend: true
+            });
+        }
+        
+        function plotFEM(data) {
+            const cdMin = parseFloat(document.getElementById('cd-min').value);
+            const cdMax = parseFloat(document.getElementById('cd-max').value);
+            
+            Plotly.newPlot('fem-plot', [{
+                z: data.cd,
+                x: data.dose,
+                y: data.focus,
+                type: 'contour',
+                colorscale: 'Viridis',
+                contours: {
+                    start: cdMin - 5,
+                    end: cdMax + 5,
+                    size: 1,
+                    showlines: true,
+                    coloring: 'heatmap'
+                },
+                colorbar: { title: 'CD (nm)' }
+            }], {
+                paper_bgcolor: '#111',
+                plot_bgcolor: '#111',
+                font: { color: '#e0e0e0' },
+                xaxis: { title: 'Dose (%)' },
+                yaxis: { title: 'Focus (nm)' }
+            });
+        }
+        
+        function plotOPW(data) {
+            Plotly.newPlot('opw-plot', [{
+                z: data.matrix,
+                x: data.dose,
+                y: data.focus,
+                type: 'heatmap',
+                colorscale: [[0, '#ef4444'], [1, '#10b981']],
+                showscale: false
+            }], {
+                paper_bgcolor: '#111',
+                plot_bgcolor: '#111',
+                font: { color: '#e0e0e0' },
+                xaxis: { title: 'Dose (%)' },
+                yaxis: { title: 'Focus (nm)' },
+                annotations: [{
+                    x: data.bestDose,
+                    y: data.bestFocus,
+                    text: 'Optimal',
+                    showarrow: true,
+                    arrowhead: 2,
+                    arrowcolor: '#00d4ff',
+                    font: { color: '#00d4ff' }
+                }]
+            });
+        }
+        
+        function optimizeWindow() {
+            // Auto-optimize parameters
+            document.getElementById('sigma').value = 0.85;
+            document.getElementById('na').value = 1.35;
+            updateValue('sigma');
+            updateValue('na');
+            calculateProcessWindow();
+        }
+        
+        function exportPW() {
+            if (!processWindowData) {
+                alert('Calculate process window first');
+                return;
+            }
+            
+            const data = {
+                parameters: {
+                    cdTarget: document.getElementById('cd-target').value,
+                    cdMin: document.getElementById('cd-min').value,
+                    cdMax: document.getElementById('cd-max').value,
+                    wavelength: document.getElementById('wavelength').value,
+                    NA: document.getElementById('na').value,
+                    sigma: document.getElementById('sigma').value
+                },
+                results: {
+                    dof: document.getElementById('dof').textContent,
+                    el: document.getElementById('el').textContent,
+                    pwArea: document.getElementById('pw-area').textContent,
+                    bestDose: document.getElementById('best-dose').textContent,
+                    bestFocus: document.getElementById('best-focus').textContent
+                },
+                data: processWindowData
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'process_window.json';
+            a.click();
+        }
+        
+        function updateProcessWindow() {
+            // Placeholder for real-time updates
+        }
+        
+        // Initialize
+        window.onload = function() {
+            calculateProcessWindow();
+        };
+    </script>
+</body>
+</html>

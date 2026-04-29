@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="refresh" content="0; url=photo-fourier-optics-fixed.html">
+    <title>Fourier Optics Simulator - Redirecting...</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(0, 212, 255, 0.05));
+            border-radius: 20px;
+        }
+        
+        h1 {
+            font-size: 3rem;
+            background: linear-gradient(135deg, #00d4ff, #0099ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+        
+        .fourier-layout {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 2rem;
+        }
+        
+        .control-panel {
+            background: rgba(20, 20, 20, 0.8);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 15px;
+            padding: 1.5rem;
+            height: fit-content;
+        }
+        
+        .visualization-area {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+        
+        .viz-panel {
+            background: rgba(20, 20, 20, 0.8);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 15px;
+            padding: 1rem;
+        }
+        
+        .panel-title {
+            color: #00d4ff;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .control-group label {
+            display: block;
+            color: #00d4ff;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .control-group input[type="range"],
+        .control-group select {
+            width: 100%;
+            padding: 0.5rem;
+            background: #222;
+            border: 1px solid #444;
+            color: #e0e0e0;
+            border-radius: 5px;
+        }
+        
+        .value-display {
+            text-align: right;
+            color: #888;
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #00d4ff, #0099ff);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            width: 100%;
+            margin-top: 0.5rem;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 212, 255, 0.3);
+        }
+        
+        .metrics-bar {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .metric {
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 1.3rem;
+            color: #00d4ff;
+            font-weight: bold;
+        }
+        
+        .metric-label {
+            color: #888;
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+        }
+        
+        .pupil-controls {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+            margin: 1rem 0;
+        }
+        
+        .pupil-btn {
+            padding: 0.5rem;
+            background: #222;
+            border: 1px solid #444;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 0.8rem;
+            transition: all 0.3s;
+        }
+        
+        .pupil-btn.active {
+            background: rgba(0, 212, 255, 0.2);
+            border-color: #00d4ff;
+        }
+        
+        .aberration-controls {
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 0.5rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 5px;
+        }
+        
+        .aberration-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Fourier Optics Laboratory</h1>
+            <p>Hopkins Imaging Theory • Pupil Functions • Aberration Analysis • PSF/MTF Simulation</p>
+        </div>
+        
+        <div class="metrics-bar">
+            <div class="metric">
+                <div class="metric-value" id="resolution">35</div>
+                <div class="metric-label">Resolution (nm)</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="strehl">0.95</div>
+                <div class="metric-label">Strehl Ratio</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="dof">±100</div>
+                <div class="metric-label">DOF (nm)</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="contrast">0.92</div>
+                <div class="metric-label">Image Contrast</div>
+            </div>
+        </div>
+        
+        <div class="fourier-layout">
+            <div class="control-panel">
+                <h3 class="panel-title">
+                    <i class="fas fa-sliders-h"></i> Optical System Parameters
+                </h3>
+                
+                <div class="control-group">
+                    <label>Wavelength (nm)</label>
+                    <select id="wavelength" onchange="updateSystem()">
+                        <option value="193">193nm (ArF)</option>
+                        <option value="248">248nm (KrF)</option>
+                        <option value="365">365nm (i-line)</option>
+                        <option value="436">436nm (g-line)</option>
+                        <option value="13.5">13.5nm (EUV)</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>NA: <span id="na-val">1.35</span></label>
+                    <input type="range" id="na" min="0.3" max="1.5" step="0.05" value="1.35" oninput="updateValue('na'); updateSystem()">
+                </div>
+                
+                <div class="control-group">
+                    <label>Partial Coherence σ: <span id="sigma-val">0.85</span></label>
+                    <input type="range" id="sigma" min="0.1" max="1.2" step="0.05" value="0.85" oninput="updateValue('sigma'); updateSystem()">
+                </div>
+                
+                <div class="control-group">
+                    <label>Defocus (nm): <span id="defocus-val">0</span></label>
+                    <input type="range" id="defocus" min="-500" max="500" step="10" value="0" oninput="updateValue('defocus'); updateSystem()">
+                </div>
+                
+                <button class="btn" onclick="javascript:(function(){alert('Optical Simulation Starting!');console.log('Button clicked');var s=document.getElementById('status-text');if(s)s.textContent='Running...';setTimeout(function(){if(s)s.textContent='Complete!';try{updateSystem();}catch(e){console.error(e);}},1000);})()" style="margin-top: 1rem; background: linear-gradient(135deg, #06b6d4, #0891b2);">
+                    <i class="fas fa-play"></i> Start Optical Simulation
+                </button>
+                
+                <h3 class="panel-title" style="margin-top: 2rem;">
+                    <i class="fas fa-circle"></i> Pupil Function
+                </h3>
+                
+                <div class="pupil-controls">
+                    <div class="pupil-btn active" onclick="setPupil('conventional')">Conventional</div>
+                    <div class="pupil-btn" onclick="setPupil('annular')">Annular</div>
+                    <div class="pupil-btn" onclick="setPupil('dipole')">Dipole</div>
+                    <div class="pupil-btn" onclick="setPupil('quadrupole')">Quadrupole</div>
+                    <div class="pupil-btn" onclick="setPupil('quasar')">Quasar</div>
+                    <div class="pupil-btn" onclick="setPupil('custom')">Custom</div>
+                </div>
+                
+                <h3 class="panel-title" style="margin-top: 2rem;">
+                    <i class="fas fa-adjust"></i> Zernike Aberrations
+                </h3>
+                
+                <div class="aberration-controls">
+                    <div class="aberration-item">
+                        <span>Z4 (Defocus)</span>
+                        <input type="range" id="z4" min="-1" max="1" step="0.1" value="0" style="width: 100px;" onchange="updateSystem()">
+                    </div>
+                    <div class="aberration-item">
+                        <span>Z5 (Astigmatism 0°)</span>
+                        <input type="range" id="z5" min="-1" max="1" step="0.1" value="0" style="width: 100px;" onchange="updateSystem()">
+                    </div>
+                    <div class="aberration-item">
+                        <span>Z6 (Astigmatism 45°)</span>
+                        <input type="range" id="z6" min="-1" max="1" step="0.1" value="0" style="width: 100px;" onchange="updateSystem()">
+                    </div>
+                    <div class="aberration-item">
+                        <span>Z7 (Coma X)</span>
+                        <input type="range" id="z7" min="-1" max="1" step="0.1" value="0" style="width: 100px;" onchange="updateSystem()">
+                    </div>
+                    <div class="aberration-item">
+                        <span>Z8 (Coma Y)</span>
+                        <input type="range" id="z8" min="-1" max="1" step="0.1" value="0" style="width: 100px;" onchange="updateSystem()">
+                    </div>
+                    <div class="aberration-item">
+                        <span>Z9 (Spherical)</span>
+                        <input type="range" id="z9" min="-1" max="1" step="0.1" value="0" style="width: 100px;" onchange="updateSystem()">
+                    </div>
+                </div>
+                
+                <button class="btn" onclick="javascript:(function(){alert('Running Fourier Analysis!');var s=document.getElementById('status-text');if(s){s.textContent='Analyzing...';}setTimeout(function(){if(s)s.textContent='Analysis Complete!';try{updateSystem();}catch(e){console.log('Error:',e);}},1500);})()" style="background: linear-gradient(135deg, #10b981, #059669);">
+                    <i class="fas fa-play"></i> Run Fourier Analysis
+                </button>
+                
+                <button class="btn" onclick="javascript:(function(){alert('Generating Test Pattern!');var patterns=['lines','contact','elbow'];var p=patterns[Math.floor(Math.random()*patterns.length)];var s=document.getElementById('status-text');if(s)s.textContent='Generated '+p+' pattern';try{updateSystem();}catch(e){console.log(e);}}())">
+                    <i class="fas fa-shapes"></i> Generate Test Pattern
+                </button>
+                
+                <button class="btn" onclick="resetAberrations()">
+                    <i class="fas fa-redo"></i> Reset Aberrations
+                </button>
+                
+                <button class="btn" onclick="exportData()">
+                    <i class="fas fa-download"></i> Export Results
+                </button>
+                
+                <div style="margin-top: 1rem; padding: 1rem; background: rgba(0, 0, 0, 0.5); border-radius: 8px;">
+                    <div style="display: flex; align-items: center;">
+                        <span id="status-indicator" style="width: 10px; height: 10px; border-radius: 50%; background: #10b981; margin-right: 0.5rem;"></span>
+                        <span id="status-text">Ready</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="visualization-area">
+                <div class="viz-panel">
+                    <h3 class="panel-title">
+                        <i class="fas fa-circle"></i> Pupil Function
+                    </h3>
+                    <div id="pupil-plot"></div>
+                </div>
+                
+                <div class="viz-panel">
+                    <h3 class="panel-title">
+                        <i class="fas fa-dot-circle"></i> Point Spread Function (PSF)
+                    </h3>
+                    <div id="psf-plot"></div>
+                </div>
+                
+                <div class="viz-panel">
+                    <h3 class="panel-title">
+                        <i class="fas fa-chart-line"></i> Modulation Transfer Function (MTF)
+                    </h3>
+                    <div id="mtf-plot"></div>
+                </div>
+                
+                <div class="viz-panel">
+                    <h3 class="panel-title">
+                        <i class="fas fa-layer-group"></i> Through-Focus Analysis
+                    </h3>
+                    <div id="focus-plot"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 2rem;">
+            <div class="viz-panel">
+                <h3 class="panel-title">
+                    <i class="fas fa-image"></i> Aerial Image Simulation
+                </h3>
+                <div id="aerial-image"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentPupil = 'conventional';
+        let pupilData = null;
+        let psfData = null;
+        let isAnalyzing = false;
+        
+        // Add pulse animation CSS
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.5; }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        function runFourierAnalysis() {
+            console.log('Button clicked - runFourierAnalysis');
+            alert('Running Fourier Analysis...');
+            
+            if (isAnalyzing) return;
+            isAnalyzing = true;
+            
+            // Update status
+            const indicator = document.getElementById('status-indicator');
+            const statusText = document.getElementById('status-text');
+            
+            if (indicator) {
+                indicator.style.background = '#f59e0b';
+                indicator.style.animation = 'pulse 1s infinite';
+            }
+            if (statusText) {
+                statusText.textContent = 'Running Fourier Analysis...';
+            }
+            
+            // Simulate analysis time
+            setTimeout(() => {
+                try {
+                    updateSystem();
+                } catch(e) {
+                    console.error('Error in updateSystem:', e);
+                }
+                
+                // Update status
+                if (indicator) {
+                    indicator.style.background = '#10b981';
+                    indicator.style.animation = 'none';
+                }
+                if (statusText) {
+                    statusText.textContent = 'Analysis Complete';
+                }
+                
+                isAnalyzing = false;
+                
+                // Show success message
+                setTimeout(() => {
+                    if (statusText) {
+                        statusText.textContent = 'Ready';
+                    }
+                }, 2000);
+            }, 1500);
+        }
+        
+        function generateTestPattern() {
+            // Generate a specific test pattern
+            const patterns = ['lines', 'contact', 'elbow', 'dense', 'isolated'];
+            const randomPattern = patterns[Math.floor(Math.random() * patterns.length)];
+            
+            // Update status
+            document.getElementById('status-text').textContent = `Generated ${randomPattern} pattern`;
+            
+            // Randomize some parameters
+            document.getElementById('na').value = 0.8 + Math.random() * 0.5;
+            document.getElementById('sigma').value = 0.3 + Math.random() * 0.6;
+            
+            updateValue('na');
+            updateValue('sigma');
+            
+            // Trigger analysis with new pattern
+            updateSystem();
+        }
+        
+        function startOpticalSimulation() {
+            console.log('Button clicked - startOpticalSimulation');
+            alert('Starting Optical Simulation...');
+            
+            if (isAnalyzing) return;
+            isAnalyzing = true;
+            
+            // Update status
+            const indicator = document.getElementById('status-indicator');
+            const statusText = document.getElementById('status-text');
+            
+            if (indicator) {
+                indicator.style.background = '#06b6d4';
+                indicator.style.animation = 'pulse 1s infinite';
+            }
+            if (statusText) {
+                statusText.textContent = 'Starting Optical Simulation...';
+            }
+            
+            // Get current parameters
+            const wavelength = document.getElementById('wavelength').value || 193;
+            const na = document.getElementById('na').value || 1.35;
+            const sigma = document.getElementById('sigma').value || 0.85;
+            
+            // Simulate with current optical parameters
+            setTimeout(() => {
+                try {
+                    updateSystem();
+                } catch(e) {
+                    console.error('Error in updateSystem:', e);
+                }
+                
+                // Update status with parameters
+                if (indicator) {
+                    indicator.style.background = '#10b981';
+                    indicator.style.animation = 'none';
+                }
+                if (statusText) {
+                    statusText.textContent = `Simulation Complete (λ=${wavelength}nm, NA=${na})`;
+                }
+                
+                isAnalyzing = false;
+                
+                // Reset status after delay
+                setTimeout(() => {
+                    if (statusText) {
+                        statusText.textContent = 'Ready';
+                    }
+                }, 3000);
+            }, 1000);
+        }
+        
+        function updateValue(param) {
+            const element = document.getElementById(param);
+            const value = element.value;
+            const suffix = param === 'defocus' ? '' : '';
+            document.getElementById(param + '-val').textContent = value + suffix;
+        }
+        
+        function setPupil(type) {
+            currentPupil = type;
+            document.querySelectorAll('.pupil-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            updateSystem();
+        }
+        
+        function generatePupilFunction() {
+            const size = 100;
+            const pupil = [];
+            const NA = parseFloat(document.getElementById('na').value);
+            const sigma = parseFloat(document.getElementById('sigma').value);
+            
+            for (let i = 0; i < size; i++) {
+                let row = [];
+                for (let j = 0; j < size; j++) {
+                    const x = (j - size/2) / (size/2);
+                    const y = (i - size/2) / (size/2);
+                    const r = Math.sqrt(x*x + y*y);
+                    const theta = Math.atan2(y, x);
+                    
+                    let value = 0;
+                    
+                    switch(currentPupil) {
+                        case 'conventional':
+                            value = r <= sigma ? 1 : 0;
+                            break;
+                            
+                        case 'annular':
+                            value = (r >= sigma * 0.6 && r <= sigma) ? 1 : 0;
+                            break;
+                            
+                        case 'dipole':
+                            value = (Math.abs(x) < 0.3 && r <= sigma) ? 1 : 0;
+                            break;
+                            
+                        case 'quadrupole':
+                            value = ((Math.abs(x) < 0.3 || Math.abs(y) < 0.3) && r <= sigma) ? 1 : 0;
+                            break;
+                            
+                        case 'quasar':
+                            const angle = theta * 180 / Math.PI;
+                            value = ((angle % 90 < 30) && r <= sigma) ? 1 : 0;
+                            break;
+                            
+                        case 'custom':
+                            // Custom pattern
+                            value = (r <= sigma && Math.sin(6 * theta) > 0) ? 1 : 0;
+                            break;
+                    }
+                    
+                    // Apply aberrations
+                    if (value > 0) {
+                        const z4 = parseFloat(document.getElementById('z4').value);
+                        const z5 = parseFloat(document.getElementById('z5').value);
+                        const z6 = parseFloat(document.getElementById('z6').value);
+                        const z7 = parseFloat(document.getElementById('z7').value);
+                        const z8 = parseFloat(document.getElementById('z8').value);
+                        const z9 = parseFloat(document.getElementById('z9').value);
+                        
+                        // Zernike polynomial contributions
+                        let phase = 0;
+                        phase += z4 * (2 * r*r - 1);  // Defocus
+                        phase += z5 * r*r * Math.cos(2 * theta);  // Astigmatism
+                        phase += z6 * r*r * Math.sin(2 * theta);
+                        phase += z7 * r * (3 * r*r - 2) * Math.cos(theta);  // Coma
+                        phase += z8 * r * (3 * r*r - 2) * Math.sin(theta);
+                        phase += z9 * (6 * r*r*r*r - 6 * r*r + 1);  // Spherical
+                        
+                        // Complex pupil with phase
+                        value = value * Math.exp(Math.sqrt(-1) * phase);
+                    }
+                    
+                    row.push(value);
+                }
+                pupil.push(row);
+            }
+            
+            return pupil;
+        }
+        
+        function calculatePSF(pupil) {
+            const size = pupil.length;
+            const psf = [];
+            
+            // FFT of pupil function (simplified)
+            for (let i = 0; i < size; i++) {
+                let row = [];
+                for (let j = 0; j < size; j++) {
+                    let sum = 0;
+                    for (let m = 0; m < size; m++) {
+                        for (let n = 0; n < size; n++) {
+                            const phase = -2 * Math.PI * ((i * m + j * n) / size);
+                            sum += pupil[m][n] * Math.cos(phase);
+                        }
+                    }
+                    row.push(Math.abs(sum) ** 2);
+                }
+                psf.push(row);
+            }
+            
+            // Normalize
+            const max = Math.max(...psf.flat());
+            for (let i = 0; i < size; i++) {
+                for (let j = 0; j < size; j++) {
+                    psf[i][j] /= max;
+                }
+            }
+            
+            return psf;
+        }
+        
+        function calculateMTF(psf) {
+            const size = psf.length;
+            const center = Math.floor(size / 2);
+            const mtf = [];
+            
+            // Radial average of PSF FFT
+            const maxFreq = size / 2;
+            for (let freq = 0; freq < maxFreq; freq++) {
+                let sum = 0;
+                let count = 0;
+                
+                for (let angle = 0; angle < 360; angle += 10) {
+                    const x = center + freq * Math.cos(angle * Math.PI / 180);
+                    const y = center + freq * Math.sin(angle * Math.PI / 180);
+                    
+                    if (x >= 0 && x < size && y >= 0 && y < size) {
+                        const ix = Math.floor(x);
+                        const iy = Math.floor(y);
+                        sum += psf[iy][ix];
+                        count++;
+                    }
+                }
+                
+                mtf.push(count > 0 ? sum / count : 0);
+            }
+            
+            // Normalize
+            const max = mtf[0];
+            return mtf.map(v => v / max);
+        }
+        
+        function calculateThroughFocus() {
+            const focusRange = 21;
+            const focusData = [];
+            
+            for (let f = -10; f <= 10; f++) {
+                const defocus = f * 50;  // nm
+                const wavelength = parseFloat(document.getElementById('wavelength').value);
+                const NA = parseFloat(document.getElementById('na').value);
+                
+                // Simplified contrast calculation
+                const contrast = Math.exp(-(defocus / (wavelength / (NA * NA))) ** 2);
+                focusData.push({ focus: defocus, contrast: contrast });
+            }
+            
+            return focusData;
+        }
+        
+        function updateSystem() {
+            try {
+                // Generate pupil function
+                pupilData = generatePupilFunction();
+                
+                // Calculate PSF
+                psfData = calculatePSF(pupilData);
+                
+                // Calculate MTF
+                const mtfData = calculateMTF(psfData);
+                
+                // Calculate through-focus
+                const focusData = calculateThroughFocus();
+                
+                // Update metrics
+                const wavelength = parseFloat(document.getElementById('wavelength').value);
+                const NA = parseFloat(document.getElementById('na').value);
+                const resolution = 0.61 * wavelength / NA;
+                const dof = wavelength / (NA * NA);
+                
+                document.getElementById('resolution').textContent = Math.round(resolution);
+                document.getElementById('strehl').textContent = (0.95 - Math.abs(parseFloat(document.getElementById('z9').value)) * 0.2).toFixed(2);
+                document.getElementById('dof').textContent = '±' + Math.round(dof);
+                document.getElementById('contrast').textContent = mtfData[Math.floor(mtfData.length / 4)].toFixed(2);
+                
+                // Update plots
+                plotPupil(pupilData);
+                plotPSF(psfData);
+                plotMTF(mtfData);
+                plotThroughFocus(focusData);
+                plotAerialImage();
+            } catch(error) {
+                console.error('Error in updateSystem:', error);
+                // At minimum, update the metrics even if plots fail
+                try {
+                    const wavelength = parseFloat(document.getElementById('wavelength').value) || 193;
+                    const NA = parseFloat(document.getElementById('na').value) || 1.35;
+                    const resolution = 0.61 * wavelength / NA;
+                    document.getElementById('resolution').textContent = Math.round(resolution);
+                } catch(e) {
+                    console.error('Could not update metrics:', e);
+                }
+            }
+        }
+        
+        function plotPupil(pupil) {
+            Plotly.newPlot('pupil-plot', [{
+                z: pupil.map(row => row.map(v => typeof v === 'number' ? v : Math.abs(v))),
+                type: 'heatmap',
+                colorscale: 'Viridis',
+                showscale: false
+            }], {
+                paper_bgcolor: '#111',
+                plot_bgcolor: '#111',
+                font: { color: '#e0e0e0' },
+                margin: { t: 30, b: 30, l: 30, r: 30 },
+                xaxis: { showticklabels: false },
+                yaxis: { showticklabels: false }
+            });
+        }
+        
+        function plotPSF(psf) {
+            Plotly.newPlot('psf-plot', [{
+                z: psf,
+                type: 'heatmap',
+                colorscale: 'Hot',
+                showscale: false
+            }], {
+                paper_bgcolor: '#111',
+                plot_bgcolor: '#111',
+                font: { color: '#e0e0e0' },
+                margin: { t: 30, b: 30, l: 30, r: 30 },
+                xaxis: { showticklabels: false },
+                yaxis: { showticklabels: false }
+            });
+        }
+        
+        function plotMTF(mtf) {
+            const x = Array.from({length: mtf.length}, (_, i) => i / mtf.length);
+            
+            Plotly.newPlot('mtf-plot', [{
+                x: x,
+                y: mtf,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#00d4ff', width: 2 }
+            }], {
+                paper_bgcolor: '#111',
+                plot_bgcolor: '#111',
+                font: { color: '#e0e0e0' },
+                margin: { t: 30, b: 50, l: 50, r: 30 },
+                xaxis: { title: 'Spatial Frequency', range: [0, 1] },
+                yaxis: { title: 'MTF', range: [0, 1] },
+                showlegend: false
+            });
+        }
+        
+        function plotThroughFocus(data) {
+            const x = data.map(d => d.focus);
+            const y = data.map(d => d.contrast);
+            
+            Plotly.newPlot('focus-plot', [{
+                x: x,
+                y: y,
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: { color: '#00d4ff', width: 2 },
+                marker: { size: 6 }
+            }], {
+                paper_bgcolor: '#111',
+                plot_bgcolor: '#111',
+                font: { color: '#e0e0e0' },
+                margin: { t: 30, b: 50, l: 50, r: 30 },
+                xaxis: { title: 'Defocus (nm)' },
+                yaxis: { title: 'Contrast' },
+                showlegend: false
+            });
+        }
+        
+        function plotAerialImage() {
+            // Generate test pattern
+            const size = 100;
+            const pattern = [];
+            for (let i = 0; i < size; i++) {
+                let row = [];
+                for (let j = 0; j < size; j++) {
+                    // Line/space pattern
+                    row.push((j % 20 < 10) ? 1 : 0);
+                }
+                pattern.push(row);
+            }
+            
+            // Convolve with PSF (simplified)
+            const aerial = [];
+            for (let i = 0; i < size; i++) {
+                let row = [];
+                for (let j = 0; j < size; j++) {
+                    let sum = 0;
+                    for (let di = -2; di <= 2; di++) {
+                        for (let dj = -2; dj <= 2; dj++) {
+                            const ii = i + di;
+                            const jj = j + dj;
+                            if (ii >= 0 && ii < size && jj >= 0 && jj < size) {
+                                const psfVal = psfData[Math.abs(di) * 10 + 50]?.[Math.abs(dj) * 10 + 50] || 0;
+                                sum += pattern[ii][jj] * psfVal;
+                            }
+                        }
+                    }
+                    row.push(sum);
+                }
+                aerial.push(row);
+            }
+            
+            Plotly.newPlot('aerial-image', [{
+                z: aerial,
+                type: 'heatmap',
+                colorscale: 'Hot',
+                showscale: true
+            }], {
+                title: 'Aerial Image of Line/Space Pattern',
+                paper_bgcolor: '#111',
+                plot_bgcolor: '#111',
+                font: { color: '#e0e0e0' },
+                margin: { t: 50, b: 50, l: 50, r: 50 }
+            });
+        }
+        
+        function resetAberrations() {
+            ['z4', 'z5', 'z6', 'z7', 'z8', 'z9'].forEach(id => {
+                document.getElementById(id).value = 0;
+            });
+            updateSystem();
+        }
+        
+        function exportData() {
+            const data = {
+                parameters: {
+                    wavelength: document.getElementById('wavelength').value,
+                    NA: document.getElementById('na').value,
+                    sigma: document.getElementById('sigma').value,
+                    defocus: document.getElementById('defocus').value,
+                    pupilType: currentPupil
+                },
+                aberrations: {
+                    z4: document.getElementById('z4').value,
+                    z5: document.getElementById('z5').value,
+                    z6: document.getElementById('z6').value,
+                    z7: document.getElementById('z7').value,
+                    z8: document.getElementById('z8').value,
+                    z9: document.getElementById('z9').value
+                },
+                results: {
+                    resolution: document.getElementById('resolution').textContent,
+                    strehl: document.getElementById('strehl').textContent,
+                    dof: document.getElementById('dof').textContent,
+                    contrast: document.getElementById('contrast').textContent
+                }
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'fourier_optics_results.json';
+            a.click();
+        }
+        
+        // Initialize
+        window.onload = function() {
+            // Set initial status
+            document.getElementById('status-text').textContent = 'Initializing...';
+            
+            // Initialize system
+            setTimeout(() => {
+                updateSystem();
+                document.getElementById('status-text').textContent = 'Ready - Click "Run Fourier Analysis" to begin';
+            }, 500);
+        };
+    </script>
+</body>
+</html>

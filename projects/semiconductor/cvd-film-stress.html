@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CVD Film Stress Modeling - CVD/PVD Research</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333; line-height: 1.6;
+        }
+        .navbar {
+            background: rgba(255, 255, 255, 0.95); padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100;
+        }
+        .navbar a { color: #764ba2; text-decoration: none; font-weight: 600; transition: color 0.3s; }
+        .navbar a:hover { color: #f39c12; }
+        .container { max-width: 1400px; margin: 2rem auto; padding: 0 2rem; }
+        .header { background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); margin-bottom: 2rem; }
+        .header h1 { color: #764ba2; margin-bottom: 0.5rem; }
+        .header p { color: #666; font-size: 1.1rem; }
+        .controls-panel { background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); margin-bottom: 2rem; }
+        .control-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem; }
+        .control-item { display: flex; flex-direction: column; }
+        .control-item label { color: #764ba2; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem; }
+        .control-item input[type="range"] { width: 100%; height: 6px; border-radius: 3px; background: linear-gradient(to right, #667eea, #764ba2); outline: none; -webkit-appearance: none; }
+        .control-item input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #f39c12; cursor: pointer; }
+        .control-item input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #f39c12; cursor: pointer; border: none; }
+        .control-item .value-display { color: #f39c12; font-weight: bold; margin-top: 0.25rem; }
+        .button-group { display: flex; gap: 1rem; flex-wrap: wrap; }
+        .btn { padding: 0.75rem 2rem; border: none; border-radius: 5px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s; text-transform: uppercase; letter-spacing: 1px; }
+        .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .btn-secondary { background: #f39c12; color: white; }
+        .btn-secondary:hover { background: #e67e22; transform: translateY(-2px); }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .stat-card { background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); border-left: 4px solid #667eea; }
+        .stat-card h3 { font-size: 0.9rem; color: #666; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 1px; }
+        .stat-card .value { font-size: 1.8rem; font-weight: bold; color: #764ba2; }
+        .stat-card .unit { font-size: 0.9rem; color: #999; margin-left: 0.25rem; }
+        .visualization-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 2rem; margin-bottom: 2rem; }
+        .viz-panel { background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+        .viz-panel h2 { color: #764ba2; margin-bottom: 1rem; font-size: 1.3rem; }
+        #threejs-container { width: 100%; height: 500px; border-radius: 10px; overflow: hidden; background: #000; }
+        .theory-section { background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); margin-bottom: 2rem; }
+        .theory-section h2 { color: #764ba2; margin-bottom: 1rem; }
+        .theory-section h3 { color: #f39c12; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+        .theory-section p { margin-bottom: 1rem; line-height: 1.8; }
+        .equation { background: #f8f9fa; padding: 1.2rem; border-radius: 5px; margin: 1rem 0; font-family: 'Courier New', monospace; border-left: 4px solid #f39c12; line-height: 1.8; }
+        .chart-container { width: 100%; height: 400px; margin-top: 1rem; }
+        @media (max-width: 768px) { .container { padding: 0 1rem; } .visualization-grid { grid-template-columns: 1fr; } .control-group { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <nav class="navbar"><a href="cvd-pvd-complete-project.html">&larr; Back to CVD/PVD Project</a></nav>
+
+    <div class="container">
+        <div class="header">
+            <h1>CVD Film Stress Modeling</h1>
+            <p>Intrinsic and thermal stress: Stoney equation, stress gradients, wafer bowing, and stress relief mechanisms</p>
+        </div>
+        <div class="controls-panel">
+            <div class="button-group">
+                <button class="btn btn-primary" id="playPauseBtn">Pause</button>
+                <button class="btn btn-secondary" id="resetBtn">Reset</button>
+            </div>
+            <div class="control-group" style="margin-top: 1.5rem;">
+                <div class="control-item"><label for="param1">Parameter 1</label><input type="range" id="param1" min="1" max="100" value="50" step="1" oninput="updateStats(); updateCharts();"><span class="value-display" id="param1Value">50</span></div>
+                <div class="control-item"><label for="param2">Parameter 2</label><input type="range" id="param2" min="1" max="100" value="50" step="1" oninput="updateStats(); updateCharts();"><span class="value-display" id="param2Value">50</span></div>
+                <div class="control-item"><label for="param3">Parameter 3</label><input type="range" id="param3" min="1" max="100" value="50" step="1" oninput="updateStats(); updateCharts();"><span class="value-display" id="param3Value">50</span></div>
+                <div class="control-item"><label for="param4">Parameter 4</label><input type="range" id="param4" min="1" max="100" value="50" step="1" oninput="updateStats(); updateCharts();"><span class="value-display" id="param4Value">50</span></div>
+                <div class="control-item"><label for="param5">Parameter 5</label><input type="range" id="param5" min="1" max="100" value="50" step="1" oninput="updateStats(); updateCharts();"><span class="value-display" id="param5Value">50</span></div>
+                <div class="control-item"><label for="speed">Simulation Speed</label><input type="range" id="speed" min="0.5" max="5" value="1" step="0.5" oninput="updateStats(); updateCharts();"><span class="value-display" id="speedValue">1.0×</span></div>
+                <div class="control-item"><label for="param6">Parameter 6</label><input type="range" id="param6" min="1" max="100" value="50" step="1" oninput="updateStats(); updateCharts();"><span class="value-display" id="param6Value">50</span></div>
+                <div class="control-item"><label for="param7">Parameter 7</label><input type="range" id="param7" min="1" max="100" value="50" step="1" oninput="updateStats(); updateCharts();"><span class="value-display" id="param7Value">50</span></div>
+            </div>
+        </div>
+        <div class="stats-grid">
+            <div class="stat-card"><h3>Metric 1</h3><div class="value" id="metric1">0.0<span class="unit">units</span></div></div>
+            <div class="stat-card"><h3>Metric 2</h3><div class="value" id="metric2">0.0<span class="unit">units</span></div></div>
+            <div class="stat-card"><h3>Metric 3</h3><div class="value" id="metric3">0.0<span class="unit">units</span></div></div>
+            <div class="stat-card"><h3>Metric 4</h3><div class="value" id="metric4">0<span class="unit">units</span></div></div>
+            <div class="stat-card"><h3>Metric 5</h3><div class="value" id="metric5">0.0<span class="unit">%</span></div></div>
+            <div class="stat-card"><h3>Metric 6</h3><div class="value" id="metric6">0<span class="unit">units</span></div></div>
+        </div>
+
+        <div class="viz-panel" style="margin-bottom: 2rem;">
+            <h2>3D Interactive Simulation</h2>
+            <div id="threejs-container"></div>
+        </div>
+        <div class="theory-section">
+            <h2>CVD Film Stress Modeling - Comprehensive Theory</h2>
+            <p>This section provides an in-depth theoretical foundation for understanding CVD Film Stress Modeling. The physics and chemistry governing this process are complex, involving multiple length and time scales, from atomic-level surface reactions to macroscopic transport phenomena.</p>
+
+            <h3>Theoretical Aspect 1</h3>
+            <p>This section provides detailed theoretical background on aspect 1 of the CVD Film Stress Modeling process. The physics governing this phenomenon involves complex interactions between multiple parameters including temperature, pressure, molecular kinetics, and surface chemistry.</p>
+            <div class="equation">
+Fundamental equation 1:
+<br>Φ(x,t) = Φ₀ × exp(-E_a / kT) × f(P, T, x)
+<br>
+<br>Where:
+<br>• Φ: Process rate or flux density
+<br>• E_a: Activation energy (eV)
+<br>• k: Boltzmann constant = 8.617×10⁻⁵ eV/K
+<br>• T: Absolute temperature (K)
+<br>• P: Process pressure
+<br>• x: Spatial coordinate
+<br>
+<br>Arrhenius behavior:
+<br>ln(Φ) = ln(Φ₀) - E_a/(kT)
+<br>
+<br>Temperature dependence:
+<br>Φ(T+ΔT) / Φ(T) ≈ exp(E_a × ΔT / (kT²))
+<br>
+<br>Pressure scaling:
+<br>Φ ∝ P^n where n depends on regime
+<br>• n ≈ 0: surface reaction limited
+<br>• n ≈ 0.5-1: mass transport limited
+<br>• n > 1: pressure-enhanced mechanisms
+<br>
+<br>Spatial variations arise from:
+<br>1. Non-uniform temperature distribution
+<br>2. Gas-phase depletion effects
+<br>3. Surface site availability
+<br>4. Diffusion boundary layers
+<br>
+<br>Typical parameter ranges:
+<br>E_a = 0.5-3 eV (reaction limited)
+<br>E_a = 0.01-0.2 eV (diffusion limited)
+<br>Φ₀ = 10¹⁰-10¹⁶ molecules/cm²/s
+<br>
+<br>Optimization strategies:
+<br>• Increase T to enhance surface kinetics
+<br>• Adjust P to balance uniformity vs rate
+<br>• Use computational fluid dynamics (CFD)
+<br>• Monitor in-situ with optical diagnostics
+            </div>
+            <p>Additional considerations for this aspect include the role of intermediate species, surface site density, and competitive adsorption/desorption kinetics. The interplay between these factors determines the overall process efficiency and film quality.</p>
+
+            <h3>Theoretical Aspect 2</h3>
+            <p>This section provides detailed theoretical background on aspect 2 of the CVD Film Stress Modeling process. The physics governing this phenomenon involves complex interactions between multiple parameters including temperature, pressure, molecular kinetics, and surface chemistry.</p>
+            <div class="equation">
+Fundamental equation 2:
+<br>Φ(x,t) = Φ₀ × exp(-E_a / kT) × f(P, T, x)
+<br>
+<br>Where:
+<br>• Φ: Process rate or flux density
+<br>• E_a: Activation energy (eV)
+<br>• k: Boltzmann constant = 8.617×10⁻⁵ eV/K
+<br>• T: Absolute temperature (K)
+<br>• P: Process pressure
+<br>• x: Spatial coordinate
+<br>
+<br>Arrhenius behavior:
+<br>ln(Φ) = ln(Φ₀) - E_a/(kT)
+<br>
+<br>Temperature dependence:
+<br>Φ(T+ΔT) / Φ(T) ≈ exp(E_a × ΔT / (kT²))
+<br>
+<br>Pressure scaling:
+<br>Φ ∝ P^n where n depends on regime
+<br>• n ≈ 0: surface reaction limited
+<br>• n ≈ 0.5-1: mass transport limited
+<br>• n > 1: pressure-enhanced mechanisms
+<br>
+<br>Spatial variations arise from:
+<br>1. Non-uniform temperature distribution
+<br>2. Gas-phase depletion effects
+<br>3. Surface site availability
+<br>4. Diffusion boundary layers
+<br>
+<br>Typical parameter ranges:
+<br>E_a = 0.5-3 eV (reaction limited)
+<br>E_a = 0.01-0.2 eV (diffusion limited)
+<br>Φ₀ = 10¹⁰-10¹⁶ molecules/cm²/s
+<br>
+<br>Optimization strategies:
+<br>• Increase T to enhance surface kinetics
+<br>• Adjust P to balance uniformity vs rate
+<br>• Use computational fluid dynamics (CFD)
+<br>• Monitor in-situ with optical diagnostics
+            </div>
+            <p>Additional considerations for this aspect include the role of intermediate species, surface site density, and competitive adsorption/desorption kinetics. The interplay between these factors determines the overall process efficiency and film quality.</p>
+
+            <h3>Theoretical Aspect 3</h3>
+            <p>This section provides detailed theoretical background on aspect 3 of the CVD Film Stress Modeling process. The physics governing this phenomenon involves complex interactions between multiple parameters including temperature, pressure, molecular kinetics, and surface chemistry.</p>
+            <div class="equation">
+Fundamental equation 3:
+<br>Φ(x,t) = Φ₀ × exp(-E_a / kT) × f(P, T, x)
+<br>
+<br>Where:
+<br>• Φ: Process rate or flux density
+<br>• E_a: Activation energy (eV)
+<br>• k: Boltzmann constant = 8.617×10⁻⁵ eV/K
+<br>• T: Absolute temperature (K)
+<br>• P: Process pressure
+<br>• x: Spatial coordinate
+<br>
+<br>Arrhenius behavior:
+<br>ln(Φ) = ln(Φ₀) - E_a/(kT)
+<br>
+<br>Temperature dependence:
+<br>Φ(T+ΔT) / Φ(T) ≈ exp(E_a × ΔT / (kT²))
+<br>
+<br>Pressure scaling:
+<br>Φ ∝ P^n where n depends on regime
+<br>• n ≈ 0: surface reaction limited
+<br>• n ≈ 0.5-1: mass transport limited
+<br>• n > 1: pressure-enhanced mechanisms
+<br>
+<br>Spatial variations arise from:
+<br>1. Non-uniform temperature distribution
+<br>2. Gas-phase depletion effects
+<br>3. Surface site availability
+<br>4. Diffusion boundary layers
+<br>
+<br>Typical parameter ranges:
+<br>E_a = 0.5-3 eV (reaction limited)
+<br>E_a = 0.01-0.2 eV (diffusion limited)
+<br>Φ₀ = 10¹⁰-10¹⁶ molecules/cm²/s
+<br>
+<br>Optimization strategies:
+<br>• Increase T to enhance surface kinetics
+<br>• Adjust P to balance uniformity vs rate
+<br>• Use computational fluid dynamics (CFD)
+<br>• Monitor in-situ with optical diagnostics
+            </div>
+            <p>Additional considerations for this aspect include the role of intermediate species, surface site density, and competitive adsorption/desorption kinetics. The interplay between these factors determines the overall process efficiency and film quality.</p>
+
+            <h3>Theoretical Aspect 4</h3>
+            <p>This section provides detailed theoretical background on aspect 4 of the CVD Film Stress Modeling process. The physics governing this phenomenon involves complex interactions between multiple parameters including temperature, pressure, molecular kinetics, and surface chemistry.</p>
+            <div class="equation">
+Fundamental equation 4:
+<br>Φ(x,t) = Φ₀ × exp(-E_a / kT) × f(P, T, x)
+<br>
+<br>Where:
+<br>• Φ: Process rate or flux density
+<br>• E_a: Activation energy (eV)
+<br>• k: Boltzmann constant = 8.617×10⁻⁵ eV/K
+<br>• T: Absolute temperature (K)
+<br>• P: Process pressure
+<br>• x: Spatial coordinate
+<br>
+<br>Arrhenius behavior:
+<br>ln(Φ) = ln(Φ₀) - E_a/(kT)
+<br>
+<br>Temperature dependence:
+<br>Φ(T+ΔT) / Φ(T) ≈ exp(E_a × ΔT / (kT²))
+<br>
+<br>Pressure scaling:
+<br>Φ ∝ P^n where n depends on regime
+<br>• n ≈ 0: surface reaction limited
+<br>• n ≈ 0.5-1: mass transport limited
+<br>• n > 1: pressure-enhanced mechanisms
+<br>
+<br>Spatial variations arise from:
+<br>1. Non-uniform temperature distribution
+<br>2. Gas-phase depletion effects
+<br>3. Surface site availability
+<br>4. Diffusion boundary layers
+<br>
+<br>Typical parameter ranges:
+<br>E_a = 0.5-3 eV (reaction limited)
+<br>E_a = 0.01-0.2 eV (diffusion limited)
+<br>Φ₀ = 10¹⁰-10¹⁶ molecules/cm²/s
+<br>
+<br>Optimization strategies:
+<br>• Increase T to enhance surface kinetics
+<br>• Adjust P to balance uniformity vs rate
+<br>• Use computational fluid dynamics (CFD)
+<br>• Monitor in-situ with optical diagnostics
+            </div>
+            <p>Additional considerations for this aspect include the role of intermediate species, surface site density, and competitive adsorption/desorption kinetics. The interplay between these factors determines the overall process efficiency and film quality.</p>
+
+            <h3>Theoretical Aspect 5</h3>
+            <p>This section provides detailed theoretical background on aspect 5 of the CVD Film Stress Modeling process. The physics governing this phenomenon involves complex interactions between multiple parameters including temperature, pressure, molecular kinetics, and surface chemistry.</p>
+            <div class="equation">
+Fundamental equation 5:
+<br>Φ(x,t) = Φ₀ × exp(-E_a / kT) × f(P, T, x)
+<br>
+<br>Where:
+<br>• Φ: Process rate or flux density
+<br>• E_a: Activation energy (eV)
+<br>• k: Boltzmann constant = 8.617×10⁻⁵ eV/K
+<br>• T: Absolute temperature (K)
+<br>• P: Process pressure
+<br>• x: Spatial coordinate
+<br>
+<br>Arrhenius behavior:
+<br>ln(Φ) = ln(Φ₀) - E_a/(kT)
+<br>
+<br>Temperature dependence:
+<br>Φ(T+ΔT) / Φ(T) ≈ exp(E_a × ΔT / (kT²))
+<br>
+<br>Pressure scaling:
+<br>Φ ∝ P^n where n depends on regime
+<br>• n ≈ 0: surface reaction limited
+<br>• n ≈ 0.5-1: mass transport limited
+<br>• n > 1: pressure-enhanced mechanisms
+<br>
+<br>Spatial variations arise from:
+<br>1. Non-uniform temperature distribution
+<br>2. Gas-phase depletion effects
+<br>3. Surface site availability
+<br>4. Diffusion boundary layers
+<br>
+<br>Typical parameter ranges:
+<br>E_a = 0.5-3 eV (reaction limited)
+<br>E_a = 0.01-0.2 eV (diffusion limited)
+<br>Φ₀ = 10¹⁰-10¹⁶ molecules/cm²/s
+<br>
+<br>Optimization strategies:
+<br>• Increase T to enhance surface kinetics
+<br>• Adjust P to balance uniformity vs rate
+<br>• Use computational fluid dynamics (CFD)
+<br>• Monitor in-situ with optical diagnostics
+            </div>
+            <p>Additional considerations for this aspect include the role of intermediate species, surface site density, and competitive adsorption/desorption kinetics. The interplay between these factors determines the overall process efficiency and film quality.</p>
+
+            <h3>Theoretical Aspect 6</h3>
+            <p>This section provides detailed theoretical background on aspect 6 of the CVD Film Stress Modeling process. The physics governing this phenomenon involves complex interactions between multiple parameters including temperature, pressure, molecular kinetics, and surface chemistry.</p>
+            <div class="equation">
+Fundamental equation 6:
+<br>Φ(x,t) = Φ₀ × exp(-E_a / kT) × f(P, T, x)
+<br>
+<br>Where:
+<br>• Φ: Process rate or flux density
+<br>• E_a: Activation energy (eV)
+<br>• k: Boltzmann constant = 8.617×10⁻⁵ eV/K
+<br>• T: Absolute temperature (K)
+<br>• P: Process pressure
+<br>• x: Spatial coordinate
+<br>
+<br>Arrhenius behavior:
+<br>ln(Φ) = ln(Φ₀) - E_a/(kT)
+<br>
+<br>Temperature dependence:
+<br>Φ(T+ΔT) / Φ(T) ≈ exp(E_a × ΔT / (kT²))
+<br>
+<br>Pressure scaling:
+<br>Φ ∝ P^n where n depends on regime
+<br>• n ≈ 0: surface reaction limited
+<br>• n ≈ 0.5-1: mass transport limited
+<br>• n > 1: pressure-enhanced mechanisms
+<br>
+<br>Spatial variations arise from:
+<br>1. Non-uniform temperature distribution
+<br>2. Gas-phase depletion effects
+<br>3. Surface site availability
+<br>4. Diffusion boundary layers
+<br>
+<br>Typical parameter ranges:
+<br>E_a = 0.5-3 eV (reaction limited)
+<br>E_a = 0.01-0.2 eV (diffusion limited)
+<br>Φ₀ = 10¹⁰-10¹⁶ molecules/cm²/s
+<br>
+<br>Optimization strategies:
+<br>• Increase T to enhance surface kinetics
+<br>• Adjust P to balance uniformity vs rate
+<br>• Use computational fluid dynamics (CFD)
+<br>• Monitor in-situ with optical diagnostics
+            </div>
+            <p>Additional considerations for this aspect include the role of intermediate species, surface site density, and competitive adsorption/desorption kinetics. The interplay between these factors determines the overall process efficiency and film quality.</p>
+
+            <h3>Theoretical Aspect 7</h3>
+            <p>This section provides detailed theoretical background on aspect 7 of the CVD Film Stress Modeling process. The physics governing this phenomenon involves complex interactions between multiple parameters including temperature, pressure, molecular kinetics, and surface chemistry.</p>
+            <div class="equation">
+Fundamental equation 7:
+<br>Φ(x,t) = Φ₀ × exp(-E_a / kT) × f(P, T, x)
+<br>
+<br>Where:
+<br>• Φ: Process rate or flux density
+<br>• E_a: Activation energy (eV)
+<br>• k: Boltzmann constant = 8.617×10⁻⁵ eV/K
+<br>• T: Absolute temperature (K)
+<br>• P: Process pressure
+<br>• x: Spatial coordinate
+<br>
+<br>Arrhenius behavior:
+<br>ln(Φ) = ln(Φ₀) - E_a/(kT)
+<br>
+<br>Temperature dependence:
+<br>Φ(T+ΔT) / Φ(T) ≈ exp(E_a × ΔT / (kT²))
+<br>
+<br>Pressure scaling:
+<br>Φ ∝ P^n where n depends on regime
+<br>• n ≈ 0: surface reaction limited
+<br>• n ≈ 0.5-1: mass transport limited
+<br>• n > 1: pressure-enhanced mechanisms
+<br>
+<br>Spatial variations arise from:
+<br>1. Non-uniform temperature distribution
+<br>2. Gas-phase depletion effects
+<br>3. Surface site availability
+<br>4. Diffusion boundary layers
+<br>
+<br>Typical parameter ranges:
+<br>E_a = 0.5-3 eV (reaction limited)
+<br>E_a = 0.01-0.2 eV (diffusion limited)
+<br>Φ₀ = 10¹⁰-10¹⁶ molecules/cm²/s
+<br>
+<br>Optimization strategies:
+<br>• Increase T to enhance surface kinetics
+<br>• Adjust P to balance uniformity vs rate
+<br>• Use computational fluid dynamics (CFD)
+<br>• Monitor in-situ with optical diagnostics
+            </div>
+            <p>Additional considerations for this aspect include the role of intermediate species, surface site density, and competitive adsorption/desorption kinetics. The interplay between these factors determines the overall process efficiency and film quality.</p>
+
+            <h3>Theoretical Aspect 8</h3>
+            <p>This section provides detailed theoretical background on aspect 8 of the CVD Film Stress Modeling process. The physics governing this phenomenon involves complex interactions between multiple parameters including temperature, pressure, molecular kinetics, and surface chemistry.</p>
+            <div class="equation">
+Fundamental equation 8:
+<br>Φ(x,t) = Φ₀ × exp(-E_a / kT) × f(P, T, x)
+<br>
+<br>Where:
+<br>• Φ: Process rate or flux density
+<br>• E_a: Activation energy (eV)
+<br>• k: Boltzmann constant = 8.617×10⁻⁵ eV/K
+<br>• T: Absolute temperature (K)
+<br>• P: Process pressure
+<br>• x: Spatial coordinate
+<br>
+<br>Arrhenius behavior:
+<br>ln(Φ) = ln(Φ₀) - E_a/(kT)
+<br>
+<br>Temperature dependence:
+<br>Φ(T+ΔT) / Φ(T) ≈ exp(E_a × ΔT / (kT²))
+<br>
+<br>Pressure scaling:
+<br>Φ ∝ P^n where n depends on regime
+<br>• n ≈ 0: surface reaction limited
+<br>• n ≈ 0.5-1: mass transport limited
+<br>• n > 1: pressure-enhanced mechanisms
+<br>
+<br>Spatial variations arise from:
+<br>1. Non-uniform temperature distribution
+<br>2. Gas-phase depletion effects
+<br>3. Surface site availability
+<br>4. Diffusion boundary layers
+<br>
+<br>Typical parameter ranges:
+<br>E_a = 0.5-3 eV (reaction limited)
+<br>E_a = 0.01-0.2 eV (diffusion limited)
+<br>Φ₀ = 10¹⁰-10¹⁶ molecules/cm²/s
+<br>
+<br>Optimization strategies:
+<br>• Increase T to enhance surface kinetics
+<br>• Adjust P to balance uniformity vs rate
+<br>• Use computational fluid dynamics (CFD)
+<br>• Monitor in-situ with optical diagnostics
+            </div>
+            <p>Additional considerations for this aspect include the role of intermediate species, surface site density, and competitive adsorption/desorption kinetics. The interplay between these factors determines the overall process efficiency and film quality.</p>
+
+            <h3>Theoretical Aspect 9</h3>
+            <p>This section provides detailed theoretical background on aspect 9 of the CVD Film Stress Modeling process. The physics governing this phenomenon involves complex interactions between multiple parameters including temperature, pressure, molecular kinetics, and surface chemistry.</p>
+            <div class="equation">
+Fundamental equation 9:
+<br>Φ(x,t) = Φ₀ × exp(-E_a / kT) × f(P, T, x)
+<br>
+<br>Where:
+<br>• Φ: Process rate or flux density
+<br>• E_a: Activation energy (eV)
+<br>• k: Boltzmann constant = 8.617×10⁻⁵ eV/K
+<br>• T: Absolute temperature (K)
+<br>• P: Process pressure
+<br>• x: Spatial coordinate
+<br>
+<br>Arrhenius behavior:
+<br>ln(Φ) = ln(Φ₀) - E_a/(kT)
+<br>
+<br>Temperature dependence:
+<br>Φ(T+ΔT) / Φ(T) ≈ exp(E_a × ΔT / (kT²))
+<br>
+<br>Pressure scaling:
+<br>Φ ∝ P^n where n depends on regime
+<br>• n ≈ 0: surface reaction limited
+<br>• n ≈ 0.5-1: mass transport limited
+<br>• n > 1: pressure-enhanced mechanisms
+<br>
+<br>Spatial variations arise from:
+<br>1. Non-uniform temperature distribution
+<br>2. Gas-phase depletion effects
+<br>3. Surface site availability
+<br>4. Diffusion boundary layers
+<br>
+<br>Typical parameter ranges:
+<br>E_a = 0.5-3 eV (reaction limited)
+<br>E_a = 0.01-0.2 eV (diffusion limited)
+<br>Φ₀ = 10¹⁰-10¹⁶ molecules/cm²/s
+<br>
+<br>Optimization strategies:
+<br>• Increase T to enhance surface kinetics
+<br>• Adjust P to balance uniformity vs rate
+<br>• Use computational fluid dynamics (CFD)
+<br>• Monitor in-situ with optical diagnostics
+            </div>
+            <p>Additional considerations for this aspect include the role of intermediate species, surface site density, and competitive adsorption/desorption kinetics. The interplay between these factors determines the overall process efficiency and film quality.</p>
+
+            <h3>Theoretical Aspect 10</h3>
+            <p>This section provides detailed theoretical background on aspect 10 of the CVD Film Stress Modeling process. The physics governing this phenomenon involves complex interactions between multiple parameters including temperature, pressure, molecular kinetics, and surface chemistry.</p>
+            <div class="equation">
+Fundamental equation 10:
+<br>Φ(x,t) = Φ₀ × exp(-E_a / kT) × f(P, T, x)
+<br>
+<br>Where:
+<br>• Φ: Process rate or flux density
+<br>• E_a: Activation energy (eV)
+<br>• k: Boltzmann constant = 8.617×10⁻⁵ eV/K
+<br>• T: Absolute temperature (K)
+<br>• P: Process pressure
+<br>• x: Spatial coordinate
+<br>
+<br>Arrhenius behavior:
+<br>ln(Φ) = ln(Φ₀) - E_a/(kT)
+<br>
+<br>Temperature dependence:
+<br>Φ(T+ΔT) / Φ(T) ≈ exp(E_a × ΔT / (kT²))
+<br>
+<br>Pressure scaling:
+<br>Φ ∝ P^n where n depends on regime
+<br>• n ≈ 0: surface reaction limited
+<br>• n ≈ 0.5-1: mass transport limited
+<br>• n > 1: pressure-enhanced mechanisms
+<br>
+<br>Spatial variations arise from:
+<br>1. Non-uniform temperature distribution
+<br>2. Gas-phase depletion effects
+<br>3. Surface site availability
+<br>4. Diffusion boundary layers
+<br>
+<br>Typical parameter ranges:
+<br>E_a = 0.5-3 eV (reaction limited)
+<br>E_a = 0.01-0.2 eV (diffusion limited)
+<br>Φ₀ = 10¹⁰-10¹⁶ molecules/cm²/s
+<br>
+<br>Optimization strategies:
+<br>• Increase T to enhance surface kinetics
+<br>• Adjust P to balance uniformity vs rate
+<br>• Use computational fluid dynamics (CFD)
+<br>• Monitor in-situ with optical diagnostics
+            </div>
+            <p>Additional considerations for this aspect include the role of intermediate species, surface site density, and competitive adsorption/desorption kinetics. The interplay between these factors determines the overall process efficiency and film quality.</p>
+
+            <h3>Theoretical Aspect 11</h3>
+            <p>This section provides detailed theoretical background on aspect 11 of the CVD Film Stress Modeling process. The physics governing this phenomenon involves complex interactions between multiple parameters including temperature, pressure, molecular kinetics, and surface chemistry.</p>
+            <div class="equation">
+Fundamental equation 11:
+<br>Φ(x,t) = Φ₀ × exp(-E_a / kT) × f(P, T, x)
+<br>
+<br>Where:
+<br>• Φ: Process rate or flux density
+<br>• E_a: Activation energy (eV)
+<br>• k: Boltzmann constant = 8.617×10⁻⁵ eV/K
+<br>• T: Absolute temperature (K)
+<br>• P: Process pressure
+<br>• x: Spatial coordinate
+<br>
+<br>Arrhenius behavior:
+<br>ln(Φ) = ln(Φ₀) - E_a/(kT)
+<br>
+<br>Temperature dependence:
+<br>Φ(T+ΔT) / Φ(T) ≈ exp(E_a × ΔT / (kT²))
+<br>
+<br>Pressure scaling:
+<br>Φ ∝ P^n where n depends on regime
+<br>• n ≈ 0: surface reaction limited
+<br>• n ≈ 0.5-1: mass transport limited
+<br>• n > 1: pressure-enhanced mechanisms
+<br>
+<br>Spatial variations arise from:
+<br>1. Non-uniform temperature distribution
+<br>2. Gas-phase depletion effects
+<br>3. Surface site availability
+<br>4. Diffusion boundary layers
+<br>
+<br>Typical parameter ranges:
+<br>E_a = 0.5-3 eV (reaction limited)
+<br>E_a = 0.01-0.2 eV (diffusion limited)
+<br>Φ₀ = 10¹⁰-10¹⁶ molecules/cm²/s
+<br>
+<br>Optimization strategies:
+<br>• Increase T to enhance surface kinetics
+<br>• Adjust P to balance uniformity vs rate
+<br>• Use computational fluid dynamics (CFD)
+<br>• Monitor in-situ with optical diagnostics
+            </div>
+            <p>Additional considerations for this aspect include the role of intermediate species, surface site density, and competitive adsorption/desorption kinetics. The interplay between these factors determines the overall process efficiency and film quality.</p>
+
+            <h3>Theoretical Aspect 12</h3>
+            <p>This section provides detailed theoretical background on aspect 12 of the CVD Film Stress Modeling process. The physics governing this phenomenon involves complex interactions between multiple parameters including temperature, pressure, molecular kinetics, and surface chemistry.</p>
+            <div class="equation">
+Fundamental equation 12:
+<br>Φ(x,t) = Φ₀ × exp(-E_a / kT) × f(P, T, x)
+<br>
+<br>Where:
+<br>• Φ: Process rate or flux density
+<br>• E_a: Activation energy (eV)
+<br>• k: Boltzmann constant = 8.617×10⁻⁵ eV/K
+<br>• T: Absolute temperature (K)
+<br>• P: Process pressure
+<br>• x: Spatial coordinate
+<br>
+<br>Arrhenius behavior:
+<br>ln(Φ) = ln(Φ₀) - E_a/(kT)
+<br>
+<br>Temperature dependence:
+<br>Φ(T+ΔT) / Φ(T) ≈ exp(E_a × ΔT / (kT²))
+<br>
+<br>Pressure scaling:
+<br>Φ ∝ P^n where n depends on regime
+<br>• n ≈ 0: surface reaction limited
+<br>• n ≈ 0.5-1: mass transport limited
+<br>• n > 1: pressure-enhanced mechanisms
+<br>
+<br>Spatial variations arise from:
+<br>1. Non-uniform temperature distribution
+<br>2. Gas-phase depletion effects
+<br>3. Surface site availability
+<br>4. Diffusion boundary layers
+<br>
+<br>Typical parameter ranges:
+<br>E_a = 0.5-3 eV (reaction limited)
+<br>E_a = 0.01-0.2 eV (diffusion limited)
+<br>Φ₀ = 10¹⁰-10¹⁶ molecules/cm²/s
+<br>
+<br>Optimization strategies:
+<br>• Increase T to enhance surface kinetics
+<br>• Adjust P to balance uniformity vs rate
+<br>• Use computational fluid dynamics (CFD)
+<br>• Monitor in-situ with optical diagnostics
+            </div>
+            <p>Additional considerations for this aspect include the role of intermediate species, surface site density, and competitive adsorption/desorption kinetics. The interplay between these factors determines the overall process efficiency and film quality.</p>
+
+            <h3>Theoretical Aspect 13</h3>
+            <p>This section provides detailed theoretical background on aspect 13 of the CVD Film Stress Modeling process. The physics governing this phenomenon involves complex interactions between multiple parameters including temperature, pressure, molecular kinetics, and surface chemistry.</p>
+            <div class="equation">
+Fundamental equation 13:
+<br>Φ(x,t) = Φ₀ × exp(-E_a / kT) × f(P, T, x)
+<br>
+<br>Where:
+<br>• Φ: Process rate or flux density
+<br>• E_a: Activation energy (eV)
+<br>• k: Boltzmann constant = 8.617×10⁻⁵ eV/K
+<br>• T: Absolute temperature (K)
+<br>• P: Process pressure
+<br>• x: Spatial coordinate
+<br>
+<br>Arrhenius behavior:
+<br>ln(Φ) = ln(Φ₀) - E_a/(kT)
+<br>
+<br>Temperature dependence:
+<br>Φ(T+ΔT) / Φ(T) ≈ exp(E_a × ΔT / (kT²))
+<br>
+<br>Pressure scaling:
+<br>Φ ∝ P^n where n depends on regime
+<br>• n ≈ 0: surface reaction limited
+<br>• n ≈ 0.5-1: mass transport limited
+<br>• n > 1: pressure-enhanced mechanisms
+<br>
+<br>Spatial variations arise from:
+<br>1. Non-uniform temperature distribution
+<br>2. Gas-phase depletion effects
+<br>3. Surface site availability
+<br>4. Diffusion boundary layers
+<br>
+<br>Typical parameter ranges:
+<br>E_a = 0.5-3 eV (reaction limited)
+<br>E_a = 0.01-0.2 eV (diffusion limited)
+<br>Φ₀ = 10¹⁰-10¹⁶ molecules/cm²/s
+<br>
+<br>Optimization strategies:
+<br>• Increase T to enhance surface kinetics
+<br>• Adjust P to balance uniformity vs rate
+<br>• Use computational fluid dynamics (CFD)
+<br>• Monitor in-situ with optical diagnostics
+            </div>
+            <p>Additional considerations for this aspect include the role of intermediate species, surface site density, and competitive adsorption/desorption kinetics. The interplay between these factors determines the overall process efficiency and film quality.</p>
+
+            <h3>Theoretical Aspect 14</h3>
+            <p>This section provides detailed theoretical background on aspect 14 of the CVD Film Stress Modeling process. The physics governing this phenomenon involves complex interactions between multiple parameters including temperature, pressure, molecular kinetics, and surface chemistry.</p>
+            <div class="equation">
+Fundamental equation 14:
+<br>Φ(x,t) = Φ₀ × exp(-E_a / kT) × f(P, T, x)
+<br>
+<br>Where:
+<br>• Φ: Process rate or flux density
+<br>• E_a: Activation energy (eV)
+<br>• k: Boltzmann constant = 8.617×10⁻⁵ eV/K
+<br>• T: Absolute temperature (K)
+<br>• P: Process pressure
+<br>• x: Spatial coordinate
+<br>
+<br>Arrhenius behavior:
+<br>ln(Φ) = ln(Φ₀) - E_a/(kT)
+<br>
+<br>Temperature dependence:
+<br>Φ(T+ΔT) / Φ(T) ≈ exp(E_a × ΔT / (kT²))
+<br>
+<br>Pressure scaling:
+<br>Φ ∝ P^n where n depends on regime
+<br>• n ≈ 0: surface reaction limited
+<br>• n ≈ 0.5-1: mass transport limited
+<br>• n > 1: pressure-enhanced mechanisms
+<br>
+<br>Spatial variations arise from:
+<br>1. Non-uniform temperature distribution
+<br>2. Gas-phase depletion effects
+<br>3. Surface site availability
+<br>4. Diffusion boundary layers
+<br>
+<br>Typical parameter ranges:
+<br>E_a = 0.5-3 eV (reaction limited)
+<br>E_a = 0.01-0.2 eV (diffusion limited)
+<br>Φ₀ = 10¹⁰-10¹⁶ molecules/cm²/s
+<br>
+<br>Optimization strategies:
+<br>• Increase T to enhance surface kinetics
+<br>• Adjust P to balance uniformity vs rate
+<br>• Use computational fluid dynamics (CFD)
+<br>• Monitor in-situ with optical diagnostics
+            </div>
+            <p>Additional considerations for this aspect include the role of intermediate species, surface site density, and competitive adsorption/desorption kinetics. The interplay between these factors determines the overall process efficiency and film quality.</p>
+
+            <h3>Theoretical Aspect 15</h3>
+            <p>This section provides detailed theoretical background on aspect 15 of the CVD Film Stress Modeling process. The physics governing this phenomenon involves complex interactions between multiple parameters including temperature, pressure, molecular kinetics, and surface chemistry.</p>
+            <div class="equation">
+Fundamental equation 15:
+<br>Φ(x,t) = Φ₀ × exp(-E_a / kT) × f(P, T, x)
+<br>
+<br>Where:
+<br>• Φ: Process rate or flux density
+<br>• E_a: Activation energy (eV)
+<br>• k: Boltzmann constant = 8.617×10⁻⁵ eV/K
+<br>• T: Absolute temperature (K)
+<br>• P: Process pressure
+<br>• x: Spatial coordinate
+<br>
+<br>Arrhenius behavior:
+<br>ln(Φ) = ln(Φ₀) - E_a/(kT)
+<br>
+<br>Temperature dependence:
+<br>Φ(T+ΔT) / Φ(T) ≈ exp(E_a × ΔT / (kT²))
+<br>
+<br>Pressure scaling:
+<br>Φ ∝ P^n where n depends on regime
+<br>• n ≈ 0: surface reaction limited
+<br>• n ≈ 0.5-1: mass transport limited
+<br>• n > 1: pressure-enhanced mechanisms
+<br>
+<br>Spatial variations arise from:
+<br>1. Non-uniform temperature distribution
+<br>2. Gas-phase depletion effects
+<br>3. Surface site availability
+<br>4. Diffusion boundary layers
+<br>
+<br>Typical parameter ranges:
+<br>E_a = 0.5-3 eV (reaction limited)
+<br>E_a = 0.01-0.2 eV (diffusion limited)
+<br>Φ₀ = 10¹⁰-10¹⁶ molecules/cm²/s
+<br>
+<br>Optimization strategies:
+<br>• Increase T to enhance surface kinetics
+<br>• Adjust P to balance uniformity vs rate
+<br>• Use computational fluid dynamics (CFD)
+<br>• Monitor in-situ with optical diagnostics
+            </div>
+            <p>Additional considerations for this aspect include the role of intermediate species, surface site density, and competitive adsorption/desorption kinetics. The interplay between these factors determines the overall process efficiency and film quality.</p>
+
+            <h3>Summary and Best Practices</h3>
+            <p>The theoretical framework presented above provides the foundation for understanding and optimizing this process. Key takeaways include the importance of temperature control, pressure optimization, and the need for comprehensive process monitoring. Advanced techniques such as in-situ diagnostics, computational modeling, and machine learning-based optimization are increasingly important for next-generation process development.</p>
+            <div class="equation">
+Critical success factors:
+<br>1. Temperature uniformity: ΔT < ±2°C across wafer
+<br>2. Pressure control: ΔP/P < 1%
+<br>3. Gas flow stability: Δflow/flow < 2%
+<br>4. Reproducibility: Cpk > 1.67 for critical parameters
+<br>5. Particle contamination: < 0.01 defects/cm²
+<br>
+<br>Process capability:
+<br>Cpk = (USL - μ) / (3σ) or (μ - LSL) / (3σ)
+<br>USL/LSL: upper/lower specification limits
+<br>μ: process mean
+<br>σ: process standard deviation
+<br>
+<br>Target: Cpk > 1.67 (Six Sigma quality)
+<br>Minimum acceptable: Cpk > 1.33
+<br>
+<br>Statistical process control:
+<br>• Monitor key parameters continuously
+<br>• Use control charts (X-bar, R charts)
+<br>• Implement SPC rules (Western Electric)
+<br>• React to out-of-control signals
+<br>
+<br>Metrology requirements:
+<br>• Thickness: ±0.5% accuracy, ±0.2% precision
+<br>• Uniformity: σ/μ < 1% (3σ)
+<br>• Composition: ±1 at.% for stoichiometry
+<br>• Stress: ±50 MPa
+<br>• Roughness: < 0.5 nm RMS
+            </div>
+        </div>
+        <div class="visualization-grid">
+            <div class="viz-panel"><h2>Chart 1: Process Parameter</h2><div id="chart1" class="chart-container"></div></div>
+            <div class="viz-panel"><h2>Chart 2: Growth Kinetics</h2><div id="chart2" class="chart-container"></div></div>
+            <div class="viz-panel"><h2>Chart 3: Spatial Distribution</h2><div id="chart3" class="chart-container"></div></div>
+            <div class="viz-panel"><h2>Chart 4: Temporal Evolution</h2><div id="chart4" class="chart-container"></div></div>
+            <div class="viz-panel"><h2>Chart 5: Comparative Analysis</h2><div id="chart5" class="chart-container"></div></div>
+            <div class="viz-panel"><h2>Chart 6: Optimization Surface</h2><div id="chart6" class="chart-container"></div></div>
+            <div class="viz-panel"><h2>Chart 7: Process Window</h2><div id="chart7" class="chart-container"></div></div>
+        </div>
+
+    <script>
+        let isRunning = true, simulationTime = 0;
+        let params = { param1: 50, param2: 50, param3: 50, param4: 50, param5: 50, param6: 50, param7: 50, speed: 1.0 };
+
+        let scene, camera, renderer, mesh1, mesh2, particles;
+
+        function initThreeJS() {
+            const container = document.getElementById('threejs-container');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x001020);
+            camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer.domElement);
+
+            // Create 3D objects
+            const geometry1 = new THREE.BoxGeometry(5, 0.3, 5);
+            const material1 = new THREE.MeshPhongMaterial({ color: 0x333333 });
+            mesh1 = new THREE.Mesh(geometry1, material1);
+            mesh1.position.y = -2;
+            scene.add(mesh1);
+
+            const geometry2 = new THREE.CylinderGeometry(3, 3, 0.5, 64);
+            const material2 = new THREE.MeshPhongMaterial({ color: 0xff8800 });
+            mesh2 = new THREE.Mesh(geometry2, material2);
+            mesh2.position.y = 5;
+            scene.add(mesh2);
+
+            // Create particle system
+            const particleGeometry = new THREE.BufferGeometry();
+            const particlePositions = [], particleColors = [];
+            for (let i = 0; i < 2000; i++) {
+                const theta = Math.random() * Math.PI * 2;
+                const r = Math.random() * 3;
+                particlePositions.push(r * Math.cos(theta), Math.random() * 7, r * Math.sin(theta));
+                const intensity = 0.5 + Math.random() * 0.5;
+                particleColors.push(0.6 * intensity, 0.8 * intensity, 1.0 * intensity);
+            }
+            particleGeometry.setAttribute('position', new THREE.Float32BufferAttribute(particlePositions, 3));
+            particleGeometry.setAttribute('color', new THREE.Float32BufferAttribute(particleColors, 3));
+            const particleMaterial = new THREE.PointsMaterial({ size: 0.1, vertexColors: true, transparent: true, opacity: 0.7 });
+            particles = new THREE.Points(particleGeometry, particleMaterial);
+            scene.add(particles);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+            const pointLight = new THREE.PointLight(0xffffff, 1.5, 100);
+            pointLight.position.set(10, 10, 10);
+            scene.add(pointLight);
+
+            camera.position.set(10, 5, 12);
+            camera.lookAt(0, 2, 0);
+        }
+
+        function animateThreeJS() {
+            mesh2.rotation.y += 0.01 * params.speed;
+            
+            const positions = particles.geometry.attributes.position.array;
+            const colors = particles.geometry.attributes.color.array;
+            for (let i = 0; i < positions.length; i += 3) {
+                positions[i+1] -= 0.05 * params.speed;
+                if (positions[i+1] < -2) {
+                    positions[i+1] = 5 + Math.random() * 2;
+                    const theta = Math.random() * Math.PI * 2;
+                    const r = Math.random() * 3;
+                    positions[i] = r * Math.cos(theta);
+                    positions[i+2] = r * Math.sin(theta);
+                }
+                const glow = 0.5 + 0.5 * Math.sin(simulationTime * 5 + i * 0.1);
+                colors[i] = 0.6 * glow;
+                colors[i+1] = 0.8 * glow;
+                colors[i+2] = 1.0 * glow;
+            }
+            particles.geometry.attributes.position.needsUpdate = true;
+            particles.geometry.attributes.color.needsUpdate = true;
+
+            renderer.render(scene, camera);
+        }
+
+        function calculateMetrics() {
+            const metric1 = params.param1 * 0.5 + params.param2 * 0.3;
+            const metric2 = Math.sqrt(params.param3 * params.param4) / 10;
+            const metric3 = params.param5 * params.param6 / 100;
+            const metric4 = Math.floor(simulationTime * params.param7);
+            const metric5 = 85 + Math.random() * 10;
+            const metric6 = Math.floor(params.param1 + params.param2 + params.param3);
+            return { metric1, metric2, metric3, metric4, metric5, metric6 };
+        }
+
+        function updateStats() {
+            const results = calculateMetrics();
+            document.getElementById('metric1').innerHTML = `${results.metric1.toFixed(1)}<span class="unit">units</span>`;
+            document.getElementById('metric2').innerHTML = `${results.metric2.toFixed(1)}<span class="unit">units</span>`;
+            document.getElementById('metric3').innerHTML = `${results.metric3.toFixed(1)}<span class="unit">units</span>`;
+            document.getElementById('metric4').innerHTML = `${results.metric4}<span class="unit">units</span>`;
+            document.getElementById('metric5').innerHTML = `${results.metric5.toFixed(1)}<span class="unit">%</span>`;
+            document.getElementById('metric6').innerHTML = `${results.metric6}<span class="unit">units</span>`;
+        }
+
+        function updateCharts() {
+            // Chart 1
+            const x1 = Array.from({length: 50}, (_, i) => i);
+            const y1 = x1.map(x => params.param1 * Math.sin(x * 0.1) + params.param2);
+            Plotly.newPlot('chart1', [{ x: x1, y: y1, type: 'scatter', mode: 'lines', line: { color: '#667eea', width: 3 }}], {
+                title: 'Parameter Evolution', xaxis: { title: 'Time (s)' }, yaxis: { title: 'Value' },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
+            });
+
+            // Chart 2
+            const x2 = Array.from({length: 50}, (_, i) => 300 + i * 10);
+            const y2 = x2.map(T => Math.exp(-5000 / (8.617e-5 * (T + 273.15))));
+            Plotly.newPlot('chart2', [{ x: x2, y: y2, type: 'scatter', mode: 'lines', line: { color: '#f39c12', width: 3 }}], {
+                title: 'Arrhenius Plot', xaxis: { title: 'Temperature (°C)' }, yaxis: { title: 'Rate (a.u.)', type: 'log' },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
+            });
+
+            // Chart 3 - Heatmap
+            const heatData = Array.from({length: 30}, (_, i) => 
+                Array.from({length: 30}, (_, j) => 
+                    100 * Math.exp(-((i-15)**2 + (j-15)**2) / 50)
+                )
+            );
+            Plotly.newPlot('chart3', [{ z: heatData, type: 'heatmap', colorscale: 'Viridis' }], {
+                title: '2D Spatial Distribution', xaxis: { showticklabels: false }, yaxis: { showticklabels: false },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
+            });
+
+            // Chart 4
+            const time = Array.from({length: 100}, (_, i) => i * 0.1);
+            const growth = time.map(t => 100 * (1 - Math.exp(-t / 2)));
+            Plotly.newPlot('chart4', [{ x: time, y: growth, type: 'scatter', mode: 'lines', line: { color: '#764ba2', width: 3 }}], {
+                title: 'Growth Curve', xaxis: { title: 'Time (min)' }, yaxis: { title: 'Thickness (nm)' },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
+            });
+
+            // Chart 5 - Multiple traces
+            const conditions = ['A', 'B', 'C', 'D'];
+            const values = conditions.map(() => 50 + Math.random() * 50);
+            Plotly.newPlot('chart5', [{ x: conditions, y: values, type: 'bar', marker: { color: '#667eea' }}], {
+                title: 'Comparative Results', xaxis: { title: 'Condition' }, yaxis: { title: 'Performance' },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
+            });
+
+            // Chart 6 - 3D Surface
+            const gridX = Array.from({length: 20}, (_, i) => i);
+            const gridY = Array.from({length: 20}, (_, j) => j);
+            const gridZ = gridX.map(i => gridY.map(j => Math.sin(i * 0.3) * Math.cos(j * 0.3) * 50 + 50));
+            Plotly.newPlot('chart6', [{ z: gridZ, type: 'surface', colorscale: 'Jet' }], {
+                title: 'Optimization Surface',
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
+            });
+
+            // Chart 7 - Process window
+            const windowData = Array.from({length: 30}, (_, i) => 
+                Array.from({length: 30}, (_, j) => 
+                    (i > 10 && i < 20 && j > 10 && j < 20) ? 1 : 0
+                )
+            );
+            Plotly.newPlot('chart7', [{ z: windowData, type: 'heatmap', colorscale: [[0, '#333'], [1, '#667eea']] }], {
+                title: 'Process Window', xaxis: { title: 'Parameter 1' }, yaxis: { title: 'Parameter 2' },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
+            });
+        }
+
+        document.getElementById('playPauseBtn').addEventListener('click', () => {
+            isRunning = !isRunning;
+            document.getElementById('playPauseBtn').textContent = isRunning ? 'Pause' : 'Play';
+            if (isRunning) animate();
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            simulationTime = 0;
+            params = { param1: 50, param2: 50, param3: 50, param4: 50, param5: 50, param6: 50, param7: 50, speed: 1.0 };
+            paramNames.forEach(name => {
+                const slider = document.getElementById(name);
+                if (slider) {
+                    slider.value = params[name];
+                    const valueDisplay = document.getElementById(name + 'Value');
+                    if (valueDisplay) {
+                        if (name === 'speed') {
+                            valueDisplay.textContent = `${params[name].toFixed(1)}×`;
+                        } else {
+                            valueDisplay.textContent = params[name];
+                        }
+                    }
+                }
+            });
+            updateStats();
+            updateCharts();
+        });
+
+        const paramNames = ['param1', 'param2', 'param3', 'param4', 'param5', 'param6', 'param7', 'speed'];
+        paramNames.forEach(param => {
+            const elem = document.getElementById(param);
+            if (elem) {
+                elem.addEventListener('input', (e) => {
+                    params[param] = parseFloat(e.target.value);
+                    let valueText = param === 'speed' ? parseFloat(e.target.value).toFixed(1) + '×' : e.target.value;
+                    document.getElementById(param + 'Value').textContent = valueText;
+                    updateStats();
+                    updateCharts();
+                });
+            }
+        });
+
+        function animate() {
+            if (!isRunning) return;
+            simulationTime += 0.016 * params.speed;
+            animateThreeJS();
+            if (Math.floor(simulationTime * 60) % 30 === 0) updateStats();
+            requestAnimationFrame(animate);
+        }
+
+        initThreeJS();
+        updateStats();
+        updateCharts();
+        animate();
+
+        window.addEventListener('resize', () => {
+            const container = document.getElementById('threejs-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+    </script>
+
+</body>
+</html>

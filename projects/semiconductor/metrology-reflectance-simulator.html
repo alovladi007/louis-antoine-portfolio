@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reflectance Spectrum Simulator - Thin-Film Metrology</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #fff;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: linear-gradient(135deg, rgba(15, 12, 41, 0.9), rgba(48, 43, 99, 0.9));
+            padding: 30px 20px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2.2em;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: #b8b8d1;
+            font-size: 1.1em;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 30px;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            text-decoration: none;
+            color: #fff;
+            transition: all 0.3s ease;
+        }
+
+        .back-link:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .simulator-grid {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 30px;
+            margin: 30px 0;
+        }
+
+        @media (max-width: 1100px) {
+            .simulator-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .control-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            height: fit-content;
+        }
+
+        .control-panel h2 {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: #fff;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #b8b8d1;
+            font-size: 0.95em;
+        }
+
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 1em;
+        }
+
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .input-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .preset-btn {
+            padding: 10px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: white;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin: 5px 0;
+        }
+
+        .preset-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .results-area {
+            display: grid;
+            gap: 20px;
+        }
+
+        .plot-container {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+        }
+
+        .plot-container h3 {
+            margin-bottom: 15px;
+            color: #fff;
+            font-size: 1.3em;
+        }
+
+        #spectrumPlot, #fringePlot, #contourPlot {
+            width: 100%;
+            height: 450px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+        }
+
+        .info-box {
+            background: rgba(102, 126, 234, 0.15);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .info-box h4 {
+            color: #fff;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .info-box p {
+            color: #b8b8d1;
+            font-size: 0.95em;
+            line-height: 1.6;
+        }
+
+        .metric {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 15px;
+            border-radius: 8px;
+            margin: 5px;
+            font-size: 0.9em;
+        }
+
+        .metric-label {
+            color: #9090aa;
+            font-size: 0.85em;
+        }
+
+        .metric-value {
+            color: #fff;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <h1><i class="fas fa-chart-line"></i> Reflectance Spectrum Simulator</h1>
+            <p>Simulate spectral interference patterns for multi-layer thin films</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <a href="thin-film-metrology-complete.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Metrology Suite
+        </a>
+
+        <div class="simulator-grid">
+            <div class="control-panel">
+                <h2>Configuration</h2>
+
+                <div class="input-group">
+                    <label>Film Material</label>
+                    <select id="filmMaterial">
+                        <option value="sio2">SiO₂ (n = 1.46)</option>
+                        <option value="si3n4">Si₃N₄ (n = 2.02)</option>
+                        <option value="tio2">TiO₂ (n = 2.30)</option>
+                        <option value="al2o3">Al₂O₃ (n = 1.77)</option>
+                        <option value="ta2o5">Ta₂O₅ (n = 2.10)</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label>Film Thickness (nm)</label>
+                    <input type="number" id="thickness" value="200" min="10" max="2000" step="10">
+                    <input type="range" id="thicknessSlider" min="10" max="2000" value="200" step="10"
+                           oninput="document.getElementById('thickness').value = this.value; updateSimulation();">
+                </div>
+
+                <div class="input-group">
+                    <label>Substrate Material</label>
+                    <select id="substrate">
+                        <option value="silicon">Silicon (n = 3.48)</option>
+                        <option value="sio2">SiO₂ (n = 1.46)</option>
+                        <option value="glass">Glass (n = 1.52)</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label>Wavelength Range (nm)</label>
+                    <div class="input-row">
+                        <input type="number" id="lambdaMin" value="400" placeholder="Min">
+                        <input type="number" id="lambdaMax" value="900" placeholder="Max">
+                    </div>
+                </div>
+
+                <button class="btn" onclick="updateSimulation()">
+                    <i class="fas fa-sync"></i> Update Simulation
+                </button>
+
+                <h3 style="margin: 25px 0 15px; color: #fff; font-size: 1.2em;">Quick Presets</h3>
+
+                <button class="preset-btn" onclick="loadPreset('antireflection')">
+                    Anti-Reflection Coating (100nm SiO₂)
+                </button>
+                <button class="preset-btn" onclick="loadPreset('quarterwave')">
+                    Quarter-Wave Stack (138nm Si₃N₄)
+                </button>
+                <button class="preset-btn" onclick="loadPreset('thick')">
+                    Thick Film (500nm TiO₂)
+                </button>
+                <button class="preset-btn" onclick="loadPreset('ultrathin')">
+                    Ultra-Thin Film (20nm Ta₂O₅)
+                </button>
+
+                <div class="info-box" style="margin-top: 25px;">
+                    <h4><i class="fas fa-info-circle"></i> Interference Fringes</h4>
+                    <p>
+                        Spectral oscillations arise from constructive/destructive interference between
+                        reflections at the top and bottom surfaces. Fringe period is inversely proportional
+                        to film thickness.
+                    </p>
+                </div>
+            </div>
+
+            <div class="results-area">
+                <div class="plot-container">
+                    <h3>Reflectance Spectrum</h3>
+                    <div id="spectrumPlot"></div>
+                    <div style="margin-top: 15px;">
+                        <span class="metric">
+                            <span class="metric-label">Average R:</span>
+                            <span class="metric-value" id="avgR">-</span>
+                        </span>
+                        <span class="metric">
+                            <span class="metric-label">Fringe Contrast:</span>
+                            <span class="metric-value" id="contrast">-</span>
+                        </span>
+                        <span class="metric">
+                            <span class="metric-label">Period:</span>
+                            <span class="metric-value" id="period">-</span>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="plot-container">
+                    <h3>Fringe Analysis</h3>
+                    <div id="fringePlot"></div>
+                    <div class="info-box">
+                        <h4>Thickness Estimation from Fringes</h4>
+                        <p>
+                            The spacing between adjacent maxima (Δλ) is related to film thickness:
+                            <strong>d ≈ λ₁λ₂ / [2n(λ₂ - λ₁)]</strong>
+                            where n is the film refractive index. This relationship enables rapid thickness
+                            estimation from spectral measurements.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="plot-container">
+                    <h3>Thickness vs. Wavelength Contour</h3>
+                    <div id="contourPlot"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function getMaterialIndex(material, wavelength) {
+            const lambda_um = wavelength / 1000;
+            const materials = {
+                'sio2': { A: 1.4508, B: 0.0036 },
+                'si3n4': { A: 1.9963, B: 0.0068 },
+                'tio2': { A: 2.2716, B: 0.0179 },
+                'al2o3': { A: 1.7604, B: 0.0128 },
+                'ta2o5': { A: 2.0772, B: 0.0145 },
+                'silicon': { A: 3.4777, B: 0.0065 },
+                'glass': { A: 1.5130, B: 0.0042 }
+            };
+            const params = materials[material] || materials['sio2'];
+            return params.A + params.B / (lambda_um ** 2);
+        }
+
+        function calculateReflectance(wavelength, thickness, filmMat, substrateMat) {
+            const n0 = 1.0; // air
+            const n1 = getMaterialIndex(filmMat, wavelength);
+            const n2 = getMaterialIndex(substrateMat, wavelength);
+
+            // Fresnel coefficients
+            const r01 = (n0 - n1) / (n0 + n1);
+            const r12 = (n1 - n2) / (n1 + n2);
+
+            // Phase shift
+            const delta = 4 * Math.PI * n1 * thickness / wavelength;
+
+            // Total reflectance (Airy formula)
+            const numerator = r01**2 + r12**2 + 2*r01*r12*Math.cos(delta);
+            const denominator = 1 + (r01*r12)**2 + 2*r01*r12*Math.cos(delta);
+
+            return numerator / denominator;
+        }
+
+        function updateSimulation() {
+            const thickness = parseFloat(document.getElementById('thickness').value);
+            const filmMaterial = document.getElementById('filmMaterial').value;
+            const substrate = document.getElementById('substrate').value;
+            const lambdaMin = parseFloat(document.getElementById('lambdaMin').value);
+            const lambdaMax = parseFloat(document.getElementById('lambdaMax').value);
+
+            document.getElementById('thicknessSlider').value = thickness;
+
+            const nPoints = 300;
+            const wavelengths = [];
+            const reflectances = [];
+
+            for (let i = 0; i < nPoints; i++) {
+                const lambda = lambdaMin + (lambdaMax - lambdaMin) * i / (nPoints - 1);
+                wavelengths.push(lambda);
+                const R = calculateReflectance(lambda, thickness, filmMaterial, substrate);
+                reflectances.push(R);
+            }
+
+            // Calculate metrics
+            const avgR = (reflectances.reduce((a, b) => a + b, 0) / reflectances.length).toFixed(4);
+            const maxR = Math.max(...reflectances);
+            const minR = Math.min(...reflectances);
+            const contrast = ((maxR - minR) / (maxR + minR)).toFixed(3);
+
+            // Find fringe period (approximate)
+            const peaks = [];
+            for (let i = 1; i < reflectances.length - 1; i++) {
+                if (reflectances[i] > reflectances[i-1] && reflectances[i] > reflectances[i+1]) {
+                    peaks.push(wavelengths[i]);
+                }
+            }
+            const period = peaks.length > 1 ?
+                ((peaks[peaks.length-1] - peaks[0]) / (peaks.length - 1)).toFixed(1) : '-';
+
+            document.getElementById('avgR').textContent = avgR;
+            document.getElementById('contrast').textContent = contrast;
+            document.getElementById('period').textContent = period !== '-' ? `${period} nm` : '-';
+
+            // Plot spectrum
+            const trace1 = {
+                x: wavelengths,
+                y: reflectances,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#667eea', width: 2.5 },
+                name: 'Reflectance'
+            };
+
+            const layout1 = {
+                xaxis: { title: 'Wavelength (nm)', color: '#b8b8d1', gridcolor: '#333' },
+                yaxis: { title: 'Reflectance', color: '#b8b8d1', gridcolor: '#333', range: [0, Math.min(1, maxR * 1.1)] },
+                plot_bgcolor: 'rgba(0,0,0,0.2)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#b8b8d1' },
+                margin: { l: 60, r: 30, t: 30, b: 60 }
+            };
+
+            Plotly.newPlot('spectrumPlot', [trace1], layout1);
+
+            // Plot fringe spacing analysis (1/wavelength domain)
+            const freq = wavelengths.map(w => 1000 / w); // nm^-1 -> μm^-1
+            const trace2 = {
+                x: freq,
+                y: reflectances,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#764ba2', width: 2.5 },
+                name: 'Fringe Pattern'
+            };
+
+            const layout2 = {
+                xaxis: { title: 'Optical Frequency (μm⁻¹)', color: '#b8b8d1', gridcolor: '#333' },
+                yaxis: { title: 'Reflectance', color: '#b8b8d1', gridcolor: '#333' },
+                plot_bgcolor: 'rgba(0,0,0,0.2)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#b8b8d1' },
+                margin: { l: 60, r: 30, t: 30, b: 60 }
+            };
+
+            Plotly.newPlot('fringePlot', [trace2], layout2);
+
+            // Contour plot: thickness vs wavelength
+            const thicknessRange = [];
+            const contourData = [];
+            const nThickness = 40;
+            const tMin = Math.max(10, thickness * 0.3);
+            const tMax = thickness * 2;
+
+            for (let i = 0; i < nThickness; i++) {
+                const t = tMin + (tMax - tMin) * i / (nThickness - 1);
+                thicknessRange.push(t);
+                const row = [];
+                for (const lambda of wavelengths) {
+                    const R = calculateReflectance(lambda, t, filmMaterial, substrate);
+                    row.push(R);
+                }
+                contourData.push(row);
+            }
+
+            const traceContour = {
+                x: wavelengths,
+                y: thicknessRange,
+                z: contourData,
+                type: 'contour',
+                colorscale: 'Viridis',
+                contours: {
+                    coloring: 'heatmap'
+                },
+                colorbar: {
+                    title: 'R',
+                    titleside: 'right',
+                    tickfont: { color: '#b8b8d1' },
+                    titlefont: { color: '#b8b8d1' }
+                }
+            };
+
+            // Add marker for current thickness
+            const traceMarker = {
+                x: [lambdaMin, lambdaMax],
+                y: [thickness, thickness],
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#ff3333', width: 2, dash: 'dash' },
+                name: 'Current'
+            };
+
+            const layoutContour = {
+                xaxis: { title: 'Wavelength (nm)', color: '#b8b8d1', gridcolor: '#444' },
+                yaxis: { title: 'Film Thickness (nm)', color: '#b8b8d1', gridcolor: '#444' },
+                plot_bgcolor: 'rgba(0,0,0,0.2)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#b8b8d1' },
+                margin: { l: 70, r: 30, t: 30, b: 60 }
+            };
+
+            Plotly.newPlot('contourPlot', [traceContour, traceMarker], layoutContour);
+        }
+
+        function loadPreset(type) {
+            const presets = {
+                'antireflection': { material: 'sio2', thickness: 100, substrate: 'silicon' },
+                'quarterwave': { material: 'si3n4', thickness: 138, substrate: 'silicon' },
+                'thick': { material: 'tio2', thickness: 500, substrate: 'silicon' },
+                'ultrathin': { material: 'ta2o5', thickness: 20, substrate: 'silicon' }
+            };
+
+            const preset = presets[type];
+            document.getElementById('filmMaterial').value = preset.material;
+            document.getElementById('thickness').value = preset.thickness;
+            document.getElementById('substrate').value = preset.substrate;
+
+            updateSimulation();
+        }
+
+        // Initialize
+        window.onload = function() {
+            updateSimulation();
+        };
+    </script>
+</body>
+</html>

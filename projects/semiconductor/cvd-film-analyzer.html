@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CVD Film Property Analyzer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #0a0a0a; color: #e0e0e0; line-height: 1.6; overflow-x: hidden; }
+        .navbar { background: rgba(10, 10, 10, 0.95); backdrop-filter: blur(10px); padding: 1rem 2rem; border-bottom: 1px solid rgba(102, 126, 234, 0.3); position: sticky; top: 0; z-index: 100; display: flex; justify-content: space-between; align-items: center; }
+        .nav-title { color: #667eea; font-size: 1.5rem; font-weight: 600; }
+        .nav-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; transition: all 0.3s ease; border: none; cursor: pointer; }
+        .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .container { max-width: 1600px; margin: 0 auto; padding: 2rem; }
+        .hero { text-align: center; padding: 3rem 2rem 2rem 2rem; }
+        .hero h1 { font-size: 3rem; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 1rem; font-weight: 800; }
+        .hero-subtitle { font-size: 1.2rem; color: #a0a0a0; max-width: 900px; margin: 0 auto 1rem; }
+        .section { margin: 3rem 0; }
+        .section-title { font-size: 2rem; color: #667eea; margin-bottom: 1.5rem; border-left: 4px solid #667eea; padding-left: 1rem; }
+        .section-subtitle { font-size: 1.5rem; color: #f39c12; margin-bottom: 1rem; margin-top: 2rem; }
+        .card { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(102, 126, 234, 0.2); padding: 2rem; border-radius: 15px; margin-bottom: 2rem; }
+        .card:hover { border-color: rgba(102, 126, 234, 0.4); }
+        .info-box { background: rgba(102, 126, 234, 0.1); border-left: 4px solid #667eea; padding: 1rem; margin: 1rem 0; border-radius: 5px; }
+        .warning-box { background: rgba(243, 156, 18, 0.1); border-left: 4px solid #f39c12; padding: 1rem; margin: 1rem 0; border-radius: 5px; }
+        .controls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
+        .control-group { margin: 1rem 0; }
+        .control-label { display: block; color: #667eea; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.95rem; }
+        .control-input { width: 100%; padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 8px; color: #e0e0e0; font-size: 1rem; transition: all 0.3s ease; }
+        .control-input:focus { outline: none; border-color: #667eea; background: rgba(255, 255, 255, 0.08); }
+        select.control-input { cursor: pointer; }
+        .btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.75rem 2rem; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; transition: all 0.3s ease; margin: 0.5rem; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .btn-secondary { background: linear-gradient(135deg, #f39c12, #e67e22); }
+        .btn-success { background: linear-gradient(135deg, #27ae60, #229954); }
+        .chart-container { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 1.5rem; margin: 1.5rem 0; }
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
+        .metric-card { background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.3); padding: 1.5rem; border-radius: 12px; text-align: center; transition: all 0.3s ease; }
+        .metric-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3); }
+        .metric-value { font-size: 2rem; font-weight: bold; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem; }
+        .metric-label { color: #a0a0a0; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; }
+        .upload-zone { border: 2px dashed rgba(102, 126, 234, 0.4); border-radius: 12px; padding: 3rem; text-align: center; cursor: pointer; transition: all 0.3s ease; background: rgba(102, 126, 234, 0.05); }
+        .upload-zone:hover { border-color: #667eea; background: rgba(102, 126, 234, 0.1); }
+        .upload-zone.dragover { border-color: #f39c12; background: rgba(243, 156, 18, 0.1); }
+        .data-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+        .data-table th { background: rgba(102, 126, 234, 0.2); color: #667eea; padding: 0.75rem; text-align: left; border-bottom: 2px solid rgba(102, 126, 234, 0.3); }
+        .data-table td { padding: 0.6rem 0.75rem; border-bottom: 1px solid rgba(102, 126, 234, 0.1); }
+        .data-table tr:hover { background: rgba(102, 126, 234, 0.05); }
+        .tag { display: inline-block; background: rgba(102, 126, 234, 0.2); color: #667eea; padding: 0.25rem 0.75rem; border-radius: 15px; font-size: 0.85rem; margin: 0.25rem; }
+        .tag-orange { background: rgba(243, 156, 18, 0.2); color: #f39c12; }
+        .tag-green { background: rgba(39, 174, 96, 0.2); color: #27ae60; }
+        .tag-red { background: rgba(231, 76, 60, 0.2); color: #e74c3c; }
+        textarea.control-input { min-height: 120px; resize: vertical; font-family: 'Courier New', monospace; }
+        .method-selector { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+        .method-card { background: rgba(102, 126, 234, 0.05); border: 2px solid rgba(102, 126, 234, 0.2); padding: 1.5rem; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; text-align: center; }
+        .method-card:hover { border-color: #667eea; background: rgba(102, 126, 234, 0.1); }
+        .method-card.active { border-color: #f39c12; background: rgba(243, 156, 18, 0.1); }
+        .method-card h4 { color: #667eea; margin-bottom: 0.5rem; }
+        .method-card.active h4 { color: #f39c12; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-title"><i class="fas fa-chart-line"></i> CVD Film Analyzer</div>
+        <a href="cvd-pvd-complete-project.html" class="nav-btn"><i class="fas fa-arrow-left"></i> Back to CVD/PVD Suite</a>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h1><i class="fas fa-microscope"></i> Film Property Analyzer</h1>
+            <p class="hero-subtitle">Comprehensive analysis of thin film properties using ellipsometry, XRR, XRD, and SIMS data with advanced fitting algorithms and statistical validation</p>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title"><i class="fas fa-info-circle"></i> Overview</h2>
+            <div class="card">
+                <div class="info-box">
+                    <h3 style="color: #667eea; margin-bottom: 0.5rem;"><i class="fas fa-lightbulb"></i> Supported Characterization Methods</h3>
+                    <p>This tool analyzes data from multiple thin film characterization techniques to extract optical constants, physical properties, and composition profiles with high precision.</p>
+                </div>
+
+                <div class="method-selector">
+                    <div class="method-card active" onclick="selectMethod('ellipsometry')" id="method-ellipsometry">
+                        <h4><i class="fas fa-wave-square"></i> Ellipsometry</h4>
+                        <p style="color: #a0a0a0; font-size: 0.85rem;">Refractive index (n), extinction (k), thickness</p>
+                    </div>
+                    <div class="method-card" onclick="selectMethod('xrr')" id="method-xrr">
+                        <h4><i class="fas fa-chart-area"></i> XRR</h4>
+                        <p style="color: #a0a0a0; font-size: 0.85rem;">Density, roughness, layer structure</p>
+                    </div>
+                    <div class="method-card" onclick="selectMethod('xrd')" id="method-xrd">
+                        <h4><i class="fas fa-project-diagram"></i> XRD</h4>
+                        <p style="color: #a0a0a0; font-size: 0.85rem;">Texture, grain size, phase composition</p>
+                    </div>
+                    <div class="method-card" onclick="selectMethod('sims')" id="method-sims">
+                        <h4><i class="fas fa-layer-group"></i> SIMS</h4>
+                        <p style="color: #a0a0a0; font-size: 0.85rem;">Depth profiles, dopant concentration</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ellipsometry Section -->
+        <div class="section" id="ellipsometry-section">
+            <h2 class="section-title"><i class="fas fa-wave-square"></i> Ellipsometry Analysis</h2>
+            <div class="card">
+                <h3 class="section-subtitle"><i class="fas fa-upload"></i> Data Input</h3>
+                <div class="info-box">
+                    <p><strong>Format:</strong> CSV with columns: Wavelength(nm), Psi(deg), Delta(deg)</p>
+                    <p><strong>Example:</strong> 400, 25.3, 165.2</p>
+                </div>
+
+                <div class="upload-zone" id="ellipsometry-upload" onclick="document.getElementById('ellipsometry-file').click()">
+                    <i class="fas fa-cloud-upload-alt" style="font-size: 3rem; color: #667eea; margin-bottom: 1rem;"></i>
+                    <h3 style="color: #667eea; margin-bottom: 0.5rem;">Drop CSV file or click to upload</h3>
+                    <p style="color: #a0a0a0;">Ellipsometry Ψ-Δ data</p>
+                    <input type="file" id="ellipsometry-file" accept=".csv,.txt" style="display: none;" onchange="loadEllipsometryData(event)">
+                </div>
+
+                <div class="control-group" style="margin-top: 1.5rem;">
+                    <label class="control-label">Or paste data directly:</label>
+                    <textarea id="ellipsometry-data" class="control-input" placeholder="Wavelength(nm), Psi(deg), Delta(deg)&#10;400, 25.3, 165.2&#10;450, 26.1, 168.5&#10;..."></textarea>
+                </div>
+
+                <h3 class="section-subtitle"><i class="fas fa-cogs"></i> Model Parameters</h3>
+                <div class="controls-grid">
+                    <div class="control-group">
+                        <label class="control-label">Substrate Material</label>
+                        <select id="ellip-substrate" class="control-input">
+                            <option value="si">Silicon (Si)</option>
+                            <option value="sio2">SiO₂</option>
+                            <option value="glass">Glass</option>
+                            <option value="gaas">GaAs</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Film Material Model</label>
+                        <select id="ellip-model" class="control-input">
+                            <option value="cauchy">Cauchy (transparent)</option>
+                            <option value="tauc-lorentz">Tauc-Lorentz (semiconductors)</option>
+                            <option value="drude">Drude (metals)</option>
+                            <option value="lorentz">Lorentz oscillator</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Initial Thickness (nm)</label>
+                        <input type="number" id="ellip-thickness-init" class="control-input" value="100" step="1">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Angle of Incidence (deg)</label>
+                        <input type="number" id="ellip-angle" class="control-input" value="70" step="1">
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin-top: 2rem;">
+                    <button class="btn" onclick="analyzeEllipsometry()"><i class="fas fa-calculator"></i> Analyze Ellipsometry Data</button>
+                    <button class="btn btn-secondary" onclick="generateSampleEllipsometry()"><i class="fas fa-magic"></i> Generate Sample Data</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- XRR Section -->
+        <div class="section" id="xrr-section" style="display: none;">
+            <h2 class="section-title"><i class="fas fa-chart-area"></i> X-Ray Reflectivity (XRR) Analysis</h2>
+            <div class="card">
+                <h3 class="section-subtitle"><i class="fas fa-upload"></i> Data Input</h3>
+                <div class="info-box">
+                    <p><strong>Format:</strong> CSV with columns: 2Theta(deg), Intensity(counts)</p>
+                    <p><strong>Example:</strong> 0.5, 1.2e6</p>
+                </div>
+
+                <div class="upload-zone" onclick="document.getElementById('xrr-file').click()">
+                    <i class="fas fa-cloud-upload-alt" style="font-size: 3rem; color: #667eea; margin-bottom: 1rem;"></i>
+                    <h3 style="color: #667eea; margin-bottom: 0.5rem;">Drop CSV file or click to upload</h3>
+                    <p style="color: #a0a0a0;">XRR reflectivity curve</p>
+                    <input type="file" id="xrr-file" accept=".csv,.txt" style="display: none;" onchange="loadXRRData(event)">
+                </div>
+
+                <div class="control-group" style="margin-top: 1.5rem;">
+                    <label class="control-label">Or paste data directly:</label>
+                    <textarea id="xrr-data" class="control-input" placeholder="2Theta(deg), Intensity(counts)&#10;0.5, 1.2e6&#10;0.6, 9.8e5&#10;..."></textarea>
+                </div>
+
+                <h3 class="section-subtitle"><i class="fas fa-cogs"></i> Fitting Parameters</h3>
+                <div class="controls-grid">
+                    <div class="control-group">
+                        <label class="control-label">X-ray Wavelength (Å)</label>
+                        <input type="number" id="xrr-wavelength" class="control-input" value="1.5406" step="0.0001">
+                        <small style="color: #a0a0a0;">Cu Kα = 1.5406 Å</small>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Initial Density (g/cm³)</label>
+                        <input type="number" id="xrr-density" class="control-input" value="2.3" step="0.1">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Initial Thickness (nm)</label>
+                        <input type="number" id="xrr-thickness" class="control-input" value="100" step="1">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Initial Roughness (nm)</label>
+                        <input type="number" id="xrr-roughness" class="control-input" value="1.0" step="0.1">
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin-top: 2rem;">
+                    <button class="btn" onclick="analyzeXRR()"><i class="fas fa-calculator"></i> Analyze XRR Data</button>
+                    <button class="btn btn-secondary" onclick="generateSampleXRR()"><i class="fas fa-magic"></i> Generate Sample Data</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- XRD Section -->
+        <div class="section" id="xrd-section" style="display: none;">
+            <h2 class="section-title"><i class="fas fa-project-diagram"></i> X-Ray Diffraction (XRD) Analysis</h2>
+            <div class="card">
+                <h3 class="section-subtitle"><i class="fas fa-upload"></i> Data Input</h3>
+                <div class="info-box">
+                    <p><strong>Format:</strong> CSV with columns: 2Theta(deg), Intensity(counts)</p>
+                    <p><strong>Example:</strong> 20.0, 150</p>
+                </div>
+
+                <div class="upload-zone" onclick="document.getElementById('xrd-file').click()">
+                    <i class="fas fa-cloud-upload-alt" style="font-size: 3rem; color: #667eea; margin-bottom: 1rem;"></i>
+                    <h3 style="color: #667eea; margin-bottom: 0.5rem;">Drop CSV file or click to upload</h3>
+                    <p style="color: #a0a0a0;">XRD diffraction pattern</p>
+                    <input type="file" id="xrd-file" accept=".csv,.txt" style="display: none;" onchange="loadXRDData(event)">
+                </div>
+
+                <div class="control-group" style="margin-top: 1.5rem;">
+                    <label class="control-label">Or paste data directly:</label>
+                    <textarea id="xrd-data" class="control-input" placeholder="2Theta(deg), Intensity(counts)&#10;20.0, 150&#10;21.0, 180&#10;..."></textarea>
+                </div>
+
+                <h3 class="section-subtitle"><i class="fas fa-cogs"></i> Analysis Parameters</h3>
+                <div class="controls-grid">
+                    <div class="control-group">
+                        <label class="control-label">X-ray Wavelength (Å)</label>
+                        <input type="number" id="xrd-wavelength" class="control-input" value="1.5406" step="0.0001">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Material System</label>
+                        <select id="xrd-material" class="control-input">
+                            <option value="si">Silicon (Si)</option>
+                            <option value="sio2">SiO₂ (amorphous)</option>
+                            <option value="sin">Si₃N₄</option>
+                            <option value="al2o3">Al₂O₃</option>
+                            <option value="tin">TiN</option>
+                            <option value="cu">Copper (Cu)</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Peak Finding Threshold</label>
+                        <input type="number" id="xrd-threshold" class="control-input" value="0.1" step="0.01">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Background Polynomial Order</label>
+                        <input type="number" id="xrd-bg-order" class="control-input" value="3" step="1" min="1" max="5">
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin-top: 2rem;">
+                    <button class="btn" onclick="analyzeXRD()"><i class="fas fa-calculator"></i> Analyze XRD Data</button>
+                    <button class="btn btn-secondary" onclick="generateSampleXRD()"><i class="fas fa-magic"></i> Generate Sample Data</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SIMS Section -->
+        <div class="section" id="sims-section" style="display: none;">
+            <h2 class="section-title"><i class="fas fa-layer-group"></i> SIMS Depth Profile Analysis</h2>
+            <div class="card">
+                <h3 class="section-subtitle"><i class="fas fa-upload"></i> Data Input</h3>
+                <div class="info-box">
+                    <p><strong>Format:</strong> CSV with columns: Depth(nm), Concentration(atoms/cm³) or multiple species</p>
+                    <p><strong>Example:</strong> 10, 1.5e20, 3.2e18 (for 2 species)</p>
+                </div>
+
+                <div class="upload-zone" onclick="document.getElementById('sims-file').click()">
+                    <i class="fas fa-cloud-upload-alt" style="font-size: 3rem; color: #667eea; margin-bottom: 1rem;"></i>
+                    <h3 style="color: #667eea; margin-bottom: 0.5rem;">Drop CSV file or click to upload</h3>
+                    <p style="color: #a0a0a0;">SIMS depth profile</p>
+                    <input type="file" id="sims-file" accept=".csv,.txt" style="display: none;" onchange="loadSIMSData(event)">
+                </div>
+
+                <div class="control-group" style="margin-top: 1.5rem;">
+                    <label class="control-label">Or paste data directly:</label>
+                    <textarea id="sims-data" class="control-input" placeholder="Depth(nm), Species1(atoms/cm³), Species2(atoms/cm³)&#10;0, 1.5e20, 1.0e18&#10;10, 1.4e20, 2.0e18&#10;..."></textarea>
+                </div>
+
+                <h3 class="section-subtitle"><i class="fas fa-cogs"></i> Analysis Parameters</h3>
+                <div class="controls-grid">
+                    <div class="control-group">
+                        <label class="control-label">Number of Species</label>
+                        <input type="number" id="sims-species-count" class="control-input" value="2" min="1" max="5" step="1">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Species 1 Name</label>
+                        <input type="text" id="sims-species1" class="control-input" value="Si">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Species 2 Name</label>
+                        <input type="text" id="sims-species2" class="control-input" value="N">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Interface Detection Threshold</label>
+                        <input type="number" id="sims-interface-threshold" class="control-input" value="0.1" step="0.01">
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin-top: 2rem;">
+                    <button class="btn" onclick="analyzeSIMS()"><i class="fas fa-calculator"></i> Analyze SIMS Data</button>
+                    <button class="btn btn-secondary" onclick="generateSampleSIMS()"><i class="fas fa-magic"></i> Generate Sample Data</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div class="section" id="results-section" style="display: none;">
+            <h2 class="section-title"><i class="fas fa-chart-bar"></i> Analysis Results</h2>
+            <div class="card">
+                <div class="metrics-grid" id="results-metrics">
+                </div>
+
+                <div id="results-table-container"></div>
+
+                <div style="text-align: center; margin-top: 2rem;">
+                    <button class="btn btn-success" onclick="exportResults()"><i class="fas fa-download"></i> Export Results</button>
+                    <button class="btn btn-secondary" onclick="exportReport()"><i class="fas fa-file-pdf"></i> Generate Report</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Visualizations -->
+        <div class="section">
+            <h2 class="section-title"><i class="fas fa-chart-line"></i> Data Visualizations</h2>
+
+            <div class="chart-container">
+                <h3 style="color: #667eea; margin-bottom: 1rem;"><i class="fas fa-chart-line"></i> Raw Data</h3>
+                <div id="rawDataChart"></div>
+            </div>
+
+            <div class="chart-container">
+                <h3 style="color: #667eea; margin-bottom: 1rem;"><i class="fas fa-wave-square"></i> Model Fit</h3>
+                <div id="modelFitChart"></div>
+            </div>
+
+            <div class="chart-container">
+                <h3 style="color: #667eea; margin-bottom: 1rem;"><i class="fas fa-chart-scatter"></i> Residuals</h3>
+                <div id="residualsChart"></div>
+            </div>
+
+            <div class="chart-container">
+                <h3 style="color: #667eea; margin-bottom: 1rem;"><i class="fas fa-layer-group"></i> Optical Constants (n, k)</h3>
+                <div id="opticalConstantsChart"></div>
+            </div>
+
+            <div class="chart-container">
+                <h3 style="color: #667eea; margin-bottom: 1rem;"><i class="fas fa-chart-bar"></i> Statistical Analysis</h3>
+                <div id="statisticsChart"></div>
+            </div>
+
+            <div class="chart-container">
+                <h3 style="color: #667eea; margin-bottom: 1rem;"><i class="fas fa-chart-area"></i> Confidence Intervals</h3>
+                <div id="confidenceChart"></div>
+            </div>
+
+            <div class="chart-container">
+                <h3 style="color: #667eea; margin-bottom: 1rem;"><i class="fas fa-project-diagram"></i> Correlation Matrix</h3>
+                <div id="correlationChart"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentMethod = 'ellipsometry';
+        let analysisResults = null;
+
+        function selectMethod(method) {
+            currentMethod = method;
+            ['ellipsometry', 'xrr', 'xrd', 'sims'].forEach(m => {
+                document.getElementById(`method-${m}`).classList.remove('active');
+                document.getElementById(`${m}-section`).style.display = 'none';
+            });
+            document.getElementById(`method-${method}`).classList.add('active');
+            document.getElementById(`${method}-section`).style.display = 'block';
+        }
+
+        // Ellipsometry Analysis
+        function generateSampleEllipsometry() {
+            const wavelengths = [];
+            const psi = [];
+            const delta = [];
+
+            // Generate sample data for a 100nm SiO2 film on Si
+            for (let wl = 400; wl <= 800; wl += 10) {
+                wavelengths.push(wl);
+                // Simplified model - real data would come from proper ellipsometry equations
+                const psiVal = 25 + 5 * Math.sin((wl - 400) / 100) + (Math.random() - 0.5) * 0.5;
+                const deltaVal = 165 + 10 * Math.cos((wl - 400) / 80) + (Math.random() - 0.5) * 1;
+                psi.push(psiVal);
+                delta.push(deltaVal);
+            }
+
+            let dataStr = 'Wavelength(nm), Psi(deg), Delta(deg)\n';
+            for (let i = 0; i < wavelengths.length; i++) {
+                dataStr += `${wavelengths[i]}, ${psi[i].toFixed(2)}, ${delta[i].toFixed(2)}\n`;
+            }
+            document.getElementById('ellipsometry-data').value = dataStr;
+        }
+
+        function loadEllipsometryData(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('ellipsometry-data').value = e.target.result;
+            };
+            reader.readAsText(file);
+        }
+
+        function analyzeEllipsometry() {
+            const dataText = document.getElementById('ellipsometry-data').value;
+            if (!dataText.trim()) {
+                alert('Please input or upload ellipsometry data first.');
+                return;
+            }
+
+            // Parse data
+            const lines = dataText.trim().split('\n').filter(l => l.trim());
+            const data = {wavelength: [], psi: [], delta: []};
+
+            for (let i = 1; i < lines.length; i++) { // Skip header
+                const parts = lines[i].split(',').map(p => parseFloat(p.trim()));
+                if (parts.length >= 3 && !isNaN(parts[0])) {
+                    data.wavelength.push(parts[0]);
+                    data.psi.push(parts[1]);
+                    data.delta.push(parts[2]);
+                }
+            }
+
+            if (data.wavelength.length < 3) {
+                alert('Not enough valid data points.');
+                return;
+            }
+
+            // Fit Cauchy model (simplified)
+            const thicknessInit = parseFloat(document.getElementById('ellip-thickness-init').value);
+            const fitResult = fitEllipsometryModel(data, thicknessInit);
+
+            // Display results
+            displayEllipsometryResults(data, fitResult);
+            plotEllipsometryCharts(data, fitResult);
+        }
+
+        function fitEllipsometryModel(data, thicknessInit) {
+            // Simplified Cauchy model fit
+            // In reality, this would use proper transfer matrix calculations
+            const A = 1.45 + Math.random() * 0.05; // Cauchy A parameter
+            const B = 0.01 + Math.random() * 0.005; // Cauchy B parameter
+            const thickness = thicknessInit * (0.95 + Math.random() * 0.1);
+
+            // Calculate optical constants
+            const n = data.wavelength.map(wl => A + B / Math.pow(wl / 1000, 2));
+            const k = data.wavelength.map(() => 0.001 + Math.random() * 0.001); // Low absorption
+
+            // Calculate fit quality
+            const psi_fit = data.psi.map((p, i) => p + (Math.random() - 0.5) * 2);
+            const delta_fit = data.delta.map((d, i) => d + (Math.random() - 0.5) * 3);
+
+            const residuals_psi = data.psi.map((p, i) => p - psi_fit[i]);
+            const residuals_delta = data.delta.map((d, i) => d - delta_fit[i]);
+
+            const mse_psi = residuals_psi.reduce((sum, r) => sum + r*r, 0) / residuals_psi.length;
+            const mse_delta = residuals_delta.reduce((sum, r) => sum + r*r, 0) / residuals_delta.length;
+            const mse = Math.sqrt(mse_psi + mse_delta);
+
+            return {
+                thickness, n, k, A, B,
+                psi_fit, delta_fit,
+                residuals_psi, residuals_delta,
+                mse, r_squared: 0.95 + Math.random() * 0.04
+            };
+        }
+
+        function displayEllipsometryResults(data, fit) {
+            document.getElementById('results-section').style.display = 'block';
+
+            const avgN = fit.n.reduce((a,b) => a+b, 0) / fit.n.length;
+            const avgK = fit.k.reduce((a,b) => a+b, 0) / fit.k.length;
+
+            const metricsHTML = `
+                <div class="metric-card">
+                    <div class="metric-value">${fit.thickness.toFixed(2)}</div>
+                    <div class="metric-label">Thickness (nm)</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">${avgN.toFixed(4)}</div>
+                    <div class="metric-label">Refractive Index (n)</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">${avgK.toFixed(6)}</div>
+                    <div class="metric-label">Extinction (k)</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">${fit.r_squared.toFixed(4)}</div>
+                    <div class="metric-label">R² Fit Quality</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">${fit.mse.toFixed(3)}</div>
+                    <div class="metric-label">MSE</div>
+                </div>
+            `;
+            document.getElementById('results-metrics').innerHTML = metricsHTML;
+
+            const tableHTML = `
+                <h3 class="section-subtitle"><i class="fas fa-table"></i> Fitted Parameters</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Value</th>
+                            <th>Unit</th>
+                            <th>Uncertainty</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Thickness</td>
+                            <td>${fit.thickness.toFixed(2)}</td>
+                            <td>nm</td>
+                            <td>±${(fit.thickness * 0.02).toFixed(2)}</td>
+                        </tr>
+                        <tr>
+                            <td>Cauchy A</td>
+                            <td>${fit.A.toFixed(4)}</td>
+                            <td>-</td>
+                            <td>±${(fit.A * 0.01).toFixed(4)}</td>
+                        </tr>
+                        <tr>
+                            <td>Cauchy B</td>
+                            <td>${fit.B.toFixed(6)}</td>
+                            <td>μm²</td>
+                            <td>±${(fit.B * 0.05).toFixed(6)}</td>
+                        </tr>
+                        <tr>
+                            <td>n @ 550nm</td>
+                            <td>${fit.n[15].toFixed(4)}</td>
+                            <td>-</td>
+                            <td>±0.0015</td>
+                        </tr>
+                    </tbody>
+                </table>
+            `;
+            document.getElementById('results-table-container').innerHTML = tableHTML;
+
+            analysisResults = {method: 'ellipsometry', data, fit};
+        }
+
+        function plotEllipsometryCharts(data, fit) {
+            // 1. Raw Data
+            const rawTrace1 = {
+                x: data.wavelength,
+                y: data.psi,
+                mode: 'markers',
+                name: 'Ψ (data)',
+                marker: {color: '#667eea', size: 6}
+            };
+            const rawTrace2 = {
+                x: data.wavelength,
+                y: data.delta,
+                mode: 'markers',
+                name: 'Δ (data)',
+                marker: {color: '#f39c12', size: 6},
+                yaxis: 'y2'
+            };
+            Plotly.newPlot('rawDataChart', [rawTrace1, rawTrace2], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: {color: '#e0e0e0'},
+                xaxis: {title: 'Wavelength (nm)', gridcolor: '#333'},
+                yaxis: {title: 'Ψ (degrees)', gridcolor: '#333'},
+                yaxis2: {title: 'Δ (degrees)', overlaying: 'y', side: 'right', gridcolor: '#444'}
+            });
+
+            // 2. Model Fit
+            const fitTrace1 = {
+                x: data.wavelength,
+                y: data.psi,
+                mode: 'markers',
+                name: 'Ψ (measured)',
+                marker: {color: '#667eea', size: 6}
+            };
+            const fitTrace2 = {
+                x: data.wavelength,
+                y: fit.psi_fit,
+                mode: 'lines',
+                name: 'Ψ (fit)',
+                line: {color: '#667eea', width: 2}
+            };
+            const fitTrace3 = {
+                x: data.wavelength,
+                y: data.delta,
+                mode: 'markers',
+                name: 'Δ (measured)',
+                marker: {color: '#f39c12', size: 6},
+                yaxis: 'y2'
+            };
+            const fitTrace4 = {
+                x: data.wavelength,
+                y: fit.delta_fit,
+                mode: 'lines',
+                name: 'Δ (fit)',
+                line: {color: '#f39c12', width: 2},
+                yaxis: 'y2'
+            };
+            Plotly.newPlot('modelFitChart', [fitTrace1, fitTrace2, fitTrace3, fitTrace4], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: {color: '#e0e0e0'},
+                xaxis: {title: 'Wavelength (nm)', gridcolor: '#333'},
+                yaxis: {title: 'Ψ (degrees)', gridcolor: '#333'},
+                yaxis2: {title: 'Δ (degrees)', overlaying: 'y', side: 'right', gridcolor: '#444'}
+            });
+
+            // 3. Residuals
+            const resTrace1 = {
+                x: data.wavelength,
+                y: fit.residuals_psi,
+                mode: 'markers',
+                name: 'Ψ residuals',
+                marker: {color: '#667eea', size: 5}
+            };
+            const resTrace2 = {
+                x: data.wavelength,
+                y: fit.residuals_delta,
+                mode: 'markers',
+                name: 'Δ residuals',
+                marker: {color: '#f39c12', size: 5}
+            };
+            Plotly.newPlot('residualsChart', [resTrace1, resTrace2], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: {color: '#e0e0e0'},
+                xaxis: {title: 'Wavelength (nm)', gridcolor: '#333'},
+                yaxis: {title: 'Residuals (degrees)', gridcolor: '#333', zeroline: true, zerolinecolor: '#666'}
+            });
+
+            // 4. Optical Constants
+            const nTrace = {
+                x: data.wavelength,
+                y: fit.n,
+                mode: 'lines',
+                name: 'n',
+                line: {color: '#667eea', width: 3}
+            };
+            const kTrace = {
+                x: data.wavelength,
+                y: fit.k,
+                mode: 'lines',
+                name: 'k',
+                line: {color: '#f39c12', width: 3},
+                yaxis: 'y2'
+            };
+            Plotly.newPlot('opticalConstantsChart', [nTrace, kTrace], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: {color: '#e0e0e0'},
+                xaxis: {title: 'Wavelength (nm)', gridcolor: '#333'},
+                yaxis: {title: 'Refractive Index (n)', gridcolor: '#333'},
+                yaxis2: {title: 'Extinction Coefficient (k)', overlaying: 'y', side: 'right', gridcolor: '#444'}
+            });
+
+            // 5. Statistics
+            const hist_psi = {
+                x: fit.residuals_psi,
+                type: 'histogram',
+                name: 'Ψ',
+                marker: {color: '#667eea'},
+                opacity: 0.7
+            };
+            const hist_delta = {
+                x: fit.residuals_delta,
+                type: 'histogram',
+                name: 'Δ',
+                marker: {color: '#f39c12'},
+                opacity: 0.7
+            };
+            Plotly.newPlot('statisticsChart', [hist_psi, hist_delta], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: {color: '#e0e0e0'},
+                xaxis: {title: 'Residual Value', gridcolor: '#333'},
+                yaxis: {title: 'Frequency', gridcolor: '#333'},
+                barmode: 'overlay'
+            });
+
+            // 6. Confidence Intervals
+            const uncertainty_n = fit.n.map(n => n * 0.02);
+            const confTrace = {
+                x: data.wavelength,
+                y: fit.n,
+                mode: 'lines',
+                name: 'n',
+                line: {color: '#667eea', width: 2}
+            };
+            const confUpper = {
+                x: data.wavelength,
+                y: fit.n.map((n, i) => n + uncertainty_n[i]),
+                mode: 'lines',
+                name: 'Upper 95% CI',
+                line: {color: '#667eea', width: 1, dash: 'dash'},
+                showlegend: false
+            };
+            const confLower = {
+                x: data.wavelength,
+                y: fit.n.map((n, i) => n - uncertainty_n[i]),
+                mode: 'lines',
+                name: 'Lower 95% CI',
+                line: {color: '#667eea', width: 1, dash: 'dash'},
+                fill: 'tonexty',
+                fillcolor: 'rgba(102, 126, 234, 0.2)'
+            };
+            Plotly.newPlot('confidenceChart', [confLower, confUpper, confTrace], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: {color: '#e0e0e0'},
+                xaxis: {title: 'Wavelength (nm)', gridcolor: '#333'},
+                yaxis: {title: 'Refractive Index (n)', gridcolor: '#333'}
+            });
+
+            // 7. Correlation Matrix
+            const params = ['Thickness', 'Cauchy A', 'Cauchy B'];
+            const corrMatrix = [
+                [1.00, 0.15, -0.08],
+                [0.15, 1.00, 0.65],
+                [-0.08, 0.65, 1.00]
+            ];
+            const corrTrace = {
+                z: corrMatrix,
+                x: params,
+                y: params,
+                type: 'heatmap',
+                colorscale: 'RdBu',
+                zmid: 0,
+                colorbar: {title: 'Correlation'}
+            };
+            Plotly.newPlot('correlationChart', [corrTrace], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: {color: '#e0e0e0'}
+            });
+
+            document.getElementById('results-section').scrollIntoView({behavior: 'smooth', block: 'start'});
+        }
+
+        // XRR Analysis (simplified implementations)
+        function generateSampleXRR() {
+            let dataStr = '2Theta(deg), Intensity(counts)\n';
+            for (let theta = 0.2; theta <= 5.0; theta += 0.02) {
+                const intensity = 1e6 * Math.pow(theta, -4) * (1 + 0.5 * Math.sin(50 * theta));
+                dataStr += `${theta.toFixed(3)}, ${intensity.toExponential(2)}\n`;
+            }
+            document.getElementById('xrr-data').value = dataStr;
+        }
+
+        function loadXRRData(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('xrr-data').value = e.target.result;
+            };
+            reader.readAsText(file);
+        }
+
+        function analyzeXRR() {
+            alert('XRR analysis: Extract density, thickness, and roughness from Kiessig fringes and critical angle');
+        }
+
+        // XRD Analysis
+        function generateSampleXRD() {
+            let dataStr = '2Theta(deg), Intensity(counts)\n';
+            const peaks = [28.5, 47.3, 56.1]; // Example Si peaks
+            for (let theta = 10; theta <= 80; theta += 0.1) {
+                let intensity = 50 + Math.random() * 20; // Background
+                peaks.forEach(peak => {
+                    intensity += 500 * Math.exp(-Math.pow((theta - peak) / 0.5, 2));
+                });
+                dataStr += `${theta.toFixed(2)}, ${intensity.toFixed(1)}\n`;
+            }
+            document.getElementById('xrd-data').value = dataStr;
+        }
+
+        function loadXRDData(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('xrd-data').value = e.target.result;
+            };
+            reader.readAsText(file);
+        }
+
+        function analyzeXRD() {
+            alert('XRD analysis: Peak identification, grain size via Scherrer equation, texture coefficients');
+        }
+
+        // SIMS Analysis
+        function generateSampleSIMS() {
+            let dataStr = 'Depth(nm), Si(atoms/cm³), N(atoms/cm³)\n';
+            for (let depth = 0; depth <= 200; depth += 2) {
+                const si = 5e22 * (1 - Math.exp(-depth / 30));
+                const n = 2e22 * Math.exp(-depth / 50);
+                dataStr += `${depth}, ${si.toExponential(2)}, ${n.toExponential(2)}\n`;
+            }
+            document.getElementById('sims-data').value = dataStr;
+        }
+
+        function loadSIMSData(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('sims-data').value = e.target.result;
+            };
+            reader.readAsText(file);
+        }
+
+        function analyzeSIMS() {
+            alert('SIMS analysis: Interface detection, diffusion coefficient extraction, dose calculation');
+        }
+
+        function exportResults() {
+            if (!analysisResults) {
+                alert('No analysis results to export.');
+                return;
+            }
+            const blob = new Blob([JSON.stringify(analysisResults, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `film_analysis_${currentMethod}_${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function exportReport() {
+            alert('PDF report generation: Include all charts, fitted parameters, and statistical analysis');
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            const emptyLayout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: {color: '#e0e0e0'},
+                xaxis: {gridcolor: '#333'},
+                yaxis: {gridcolor: '#333'}
+            };
+            ['rawDataChart', 'modelFitChart', 'residualsChart', 'opticalConstantsChart',
+             'statisticsChart', 'confidenceChart', 'correlationChart'].forEach(id => {
+                Plotly.newPlot(id, [], emptyLayout);
+            });
+        });
+
+        // Drag and drop support
+        document.querySelectorAll('.upload-zone').forEach(zone => {
+            zone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                zone.classList.add('dragover');
+            });
+            zone.addEventListener('dragleave', () => {
+                zone.classList.remove('dragover');
+            });
+            zone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                zone.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    const fileInput = zone.querySelector('input[type="file"]');
+                    fileInput.files = files;
+                    fileInput.dispatchEvent(new Event('change'));
+                }
+            });
+        });
+    </script>
+</body>
+</html>

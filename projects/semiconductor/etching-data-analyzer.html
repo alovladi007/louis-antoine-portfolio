@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Etching Data Analyzer - Statistical Process Control</title>
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar a {
+            color: #764ba2;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: color 0.3s;
+        }
+
+        .navbar a:hover {
+            color: #667eea;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .hero {
+            background: white;
+            padding: 3rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .hero h1 {
+            color: #764ba2;
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .hero p {
+            color: #555;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        .upload-section {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .upload-section h3 {
+            color: #764ba2;
+            margin-bottom: 1.5rem;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            padding: 3rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-area:hover {
+            background: rgba(102, 126, 234, 0.05);
+            border-color: #764ba2;
+        }
+
+        .upload-area.dragover {
+            background: rgba(102, 126, 234, 0.1);
+            border-color: #764ba2;
+        }
+
+        .upload-area i {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .upload-area h4 {
+            color: #764ba2;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-area p {
+            color: #666;
+        }
+
+        .analysis-controls {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .input-group {
+            margin-bottom: 1rem;
+        }
+
+        .input-group label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .input-group input,
+        .input-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus,
+        .input-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .input-group small {
+            color: #777;
+            font-size: 0.85rem;
+            display: block;
+            margin-top: 0.25rem;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin-right: 0.5rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+        }
+
+        .statistics-panel {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .statistics-panel h3 {
+            color: #764ba2;
+            margin-bottom: 1.5rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+        }
+
+        .stat-card h4 {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .stat-card .sub {
+            font-size: 0.85rem;
+            opacity: 0.8;
+            margin-top: 0.5rem;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 2rem;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .chart-container h4 {
+            color: #764ba2;
+            margin-bottom: 1rem;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left: 4px solid #17a2b8;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border-left: 4px solid #ffc107;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+
+        .anomaly-list {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 5px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .anomaly-item {
+            background: white;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            border-radius: 5px;
+            border-left: 4px solid #dc3545;
+        }
+
+        .correlation-matrix {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 0.75rem;
+            text-align: center;
+            border: 1px solid #e0e0e0;
+        }
+
+        th {
+            background: #764ba2;
+            color: white;
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .cpk-indicator {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 15px;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .cpk-good {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .cpk-marginal {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .cpk-poor {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <a href="etching-complete-project.html">← Back to Etching Process Complete Project</a>
+    </div>
+
+    <div class="container">
+        <div class="hero">
+            <h1>Etching Data Analyzer</h1>
+            <p>Comprehensive statistical process control (SPC) analysis for etching data. Upload CSV data to perform time series analysis, calculate process capability (Cpk), detect trends and anomalies, analyze correlations, and generate detailed reports.</p>
+        </div>
+
+        <div class="upload-section">
+            <h3>Upload Process Data</h3>
+            <div class="alert alert-info">
+                Upload a CSV file with columns: timestamp, etch_rate, cd, uniformity, pressure, power, flow, temperature. Sample data will be generated if no file is uploaded.
+            </div>
+            <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+                <div style="font-size: 3rem;">📁</div>
+                <h4>Drag & Drop CSV File Here</h4>
+                <p>or click to browse</p>
+                <input type="file" id="fileInput" accept=".csv" style="display: none;">
+            </div>
+            <div style="margin-top: 1rem; text-align: center;">
+                <button class="btn btn-secondary" onclick="generateSampleData()">Generate Sample Data</button>
+            </div>
+        </div>
+
+        <div class="analysis-controls" id="controlsPanel" style="display: none;">
+            <h3>Analysis Configuration</h3>
+            <div class="control-grid">
+                <div class="input-group">
+                    <label for="targetEtchRate">Target Etch Rate - nm/min</label>
+                    <input type="number" id="targetEtchRate" value="150">
+                </div>
+                <div class="input-group">
+                    <label for="etchRateUSL">Upper Spec Limit (USL)</label>
+                    <input type="number" id="etchRateUSL" value="165">
+                </div>
+                <div class="input-group">
+                    <label for="etchRateLSL">Lower Spec Limit (LSL)</label>
+                    <input type="number" id="etchRateLSL" value="135">
+                </div>
+                <div class="input-group">
+                    <label for="targetCD">Target CD - nm</label>
+                    <input type="number" id="targetCD" value="350">
+                </div>
+                <div class="input-group">
+                    <label for="cdUSL">CD Upper Spec Limit</label>
+                    <input type="number" id="cdUSL" value="365">
+                </div>
+                <div class="input-group">
+                    <label for="cdLSL">CD Lower Spec Limit</label>
+                    <input type="number" id="cdLSL" value="335">
+                </div>
+                <div class="input-group">
+                    <label for="sigmaLevel">Sigma Level for Anomalies</label>
+                    <input type="number" id="sigmaLevel" value="3" min="1" max="6" step="0.5">
+                </div>
+                <div class="input-group">
+                    <label for="trendWindow">Trend Window (points)</label>
+                    <input type="number" id="trendWindow" value="10" min="5" max="50">
+                </div>
+            </div>
+            <button class="btn" onclick="runAnalysis()">Run Analysis</button>
+            <button class="btn btn-secondary" onclick="exportReport()">Export Report</button>
+        </div>
+
+        <div class="loading" id="loadingIndicator">
+            <div class="spinner"></div>
+            <p style="margin-top: 1rem; color: white;">Analyzing data...</p>
+        </div>
+
+        <div id="resultsSection" style="display: none;">
+            <div class="statistics-panel">
+                <h3>Statistical Summary</h3>
+                <div class="stats-grid" id="statsGrid">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+
+            <div class="statistics-panel">
+                <h3>Process Capability Analysis</h3>
+                <div id="capabilityMetrics"></div>
+            </div>
+
+            <div class="statistics-panel">
+                <h3>Anomaly Detection Results</h3>
+                <div class="alert alert-warning" id="anomalyAlert">
+                    <strong>Anomalies Detected:</strong> <span id="anomalyCount">0</span> data points outside control limits
+                </div>
+                <div class="anomaly-list" id="anomalyList">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <h4>Time Series - Etch Rate</h4>
+                    <div id="timeSeriesChart"></div>
+                </div>
+
+                <div class="chart-container">
+                    <h4>Statistical Process Control (SPC) Chart</h4>
+                    <div id="spcChart"></div>
+                </div>
+
+                <div class="chart-container">
+                    <h4>Etch Rate Distribution</h4>
+                    <div id="histogramEtchRate"></div>
+                </div>
+
+                <div class="chart-container">
+                    <h4>CD Distribution</h4>
+                    <div id="histogramCD"></div>
+                </div>
+
+                <div class="chart-container">
+                    <h4>Box Plot - Process Parameters</h4>
+                    <div id="boxPlotChart"></div>
+                </div>
+
+                <div class="chart-container">
+                    <h4>Scatter Matrix - Parameter Relationships</h4>
+                    <div id="scatterMatrixChart"></div>
+                </div>
+
+                <div class="chart-container">
+                    <h4>Correlation Heatmap</h4>
+                    <div id="correlationHeatmap"></div>
+                </div>
+
+                <div class="chart-container">
+                    <h4>Trend Analysis with Linear Regression</h4>
+                    <div id="trendChart"></div>
+                </div>
+
+                <div class="chart-container">
+                    <h4>Anomaly Highlighting</h4>
+                    <div id="anomalyChart"></div>
+                </div>
+
+                <div class="chart-container">
+                    <h4>Process Capability Analysis</h4>
+                    <div id="capabilityChart"></div>
+                </div>
+
+                <div class="chart-container">
+                    <h4>Run Chart - Sequential Analysis</h4>
+                    <div id="runChart"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let processData = [];
+        let analysisResults = {};
+
+        // File upload handling
+        document.getElementById('fileInput').addEventListener('change', handleFileUpload);
+
+        const uploadArea = document.getElementById('uploadArea');
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        }
+
+        function handleFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const csv = e.target.result;
+                parseCSV(csv);
+                document.getElementById('controlsPanel').style.display = 'block';
+            };
+            reader.readAsText(file);
+        }
+
+        function parseCSV(csv) {
+            const lines = csv.trim().split('\n');
+            const headers = lines[0].split(',').map(h => h.trim());
+
+            processData = lines.slice(1).map(line => {
+                const values = line.split(',');
+                const obj = {};
+                headers.forEach((header, i) => {
+                    obj[header] = isNaN(values[i]) ? values[i] : parseFloat(values[i]);
+                });
+                return obj;
+            });
+        }
+
+        // Generate sample data
+        function generateSampleData() {
+            processData = [];
+            const baseDate = new Date('2024-01-01');
+
+            for (let i = 0; i < 200; i++) {
+                const date = new Date(baseDate);
+                date.setHours(date.getHours() + i);
+
+                // Add some trends and anomalies
+                const trend = i * 0.05;
+                const seasonal = 5 * Math.sin(i / 20);
+                const noise = (Math.random() - 0.5) * 8;
+
+                const etchRate = 150 + trend + seasonal + noise + (i === 50 || i === 120 ? 20 : 0);
+                const cd = 350 + (Math.random() - 0.5) * 10 + (i === 75 ? 25 : 0);
+                const uniformity = 3 + (Math.random() - 0.5) * 1;
+                const pressure = 20 + (Math.random() - 0.5) * 3;
+                const power = 1000 + (Math.random() - 0.5) * 100;
+                const flow = 100 + (Math.random() - 0.5) * 15;
+                const temperature = 25 + (Math.random() - 0.5) * 5;
+
+                processData.push({
+                    timestamp: date.toISOString(),
+                    etch_rate: etchRate,
+                    cd: cd,
+                    uniformity: uniformity,
+                    pressure: pressure,
+                    power: power,
+                    flow: flow,
+                    temperature: temperature
+                });
+            }
+
+            document.getElementById('controlsPanel').style.display = 'block';
+            alert('Sample data generated with 200 measurements including trends and anomalies.');
+        }
+
+        // Run analysis
+        function runAnalysis() {
+            if (processData.length === 0) {
+                alert('Please upload data or generate sample data first.');
+                return;
+            }
+
+            document.getElementById('loadingIndicator').classList.add('active');
+            document.getElementById('resultsSection').style.display = 'none';
+
+            setTimeout(() => {
+                performStatisticalAnalysis();
+                detectAnomalies();
+                calculateCorrelations();
+                performTrendAnalysis();
+                calculateCapability();
+
+                displayStatistics();
+                createAllCharts();
+
+                document.getElementById('loadingIndicator').classList.remove('active');
+                document.getElementById('resultsSection').style.display = 'block';
+            }, 500);
+        }
+
+        // Statistical analysis
+        function performStatisticalAnalysis() {
+            const etchRates = processData.map(d => d.etch_rate);
+            const cds = processData.map(d => d.cd);
+            const uniformities = processData.map(d => d.uniformity);
+
+            analysisResults.stats = {
+                etchRate: calculateStats(etchRates),
+                cd: calculateStats(cds),
+                uniformity: calculateStats(uniformities),
+                count: processData.length
+            };
+        }
+
+        function calculateStats(data) {
+            const sorted = [...data].sort((a, b) => a - b);
+            const n = data.length;
+            const mean = data.reduce((a, b) => a + b, 0) / n;
+            const variance = data.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (n - 1);
+            const std = Math.sqrt(variance);
+
+            return {
+                mean: mean,
+                std: std,
+                min: sorted[0],
+                max: sorted[n - 1],
+                median: sorted[Math.floor(n / 2)],
+                q1: sorted[Math.floor(n * 0.25)],
+                q3: sorted[Math.floor(n * 0.75)]
+            };
+        }
+
+        // Anomaly detection
+        function detectAnomalies() {
+            const sigmaLevel = parseFloat(document.getElementById('sigmaLevel').value);
+            const etchRateStats = analysisResults.stats.etchRate;
+
+            analysisResults.anomalies = processData.map((d, i) => {
+                const zScore = Math.abs((d.etch_rate - etchRateStats.mean) / etchRateStats.std);
+                return {
+                    index: i,
+                    timestamp: d.timestamp,
+                    value: d.etch_rate,
+                    zScore: zScore,
+                    isAnomaly: zScore > sigmaLevel
+                };
+            }).filter(a => a.isAnomaly);
+        }
+
+        // Correlation analysis
+        function calculateCorrelations() {
+            const variables = ['pressure', 'power', 'flow', 'temperature', 'etch_rate', 'cd'];
+            const corrMatrix = {};
+
+            variables.forEach(v1 => {
+                corrMatrix[v1] = {};
+                variables.forEach(v2 => {
+                    corrMatrix[v1][v2] = calculateCorrelation(
+                        processData.map(d => d[v1]),
+                        processData.map(d => d[v2])
+                    );
+                });
+            });
+
+            analysisResults.correlations = corrMatrix;
+        }
+
+        function calculateCorrelation(x, y) {
+            const n = x.length;
+            const meanX = x.reduce((a, b) => a + b, 0) / n;
+            const meanY = y.reduce((a, b) => a + b, 0) / n;
+
+            let num = 0, denX = 0, denY = 0;
+            for (let i = 0; i < n; i++) {
+                const dx = x[i] - meanX;
+                const dy = y[i] - meanY;
+                num += dx * dy;
+                denX += dx * dx;
+                denY += dy * dy;
+            }
+
+            return num / Math.sqrt(denX * denY);
+        }
+
+        // Trend analysis
+        function performTrendAnalysis() {
+            const etchRates = processData.map(d => d.etch_rate);
+            const x = processData.map((d, i) => i);
+
+            const regression = linearRegression(x, etchRates);
+            analysisResults.trend = regression;
+        }
+
+        function linearRegression(x, y) {
+            const n = x.length;
+            const sumX = x.reduce((a, b) => a + b, 0);
+            const sumY = y.reduce((a, b) => a + b, 0);
+            const sumXY = x.reduce((a, b, i) => a + b * y[i], 0);
+            const sumX2 = x.reduce((a, b) => a + b * b, 0);
+
+            const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+            const intercept = (sumY - slope * sumX) / n;
+
+            return { slope, intercept };
+        }
+
+        // Capability analysis
+        function calculateCapability() {
+            const target = parseFloat(document.getElementById('targetEtchRate').value);
+            const usl = parseFloat(document.getElementById('etchRateUSL').value);
+            const lsl = parseFloat(document.getElementById('etchRateLSL').value);
+
+            const stats = analysisResults.stats.etchRate;
+
+            const cp = (usl - lsl) / (6 * stats.std);
+            const cpk = Math.min(
+                (usl - stats.mean) / (3 * stats.std),
+                (stats.mean - lsl) / (3 * stats.std)
+            );
+
+            const targetCD = parseFloat(document.getElementById('targetCD').value);
+            const cdUSL = parseFloat(document.getElementById('cdUSL').value);
+            const cdLSL = parseFloat(document.getElementById('cdLSL').value);
+            const cdStats = analysisResults.stats.cd;
+
+            const cpCD = (cdUSL - cdLSL) / (6 * cdStats.std);
+            const cpkCD = Math.min(
+                (cdUSL - cdStats.mean) / (3 * cdStats.std),
+                (cdStats.mean - cdLSL) / (3 * cdStats.std)
+            );
+
+            analysisResults.capability = {
+                etchRate: { cp, cpk },
+                cd: { cp: cpCD, cpk: cpkCD }
+            };
+        }
+
+        // Display statistics
+        function displayStatistics() {
+            const stats = analysisResults.stats;
+
+            document.getElementById('statsGrid').innerHTML = `
+                <div class="stat-card">
+                    <h4>Mean Etch Rate</h4>
+                    <div class="value">${stats.etchRate.mean.toFixed(2)}</div>
+                    <div class="sub">±${stats.etchRate.std.toFixed(2)} nm/min</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Mean CD</h4>
+                    <div class="value">${stats.cd.mean.toFixed(2)}</div>
+                    <div class="sub">±${stats.cd.std.toFixed(2)} nm</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Mean Uniformity</h4>
+                    <div class="value">${stats.uniformity.mean.toFixed(2)}%</div>
+                    <div class="sub">±${stats.uniformity.std.toFixed(2)}%</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Total Samples</h4>
+                    <div class="value">${stats.count}</div>
+                    <div class="sub">measurements</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Etch Rate Range</h4>
+                    <div class="value">${stats.etchRate.max - stats.etchRate.min.toFixed(1)}</div>
+                    <div class="sub">${stats.etchRate.min.toFixed(1)} - ${stats.etchRate.max.toFixed(1)}</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Process Trend</h4>
+                    <div class="value">${analysisResults.trend.slope > 0 ? '↗' : '↘'}</div>
+                    <div class="sub">${Math.abs(analysisResults.trend.slope).toFixed(3)} nm/min per run</div>
+                </div>
+            `;
+
+            // Capability metrics
+            const cap = analysisResults.capability;
+            const cpkClass = cap.etchRate.cpk >= 1.33 ? 'cpk-good' : cap.etchRate.cpk >= 1.0 ? 'cpk-marginal' : 'cpk-poor';
+            const cpkCDClass = cap.cd.cpk >= 1.33 ? 'cpk-good' : cap.cd.cpk >= 1.0 ? 'cpk-marginal' : 'cpk-poor';
+
+            document.getElementById('capabilityMetrics').innerHTML = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                    <div>
+                        <h4 style="color: #764ba2; margin-bottom: 1rem;">Etch Rate Capability</h4>
+                        <p><strong>Cp:</strong> ${cap.etchRate.cp.toFixed(3)}</p>
+                        <p><strong>Cpk:</strong> <span class="cpk-indicator ${cpkClass}">${cap.etchRate.cpk.toFixed(3)}</span></p>
+                        <p style="margin-top: 0.5rem; font-size: 0.85rem; color: #666;">
+                            ${cap.etchRate.cpk >= 1.33 ? 'Process is capable' : cap.etchRate.cpk >= 1.0 ? 'Process marginally capable' : 'Process not capable'}
+                        </p>
+                    </div>
+                    <div>
+                        <h4 style="color: #764ba2; margin-bottom: 1rem;">CD Capability</h4>
+                        <p><strong>Cp:</strong> ${cap.cd.cp.toFixed(3)}</p>
+                        <p><strong>Cpk:</strong> <span class="cpk-indicator ${cpkCDClass}">${cap.cd.cpk.toFixed(3)}</span></p>
+                        <p style="margin-top: 0.5rem; font-size: 0.85rem; color: #666;">
+                            ${cap.cd.cpk >= 1.33 ? 'Process is capable' : cap.cd.cpk >= 1.0 ? 'Process marginally capable' : 'Process not capable'}
+                        </p>
+                    </div>
+                </div>
+            `;
+
+            // Anomalies
+            document.getElementById('anomalyCount').textContent = analysisResults.anomalies.length;
+            document.getElementById('anomalyList').innerHTML = analysisResults.anomalies.map(a => `
+                <div class="anomaly-item">
+                    <strong>Run ${a.index + 1}</strong> - ${new Date(a.timestamp).toLocaleString()}<br>
+                    Etch Rate: ${a.value.toFixed(2)} nm/min (${a.zScore.toFixed(2)}σ from mean)
+                </div>
+            `).join('') || '<p style="color: #666;">No anomalies detected.</p>';
+        }
+
+        // Create all charts
+        function createAllCharts() {
+            createTimeSeriesChart();
+            createSPCChart();
+            createHistograms();
+            createBoxPlot();
+            createScatterMatrix();
+            createCorrelationHeatmap();
+            createTrendChart();
+            createAnomalyChart();
+            createCapabilityChart();
+            createRunChart();
+        }
+
+        function createTimeSeriesChart() {
+            const trace = {
+                x: processData.map(d => d.timestamp),
+                y: processData.map(d => d.etch_rate),
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: { color: '#667eea' },
+                marker: { size: 4 }
+            };
+
+            const layout = {
+                xaxis: { title: 'Timestamp' },
+                yaxis: { title: 'Etch Rate (nm/min)' },
+                height: 400
+            };
+
+            Plotly.newPlot('timeSeriesChart', [trace], layout, { responsive: true });
+        }
+
+        function createSPCChart() {
+            const mean = analysisResults.stats.etchRate.mean;
+            const std = analysisResults.stats.etchRate.std;
+            const ucl = mean + 3 * std;
+            const lcl = mean - 3 * std;
+
+            const traces = [
+                {
+                    x: processData.map((d, i) => i),
+                    y: processData.map(d => d.etch_rate),
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: 'Etch Rate',
+                    line: { color: '#667eea' }
+                },
+                {
+                    x: [0, processData.length - 1],
+                    y: [mean, mean],
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Mean',
+                    line: { color: '#28a745', dash: 'dash' }
+                },
+                {
+                    x: [0, processData.length - 1],
+                    y: [ucl, ucl],
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'UCL (+3σ)',
+                    line: { color: '#dc3545', dash: 'dot' }
+                },
+                {
+                    x: [0, processData.length - 1],
+                    y: [lcl, lcl],
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'LCL (-3σ)',
+                    line: { color: '#dc3545', dash: 'dot' }
+                }
+            ];
+
+            const layout = {
+                xaxis: { title: 'Run Number' },
+                yaxis: { title: 'Etch Rate (nm/min)' },
+                height: 400,
+                showlegend: true
+            };
+
+            Plotly.newPlot('spcChart', traces, layout, { responsive: true });
+        }
+
+        function createHistograms() {
+            const trace1 = {
+                x: processData.map(d => d.etch_rate),
+                type: 'histogram',
+                marker: { color: '#667eea' },
+                nbinsx: 30
+            };
+
+            const layout1 = {
+                xaxis: { title: 'Etch Rate (nm/min)' },
+                yaxis: { title: 'Frequency' },
+                height: 400
+            };
+
+            Plotly.newPlot('histogramEtchRate', [trace1], layout1, { responsive: true });
+
+            const trace2 = {
+                x: processData.map(d => d.cd),
+                type: 'histogram',
+                marker: { color: '#764ba2' },
+                nbinsx: 30
+            };
+
+            const layout2 = {
+                xaxis: { title: 'CD (nm)' },
+                yaxis: { title: 'Frequency' },
+                height: 400
+            };
+
+            Plotly.newPlot('histogramCD', [trace2], layout2, { responsive: true });
+        }
+
+        function createBoxPlot() {
+            const traces = [
+                {
+                    y: processData.map(d => d.pressure),
+                    type: 'box',
+                    name: 'Pressure',
+                    marker: { color: '#667eea' }
+                },
+                {
+                    y: processData.map(d => d.power / 10), // Scale for visibility
+                    type: 'box',
+                    name: 'Power/10',
+                    marker: { color: '#764ba2' }
+                },
+                {
+                    y: processData.map(d => d.flow),
+                    type: 'box',
+                    name: 'Flow',
+                    marker: { color: '#f39c12' }
+                },
+                {
+                    y: processData.map(d => d.temperature),
+                    type: 'box',
+                    name: 'Temp',
+                    marker: { color: '#e74c3c' }
+                }
+            ];
+
+            const layout = {
+                yaxis: { title: 'Value' },
+                height: 400
+            };
+
+            Plotly.newPlot('boxPlotChart', traces, layout, { responsive: true });
+        }
+
+        function createScatterMatrix() {
+            const dimensions = [
+                { label: 'Pressure', values: processData.map(d => d.pressure) },
+                { label: 'Power', values: processData.map(d => d.power) },
+                { label: 'Etch Rate', values: processData.map(d => d.etch_rate) }
+            ];
+
+            const trace = {
+                type: 'splom',
+                dimensions: dimensions,
+                marker: {
+                    color: processData.map(d => d.etch_rate),
+                    colorscale: 'Viridis',
+                    size: 5,
+                    showscale: true
+                }
+            };
+
+            const layout = {
+                height: 600,
+                width: 600
+            };
+
+            Plotly.newPlot('scatterMatrixChart', [trace], layout, { responsive: true });
+        }
+
+        function createCorrelationHeatmap() {
+            const variables = ['pressure', 'power', 'flow', 'temperature', 'etch_rate', 'cd'];
+            const corr = analysisResults.correlations;
+
+            const z = variables.map(v1 => variables.map(v2 => corr[v1][v2]));
+
+            const trace = {
+                z: z,
+                x: variables,
+                y: variables,
+                type: 'heatmap',
+                colorscale: 'RdBu',
+                zmid: 0
+            };
+
+            const layout = {
+                height: 500,
+                xaxis: { side: 'bottom' },
+                yaxis: { autorange: 'reversed' }
+            };
+
+            Plotly.newPlot('correlationHeatmap', [trace], layout, { responsive: true });
+        }
+
+        function createTrendChart() {
+            const x = processData.map((d, i) => i);
+            const y = processData.map(d => d.etch_rate);
+            const trend = analysisResults.trend;
+            const trendLine = x.map(xi => trend.slope * xi + trend.intercept);
+
+            const traces = [
+                {
+                    x: x,
+                    y: y,
+                    type: 'scatter',
+                    mode: 'markers',
+                    name: 'Data',
+                    marker: { color: '#667eea', size: 6 }
+                },
+                {
+                    x: x,
+                    y: trendLine,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Trend',
+                    line: { color: '#dc3545', width: 3 }
+                }
+            ];
+
+            const layout = {
+                xaxis: { title: 'Run Number' },
+                yaxis: { title: 'Etch Rate (nm/min)' },
+                height: 400,
+                annotations: [{
+                    x: x[x.length - 1] * 0.7,
+                    y: trendLine[trendLine.length - 1],
+                    text: `Slope: ${trend.slope.toFixed(4)} nm/min per run`,
+                    showarrow: true,
+                    arrowhead: 2
+                }]
+            };
+
+            Plotly.newPlot('trendChart', traces, layout, { responsive: true });
+        }
+
+        function createAnomalyChart() {
+            const normal = processData.filter((d, i) => !analysisResults.anomalies.find(a => a.index === i));
+            const anomalies = analysisResults.anomalies;
+
+            const traces = [
+                {
+                    x: processData.map((d, i) => i).filter((_, i) => !analysisResults.anomalies.find(a => a.index === i)),
+                    y: normal.map(d => d.etch_rate),
+                    type: 'scatter',
+                    mode: 'markers',
+                    name: 'Normal',
+                    marker: { color: '#667eea', size: 6 }
+                },
+                {
+                    x: anomalies.map(a => a.index),
+                    y: anomalies.map(a => a.value),
+                    type: 'scatter',
+                    mode: 'markers',
+                    name: 'Anomaly',
+                    marker: { color: '#dc3545', size: 10, symbol: 'x' }
+                }
+            ];
+
+            const layout = {
+                xaxis: { title: 'Run Number' },
+                yaxis: { title: 'Etch Rate (nm/min)' },
+                height: 400
+            };
+
+            Plotly.newPlot('anomalyChart', traces, layout, { responsive: true });
+        }
+
+        function createCapabilityChart() {
+            const usl = parseFloat(document.getElementById('etchRateUSL').value);
+            const lsl = parseFloat(document.getElementById('etchRateLSL').value);
+            const target = parseFloat(document.getElementById('targetEtchRate').value);
+
+            const trace = {
+                x: processData.map(d => d.etch_rate),
+                type: 'histogram',
+                marker: { color: '#667eea' },
+                nbinsx: 30
+            };
+
+            const layout = {
+                xaxis: { title: 'Etch Rate (nm/min)' },
+                yaxis: { title: 'Frequency' },
+                height: 400,
+                shapes: [
+                    {
+                        type: 'line',
+                        x0: lsl, x1: lsl,
+                        y0: 0, y1: 1,
+                        yref: 'paper',
+                        line: { color: '#dc3545', width: 2, dash: 'dash' }
+                    },
+                    {
+                        type: 'line',
+                        x0: usl, x1: usl,
+                        y0: 0, y1: 1,
+                        yref: 'paper',
+                        line: { color: '#dc3545', width: 2, dash: 'dash' }
+                    },
+                    {
+                        type: 'line',
+                        x0: target, x1: target,
+                        y0: 0, y1: 1,
+                        yref: 'paper',
+                        line: { color: '#28a745', width: 2 }
+                    }
+                ]
+            };
+
+            Plotly.newPlot('capabilityChart', [trace], layout, { responsive: true });
+        }
+
+        function createRunChart() {
+            const median = analysisResults.stats.etchRate.median;
+
+            const trace = {
+                x: processData.map((d, i) => i),
+                y: processData.map(d => d.etch_rate),
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: { color: '#667eea' },
+                marker: { size: 4 }
+            };
+
+            const medianTrace = {
+                x: [0, processData.length - 1],
+                y: [median, median],
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Median',
+                line: { color: '#f39c12', dash: 'dash' }
+            };
+
+            const layout = {
+                xaxis: { title: 'Run Number' },
+                yaxis: { title: 'Etch Rate (nm/min)' },
+                height: 400,
+                showlegend: true
+            };
+
+            Plotly.newPlot('runChart', [trace, medianTrace], layout, { responsive: true });
+        }
+
+        // Export report
+        function exportReport() {
+            if (!analysisResults.stats) {
+                alert('Please run analysis first.');
+                return;
+            }
+
+            const report = {
+                timestamp: new Date().toISOString(),
+                summary: analysisResults.stats,
+                capability: analysisResults.capability,
+                trend: analysisResults.trend,
+                anomalies: analysisResults.anomalies,
+                correlations: analysisResults.correlations,
+                dataPoints: processData.length
+            };
+
+            const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `etching_analysis_report_${Date.now()}.json`;
+            a.click();
+        }
+    </script>
+</body>
+</html>

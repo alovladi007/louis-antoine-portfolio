@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Four-Point Probe - SPECTRA-Lab</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%); color: #e0e0e0; min-height: 100vh; }
+        .navbar { background: rgba(10, 10, 10, 0.95); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(16, 185, 129, 0.3); position: sticky; top: 0; z-index: 100; }
+        .nav-brand { color: #34d399; font-size: 1.5rem; font-weight: bold; }
+        .nav-btn { background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; transition: all 0.3s; }
+        .nav-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4); }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .page-header { text-align: center; margin-bottom: 3rem; }
+        .page-title { font-size: 2.5rem; background: linear-gradient(135deg, #10b981, #34d399); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 1rem; }
+        .page-subtitle { color: #888; font-size: 1.1rem; }
+        .tabs { display: flex; gap: 0.5rem; margin-bottom: 2rem; flex-wrap: wrap; }
+        .tab { padding: 0.75rem 1.5rem; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; cursor: pointer; transition: all 0.3s; color: #34d399; }
+        .tab:hover, .tab.active { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .card { background: rgba(20, 20, 20, 0.8); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 15px; padding: 1.5rem; margin-bottom: 1.5rem; }
+        .card-title { color: #34d399; font-size: 1.3rem; margin-bottom: 1rem; }
+        .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; }
+        .control-group { margin-bottom: 1rem; }
+        .control-label { display: block; color: #888; margin-bottom: 0.5rem; font-size: 0.9rem; }
+        .control-input, .control-select { width: 100%; padding: 0.75rem; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; color: #e0e0e0; font-size: 1rem; }
+        .btn { padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; transition: all 0.3s; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4); }
+        .chart-container { height: 400px; margin: 1rem 0; }
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; }
+        .stat-box { background: rgba(16, 185, 129, 0.1); padding: 1rem; border-radius: 10px; text-align: center; }
+        .stat-value { font-size: 1.5rem; color: #10b981; font-weight: bold; }
+        .stat-label { color: #888; font-size: 0.85rem; margin-top: 0.25rem; }
+        .probe-diagram { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 2rem; text-align: center; }
+        .data-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        .data-table th, .data-table td { padding: 0.75rem; text-align: left; border-bottom: 1px solid rgba(16, 185, 129, 0.1); }
+        .data-table th { color: #34d399; background: rgba(16, 185, 129, 0.1); }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <span class="nav-brand"><i class="fas fa-project-diagram"></i> Four-Point Probe</span>
+        <a href="spectra-lab-project.html" class="nav-btn"><i class="fas fa-arrow-left"></i> Back to SPECTRA-Lab</a>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1 class="page-title">Four-Point Probe Measurement</h1>
+            <p class="page-subtitle">Sheet resistance and resistivity characterization</p>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('collinear')">Collinear Probe</div>
+            <div class="tab" onclick="switchTab('square')">Square Array</div>
+            <div class="tab" onclick="switchTab('mapping')">Wafer Mapping</div>
+            <div class="tab" onclick="switchTab('corrections')">Correction Factors</div>
+        </div>
+
+        <!-- Collinear Probe Tab -->
+        <div id="collinear" class="tab-content active">
+            <div class="grid-2">
+                <div class="card">
+                    <h3 class="card-title"><i class="fas fa-sliders-h"></i> Measurement Parameters</h3>
+                    <div class="control-group">
+                        <label class="control-label">Probe Spacing [mm]</label>
+                        <input type="number" class="control-input" id="spacing" value="1.0" step="0.1">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Applied Current [mA]</label>
+                        <input type="number" class="control-input" id="current4pp" value="4.532" step="0.001">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Measured Voltage [mV]</label>
+                        <input type="number" class="control-input" id="voltage4pp" value="10.25" step="0.01">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Sample Thickness [µm]</label>
+                        <input type="number" class="control-input" id="thickness4pp" value="525" step="1">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Sample Type</label>
+                        <select class="control-select" id="sampleType">
+                            <option value="bulk">Bulk (semi-infinite)</option>
+                            <option value="thin" selected>Thin Film on Insulator</option>
+                            <option value="epi">Epitaxial Layer</option>
+                        </select>
+                    </div>
+                    <button class="btn" onclick="calculate4PP()"><i class="fas fa-calculator"></i> Calculate</button>
+                </div>
+                <div class="card">
+                    <h3 class="card-title"><i class="fas fa-project-diagram"></i> Probe Configuration</h3>
+                    <div class="probe-diagram">
+                        <svg viewBox="0 0 300 150" width="300" height="150">
+                            <rect x="20" y="80" width="260" height="50" fill="rgba(16,185,129,0.2)" stroke="#10b981" stroke-width="2"/>
+                            <line x1="60" y1="40" x2="60" y2="80" stroke="#ef4444" stroke-width="3"/>
+                            <line x1="120" y1="40" x2="120" y2="80" stroke="#f59e0b" stroke-width="3"/>
+                            <line x1="180" y1="40" x2="180" y2="80" stroke="#f59e0b" stroke-width="3"/>
+                            <line x1="240" y1="40" x2="240" y2="80" stroke="#3b82f6" stroke-width="3"/>
+                            <circle cx="60" cy="35" r="8" fill="#ef4444"/>
+                            <circle cx="120" cy="35" r="8" fill="#f59e0b"/>
+                            <circle cx="180" cy="35" r="8" fill="#f59e0b"/>
+                            <circle cx="240" cy="35" r="8" fill="#3b82f6"/>
+                            <text x="60" y="20" fill="#ef4444" text-anchor="middle" font-size="12">I+</text>
+                            <text x="120" y="20" fill="#f59e0b" text-anchor="middle" font-size="12">V+</text>
+                            <text x="180" y="20" fill="#f59e0b" text-anchor="middle" font-size="12">V-</text>
+                            <text x="240" y="20" fill="#3b82f6" text-anchor="middle" font-size="12">I-</text>
+                            <text x="90" y="65" fill="#888" text-anchor="middle" font-size="10">s</text>
+                            <text x="150" y="65" fill="#888" text-anchor="middle" font-size="10">s</text>
+                            <text x="210" y="65" fill="#888" text-anchor="middle" font-size="10">s</text>
+                            <line x1="60" y1="55" x2="120" y2="55" stroke="#888" stroke-width="1"/>
+                            <line x1="120" y1="55" x2="180" y2="55" stroke="#888" stroke-width="1"/>
+                            <line x1="180" y1="55" x2="240" y2="55" stroke="#888" stroke-width="1"/>
+                        </svg>
+                        <p style="color: #888; margin-top: 1rem; font-size: 0.9rem;">Collinear four-point probe with equal spacing</p>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <h3 class="card-title"><i class="fas fa-chart-bar"></i> Results</h3>
+                <div class="stat-grid">
+                    <div class="stat-box">
+                        <div class="stat-value" id="sheetRes">250.0</div>
+                        <div class="stat-label">Sheet Resistance (Ω/□)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="resistivity">0.0131</div>
+                        <div class="stat-label">Resistivity (Ω·cm)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="conductivity">76.3</div>
+                        <div class="stat-label">Conductivity (S/cm)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="corrFactor">4.532</div>
+                        <div class="stat-label">Correction Factor</div>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <h3 class="card-title"><i class="fas fa-chart-line"></i> I-V Linearity Check</h3>
+                <div id="ivChart" class="chart-container"></div>
+            </div>
+        </div>
+
+        <!-- Square Array Tab -->
+        <div id="square" class="tab-content">
+            <div class="grid-2">
+                <div class="card">
+                    <h3 class="card-title"><i class="fas fa-th"></i> Square Array Configuration</h3>
+                    <div class="control-group">
+                        <label class="control-label">Side Length [mm]</label>
+                        <input type="number" class="control-input" id="sideLength" value="5.0" step="0.5">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Configuration</label>
+                        <select class="control-select" id="squareConfig">
+                            <option value="A">Configuration A (diagonal current)</option>
+                            <option value="B">Configuration B (edge current)</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Current [mA]</label>
+                        <input type="number" class="control-input" id="currentSq" value="1.0" step="0.1">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Voltage A [mV]</label>
+                        <input type="number" class="control-input" id="voltageA" value="5.5" step="0.1">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Voltage B [mV]</label>
+                        <input type="number" class="control-input" id="voltageB" value="3.2" step="0.1">
+                    </div>
+                    <button class="btn" onclick="calculateSquare()"><i class="fas fa-calculator"></i> Calculate</button>
+                </div>
+                <div class="card">
+                    <h3 class="card-title"><i class="fas fa-th"></i> Square Probe Layout</h3>
+                    <div class="probe-diagram">
+                        <svg viewBox="0 0 200 200" width="200" height="200">
+                            <rect x="40" y="40" width="120" height="120" fill="rgba(16,185,129,0.2)" stroke="#10b981" stroke-width="2"/>
+                            <circle cx="50" cy="50" r="10" fill="#ef4444"/>
+                            <circle cx="150" cy="50" r="10" fill="#f59e0b"/>
+                            <circle cx="150" cy="150" r="10" fill="#3b82f6"/>
+                            <circle cx="50" cy="150" r="10" fill="#f59e0b"/>
+                            <text x="50" y="35" fill="#ef4444" text-anchor="middle" font-size="12">1</text>
+                            <text x="150" y="35" fill="#f59e0b" text-anchor="middle" font-size="12">2</text>
+                            <text x="150" y="175" fill="#3b82f6" text-anchor="middle" font-size="12">3</text>
+                            <text x="50" y="175" fill="#f59e0b" text-anchor="middle" font-size="12">4</text>
+                        </svg>
+                        <p style="color: #888; margin-top: 1rem; font-size: 0.9rem;">Square array for van der Pauw measurement</p>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <h3 class="card-title"><i class="fas fa-table"></i> Van der Pauw Results</h3>
+                <div class="stat-grid">
+                    <div class="stat-box">
+                        <div class="stat-value" id="RsVdP">185.2</div>
+                        <div class="stat-label">Rs (Ω/□)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="Ra">5.50</div>
+                        <div class="stat-label">R<sub>A</sub> (Ω)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="Rb">3.20</div>
+                        <div class="stat-label">R<sub>B</sub> (Ω)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="symmetry">0.92</div>
+                        <div class="stat-label">Symmetry Factor</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wafer Mapping Tab -->
+        <div id="mapping" class="tab-content">
+            <div class="card">
+                <h3 class="card-title"><i class="fas fa-map"></i> Sheet Resistance Map</h3>
+                <div class="grid-2" style="margin-bottom: 1rem;">
+                    <div class="control-group">
+                        <label class="control-label">Wafer Size</label>
+                        <select class="control-select" id="waferSize4pp">
+                            <option value="100">100 mm (4")</option>
+                            <option value="150">150 mm (6")</option>
+                            <option value="200" selected>200 mm (8")</option>
+                            <option value="300">300 mm (12")</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Target Rs [Ω/□]</label>
+                        <input type="number" class="control-input" id="targetRs" value="250" step="10">
+                    </div>
+                </div>
+                <button class="btn" onclick="generateRsMap()"><i class="fas fa-play"></i> Generate Map</button>
+            </div>
+            <div class="grid-2">
+                <div class="card">
+                    <h3 class="card-title"><i class="fas fa-map-marked-alt"></i> Rs Distribution</h3>
+                    <div id="rsMapChart" class="chart-container"></div>
+                </div>
+                <div class="card">
+                    <h3 class="card-title"><i class="fas fa-chart-bar"></i> Histogram</h3>
+                    <div id="rsHistChart" class="chart-container"></div>
+                </div>
+            </div>
+            <div class="card">
+                <h3 class="card-title"><i class="fas fa-table"></i> Statistics</h3>
+                <div class="stat-grid">
+                    <div class="stat-box">
+                        <div class="stat-value" id="rsMean">250.5</div>
+                        <div class="stat-label">Mean (Ω/□)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="rsStd">5.2</div>
+                        <div class="stat-label">Std Dev</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="rsMin">238</div>
+                        <div class="stat-label">Min</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="rsMax">265</div>
+                        <div class="stat-label">Max</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="rsUnif">2.1</div>
+                        <div class="stat-label">Uniformity (%)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Correction Factors Tab -->
+        <div id="corrections" class="tab-content">
+            <div class="card">
+                <h3 class="card-title"><i class="fas fa-book"></i> Geometric Correction Factors</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Sample Geometry</th>
+                            <th>Condition</th>
+                            <th>Correction Factor</th>
+                            <th>Formula</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Semi-infinite bulk</td>
+                            <td>t >> s</td>
+                            <td>1.000</td>
+                            <td>ρ = 2πs × V/I</td>
+                        </tr>
+                        <tr>
+                            <td>Thin film</td>
+                            <td>t << s</td>
+                            <td>4.532</td>
+                            <td>Rs = π/ln(2) × V/I</td>
+                        </tr>
+                        <tr>
+                            <td>Circular sample</td>
+                            <td>d/s = 10</td>
+                            <td>4.171</td>
+                            <td>Apply F(d/s) correction</td>
+                        </tr>
+                        <tr>
+                            <td>Circular sample</td>
+                            <td>d/s = 20</td>
+                            <td>4.454</td>
+                            <td>Apply F(d/s) correction</td>
+                        </tr>
+                        <tr>
+                            <td>Circular sample</td>
+                            <td>d/s = 40</td>
+                            <td>4.508</td>
+                            <td>Apply F(d/s) correction</td>
+                        </tr>
+                        <tr>
+                            <td>Rectangular</td>
+                            <td>L/W = 2, center</td>
+                            <td>4.47</td>
+                            <td>Depends on position</td>
+                        </tr>
+                        <tr>
+                            <td>Edge proximity</td>
+                            <td>d_edge < 4s</td>
+                            <td>Variable</td>
+                            <td>Requires edge correction</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="card">
+                <h3 class="card-title"><i class="fas fa-chart-line"></i> Thickness Correction Factor</h3>
+                <div id="corrChart" class="chart-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelector(`[onclick="switchTab('${tabId}')"]`).classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        function calculate4PP() {
+            const s = parseFloat(document.getElementById('spacing').value) * 0.1; // cm
+            const I = parseFloat(document.getElementById('current4pp').value) * 1e-3; // A
+            const V = parseFloat(document.getElementById('voltage4pp').value) * 1e-3; // V
+            const t = parseFloat(document.getElementById('thickness4pp').value) * 1e-4; // cm
+            const type = document.getElementById('sampleType').value;
+
+            let Rs, rho, CF;
+            if (type === 'thin') {
+                CF = Math.PI / Math.log(2);
+                Rs = CF * V / I;
+                rho = Rs * t;
+            } else {
+                CF = 2 * Math.PI * s;
+                rho = CF * V / I;
+                Rs = rho / t;
+            }
+
+            document.getElementById('sheetRes').textContent = Rs.toFixed(1);
+            document.getElementById('resistivity').textContent = rho.toFixed(4);
+            document.getElementById('conductivity').textContent = (1 / rho).toFixed(1);
+            document.getElementById('corrFactor').textContent = CF.toFixed(3);
+
+            // I-V linearity plot
+            const Ivals = [], Vvals = [];
+            for (let i = -5; i <= 5; i += 0.5) {
+                Ivals.push(i);
+                Vvals.push(i * V / I * 1e3 + (Math.random() - 0.5) * 0.2);
+            }
+
+            Plotly.newPlot('ivChart', [{
+                x: Ivals, y: Vvals,
+                mode: 'markers+lines',
+                marker: { color: '#10b981', size: 8 },
+                line: { color: '#10b981', width: 2 }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                xaxis: { title: 'Current (mA)', gridcolor: 'rgba(16,185,129,0.1)' },
+                yaxis: { title: 'Voltage (mV)', gridcolor: 'rgba(16,185,129,0.1)' },
+                margin: { t: 20 }
+            });
+        }
+
+        function calculateSquare() {
+            const I = parseFloat(document.getElementById('currentSq').value) * 1e-3;
+            const Va = parseFloat(document.getElementById('voltageA').value) * 1e-3;
+            const Vb = parseFloat(document.getElementById('voltageB').value) * 1e-3;
+
+            const Ra = Va / I;
+            const Rb = Vb / I;
+            const Rs = Math.PI / Math.log(2) * (Ra + Rb) / 2;
+            const sym = Math.min(Ra, Rb) / Math.max(Ra, Rb);
+
+            document.getElementById('RsVdP').textContent = Rs.toFixed(1);
+            document.getElementById('Ra').textContent = (Ra * 1000).toFixed(2);
+            document.getElementById('Rb').textContent = (Rb * 1000).toFixed(2);
+            document.getElementById('symmetry').textContent = sym.toFixed(2);
+        }
+
+        function generateRsMap() {
+            const waferSize = parseInt(document.getElementById('waferSize4pp').value);
+            const targetRs = parseFloat(document.getElementById('targetRs').value);
+            const r = waferSize / 2;
+
+            const x = [], y = [], z = [];
+            const rsValues = [];
+
+            for (let i = -r * 0.9; i <= r * 0.9; i += r / 10) {
+                for (let j = -r * 0.9; j <= r * 0.9; j += r / 10) {
+                    if (Math.sqrt(i*i + j*j) < r * 0.95) {
+                        x.push(i);
+                        y.push(j);
+                        const dist = Math.sqrt(i*i + j*j) / r;
+                        const rs = targetRs + targetRs * 0.05 * dist + (Math.random() - 0.5) * targetRs * 0.04;
+                        z.push(rs);
+                        rsValues.push(rs);
+                    }
+                }
+            }
+
+            const mean = rsValues.reduce((a,b) => a+b) / rsValues.length;
+            const std = Math.sqrt(rsValues.map(v => (v-mean)**2).reduce((a,b) => a+b) / rsValues.length);
+
+            document.getElementById('rsMean').textContent = mean.toFixed(1);
+            document.getElementById('rsStd').textContent = std.toFixed(1);
+            document.getElementById('rsMin').textContent = Math.min(...rsValues).toFixed(0);
+            document.getElementById('rsMax').textContent = Math.max(...rsValues).toFixed(0);
+            document.getElementById('rsUnif').textContent = (std / mean * 100).toFixed(1);
+
+            Plotly.newPlot('rsMapChart', [{
+                x: x, y: y, z: z,
+                type: 'heatmap',
+                colorscale: 'Viridis',
+                colorbar: { title: 'Rs (Ω/□)' }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                xaxis: { title: 'X (mm)', gridcolor: 'rgba(16,185,129,0.1)' },
+                yaxis: { title: 'Y (mm)', gridcolor: 'rgba(16,185,129,0.1)', scaleanchor: 'x' },
+                margin: { t: 20 }
+            });
+
+            Plotly.newPlot('rsHistChart', [{
+                x: rsValues,
+                type: 'histogram',
+                marker: { color: '#10b981' },
+                nbinsx: 20
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                xaxis: { title: 'Rs (Ω/□)', gridcolor: 'rgba(16,185,129,0.1)' },
+                yaxis: { title: 'Count', gridcolor: 'rgba(16,185,129,0.1)' },
+                margin: { t: 20 }
+            });
+        }
+
+        // Thickness correction chart
+        function plotCorrectionFactors() {
+            const ts = [], cf = [];
+            for (let ratio = 0.1; ratio <= 10; ratio += 0.1) {
+                ts.push(ratio);
+                // Simplified correction factor vs t/s ratio
+                const f = 4.532 * (1 - Math.exp(-ratio * 2));
+                cf.push(f);
+            }
+
+            Plotly.newPlot('corrChart', [{
+                x: ts, y: cf,
+                mode: 'lines',
+                line: { color: '#10b981', width: 3 }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                xaxis: { title: 't/s ratio', gridcolor: 'rgba(16,185,129,0.1)' },
+                yaxis: { title: 'Correction Factor', gridcolor: 'rgba(16,185,129,0.1)' },
+                margin: { t: 20 },
+                annotations: [{
+                    x: 5, y: 4.532,
+                    text: 'Thin film limit: π/ln(2) = 4.532',
+                    showarrow: true, arrowhead: 2, ax: -50, ay: -30,
+                    font: { color: '#f59e0b' }
+                }]
+            });
+        }
+
+        // Initialize
+        calculate4PP();
+        calculateSquare();
+        generateRsMap();
+        plotCorrectionFactors();
+    </script>
+</body>
+</html>

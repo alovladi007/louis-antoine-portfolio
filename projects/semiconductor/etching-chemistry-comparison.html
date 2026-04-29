@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Etch Chemistry Comparison | Louis Antoine</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.18.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #f39c12 100%);
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+            animation: fadeInDown 1s ease-out;
+        }
+
+        h1 {
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            font-size: 1.3em;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+
+        .controls-panel {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 40px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 15px 40px;
+            font-size: 1.1em;
+            font-weight: bold;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn-play {
+            background: linear-gradient(135deg, #f39c12 0%, #e74c3c 100%);
+            color: white;
+        }
+
+        .btn-pause {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+        }
+
+        .btn-reset {
+            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+            color: white;
+        }
+
+        .chemistry-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 30px 0;
+        }
+
+        .chem-btn {
+            padding: 20px;
+            font-size: 1.2em;
+            font-weight: bold;
+            border: 3px solid transparent;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .chem-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .chem-btn.active {
+            border-color: #f39c12;
+            background: rgba(243, 156, 18, 0.3);
+            box-shadow: 0 0 20px rgba(243, 156, 18, 0.5);
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        button:active {
+            transform: translateY(-1px);
+        }
+
+        .slider-group {
+            margin: 20px 0;
+        }
+
+        .slider-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: rgba(255,255,255,0.3);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #f39c12;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #f39c12;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .stats-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #f39c12;
+            margin: 10px 0;
+        }
+
+        .stat-label {
+            font-size: 0.85em;
+            opacity: 0.9;
+        }
+
+        .simulation-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .viz-container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        .viz-title {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        #multiStack3D {
+            width: 100%;
+            height: 500px;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        .theory-section {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            margin-top: 40px;
+        }
+
+        .theory-section h2 {
+            font-size: 2em;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #f39c12;
+            padding-bottom: 15px;
+        }
+
+        .theory-section h3 {
+            font-size: 1.5em;
+            margin: 30px 0 15px 0;
+            color: #f39c12;
+        }
+
+        .theory-section p {
+            line-height: 1.8;
+            margin-bottom: 20px;
+            font-size: 1.1em;
+        }
+
+        .theory-section ul {
+            margin-left: 40px;
+            line-height: 1.8;
+        }
+
+        .equation {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 1.1em;
+            text-align: center;
+            overflow-x: auto;
+        }
+
+        .info-box {
+            background: rgba(52, 152, 219, 0.2);
+            border-left: 4px solid #3498db;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Etch Chemistry Comparison</h1>
+            <p class="subtitle">Material Selectivity & Process Optimization</p>
+        </header>
+
+        <div class="controls-panel">
+            <div class="button-group">
+                <button class="btn-play" onclick="startSimulation()">▶ Play</button>
+                <button class="btn-pause" onclick="pauseSimulation()">⏸ Pause</button>
+                <button class="btn-reset" onclick="resetSimulation()">↻ Reset</button>
+            </div>
+
+            <h3 style="text-align: center; margin-bottom: 15px;">Select Chemistry</h3>
+            <div class="chemistry-selector">
+                <button class="chem-btn active" onclick="selectChemistry('CF4')">CF₄</button>
+                <button class="chem-btn" onclick="selectChemistry('SF6')">SF₆</button>
+                <button class="chem-btn" onclick="selectChemistry('Cl2')">Cl₂</button>
+                <button class="chem-btn" onclick="selectChemistry('HBr')">HBr</button>
+                <button class="chem-btn" onclick="selectChemistry('BCl3')">BCl₃</button>
+                <button class="chem-btn" onclick="selectChemistry('CHF3')">CHF₃</button>
+            </div>
+
+            <div class="slider-group">
+                <label>Simulation Speed: <span id="speedValue">1.0x</span></label>
+                <input type="range" id="speedSlider" min="0.1" max="5" step="0.1" value="1">
+            </div>
+
+            <div class="stats-panel">
+                <div class="stat-card">
+                    <div class="stat-label">Si Etch Rate</div>
+                    <div class="stat-value" id="siRate">0</div>
+                    <div class="stat-label">nm/min</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">SiO₂ Etch Rate</div>
+                    <div class="stat-value" id="sio2Rate">0</div>
+                    <div class="stat-label">nm/min</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Si₃N₄ Etch Rate</div>
+                    <div class="stat-value" id="sin4Rate">0</div>
+                    <div class="stat-label">nm/min</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">PR Etch Rate</div>
+                    <div class="stat-value" id="prRate">0</div>
+                    <div class="stat-label">nm/min</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Al Etch Rate</div>
+                    <div class="stat-value" id="alRate">0</div>
+                    <div class="stat-label">nm/min</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">W Etch Rate</div>
+                    <div class="stat-value" id="wRate">0</div>
+                    <div class="stat-label">nm/min</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Si:SiO₂ Selectivity</div>
+                    <div class="stat-value" id="selectivity">0</div>
+                    <div class="stat-label"></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Polymer Thickness</div>
+                    <div class="stat-value" id="polymerThick">0</div>
+                    <div class="stat-label">nm</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="simulation-grid">
+            <div class="viz-container" style="grid-column: 1 / -1;">
+                <div class="viz-title">Multi-Material Stack Etching (Real-Time)</div>
+                <div id="multiStack3D"></div>
+            </div>
+        </div>
+
+        <div class="simulation-grid">
+            <div class="viz-container">
+                <div class="viz-title">Etch Rate Comparison (All Chemistries)</div>
+                <div id="rateComparison"></div>
+            </div>
+
+            <div class="viz-container">
+                <div class="viz-title">Selectivity Radar Chart</div>
+                <div id="selectivityRadar"></div>
+            </div>
+        </div>
+
+        <div class="simulation-grid">
+            <div class="viz-container">
+                <div class="viz-title">Polymer Formation vs F/C Ratio</div>
+                <div id="polymerPlot"></div>
+            </div>
+
+            <div class="viz-container">
+                <div class="viz-title">Cost per Wafer Comparison</div>
+                <div id="costPlot"></div>
+            </div>
+        </div>
+
+        <div class="simulation-grid">
+            <div class="viz-container">
+                <div class="viz-title">Safety Rating Matrix</div>
+                <div id="safetyMatrix"></div>
+            </div>
+
+            <div class="viz-container">
+                <div class="viz-title">Pressure Dependence</div>
+                <div id="pressurePlot"></div>
+            </div>
+        </div>
+
+        <div class="simulation-grid">
+            <div class="viz-container">
+                <div class="viz-title">Temperature Sensitivity (Arrhenius)</div>
+                <div id="temperaturePlot"></div>
+            </div>
+        </div>
+
+        <div class="theory-section">
+            <h2>Etch Chemistry Physics & Mechanisms</h2>
+
+            <h3>1. Halogen Radical Reactivity Series</h3>
+            <p>
+                The reactivity of halogen radicals follows the electronegativity trend:
+            </p>
+            <div class="equation">
+                F* > Cl* > Br* > I*
+            </div>
+            <p>
+                Fluorine radicals are the most reactive, forming strong Si-F bonds (565 kJ/mol) compared to Si-Cl
+                (381 kJ/mol) and Si-Br (310 kJ/mol). This high reactivity makes fluorine-based chemistries aggressive
+                but less selective. The etch rate follows: R_Si = k × [X*]^a × √(E_ion), where X is the halogen radical,
+                a is the reaction order (typically 0.5-1.5), and E_ion is ion energy. Fluorine chemistries exhibit
+                spontaneous (purely chemical) etching, while Cl and Br require ion assistance.
+            </p>
+
+            <h3>2. CF₄ Chemistry and Mechanisms</h3>
+            <p>
+                CF₄ (tetrafluoromethane) is a workhorse chemistry for silicon and oxide etching. Upon plasma dissociation:
+            </p>
+            <div class="equation">
+                CF₄ + e⁻ → CF₃* + F* + e⁻
+                <br>CF₃* → CF₂* + F*
+            </div>
+            <p>
+                The F/C ratio is ~4, leading to fluorine-rich plasma. Silicon etching proceeds via:
+            </p>
+            <div class="equation">
+                Si + 4F* → SiF₄(g) ↑
+            </div>
+            <p>
+                SiF₄ is highly volatile (b.p. -86°C), enabling efficient removal. Si etch rate: 200-400 nm/min at
+                moderate power. SiO₂ etch rate: 50-150 nm/min. Si:SiO₂ selectivity: 2-5:1. CF₄ is non-toxic but a
+                potent greenhouse gas (GWP = 7,390), requiring abatement. Cost: $5-10 per wafer.
+            </p>
+
+            <h3>3. SF₆ Chemistry and Dissociation Pathways</h3>
+            <p>
+                SF₆ (sulfur hexafluoride) provides extremely high fluorine density upon dissociation:
+            </p>
+            <div class="equation">
+                SF₆ + e⁻ → SF₅* + F* + e⁻
+                <br>SF₅* → SF₄* + F*
+                <br>SF₄* → SF₃* + F*
+            </div>
+            <p>
+                F/C ratio = ∞ (no carbon), yielding 6 F atoms per molecule. This creates very high Si etch rates
+                (500-1000 nm/min), excellent for deep silicon etching (DRIE). However, SiO₂ etching is also fast
+                (150-300 nm/min), giving poor selectivity (3-5:1). No polymer formation due to lack of carbon.
+                SF₆ is non-flammable but highly electronegative. GWP = 23,500 (extreme). Cost: $8-15 per wafer.
+            </p>
+
+            <h3>4. Cl₂ Chemistry for Silicon Etching</h3>
+            <p>
+                Cl₂ (chlorine gas) is widely used for polysilicon and silicon etching:
+            </p>
+            <div class="equation">
+                Cl₂ + e⁻ → 2Cl* + e⁻
+                <br>Si + 4Cl* (+ ion) → SiCl₄(g) ↑
+            </div>
+            <p>
+                Unlike fluorine, chlorine requires ion bombardment to overcome surface activation barrier. Spontaneous
+                etching is negligible at room temperature. Si etch rate: 150-300 nm/min (ion-assisted). SiO₂ etch rate:
+                < 5 nm/min (excellent selectivity > 50:1). Si₃N₄ etch rate: 10-30 nm/min. Cl₂ etching is highly
+                anisotropic due to ion dependence. Safety concern: Cl₂ is toxic (TLV = 0.5 ppm). Cost: $3-6 per wafer.
+            </p>
+
+            <h3>5. HBr Advantages for Si/SiO₂ Selectivity</h3>
+            <p>
+                HBr (hydrogen bromide) offers superior selectivity through polymer-assisted etching:
+            </p>
+            <div class="equation">
+                HBr + e⁻ → H* + Br* + e⁻
+                <br>Si + 4Br* (+ ion) → SiBr₄(g) ↑
+            </div>
+            <p>
+                The key advantage is polymer formation on SiO₂ surfaces via H* and Br* recombination, passivating
+                oxide while allowing silicon etching. Si etch rate: 100-250 nm/min. SiO₂ etch rate: 1-5 nm/min.
+                Si:SiO₂ selectivity: 50-200:1 (excellent). Brominated polymers (HBr_x) protect oxide sidewalls.
+                Lower reactivity than Cl₂ reduces damage. Anisotropy excellent. Safety: Corrosive, TLV = 3 ppm.
+                Cost: $6-12 per wafer.
+            </p>
+
+            <h3>6. BCl₃ for Aluminum Etching</h3>
+            <p>
+                BCl₃ (boron trichloride) is specialized for metal etching, particularly aluminum:
+            </p>
+            <div class="equation">
+                BCl₃ + e⁻ → BCl₂* + Cl* + e⁻
+                <br>Al + 3Cl* (+ ion) → AlCl₃(g) ↑
+            </div>
+            <p>
+                AlCl₃ forms volatile products at elevated temperature (>150°C). Al etch rate: 200-400 nm/min at 250°C.
+                Tungsten etch rate: 50-150 nm/min. BCl₃ also etches silicon (Si rate: 100-200 nm/min) with good
+                anisotropy. Often mixed with Cl₂ for enhanced metal etch. BCl₃ provides boron doping of sidewalls,
+                reducing corrosion. Safety: Highly reactive with moisture. Cost: $10-18 per wafer.
+            </p>
+
+            <h3>7. CHF₃ and Polymerization</h3>
+            <p>
+                CHF₃ (fluoroform) is a polymer-forming chemistry with low F/C ratio:
+            </p>
+            <div class="equation">
+                CHF₃ + e⁻ → CHF₂* + F* + e⁻
+                <br>CHF₂* → CF₂* + H*
+            </div>
+            <p>
+                F/C ratio = 3 (lower than CF₄), promoting CF₂ and CF polymer deposition. SiO₂ etch rate: 100-250 nm/min.
+                Si etch rate: 20-50 nm/min. SiO₂:Si selectivity: 5-20:1 (reverse selectivity). Polymer thickness:
+                10-30 nm on sidewalls. Excellent for oxide contact etching where silicon must be protected. Anisotropy
+                very high due to sidewall passivation. Lower GWP than CF₄ (GWP = 14,800). Cost: $7-13 per wafer.
+            </p>
+
+            <h3>8. Material-Specific Etch Rate Equations</h3>
+            <p>
+                Etch rates depend on chemistry, ion energy, and surface temperature:
+            </p>
+            <div class="equation">
+                R_Si = k_Si × [F*]^0.8 × [Cl*]^0.6 × √(E_ion) × exp(-E_a/kT)
+                <br>R_SiO₂ = k_oxide × [CF_x] × (E_ion - E_th) × exp(-E_a/kT)
+            </div>
+            <p>
+                where k values are chemistry-dependent rate constants, E_ion is ion energy (50-1000 eV), E_th is
+                threshold energy for oxide etching (~20-50 eV), E_a is activation energy (0.1-0.5 eV), and T is
+                temperature (K). Fluorine radicals dominate Si and SiO₂ etching, while chlorine/bromine provide
+                selectivity through differential reactivity.
+            </p>
+
+            <h3>9. Selectivity Matrix Physics</h3>
+            <p>
+                Selectivity S_ij is the ratio of etch rates:
+            </p>
+            <div class="equation">
+                S_ij = R_i / R_j
+            </div>
+            <p>
+                Key selectivities for process design:
+            </p>
+            <ul>
+                <li>Si:SiO₂ - Critical for gate etch (need 20-100:1 with Cl₂/HBr)</li>
+                <li>SiO₂:Si - Needed for contact etch (5-20:1 with CHF₃)</li>
+                <li>Si:PR - Photoresist must survive (need 2-5:1)</li>
+                <li>Al:SiO₂ - Metal etch without oxide damage (50-200:1 with BCl₃/Cl₂)</li>
+                <li>W:Si - Tungsten plug etch (10-50:1 with SF₆/Cl₂)</li>
+                <li>Si₃N₄:SiO₂ - Hard mask applications (10-30:1 with CH₄/H₂)</li>
+            </ul>
+            <p>
+                Selectivity is achieved through: (1) chemical reactivity differences, (2) polymer passivation,
+                (3) ion energy threshold differences, and (4) temperature activation energy differences.
+            </p>
+
+            <h3>10. Polymer Formation Mechanisms</h3>
+            <p>
+                Fluorocarbon polymer deposition competes with etching:
+            </p>
+            <div class="equation">
+                Deposition rate / Etch rate = f(F/C ratio, ion energy, temperature)
+            </div>
+            <p>
+                Low F/C (< 2): Net deposition, polymerization dominates. Medium F/C (2-3): Balanced etch/dep,
+                sidewall passivation. High F/C (> 3): Net etch, minimal polymer. CHF₃ (F/C=3) and C₄F₈ (F/C=2)
+                are polymerizing. CF₄ (F/C=4) and SF₆ (F/C=∞) are etching. Polymer composition: (CF₂)_n with
+                CF₃ termination. Helps anisotropy by passivating vertical sidewalls while horizontal surfaces
+                are cleared by ion bombardment.
+            </p>
+
+            <h3>11. Safety and Environmental Considerations</h3>
+            <div class="info-box">
+                <strong>Gas Safety Parameters:</strong>
+                <ul>
+                    <li><strong>Toxicity:</strong> Cl₂, HBr (high) > BCl₃ (extreme) > CF₄, SF₆ (low)</li>
+                    <li><strong>Flammability:</strong> None are flammable, but react violently with bases/water</li>
+                    <li><strong>Corrosivity:</strong> HBr, Cl₂, BCl₃ (high) > CHF₃ (moderate) > CF₄, SF₆ (low)</li>
+                    <li><strong>GWP (100-year):</strong> SF₆ (23,500) > CHF₃ (14,800) > CF₄ (7,390) > others (low)</li>
+                    <li><strong>Abatement required:</strong> All fluorinated gases, Cl₂, BCl₃</li>
+                </ul>
+            </div>
+
+            <h3>12. Cost Analysis and Economics</h3>
+            <p>
+                Gas cost per liter (approximate):
+            </p>
+            <ul>
+                <li>CF₄: $0.15/L → $5-10 per 300mm wafer</li>
+                <li>SF₆: $0.25/L → $8-15 per wafer (high consumption)</li>
+                <li>Cl₂: $0.10/L → $3-6 per wafer</li>
+                <li>HBr: $0.20/L → $6-12 per wafer</li>
+                <li>BCl₃: $0.35/L → $10-18 per wafer (specialty)</li>
+                <li>CHF₃: $0.22/L → $7-13 per wafer</li>
+            </ul>
+            <p>
+                Total cost includes: gas consumption, abatement (30-50% added cost for PFCs), chamber cleaning
+                (polymer removal), and maintenance (corrosive gas handling). Chlorine-based chemistries are most
+                economical but require corrosion-resistant chambers.
+            </p>
+
+            <h3>13. Pressure Effects on Etch Rate</h3>
+            <p>
+                Pressure affects mean free path and ion energy distribution:
+            </p>
+            <div class="equation">
+                λ_mfp = kT / (√2 × π × d² × P)
+            </div>
+            <p>
+                At low pressure (1-10 mTorr): Long λ_mfp (>1 cm), high ion energy, low radical density, anisotropic.
+                At medium pressure (10-50 mTorr): Balanced ion/radical ratio, moderate anisotropy. At high pressure
+                (50-200 mTorr): Short λ_mfp (<1 mm), low ion energy, high radical density, more isotropic. Etch rate
+                typically peaks at 20-50 mTorr where ion flux and radical density are both sufficient.
+            </p>
+
+            <h3>14. Temperature Sensitivity (Arrhenius Behavior)</h3>
+            <p>
+                Etch rate temperature dependence follows Arrhenius equation:
+            </p>
+            <div class="equation">
+                R(T) = A × exp(-E_a / kT)
+            </div>
+            <p>
+                Where A is pre-exponential factor, E_a is activation energy, k is Boltzmann constant, T is absolute
+                temperature. Activation energies: Si with F* (0.05-0.15 eV, weak dependence), SiO₂ with CF_x
+                (0.2-0.4 eV, moderate), Si with Cl* (0.3-0.6 eV, strong - ion-assisted). Temperature control within
+                ±2°C is critical for uniformity. Higher temperature increases etch rate but may reduce selectivity
+                and anisotropy.
+            </p>
+
+            <h3>15. Process Optimization Strategies</h3>
+            <p>
+                Optimal chemistry selection depends on application:
+            </p>
+            <ul>
+                <li><strong>Polysilicon gate etch:</strong> Cl₂/HBr for high Si:SiO₂ selectivity (>50:1)</li>
+                <li><strong>Shallow trench isolation (STI):</strong> CF₄/CHF₃ for SiO₂ etch with Si stop</li>
+                <li><strong>Contact/via etch:</strong> CHF₃/CF₄ for oxide etch with minimal Si attack</li>
+                <li><strong>Deep silicon etch (MEMS):</strong> SF₆/C₄F₈ cycling (Bosch process) for high AR</li>
+                <li><strong>Aluminum interconnect:</strong> BCl₃/Cl₂ at elevated temp (150-250°C)</li>
+                <li><strong>Tungsten plug:</strong> SF₆/O₂ or SF₆/Cl₂ with high selectivity to oxide</li>
+            </ul>
+            <p>
+                Multi-gas mixtures allow tuning of F/C ratio, ion/radical balance, and selectivity. Real-time
+                monitoring (OES, interferometry) enables endpoint detection and process control.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Simulation state
+        let isRunning = false;
+        let animationFrame;
+        let simulationSpeed = 1.0;
+        let selectedChemistry = 'CF4';
+        let time = 0;
+
+        // Chemistry database
+        const chemistries = {
+            CF4: {
+                name: 'CF₄',
+                fRatio: 4.0,
+                rates: { Si: 300, SiO2: 80, Si3N4: 50, PR: 120, Al: 10, W: 5 },
+                cost: 7.5,
+                gwp: 7390,
+                toxicity: 'Low',
+                color: '#3498db'
+            },
+            SF6: {
+                name: 'SF₆',
+                fRatio: Infinity,
+                rates: { Si: 750, SiO2: 220, Si3N4: 180, PR: 300, Al: 30, W: 100 },
+                cost: 11.5,
+                gwp: 23500,
+                toxicity: 'Low',
+                color: '#9b59b6'
+            },
+            Cl2: {
+                name: 'Cl₂',
+                fRatio: 0,
+                rates: { Si: 225, SiO2: 3, Si3N4: 20, PR: 80, Al: 50, W: 15 },
+                cost: 4.5,
+                gwp: 0,
+                toxicity: 'High',
+                color: '#2ecc71'
+            },
+            HBr: {
+                name: 'HBr',
+                fRatio: 0,
+                rates: { Si: 175, SiO2: 2, Si3N4: 15, PR: 90, Al: 25, W: 10 },
+                cost: 9,
+                gwp: 0,
+                toxicity: 'High',
+                color: '#e74c3c'
+            },
+            BCl3: {
+                name: 'BCl₃',
+                fRatio: 0,
+                rates: { Si: 150, SiO2: 5, Si3N4: 25, PR: 100, Al: 350, W: 120 },
+                cost: 14,
+                gwp: 0,
+                toxicity: 'Extreme',
+                color: '#f39c12'
+            },
+            CHF3: {
+                name: 'CHF₃',
+                fRatio: 3.0,
+                rates: { Si: 35, SiO2: 180, Si3N4: 70, PR: 150, Al: 8, W: 6 },
+                cost: 10,
+                gwp: 14800,
+                toxicity: 'Low',
+                color: '#1abc9c'
+            }
+        };
+
+        // Material stack heights
+        let stackHeights = {
+            Si: { current: 100, max: 100 },
+            SiO2: { current: 100, max: 100 },
+            Si3N4: { current: 100, max: 100 },
+            PR: { current: 100, max: 100 },
+            Al: { current: 100, max: 100 },
+            W: { current: 100, max: 100 }
+        };
+
+        // Three.js objects
+        let scene, camera, renderer;
+        let materialMeshes = {};
+
+        // Event listeners
+        document.getElementById('speedSlider').addEventListener('input', (e) => {
+            simulationSpeed = parseFloat(e.target.value);
+            document.getElementById('speedValue').textContent = simulationSpeed.toFixed(1) + 'x';
+        });
+
+        function selectChemistry(chem) {
+            selectedChemistry = chem;
+            // Update button states
+            document.querySelectorAll('.chem-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            updateStats();
+        }
+
+        function startSimulation() {
+            isRunning = true;
+            animate();
+        }
+
+        function pauseSimulation() {
+            isRunning = false;
+            if (animationFrame) cancelAnimationFrame(animationFrame);
+        }
+
+        function resetSimulation() {
+            time = 0;
+            // Reset all stack heights
+            for (let mat in stackHeights) {
+                stackHeights[mat].current = stackHeights[mat].max;
+            }
+            updateStats();
+            update3DStacks();
+        }
+
+        function init3DVisualization() {
+            const container = document.getElementById('multiStack3D');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a2e);
+
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+            camera.position.set(0, 50, 200);
+            camera.lookAt(0, 20, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            container.appendChild(renderer.domElement);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const pointLight = new THREE.PointLight(0xffffff, 0.8);
+            pointLight.position.set(50, 100, 50);
+            scene.add(pointLight);
+
+            // Create 6 material stacks
+            const materials = ['Si', 'SiO2', 'Si3N4', 'PR', 'Al', 'W'];
+            const colors = [0x444444, 0x87ceeb, 0xf0e68c, 0xe74c3c, 0xc0c0c0, 0x708090];
+            const spacing = 30;
+            const startX = -75;
+
+            materials.forEach((mat, i) => {
+                const geometry = new THREE.BoxGeometry(20, 100, 20);
+                const material = new THREE.MeshPhongMaterial({ color: colors[i] });
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(startX + i * spacing, 50, 0);
+                scene.add(mesh);
+                materialMeshes[mat] = mesh;
+
+                // Add label
+                const canvas = document.createElement('canvas');
+                canvas.width = 128;
+                canvas.height = 64;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 24px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(mat, 64, 40);
+
+                const texture = new THREE.CanvasTexture(canvas);
+                const labelMat = new THREE.SpriteMaterial({ map: texture });
+                const sprite = new THREE.Sprite(labelMat);
+                sprite.position.set(startX + i * spacing, -10, 0);
+                sprite.scale.set(15, 7.5, 1);
+                scene.add(sprite);
+            });
+
+            // Animation loop
+            function render3D() {
+                requestAnimationFrame(render3D);
+                scene.rotation.y += 0.003;
+                renderer.render(scene, camera);
+            }
+            render3D();
+        }
+
+        function update3DStacks() {
+            for (let mat in materialMeshes) {
+                const mesh = materialMeshes[mat];
+                const fraction = stackHeights[mat].current / stackHeights[mat].max;
+                mesh.scale.y = fraction;
+                mesh.position.y = 50 * fraction;
+            }
+        }
+
+        function updateStats() {
+            const chem = chemistries[selectedChemistry];
+            document.getElementById('siRate').textContent = chem.rates.Si;
+            document.getElementById('sio2Rate').textContent = chem.rates.SiO2;
+            document.getElementById('sin4Rate').textContent = chem.rates.Si3N4;
+            document.getElementById('prRate').textContent = chem.rates.PR;
+            document.getElementById('alRate').textContent = chem.rates.Al;
+            document.getElementById('wRate').textContent = chem.rates.W;
+
+            const selectivity = (chem.rates.Si / chem.rates.SiO2).toFixed(1);
+            document.getElementById('selectivity').textContent = selectivity;
+
+            const polymerThickness = chem.fRatio < 3 ? (15 + (3 - chem.fRatio) * 10).toFixed(0) : '0';
+            document.getElementById('polymerThick').textContent = polymerThickness;
+        }
+
+        function updateRateComparison() {
+            const materials = ['Si', 'SiO2', 'Si3N4', 'PR', 'Al', 'W'];
+            const traces = [];
+
+            for (let chem in chemistries) {
+                const rates = materials.map(mat => chemistries[chem].rates[mat]);
+                traces.push({
+                    x: materials,
+                    y: rates,
+                    name: chemistries[chem].name,
+                    type: 'bar',
+                    marker: { color: chemistries[chem].color }
+                });
+            }
+
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.2)',
+                font: { color: 'white' },
+                xaxis: { title: 'Material', gridcolor: 'rgba(255,255,255,0.2)' },
+                yaxis: { title: 'Etch Rate (nm/min)', gridcolor: 'rgba(255,255,255,0.2)' },
+                barmode: 'group',
+                legend: { x: 0.7, y: 0.95, bgcolor: 'rgba(0,0,0,0.3)' },
+                margin: { t: 20, b: 50, l: 60, r: 20 }
+            };
+
+            Plotly.newPlot('rateComparison', traces, layout, { responsive: true });
+        }
+
+        function updateSelectivityRadar() {
+            const chem = chemistries[selectedChemistry];
+            const materials = ['Si', 'SiO2', 'Si3N4', 'PR', 'Al', 'W'];
+            const rates = materials.map(mat => chem.rates[mat]);
+
+            const trace = {
+                type: 'scatterpolar',
+                r: rates,
+                theta: materials,
+                fill: 'toself',
+                fillcolor: chem.color + '40',
+                line: { color: chem.color, width: 3 },
+                marker: { color: chem.color, size: 8 }
+            };
+
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: 'white' },
+                polar: {
+                    bgcolor: 'rgba(0,0,0,0.2)',
+                    radialaxis: { gridcolor: 'rgba(255,255,255,0.2)', color: 'white' },
+                    angularaxis: { gridcolor: 'rgba(255,255,255,0.2)', color: 'white' }
+                },
+                margin: { t: 50, b: 50, l: 50, r: 50 }
+            };
+
+            Plotly.newPlot('selectivityRadar', [trace], layout, { responsive: true });
+        }
+
+        function updatePolymerPlot() {
+            const fcRatios = [];
+            const polymerThickness = [];
+
+            for (let fc = 1; fc <= 5; fc += 0.2) {
+                fcRatios.push(fc);
+                const thickness = fc < 3 ? 30 * Math.exp(-(fc - 2) / 0.8) : 5 * Math.exp(-(fc - 3) / 2);
+                polymerThickness.push(thickness);
+            }
+
+            const trace = {
+                x: fcRatios,
+                y: polymerThickness,
+                type: 'scatter',
+                mode: 'lines',
+                fill: 'tozeroy',
+                fillcolor: 'rgba(243, 156, 18, 0.3)',
+                line: { color: '#f39c12', width: 3 }
+            };
+
+            // Add markers for actual chemistries
+            const chemMarkers = {
+                x: [],
+                y: [],
+                text: [],
+                mode: 'markers+text',
+                marker: { color: 'red', size: 12 },
+                textposition: 'top center',
+                textfont: { color: 'white' }
+            };
+
+            for (let chem in chemistries) {
+                if (chemistries[chem].fRatio !== Infinity && chemistries[chem].fRatio > 0) {
+                    const fc = chemistries[chem].fRatio;
+                    const thickness = fc < 3 ? 30 * Math.exp(-(fc - 2) / 0.8) : 5 * Math.exp(-(fc - 3) / 2);
+                    chemMarkers.x.push(fc);
+                    chemMarkers.y.push(thickness);
+                    chemMarkers.text.push(chemistries[chem].name);
+                }
+            }
+
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.2)',
+                font: { color: 'white' },
+                xaxis: { title: 'F/C Ratio', gridcolor: 'rgba(255,255,255,0.2)' },
+                yaxis: { title: 'Polymer Thickness (nm)', gridcolor: 'rgba(255,255,255,0.2)' },
+                margin: { t: 20, b: 50, l: 60, r: 20 }
+            };
+
+            Plotly.newPlot('polymerPlot', [trace, chemMarkers], layout, { responsive: true });
+        }
+
+        function updateCostPlot() {
+            const chemNames = [];
+            const costs = [];
+            const colors = [];
+
+            for (let chem in chemistries) {
+                chemNames.push(chemistries[chem].name);
+                costs.push(chemistries[chem].cost);
+                colors.push(chemistries[chem].color);
+            }
+
+            const trace = {
+                x: chemNames,
+                y: costs,
+                type: 'bar',
+                marker: { color: colors }
+            };
+
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.2)',
+                font: { color: 'white' },
+                xaxis: { title: 'Chemistry', gridcolor: 'rgba(255,255,255,0.2)' },
+                yaxis: { title: 'Cost per Wafer ($)', gridcolor: 'rgba(255,255,255,0.2)' },
+                margin: { t: 20, b: 50, l: 60, r: 20 }
+            };
+
+            Plotly.newPlot('costPlot', [trace], layout, { responsive: true });
+        }
+
+        function updateSafetyMatrix() {
+            const chemNames = Object.keys(chemistries).map(k => chemistries[k].name);
+            const hazards = ['Toxicity', 'GWP', 'Corrosivity'];
+
+            const toxicityMap = { 'Low': 1, 'Moderate': 2, 'High': 3, 'Extreme': 4 };
+            const zData = [];
+
+            // Toxicity row
+            const toxRow = Object.keys(chemistries).map(k => toxicityMap[chemistries[k].toxicity]);
+            zData.push(toxRow);
+
+            // GWP row (normalized to 0-4 scale)
+            const gwpRow = Object.keys(chemistries).map(k => Math.min(chemistries[k].gwp / 6000, 4));
+            zData.push(gwpRow);
+
+            // Corrosivity row (estimated)
+            const corrRow = Object.keys(chemistries).map(k => {
+                if (k === 'BCl3') return 4;
+                if (k === 'HBr' || k === 'Cl2') return 3;
+                if (k === 'CHF3') return 2;
+                return 1;
+            });
+            zData.push(corrRow);
+
+            const trace = {
+                z: zData,
+                x: chemNames,
+                y: hazards,
+                type: 'heatmap',
+                colorscale: [
+                    [0, 'rgb(0,255,0)'],
+                    [0.25, 'rgb(255,255,0)'],
+                    [0.5, 'rgb(255,165,0)'],
+                    [0.75, 'rgb(255,0,0)'],
+                    [1, 'rgb(139,0,0)']
+                ],
+                colorbar: {
+                    title: 'Risk Level',
+                    titlefont: { color: 'white' },
+                    tickfont: { color: 'white' }
+                }
+            };
+
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.2)',
+                font: { color: 'white' },
+                xaxis: { gridcolor: 'rgba(255,255,255,0.2)' },
+                yaxis: { gridcolor: 'rgba(255,255,255,0.2)' },
+                margin: { t: 20, b: 80, l: 80, r: 20 }
+            };
+
+            Plotly.newPlot('safetyMatrix', [trace], layout, { responsive: true });
+        }
+
+        function updatePressurePlot() {
+            const pressures = [];
+            const traces = [];
+
+            for (let p = 5; p <= 100; p += 5) {
+                pressures.push(p);
+            }
+
+            for (let chem in chemistries) {
+                const rates = pressures.map(p => {
+                    // Model: rate peaks around 30 mTorr
+                    const peakPressure = 30;
+                    const width = 40;
+                    const peakRate = chemistries[chem].rates.Si;
+                    return peakRate * Math.exp(-Math.pow(p - peakPressure, 2) / (2 * width * width));
+                });
+
+                traces.push({
+                    x: pressures,
+                    y: rates,
+                    name: chemistries[chem].name,
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: chemistries[chem].color, width: 2 }
+                });
+            }
+
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.2)',
+                font: { color: 'white' },
+                xaxis: { title: 'Pressure (mTorr)', gridcolor: 'rgba(255,255,255,0.2)' },
+                yaxis: { title: 'Si Etch Rate (nm/min)', gridcolor: 'rgba(255,255,255,0.2)' },
+                legend: { x: 0.7, y: 0.95, bgcolor: 'rgba(0,0,0,0.3)' },
+                margin: { t: 20, b: 50, l: 60, r: 20 }
+            };
+
+            Plotly.newPlot('pressurePlot', traces, layout, { responsive: true });
+        }
+
+        function updateTemperaturePlot() {
+            const temps = [];
+            const traces = [];
+
+            for (let T = 20; T <= 300; T += 10) {
+                temps.push(1000 / (T + 273)); // 1/T for Arrhenius
+            }
+
+            for (let chem in chemistries) {
+                const Ea = chem === 'Cl2' || chem === 'HBr' ? 0.45 : 0.15; // eV
+                const k = 8.617e-5; // eV/K
+                const A = chemistries[chem].rates.Si;
+
+                const rates = temps.map(invT => {
+                    const T = 1000 / invT;
+                    return A * Math.exp(-Ea / (k * T));
+                });
+
+                traces.push({
+                    x: temps,
+                    y: rates.map(r => Math.log(r)),
+                    name: chemistries[chem].name,
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: chemistries[chem].color, width: 2 }
+                });
+            }
+
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0.2)',
+                font: { color: 'white' },
+                xaxis: { title: '1000/T (K⁻¹)', gridcolor: 'rgba(255,255,255,0.2)' },
+                yaxis: { title: 'ln(Rate)', gridcolor: 'rgba(255,255,255,0.2)' },
+                legend: { x: 0.02, y: 0.98, bgcolor: 'rgba(0,0,0,0.3)' },
+                margin: { t: 20, b: 50, l: 60, r: 20 }
+            };
+
+            Plotly.newPlot('temperaturePlot', traces, layout, { responsive: true });
+        }
+
+        function updateAllPlots() {
+            updateRateComparison();
+            updateSelectivityRadar();
+            updatePolymerPlot();
+            updateCostPlot();
+            updateSafetyMatrix();
+            updatePressurePlot();
+            updateTemperaturePlot();
+        }
+
+        function animate() {
+            if (!isRunning) return;
+
+            time += simulationSpeed * 0.05;
+
+            // Etch materials based on selected chemistry
+            const chem = chemistries[selectedChemistry];
+            for (let mat in stackHeights) {
+                const etchRate = chem.rates[mat];
+                const etchAmount = etchRate * 0.001 * simulationSpeed; // nm/frame
+                stackHeights[mat].current = Math.max(0, stackHeights[mat].current - etchAmount);
+            }
+
+            update3DStacks();
+
+            animationFrame = requestAnimationFrame(animate);
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            init3DVisualization();
+            updateStats();
+            updateAllPlots();
+
+            // Auto-start
+            setTimeout(() => {
+                startSimulation();
+            }, 500);
+        });
+    </script>
+</body>
+</html>

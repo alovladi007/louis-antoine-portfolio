@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JMAK Crystallization Tutorial - PCM Kinetics Simulation</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a0a2a 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid rgba(147, 51, 234, 0.3);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .back-btn {
+            background: linear-gradient(135deg, #9333ea, #7c3aed);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .main-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .page-title {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #9333ea, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .difficulty-badge {
+            display: inline-block;
+            background: rgba(255, 195, 0, 0.2);
+            color: #ffc300;
+            padding: 0.3rem 1rem;
+            border-radius: 20px;
+            font-weight: 600;
+            margin: 0 auto 3rem;
+            display: block;
+            width: fit-content;
+        }
+
+        .tutorial-section {
+            background: rgba(20, 20, 20, 0.8);
+            border: 1px solid rgba(147, 51, 234, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            font-size: 1.8rem;
+            color: #c084fc;
+            margin-bottom: 1.5rem;
+        }
+
+        .step {
+            background: rgba(30, 30, 30, 0.8);
+            border-left: 3px solid #9333ea;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 8px;
+        }
+
+        .step-number {
+            display: inline-block;
+            background: linear-gradient(135deg, #9333ea, #7c3aed);
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            margin-right: 1rem;
+            font-weight: bold;
+        }
+
+        .interactive-demo {
+            background: rgba(147, 51, 234, 0.1);
+            border: 1px solid rgba(147, 51, 234, 0.3);
+            border-radius: 10px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+
+        .demo-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .control-group {
+            background: rgba(20, 20, 20, 0.8);
+            padding: 1rem;
+            border-radius: 8px;
+        }
+
+        .control-label {
+            color: #c084fc;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .control-slider {
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #9333ea, #7c3aed);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(147, 51, 234, 0.4);
+        }
+
+        .equation-box {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(147, 51, 234, 0.3);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+            color: #4ecdc4;
+            font-size: 1.2rem;
+        }
+
+        .tip {
+            background: rgba(147, 51, 234, 0.1);
+            border: 1px solid rgba(147, 51, 234, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+
+        .tip-icon {
+            color: #c084fc;
+            margin-right: 0.5rem;
+        }
+
+        pre {
+            background: #1a1a1a !important;
+            border: 1px solid rgba(147, 51, 234, 0.2);
+            border-radius: 8px;
+            padding: 1rem !important;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        .next-tutorial {
+            text-align: center;
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(147, 51, 234, 0.2);
+        }
+
+        .next-btn {
+            background: linear-gradient(135deg, #9333ea, #7c3aed);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+        }
+
+        .next-btn:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 20px rgba(147, 51, 234, 0.4);
+        }
+
+        .comparison-table {
+            width: 100%;
+            margin: 1rem 0;
+            border-collapse: collapse;
+        }
+
+        .comparison-table th {
+            background: rgba(147, 51, 234, 0.2);
+            padding: 1rem;
+            text-align: left;
+            color: #c084fc;
+        }
+
+        .comparison-table td {
+            padding: 1rem;
+            border-top: 1px solid rgba(147, 51, 234, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h2 style="color: #c084fc;">JMAK Crystallization Tutorial</h2>
+            <a href="pcm-tutorials.html" class="back-btn">
+                <i class="fas fa-arrow-left"></i> Back to Tutorials
+            </a>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <h1 class="page-title">JMAK Crystallization Kinetics</h1>
+        <span class="difficulty-badge">Intermediate Level</span>
+        
+        <div class="tutorial-section">
+            <h2 class="section-title">Introduction</h2>
+            <p style="line-height: 1.8; color: #d0d0d0;">
+                The Johnson-Mehl-Avrami-Kolmogorov (JMAK) model is the cornerstone of crystallization kinetics 
+                in phase change materials. This tutorial will teach you how to model, simulate, and analyze 
+                crystallization processes using the JMAK framework, essential for understanding SET operations 
+                and retention behavior in PCM devices.
+            </p>
+        </div>
+
+        <div class="tutorial-section">
+            <h2 class="section-title">Learning Objectives</h2>
+            <ul style="line-height: 2; color: #d0d0d0; margin-left: 2rem;">
+                <li>Understand the JMAK equation and its parameters</li>
+                <li>Determine Avrami exponent (n) from experimental data</li>
+                <li>Extract activation energy using Arrhenius analysis</li>
+                <li>Simulate isothermal and non-isothermal crystallization</li>
+                <li>Apply JMAK to PCM device modeling</li>
+            </ul>
+        </div>
+
+        <div class="tutorial-section">
+            <h2 class="section-title">The JMAK Model</h2>
+            
+            <div class="step">
+                <span class="step-number">1</span>
+                <span style="font-size: 1.2rem; color: #c084fc; font-weight: 600;">Understanding the JMAK Equation</span>
+                
+                <div class="equation-box">
+                    X(t) = 1 - exp[-(kt)ⁿ]
+                </div>
+                
+                <p style="margin-top: 1rem; color: #d0d0d0; line-height: 1.8;">
+                    Where:
+                </p>
+                <ul style="margin: 1rem 0 1rem 2rem; color: #d0d0d0; line-height: 1.8;">
+                    <li><strong>X(t):</strong> Crystalline fraction at time t</li>
+                    <li><strong>k:</strong> Rate constant (temperature-dependent)</li>
+                    <li><strong>n:</strong> Avrami exponent (reveals crystallization mechanism)</li>
+                    <li><strong>t:</strong> Time</li>
+                </ul>
+                
+                <div class="tip">
+                    <i class="fas fa-lightbulb tip-icon"></i>
+                    The Avrami exponent n tells us about nucleation and growth: n=3 for 3D growth with constant nucleation, 
+                    n=4 for 3D growth with decreasing nucleation rate.
+                </div>
+            </div>
+            
+            <div class="step">
+                <span class="step-number">2</span>
+                <span style="font-size: 1.2rem; color: #c084fc; font-weight: 600;">Temperature Dependence</span>
+                
+                <div class="equation-box">
+                    k(T) = k₀ × exp(-Eₐ/k_B T)
+                </div>
+                
+                <p style="margin-top: 1rem; color: #d0d0d0; line-height: 1.8;">
+                    The rate constant follows Arrhenius behavior:
+                </p>
+                <ul style="margin: 1rem 0 1rem 2rem; color: #d0d0d0; line-height: 1.8;">
+                    <li><strong>k₀:</strong> Pre-exponential factor (~10¹⁶ s⁻¹)</li>
+                    <li><strong>Eₐ:</strong> Activation energy (1.8-2.3 eV for GST)</li>
+                    <li><strong>k_B:</strong> Boltzmann constant</li>
+                    <li><strong>T:</strong> Absolute temperature</li>
+                </ul>
+            </div>
+            
+            <div class="step">
+                <span class="step-number">3</span>
+                <span style="font-size: 1.2rem; color: #c084fc; font-weight: 600;">Interactive JMAK Simulator</span>
+                
+                <div class="interactive-demo">
+                    <h3 style="color: #c084fc; margin-bottom: 1rem;">Explore JMAK Parameters</h3>
+                    
+                    <div class="demo-controls">
+                        <div class="control-group">
+                            <label class="control-label">Temperature (K): <span id="temp-value">500</span></label>
+                            <input type="range" class="control-slider" id="temp-slider" 
+                                   min="400" max="600" value="500" step="10">
+                        </div>
+                        
+                        <div class="control-group">
+                            <label class="control-label">Activation Energy (eV): <span id="ea-value">1.8</span></label>
+                            <input type="range" class="control-slider" id="ea-slider" 
+                                   min="1.0" max="3.0" value="1.8" step="0.1">
+                        </div>
+                        
+                        <div class="control-group">
+                            <label class="control-label">Avrami Exponent n: <span id="n-value">3.0</span></label>
+                            <input type="range" class="control-slider" id="n-slider" 
+                                   min="1.0" max="4.0" value="3.0" step="0.1">
+                        </div>
+                        
+                        <div class="control-group">
+                            <label class="control-label">Pre-factor k₀ (log₁₀): <span id="k0-value">16</span></label>
+                            <input type="range" class="control-slider" id="k0-slider" 
+                                   min="14" max="18" value="16" step="0.5">
+                        </div>
+                    </div>
+                    
+                    <button class="btn" onclick="updateJMAK()" style="width: 100%;">
+                        <i class="fas fa-sync"></i> Update Simulation
+                    </button>
+                    
+                    <div id="jmak-plot" style="margin-top: 2rem;"></div>
+                    
+                    <div id="kinetics-results" style="margin-top: 1rem; padding: 1rem; 
+                            background: rgba(0, 0, 0, 0.5); border-radius: 8px;">
+                        <h4 style="color: #c084fc; margin-bottom: 0.5rem;">Key Metrics:</h4>
+                        <p>Rate Constant k: <span id="k-result" style="color: #9333ea; font-weight: bold;">--</span></p>
+                        <p>t₅₀ (50% crystallization): <span id="t50-result" style="color: #4ecdc4; font-weight: bold;">--</span></p>
+                        <p>t₉₀ (90% crystallization): <span id="t90-result" style="color: #ff6b6b; font-weight: bold;">--</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tutorial-section">
+            <h2 class="section-title">Practical Implementation</h2>
+            
+            <pre><code class="language-python"># JMAK Crystallization Simulation
+import numpy as np
+import matplotlib.pyplot as plt
+
+class JMAKModel:
+    def __init__(self, Ea=1.8, n=3.0, k0=1e16):
+        self.Ea = Ea  # eV
+        self.n = n    # Avrami exponent
+        self.k0 = k0  # Pre-exponential factor
+        self.kb = 8.617e-5  # eV/K
+    
+    def rate_constant(self, T):
+        """Calculate temperature-dependent rate constant"""
+        return self.k0 * np.exp(-self.Ea / (self.kb * T))
+    
+    def crystalline_fraction(self, t, T):
+        """Calculate crystalline fraction at time t and temperature T"""
+        k = self.rate_constant(T)
+        return 1 - np.exp(-(k * t)**self.n)
+    
+    def time_to_fraction(self, X, T):
+        """Calculate time to reach fraction X at temperature T"""
+        k = self.rate_constant(T)
+        return (-np.log(1 - X))**(1/self.n) / k
+
+# Example usage
+model = JMAKModel(Ea=1.8, n=3.0)
+T = 500  # K
+time = np.linspace(0, 100e-9, 1000)  # 0 to 100 ns
+
+X = model.crystalline_fraction(time, T)
+t50 = model.time_to_fraction(0.5, T)
+
+print(f"Time to 50% crystallization: {t50*1e9:.2f} ns")</code></pre>
+        </div>
+
+        <div class="tutorial-section">
+            <h2 class="section-title">Avrami Exponent Interpretation</h2>
+            
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>n Value</th>
+                        <th>Nucleation</th>
+                        <th>Growth Dimension</th>
+                        <th>PCM Implication</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1.0</td>
+                        <td>Site saturation</td>
+                        <td>1D</td>
+                        <td>Interface-controlled</td>
+                    </tr>
+                    <tr>
+                        <td>2.0</td>
+                        <td>Site saturation</td>
+                        <td>2D</td>
+                        <td>Thin film growth</td>
+                    </tr>
+                    <tr>
+                        <td>3.0</td>
+                        <td>Constant rate</td>
+                        <td>3D</td>
+                        <td>Bulk crystallization</td>
+                    </tr>
+                    <tr>
+                        <td>4.0</td>
+                        <td>Decreasing rate</td>
+                        <td>3D</td>
+                        <td>Nucleation-limited</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="tutorial-section">
+            <h2 class="section-title">Advanced Exercise: Multi-Temperature Analysis</h2>
+            
+            <div id="arrhenius-plot" style="margin: 2rem 0;"></div>
+            
+            <div style="background: rgba(255, 195, 0, 0.1); border: 1px solid rgba(255, 195, 0, 0.3); 
+                    border-radius: 8px; padding: 1.5rem;">
+                <h3 style="color: #ffc300; margin-bottom: 1rem;">
+                    <i class="fas fa-tasks"></i> Challenge
+                </h3>
+                <p style="color: #d0d0d0; line-height: 1.8;">
+                    Use the simulator to determine:
+                </p>
+                <ol style="margin-left: 2rem; color: #d0d0d0; line-height: 2;">
+                    <li>How does crystallization time scale with temperature?</li>
+                    <li>What n value best matches GST-225 behavior?</li>
+                    <li>Calculate the activation energy from multiple temperature points</li>
+                    <li>Predict retention time at 85°C storage temperature</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="next-tutorial">
+            <p style="color: #a0a0a0; margin-bottom: 1rem;">Continue learning with:</p>
+            <a href="pcm-tutorial-pulse.html" class="next-btn">
+                Next: Pulse Programming <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+    </main>
+
+    <script>
+        // Update slider displays
+        document.getElementById('temp-slider').addEventListener('input', function() {
+            document.getElementById('temp-value').textContent = this.value;
+            updateJMAK();
+        });
+        
+        document.getElementById('ea-slider').addEventListener('input', function() {
+            document.getElementById('ea-value').textContent = this.value;
+            updateJMAK();
+        });
+        
+        document.getElementById('n-slider').addEventListener('input', function() {
+            document.getElementById('n-value').textContent = this.value;
+            updateJMAK();
+        });
+        
+        document.getElementById('k0-slider').addEventListener('input', function() {
+            document.getElementById('k0-value').textContent = this.value;
+            updateJMAK();
+        });
+        
+        function updateJMAK() {
+            const T = parseFloat(document.getElementById('temp-slider').value);
+            const Ea = parseFloat(document.getElementById('ea-slider').value);
+            const n = parseFloat(document.getElementById('n-slider').value);
+            const k0 = Math.pow(10, parseFloat(document.getElementById('k0-slider').value));
+            
+            const kb = 8.617e-5; // eV/K
+            const k = k0 * Math.exp(-Ea / (kb * T));
+            
+            // Generate time series
+            const time = [];
+            const fraction = [];
+            const maxTime = 10 / k; // Adjust based on rate
+            
+            for (let i = 0; i <= 100; i++) {
+                const t = (i / 100) * maxTime;
+                time.push(t * 1e9); // Convert to ns
+                fraction.push(1 - Math.exp(-Math.pow(k * t, n)));
+            }
+            
+            // Create plot
+            const trace = {
+                x: time,
+                y: fraction,
+                type: 'scatter',
+                mode: 'lines',
+                name: `T=${T}K`,
+                line: { color: '#9333ea', width: 3 }
+            };
+            
+            // Add markers for t50 and t90
+            const t50 = Math.pow(-Math.log(0.5), 1/n) / k;
+            const t90 = Math.pow(-Math.log(0.1), 1/n) / k;
+            
+            const markers = {
+                x: [t50 * 1e9, t90 * 1e9],
+                y: [0.5, 0.9],
+                type: 'scatter',
+                mode: 'markers',
+                name: 'Key Points',
+                marker: { 
+                    color: ['#4ecdc4', '#ff6b6b'],
+                    size: 10,
+                    symbol: 'circle'
+                }
+            };
+            
+            const layout = {
+                title: 'JMAK Crystallization Kinetics',
+                xaxis: { 
+                    title: 'Time (ns)',
+                    gridcolor: '#333'
+                },
+                yaxis: { 
+                    title: 'Crystalline Fraction',
+                    gridcolor: '#333',
+                    range: [0, 1]
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                showlegend: true
+            };
+            
+            Plotly.newPlot('jmak-plot', [trace, markers], layout, {responsive: true});
+            
+            // Update results
+            document.getElementById('k-result').textContent = k.toExponential(2) + ' s⁻¹';
+            document.getElementById('t50-result').textContent = (t50 * 1e9).toFixed(2) + ' ns';
+            document.getElementById('t90-result').textContent = (t90 * 1e9).toFixed(2) + ' ns';
+        }
+        
+        // Arrhenius plot
+        function createArrheniusPlot() {
+            const temperatures = [400, 450, 500, 550, 600];
+            const Ea = 1.8;
+            const k0 = 1e16;
+            const kb = 8.617e-5;
+            
+            const invT = [];
+            const lnK = [];
+            
+            temperatures.forEach(T => {
+                invT.push(1000 / T);
+                const k = k0 * Math.exp(-Ea / (kb * T));
+                lnK.push(Math.log(k));
+            });
+            
+            const trace = {
+                x: invT,
+                y: lnK,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Arrhenius Plot',
+                line: { color: '#ff6b6b', width: 2 },
+                marker: { color: '#9333ea', size: 8 }
+            };
+            
+            const layout = {
+                title: 'Arrhenius Analysis',
+                xaxis: { 
+                    title: '1000/T (K⁻¹)',
+                    gridcolor: '#333'
+                },
+                yaxis: { 
+                    title: 'ln(k)',
+                    gridcolor: '#333'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                annotations: [{
+                    x: 2.0,
+                    y: 20,
+                    text: `Ea = ${Ea} eV`,
+                    showarrow: false,
+                    font: { color: '#4ecdc4', size: 14 }
+                }]
+            };
+            
+            Plotly.newPlot('arrhenius-plot', [trace], layout, {responsive: true});
+        }
+        
+        // Initialize on load
+        window.addEventListener('load', () => {
+            updateJMAK();
+            createArrheniusPlot();
+        });
+    </script>
+</body>
+</html>

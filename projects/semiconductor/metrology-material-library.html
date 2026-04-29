@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Material Library Explorer - Thin-Film Metrology</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #fff;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: linear-gradient(135deg, rgba(15, 12, 41, 0.9), rgba(48, 43, 99, 0.9));
+            padding: 30px 20px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2.2em;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: #b8b8d1;
+            font-size: 1.1em;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 30px;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            text-decoration: none;
+            color: #fff;
+            transition: all 0.3s ease;
+        }
+
+        .back-link:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .library-grid {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 30px;
+            margin: 30px 0;
+        }
+
+        @media (max-width: 1100px) {
+            .library-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .material-list {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            height: fit-content;
+        }
+
+        .material-list h2 {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: #fff;
+        }
+
+        .material-card {
+            background: rgba(255, 255, 255, 0.08);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .material-card:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateX(5px);
+        }
+
+        .material-card.active {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.3), rgba(118, 75, 162, 0.3));
+            border-color: #667eea;
+        }
+
+        .material-name {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 5px;
+        }
+
+        .material-formula {
+            font-size: 0.9em;
+            color: #9090aa;
+            font-family: 'Courier New', monospace;
+        }
+
+        .material-detail {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+        }
+
+        .material-detail h2 {
+            font-size: 1.8em;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+
+        .material-detail h3 {
+            font-size: 1.3em;
+            margin: 25px 0 15px;
+            color: #fff;
+        }
+
+        .property-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .property-box {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .property-label {
+            color: #9090aa;
+            font-size: 0.85em;
+            margin-bottom: 5px;
+        }
+
+        .property-value {
+            color: #fff;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        #dispersionPlot, #comparisonPlot {
+            width: 100%;
+            height: 450px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .formula-box {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            color: #fff;
+        }
+
+        .formula-box h4 {
+            color: #fff;
+            margin-bottom: 10px;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .application-tag {
+            display: inline-block;
+            background: rgba(102, 126, 234, 0.3);
+            border: 1px solid rgba(102, 126, 234, 0.5);
+            padding: 6px 12px;
+            border-radius: 15px;
+            margin: 5px;
+            font-size: 0.85em;
+            color: #b8b8d1;
+        }
+
+        .compare-section {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 25px 0;
+        }
+
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+        }
+
+        .checkbox-item input {
+            margin-right: 8px;
+        }
+
+        .checkbox-item label {
+            color: #b8b8d1;
+            font-size: 0.95em;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <h1><i class="fas fa-database"></i> Material Library Explorer</h1>
+            <p>Comprehensive optical materials database with dispersion models</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <a href="thin-film-metrology-complete.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Metrology Suite
+        </a>
+
+        <div class="library-grid">
+            <div class="material-list">
+                <h2>Material Database</h2>
+                <div id="materialCards"></div>
+            </div>
+
+            <div class="material-detail">
+                <h2 id="materialTitle">Select a material</h2>
+                <p id="materialDesc" style="color: #b8b8d1; margin-bottom: 20px;"></p>
+
+                <div class="property-grid" id="propertyGrid">
+                    <!-- Properties will be populated here -->
+                </div>
+
+                <h3><i class="fas fa-chart-line"></i> Dispersion Curve</h3>
+                <div id="dispersionPlot"></div>
+
+                <div class="formula-box" id="formulaBox" style="display: none;">
+                    <h4>Dispersion Formula</h4>
+                    <div id="formulaContent"></div>
+                </div>
+
+                <h3 style="margin-top: 30px;"><i class="fas fa-lightbulb"></i> Applications</h3>
+                <div id="applications"></div>
+
+                <div class="compare-section">
+                    <h3><i class="fas fa-layer-group"></i> Compare Materials</h3>
+                    <p style="color: #b8b8d1; font-size: 0.95em; margin-bottom: 15px;">
+                        Select multiple materials to compare their dispersion curves:
+                    </p>
+                    <div class="checkbox-group" id="compareCheckboxes"></div>
+                    <div id="comparisonPlot"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const materials = {
+            sio2: {
+                name: 'Silicon Dioxide',
+                formula: 'SiO₂',
+                description: 'Fused silica, widely used low-index dielectric. Excellent transparency and thermal stability.',
+                dispersion: { type: 'cauchy', A: 1.4508, B: 0.0036, C: 0 },
+                properties: {
+                    'Refractive Index (550nm)': '1.46',
+                    'Transparency Range': '200-2500 nm',
+                    'Bandgap': '9 eV',
+                    'Thermal Expansion': '0.5 ppm/K'
+                },
+                applications: ['Anti-reflection coatings', 'Optical waveguides', 'Passivation layers', 'Low-index cladding']
+            },
+            si3n4: {
+                name: 'Silicon Nitride',
+                formula: 'Si₃N₄',
+                description: 'High-index dielectric with excellent mechanical and optical properties. Common in integrated photonics.',
+                dispersion: { type: 'cauchy', A: 1.9963, B: 0.0068, C: 0 },
+                properties: {
+                    'Refractive Index (550nm)': '2.02',
+                    'Transparency Range': '300-6000 nm',
+                    'Bandgap': '5 eV',
+                    'Thermal Expansion': '3.2 ppm/K'
+                },
+                applications: ['Photonic waveguides', 'High-index coatings', 'MEMS structures', 'Diffusion barriers']
+            },
+            tio2: {
+                name: 'Titanium Dioxide',
+                formula: 'TiO₂',
+                description: 'Very high refractive index material. Used in high-performance optical coatings.',
+                dispersion: { type: 'cauchy', A: 2.2716, B: 0.0179, C: 0 },
+                properties: {
+                    'Refractive Index (550nm)': '2.35',
+                    'Transparency Range': '350-12000 nm',
+                    'Bandgap': '3.2 eV',
+                    'Thermal Expansion': '9.2 ppm/K'
+                },
+                applications: ['Bragg reflectors', 'AR coatings', 'Photocatalysis', 'High-reflection coatings']
+            },
+            al2o3: {
+                name: 'Aluminum Oxide',
+                formula: 'Al₂O₃',
+                description: 'Sapphire. Excellent mechanical hardness and chemical resistance. Good optical transparency.',
+                dispersion: { type: 'cauchy', A: 1.7604, B: 0.0128, C: 0 },
+                properties: {
+                    'Refractive Index (550nm)': '1.77',
+                    'Transparency Range': '150-5500 nm',
+                    'Bandgap': '8.8 eV',
+                    'Thermal Expansion': '5.4 ppm/K'
+                },
+                applications: ['Protective coatings', 'Substrate material', 'Optical windows', 'Laser hosts']
+            },
+            ta2o5: {
+                name: 'Tantalum Pentoxide',
+                formula: 'Ta₂O₅',
+                description: 'High-index oxide with low optical loss. Common in precision optical filters.',
+                dispersion: { type: 'cauchy', A: 2.0772, B: 0.0145, C: 0 },
+                properties: {
+                    'Refractive Index (550nm)': '2.12',
+                    'Transparency Range': '300-10000 nm',
+                    'Bandgap': '4.4 eV',
+                    'Thermal Expansion': '3.6 ppm/K'
+                },
+                applications: ['Interference filters', 'Optical coatings', 'Gate dielectrics', 'Capacitors']
+            },
+            hfo2: {
+                name: 'Hafnium Oxide',
+                formula: 'HfO₂',
+                description: 'High-k dielectric material with good optical properties. Used in advanced photonics.',
+                dispersion: { type: 'cauchy', A: 1.9800, B: 0.0112, C: 0 },
+                properties: {
+                    'Refractive Index (550nm)': '2.00',
+                    'Transparency Range': '250-12000 nm',
+                    'Bandgap': '5.7 eV',
+                    'Thermal Expansion': '5.3 ppm/K'
+                },
+                applications: ['High-k dielectrics', 'Optical coatings', 'Laser mirrors', 'Gate oxides']
+            }
+        };
+
+        let currentMaterial = 'sio2';
+
+        function calculateIndex(material, wavelength) {
+            const disp = materials[material].dispersion;
+            const lambda_um = wavelength / 1000;
+
+            if (disp.type === 'cauchy') {
+                return disp.A + disp.B / (lambda_um ** 2) + disp.C / (lambda_um ** 4);
+            }
+            return disp.A;
+        }
+
+        function renderMaterialCards() {
+            const container = document.getElementById('materialCards');
+            container.innerHTML = '';
+
+            for (const [key, mat] of Object.entries(materials)) {
+                const card = document.createElement('div');
+                card.className = 'material-card' + (key === currentMaterial ? ' active' : '');
+                card.onclick = () => selectMaterial(key);
+                card.innerHTML = `
+                    <div class="material-name">${mat.name}</div>
+                    <div class="material-formula">${mat.formula}</div>
+                `;
+                container.appendChild(card);
+            }
+        }
+
+        function selectMaterial(key) {
+            currentMaterial = key;
+            renderMaterialCards();
+            displayMaterial(key);
+        }
+
+        function displayMaterial(key) {
+            const mat = materials[key];
+
+            document.getElementById('materialTitle').textContent = mat.name + ' (' + mat.formula + ')';
+            document.getElementById('materialDesc').textContent = mat.description;
+
+            // Properties
+            const propGrid = document.getElementById('propertyGrid');
+            propGrid.innerHTML = '';
+            for (const [label, value] of Object.entries(mat.properties)) {
+                const box = document.createElement('div');
+                box.className = 'property-box';
+                box.innerHTML = `
+                    <div class="property-label">${label}</div>
+                    <div class="property-value">${value}</div>
+                `;
+                propGrid.appendChild(box);
+            }
+
+            // Applications
+            const appDiv = document.getElementById('applications');
+            appDiv.innerHTML = '';
+            mat.applications.forEach(app => {
+                const tag = document.createElement('span');
+                tag.className = 'application-tag';
+                tag.textContent = app;
+                appDiv.appendChild(tag);
+            });
+
+            // Dispersion formula
+            const formulaBox = document.getElementById('formulaBox');
+            const formulaContent = document.getElementById('formulaContent');
+            if (mat.dispersion.type === 'cauchy') {
+                formulaBox.style.display = 'block';
+                formulaContent.innerHTML = `
+                    Cauchy Dispersion Formula:<br><br>
+                    n(λ) = A + B/λ² + C/λ⁴<br><br>
+                    A = ${mat.dispersion.A.toFixed(4)}<br>
+                    B = ${mat.dispersion.B.toFixed(4)} μm²<br>
+                    C = ${mat.dispersion.C.toFixed(4)} μm⁴
+                `;
+            }
+
+            // Plot dispersion
+            plotDispersion(key);
+        }
+
+        function plotDispersion(key) {
+            const wavelengths = [];
+            const indices = [];
+
+            for (let lambda = 300; lambda <= 1600; lambda += 5) {
+                wavelengths.push(lambda);
+                indices.push(calculateIndex(key, lambda));
+            }
+
+            const trace = {
+                x: wavelengths,
+                y: indices,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#667eea', width: 3 },
+                name: materials[key].name
+            };
+
+            const layout = {
+                xaxis: { title: 'Wavelength (nm)', color: '#b8b8d1', gridcolor: '#333' },
+                yaxis: { title: 'Refractive Index', color: '#b8b8d1', gridcolor: '#333' },
+                plot_bgcolor: 'rgba(0,0,0,0.2)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#b8b8d1' },
+                margin: { l: 60, r: 30, t: 30, b: 60 }
+            };
+
+            Plotly.newPlot('dispersionPlot', [trace], layout);
+        }
+
+        function renderCompareCheckboxes() {
+            const container = document.getElementById('compareCheckboxes');
+            container.innerHTML = '';
+
+            for (const [key, mat] of Object.entries(materials)) {
+                const item = document.createElement('div');
+                item.className = 'checkbox-item';
+                item.innerHTML = `
+                    <input type="checkbox" id="compare-${key}" onchange="updateComparison()">
+                    <label for="compare-${key}">${mat.name}</label>
+                `;
+                container.appendChild(item);
+            }
+        }
+
+        function updateComparison() {
+            const selected = [];
+            for (const key of Object.keys(materials)) {
+                const checkbox = document.getElementById(`compare-${key}`);
+                if (checkbox && checkbox.checked) {
+                    selected.push(key);
+                }
+            }
+
+            if (selected.length === 0) {
+                Plotly.purge('comparisonPlot');
+                return;
+            }
+
+            const traces = [];
+            const colors = ['#667eea', '#764ba2', '#4caf50', '#ff9800', '#f44336', '#2196f3'];
+
+            for (let i = 0; i < selected.length; i++) {
+                const key = selected[i];
+                const wavelengths = [];
+                const indices = [];
+
+                for (let lambda = 300; lambda <= 1600; lambda += 5) {
+                    wavelengths.push(lambda);
+                    indices.push(calculateIndex(key, lambda));
+                }
+
+                traces.push({
+                    x: wavelengths,
+                    y: indices,
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: colors[i % colors.length], width: 2.5 },
+                    name: materials[key].name
+                });
+            }
+
+            const layout = {
+                xaxis: { title: 'Wavelength (nm)', color: '#b8b8d1', gridcolor: '#333' },
+                yaxis: { title: 'Refractive Index', color: '#b8b8d1', gridcolor: '#333' },
+                plot_bgcolor: 'rgba(0,0,0,0.2)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#b8b8d1' },
+                showlegend: true,
+                legend: { x: 0.7, y: 0.95 },
+                margin: { l: 60, r: 30, t: 30, b: 60 }
+            };
+
+            Plotly.newPlot('comparisonPlot', traces, layout);
+        }
+
+        // Initialize
+        window.onload = function() {
+            renderMaterialCards();
+            displayMaterial('sio2');
+            renderCompareCheckboxes();
+        };
+    </script>
+</body>
+</html>

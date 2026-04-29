@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase Shift Mask Simulation</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.26.0/plotly.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #e0e0e0; }
+        .navbar { background: rgba(10, 10, 10, 0.95); padding: 1rem 2rem; border-bottom: 1px solid rgba(102, 126, 234, 0.3); position: sticky; top: 0; z-index: 100; }
+        .nav-content { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        .nav-title { color: #667eea; font-size: 1.3rem; font-weight: 600; }
+        .nav-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .header { text-align: center; margin-bottom: 3rem; }
+        .header h1 { font-size: 2.8rem; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 3rem; }
+        .stat-card { background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.3); padding: 1.5rem; border-radius: 12px; text-align: center; }
+        .stat-value { font-size: 2rem; font-weight: bold; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .stat-label { color: #a0a0a0; font-size: 0.9rem; }
+        .controls-section { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; margin-bottom: 2rem; }
+        .section-title { color: #667eea; font-size: 1.5rem; margin-bottom: 1.5rem; }
+        .controls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+        .control-group { background: rgba(102, 126, 234, 0.05); padding: 1.2rem; border-radius: 10px; }
+        .control-group label { display: block; color: #667eea; margin-bottom: 0.5rem; }
+        .control-group input[type="range"] { width: 100%; height: 6px; background: rgba(102, 126, 234, 0.3); }
+        .control-value { display: flex; justify-content: space-between; margin-top: 0.5rem; color: #a0a0a0; font-size: 0.9rem; }
+        .visualization { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; margin-bottom: 2rem; }
+        .chart-container { background: rgba(0, 0, 0, 0.3); border-radius: 10px; padding: 1rem; margin-top: 1rem; }
+        .equation-box { background: rgba(102, 126, 234, 0.1); border-left: 4px solid #667eea; padding: 1.5rem; border-radius: 8px; margin: 2rem 0; }
+        .equation { font-family: 'Courier New', monospace; font-size: 1.1rem; line-height: 2; }
+    </style>
+</head>
+<body>
+    <nav class="navbar"><div class="nav-content"><div class="nav-title"><i class="fas fa-th"></i> PSM Simulation</div><a href="lithography-research.html" class="nav-btn"><i class="fas fa-arrow-left"></i> Back</a></div></nav>
+    <div class="container">
+        <div class="header"><h1>Phase Shift Mask</h1><p>Attenuated PSM, alternating PSM, destructive interference enhancement</p></div>
+        <div class="stats-grid">
+            <div class="stat-card"><div class="stat-value" id="phase-stat">180°</div><div class="stat-label">Phase Shift</div></div>
+            <div class="stat-card"><div class="stat-value" id="trans-stat">6%</div><div class="stat-label">Transmission</div></div>
+            <div class="stat-card"><div class="stat-value" id="contrast-stat">92%</div><div class="stat-label">Contrast</div></div>
+            <div class="stat-card"><div class="stat-value" id="nils-stat">3.2</div><div class="stat-label">NILS</div></div>
+        </div>
+        <div class="controls-section">
+            <h2 class="section-title">PSM Parameters</h2>
+            <div class="controls-grid">
+                <div class="control-group"><label>Phase Shift (°)</label><input type="range" id="phase" min="0" max="180" value="180"><div class="control-value"><span>0</span><span id="phase-val">180</span></div></div>
+                <div class="control-group"><label>Transmission (%)</label><input type="range" id="trans" min="1" max="15" value="6"><div class="control-value"><span>1</span><span id="trans-val">6</span></div></div>
+                <div class="control-group"><label>PSM Type</label><input type="range" id="type" min="0" max="1" step="1" value="0"><div class="control-value"><span>Att-PSM</span><span id="type-val">Att-PSM</span></div></div>
+                <div class="control-group"><label>Pitch (nm)</label><input type="range" id="pitch" min="40" max="120" value="80"><div class="control-value"><span>40</span><span id="pitch-val">80</span></div></div>
+                <div class="control-group"><label>CD Target (nm)</label><input type="range" id="cd" min="20" max="60" value="40"><div class="control-value"><span>20</span><span id="cd-val">40</span></div></div>
+                <div class="control-group"><label>NA</label><input type="range" id="na" min="0.7" max="1.35" step="0.05" value="1.0"><div class="control-value"><span>0.7</span><span id="na-val">1.0</span></div></div>
+                <div class="control-group"><label>Sigma</label><input type="range" id="sigma" min="0.3" max="0.9" step="0.05" value="0.6"><div class="control-value"><span>0.3</span><span id="sigma-val">0.6</span></div></div>
+                <div class="control-group"><label>Defocus (nm)</label><input type="range" id="defocus" min="-100" max="100" value="0"><div class="control-value"><span>-100</span><span id="defocus-val">0</span></div></div>
+            </div>
+        </div>
+        <div class="equation-box"><div class="equation">E_total = E_0° + t·exp(iφ)·E_180°<br>Contrast = (I_max - I_min)/(I_max + I_min)<br>Phase: φ = 2π(n-1)d/λ = 180°</div></div>
+        <div class="visualization"><h2 class="section-title">Aerial Image with PSM</h2><div class="chart-container"><div id="aerial-chart"></div></div></div>
+        <div class="visualization"><h2 class="section-title">Phase Map</h2><div class="chart-container"><div id="phase-chart"></div></div></div>
+        <div class="visualization"><h2 class="section-title">Contrast vs Phase</h2><div class="chart-container"><div id="contrast-chart"></div></div></div>
+        <div class="visualization"><h2 class="section-title">Electric Field Components</h2><div class="chart-container"><div id="field-chart"></div></div></div>
+        <div class="visualization"><h2 class="section-title">NILS Enhancement</h2><div class="chart-container"><div id="nils-chart"></div></div></div>
+        <div class="visualization"><h2 class="section-title">Defocus Sensitivity</h2><div class="chart-container"><div id="defocus-chart"></div></div></div>
+        <div class="visualization"><h2 class="section-title">Phase Conflict Map</h2><div class="chart-container"><div id="conflict-chart"></div></div></div>
+    </div>
+    <script>
+        let p = {phase:180, trans:6, type:0, pitch:80, cd:40, na:1.0, sigma:0.6, defocus:0};
+        ['phase','trans','type','pitch','cd','na','sigma','defocus'].forEach(id => {
+            document.getElementById(id).addEventListener('input', e => {
+                p[id] = parseFloat(e.target.value);
+                document.getElementById(id+'-val').textContent = id==='type'?(e.target.value==='0'?'Att-PSM':'Alt-PSM'):e.target.value;
+                if(id==='phase') document.getElementById('phase-stat').textContent = e.target.value + '°';
+                if(id==='trans') document.getElementById('trans-stat').textContent = e.target.value + '%';
+                update();
+            });
+        });
+        function update() {
+            const x = Array.from({length:200},(_,i)=>(i-100)*2);
+            const k = 2*Math.PI/p.pitch;
+            const aerial = x.map(v => {
+                const e0 = Math.abs(v)>p.cd/2 ? 0 : 1;
+                const e180 = Math.abs(v)>p.cd/2 ? p.trans/100 : 0;
+                const phase = p.phase * Math.PI/180;
+                return Math.pow(e0 + e180*Math.cos(phase), 2) + Math.pow(e180*Math.sin(phase), 2);
+            });
+            const contrast = (Math.max(...aerial)-Math.min(...aerial))/(Math.max(...aerial)+Math.min(...aerial));
+            document.getElementById('contrast-stat').textContent = (contrast*100).toFixed(0) + '%';
+            document.getElementById('nils-stat').textContent = (2 + contrast*2).toFixed(1);
+            
+            Plotly.newPlot('aerial-chart', [{x,y:aerial,type:'scatter',mode:'lines',line:{color:'#667eea',width:3},fill:'tozeroy',fillcolor:'rgba(102,126,234,0.3)'}],
+                {paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{color:'#e0e0e0'},xaxis:{title:'Position (nm)',gridcolor:'rgba(102,126,234,0.2)'},yaxis:{title:'Intensity',gridcolor:'rgba(102,126,234,0.2)'},margin:{t:20,r:20,b:50,l:60}},{responsive:true});
+            
+            const phaseMap = x.map(v => Math.abs(v)<p.cd/2 ? 0 : p.phase);
+            Plotly.newPlot('phase-chart', [{x,y:phaseMap,type:'scatter',mode:'lines',line:{color:'#f39c12',width:3}}],
+                {paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{color:'#e0e0e0'},xaxis:{title:'Position (nm)',gridcolor:'rgba(102,126,234,0.2)'},yaxis:{title:'Phase (°)',gridcolor:'rgba(102,126,234,0.2)'},margin:{t:20,r:20,b:50,l:60}},{responsive:true});
+            
+            const phases = Array.from({length:50},(_,i)=>i*4);
+            const contrasts = phases.map(ph => {
+                const c = Math.abs(Math.cos(ph*Math.PI/180));
+                return 0.3 + 0.6*c;
+            });
+            Plotly.newPlot('contrast-chart', [{x:phases,y:contrasts,type:'scatter',mode:'lines+markers',line:{color:'#764ba2',width:3},marker:{size:6}}],
+                {paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{color:'#e0e0e0'},xaxis:{title:'Phase (°)',gridcolor:'rgba(102,126,234,0.2)'},yaxis:{title:'Contrast',gridcolor:'rgba(102,126,234,0.2)'},margin:{t:20,r:20,b:50,l:60}},{responsive:true});
+            
+            const e0 = x.map(v => Math.abs(v)<p.cd/2 ? 1 : 0);
+            const e180 = x.map(v => Math.abs(v)<p.cd/2 ? 0 : p.trans/100);
+            Plotly.newPlot('field-chart', [{x,y:e0,name:'E 0°',type:'scatter',mode:'lines',line:{color:'#667eea'}},{x,y:e180,name:'E 180°',type:'scatter',mode:'lines',line:{color:'#f39c12'}}],
+                {paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{color:'#e0e0e0'},xaxis:{title:'Position (nm)',gridcolor:'rgba(102,126,234,0.2)'},yaxis:{title:'E-field',gridcolor:'rgba(102,126,234,0.2)'},margin:{t:20,r:20,b:50,l:60},showlegend:true,legend:{font:{color:'#e0e0e0'}}},{responsive:true});
+            
+            const pitches = Array.from({length:30},(_,i)=>40+i*3);
+            const nils = pitches.map(pt => 1 + 2*contrast*Math.exp(-pt/100));
+            Plotly.newPlot('nils-chart', [{x:pitches,y:nils,type:'scatter',mode:'lines',line:{color:'#667eea',width:3}}],
+                {paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{color:'#e0e0e0'},xaxis:{title:'Pitch (nm)',gridcolor:'rgba(102,126,234,0.2)'},yaxis:{title:'NILS',gridcolor:'rgba(102,126,234,0.2)'},margin:{t:20,r:20,b:50,l:60}},{responsive:true});
+            
+            const defoci = Array.from({length:40},(_,i)=>-100+i*5);
+            const cdVsDefocus = defoci.map(d => p.cd + 0.1*d);
+            Plotly.newPlot('defocus-chart', [{x:defoci,y:cdVsDefocus,type:'scatter',mode:'lines',line:{color:'#f39c12',width:3}}],
+                {paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{color:'#e0e0e0'},xaxis:{title:'Defocus (nm)',gridcolor:'rgba(102,126,234,0.2)'},yaxis:{title:'CD (nm)',gridcolor:'rgba(102,126,234,0.2)'},margin:{t:20,r:20,b:50,l:60}},{responsive:true});
+            
+            const n = 30;
+            const z = Array.from({length:n},(_,i)=>Array.from({length:n},(_,j)=>(i+j)%2===0?0:180));
+            Plotly.newPlot('conflict-chart', [{z,type:'heatmap',colorscale:[[0,'#0a0a0a'],[1,'#f39c12']],showscale:false}],
+                {paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{color:'#e0e0e0'},xaxis:{showgrid:false},yaxis:{showgrid:false},margin:{t:20,r:20,b:50,l:60}},{responsive:true});
+        }
+        update();
+    </script>
+</body>
+</html>

@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thermal Evaporation Simulation - CVD/PVD Research</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333; line-height: 1.6;
+        }
+        .navbar {
+            background: rgba(255, 255, 255, 0.95); padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100;
+        }
+        .navbar a { color: #764ba2; text-decoration: none; font-weight: 600; transition: color 0.3s; }
+        .navbar a:hover { color: #f39c12; }
+        .container { max-width: 1400px; margin: 2rem auto; padding: 0 2rem; }
+        .header { background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); margin-bottom: 2rem; }
+        .header h1 { color: #764ba2; margin-bottom: 0.5rem; }
+        .header p { color: #666; font-size: 1.1rem; }
+        .controls-panel { background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); margin-bottom: 2rem; }
+        .control-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem; }
+        .control-item { display: flex; flex-direction: column; }
+        .control-item label { color: #764ba2; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem; }
+        .control-item input[type="range"] { width: 100%; height: 6px; border-radius: 3px; background: linear-gradient(to right, #667eea, #764ba2); outline: none; -webkit-appearance: none; }
+        .control-item input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #f39c12; cursor: pointer; }
+        .control-item input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #f39c12; cursor: pointer; border: none; }
+        .control-item .value-display { color: #f39c12; font-weight: bold; margin-top: 0.25rem; }
+        .button-group { display: flex; gap: 1rem; flex-wrap: wrap; }
+        .btn { padding: 0.75rem 2rem; border: none; border-radius: 5px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s; text-transform: uppercase; letter-spacing: 1px; }
+        .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .btn-secondary { background: #f39c12; color: white; }
+        .btn-secondary:hover { background: #e67e22; transform: translateY(-2px); }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .stat-card { background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); border-left: 4px solid #667eea; }
+        .stat-card h3 { font-size: 0.9rem; color: #666; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 1px; }
+        .stat-card .value { font-size: 1.8rem; font-weight: bold; color: #764ba2; }
+        .stat-card .unit { font-size: 0.9rem; color: #999; margin-left: 0.25rem; }
+        .visualization-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 2rem; margin-bottom: 2rem; }
+        .viz-panel { background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+        .viz-panel h2 { color: #764ba2; margin-bottom: 1rem; font-size: 1.3rem; }
+        #threejs-container { width: 100%; height: 500px; border-radius: 10px; overflow: hidden; background: #000; }
+        .theory-section { background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); margin-bottom: 2rem; }
+        .theory-section h2 { color: #764ba2; margin-bottom: 1rem; }
+        .theory-section h3 { color: #f39c12; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+        .equation { background: #f8f9fa; padding: 1rem; border-radius: 5px; margin: 1rem 0; font-family: 'Courier New', monospace; border-left: 4px solid #f39c12; }
+        .chart-container { width: 100%; height: 400px; margin-top: 1rem; }
+        @media (max-width: 768px) { .container { padding: 0 1rem; } .visualization-grid { grid-template-columns: 1fr; } .control-group { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <nav class="navbar"><a href="cvd-pvd-complete-project.html">&larr; Back to CVD/PVD Project</a></nav>
+
+    <div class="container">
+        <div class="header">
+            <h1>Thermal & E-Beam Evaporation Simulation</h1>
+            <p>Physical Vapor Deposition: Vacuum evaporation, molecular flux distribution, thickness uniformity, and ballistic transport</p>
+        </div>
+
+        <div class="controls-panel">
+            <div class="button-group">
+                <button class="btn btn-primary" id="playPauseBtn">Pause</button>
+                <button class="btn btn-secondary" id="resetBtn">Reset</button>
+            </div>
+            <div class="control-group" style="margin-top: 1.5rem;">
+                <div class="control-item"><label for="sourcePower">Source Power (kW)</label><input type="range" id="sourcePower" min="1" max="20" value="5" step="0.5" oninput="updateStats(); updateCharts();"><span class="value-display" id="sourcePowerValue">5 kW</span></div>
+                <div class="control-item"><label for="sourceTemp">Source Temperature (°C)</label><input type="range" id="sourceTemp" min="800" max="2500" value="1400" step="50" oninput="updateStats(); updateCharts();"><span class="value-display" id="sourceTempValue">1400 °C</span></div>
+                <div class="control-item"><label for="pressure">Chamber Pressure (Torr)</label><input type="range" id="pressure" min="1" max="9" value="6" step="1" oninput="updateStats(); updateCharts();"><span class="value-display" id="pressureValue">10⁻⁶ Torr</span></div>
+                <div class="control-item"><label for="sourceDistance">Source-Substrate (cm)</label><input type="range" id="sourceDistance" min="20" max="80" value="40" step="5" oninput="updateStats(); updateCharts();"><span class="value-display" id="sourceDistanceValue">40 cm</span></div>
+                <div class="control-item"><label for="sourceAngle">Substrate Tilt (deg)</label><input type="range" id="sourceAngle" min="0" max="60" value="0" step="5" oninput="updateStats(); updateCharts();"><span class="value-display" id="sourceAngleValue">0 deg</span></div>
+                <div class="control-item"><label for="speed">Simulation Speed</label><input type="range" id="speed" min="0.5" max="5" value="1" step="0.5" oninput="updateStats(); updateCharts();"><span class="value-display" id="speedValue">1.0×</span></div>
+                <div class="control-item"><label for="sourceMaterial">Source Material</label><input type="range" id="sourceMaterial" min="0" max="3" value="0" step="1" oninput="updateStats(); updateCharts();"><span class="value-display" id="sourceMaterialValue">Au</span></div>
+                <div class="control-item"><label for="evapMethod">Method</label><input type="range" id="evapMethod" min="0" max="1" value="0" step="1" oninput="updateStats(); updateCharts();"><span class="value-display" id="evapMethodValue">Thermal</span></div>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card"><h3>Evaporation Rate</h3><div class="value" id="evapRate">0.0<span class="unit">Å/s</span></div></div>
+            <div class="stat-card"><h3>Vapor Pressure</h3><div class="value" id="vaporPressure">0.00<span class="unit">Torr</span></div></div>
+            <div class="stat-card"><h3>Mean Free Path</h3><div class="value" id="meanFreePath">0.0<span class="unit">m</span></div></div>
+            <div class="stat-card"><h3>Deposition Rate</h3><div class="value" id="depositionRate">0.00<span class="unit">Å/s</span></div></div>
+            <div class="stat-card"><h3>Film Thickness</h3><div class="value" id="filmThickness">0<span class="unit">nm</span></div></div>
+            <div class="stat-card"><h3>Uniformity</h3><div class="value" id="uniformity">0.0<span class="unit">%</span></div></div>
+        </div>
+
+        <div class="viz-panel" style="margin-bottom: 2rem;">
+            <h2>3D Evaporation Chamber with Molecular Flux</h2>
+            <div id="threejs-container"></div>
+        </div>
+
+        <div class="theory-section">
+            <h2>Thermal Evaporation Physics</h2>
+            <p>Thermal evaporation heats materials above their sublimation/evaporation temperature in high vacuum. Atoms/molecules escape the melt surface, travel ballistically, and condense on substrates.</p>
+
+            <h3>Vapor Pressure - Clausius-Clapeyron</h3>
+            <div class="equation">
+log₁₀(P_vapor) = A - B/T
+<br>P_vapor: equilibrium vapor pressure (Torr)
+<br>T: absolute temperature (K)
+<br>A, B: material constants
+<br>
+<br>Examples at 1400°C (1673 K):
+<br>Al: A=12.95, B=15,900 → P≈10⁻³ Torr
+<br>Au: A=12.23, B=19,710 → P≈10⁻⁵ Torr
+<br>Cu: A=12.24, B=17,520 → P≈10⁻⁴ Torr
+<br>Ag: A=12.01, B=14,850 → P≈10⁻³ Torr
+<br>
+<br>Rule of thumb: Need T where P > 10⁻² Torr
+<br>for practical evaporation rates
+            </div>
+
+            <h3>Evaporation Rate - Langmuir Equation</h3>
+            <div class="equation">
+Γ_evap = α × P_vapor × √(M / (2πRT))
+<br>Γ_evap: molecular flux (molecules/cm²/s)
+<br>α: evaporation coefficient (0.01-1.0)
+<br>M: molecular mass (g/mol)
+<br>R: gas constant = 8.314 J/(mol·K)
+<br>
+<br>Mass evaporation rate:
+<br>m_dot = Γ_evap × M × A_source
+<br>
+<br>Thickness rate at source:
+<br>R_evap = (Γ_evap × M) / (N_A × ρ)
+<br>N_A: Avogadro's number
+<br>ρ: film density
+<br>
+<br>Typical R_evap: 1-100 Å/s
+<br>(depends on T, material)
+            </div>
+
+            <h3>Mean Free Path - Knudsen Number</h3>
+            <div class="equation">
+λ_mfp = kT / (√2 × π × d² × P)
+<br>d: molecular diameter (≈ 3 Å)
+<br>k: Boltzmann constant
+<br>
+<br>For T=300K, d=3Å:
+<br>P = 10⁻³ Torr → λ_mfp ≈ 50 m
+<br>P = 10⁻⁵ Torr → λ_mfp ≈ 5000 m
+<br>P = 10⁻⁷ Torr → λ_mfp ≈ 500 km
+<br>
+<br>Knudsen number:
+<br>Kn = λ_mfp / L_chamber
+<br>
+<br>Kn >> 1: Molecular flow (ballistic)
+<br>Kn << 1: Viscous flow (collisional)
+<br>
+<br>Evaporation requires Kn > 10
+<br>→ P < 10⁻⁴ Torr typical
+            </div>
+
+            <h3>Angular Distribution - Cosine Law</h3>
+            <div class="equation">
+Flux density at angle θ:
+<br>Φ(θ) = Φ₀ × cos^n(θ)
+<br>θ: angle from source normal
+<br>
+<br>For ideal point source:
+<br>n = 1 (Lambert's cosine law)
+<br>
+<br>For extended source:
+<br>n > 1 (over-cosine)
+<br>n ≈ 1-3 (typical thermal sources)
+<br>
+<br>Directional e-beam:
+<br>n ≈ 2-5 (focused beam)
+<br>
+<br>Physical origin:
+<br>Surface atoms evaporate preferentially
+<br>along surface normal (momentum conservation)
+            </div>
+
+            <h3>Thickness Distribution on Substrate</h3>
+            <div class="equation">
+Point source approximation:
+<br>d(r) = d₀ × cos^n(α) × cos(β) / h²
+<br>
+<br>α: angle at source to point r
+<br>β: angle at substrate to point r
+<br>h: source-substrate distance
+<br>r: lateral distance from axis
+<br>
+<br>On-axis (r=0):
+<br>d(0) = d₀
+<br>
+<br>Off-axis:
+<br>cos(α) = h / √(h² + r²)
+<br>cos(β) = h / √(h² + r²) (parallel)
+<br>
+<br>d(r) / d(0) = (1 + r²/h²)^(-(n+2)/2)
+<br>
+<br>Uniformity degrades as r increases
+            </div>
+
+            <h3>Substrate Rotation for Uniformity</h3>
+            <div class="equation">
+Planetary rotation:
+<br>• Substrate holder rotates
+<br>• Individual substrates rotate
+<br>
+<br>Time-averaged thickness:
+<br>d_avg = (1/T) ∫₀^T d(r(t)) dt
+<br>
+<br>For circular rotation at radius R:
+<br>r(t) = R + r₀ cos(ωt)
+<br>
+<br>Uniformity improvement:
+<br>σ/μ < 2% (with rotation)
+<br>vs σ/μ > 20% (no rotation)
+<br>
+<br>Optimal conditions:
+<br>R/h ≈ 0.5-0.7
+<br>ω × t_dep >> 10 revolutions
+            </div>
+
+            <h3>Electron Beam Evaporation</h3>
+            <div class="equation">
+E-beam heating:
+<br>P_beam = V_accel × I_beam × η
+<br>V_accel: 5-10 kV
+<br>I_beam: 0.1-1 A
+<br>η: coupling efficiency (0.6-0.9)
+<br>
+<br>Advantages vs thermal:
+<br>• Higher temperatures (>3000°C)
+<br>• Refractory materials (W, Ta, Mo)
+<br>• Localized heating (less contamination)
+<br>• Water-cooled crucible (less impurities)
+<br>
+<br>Beam sweeping:
+<br>Magnetic deflection for uniform melt
+<br>Sweep frequency: 100-1000 Hz
+<br>
+<br>Typical power density:
+<br>10⁴-10⁶ W/cm² at melt surface
+            </div>
+
+            <h3>Multi-Component Evaporation</h3>
+            <div class="equation">
+For alloy or compound AB:
+<br>
+<br>Evaporation rates differ:
+<br>Γ_A ≠ Γ_B
+<br>
+<br>Film composition:
+<br>x_A(film) = Γ_A / (Γ_A + Γ_B)
+<br>
+<br>≠ x_A(source) due to:
+<br>1. Different vapor pressures
+<br>2. Different sticking coefficients
+<br>3. Melt composition changes
+<br>
+<br>Solutions:
+<br>• Co-evaporation (separate sources)
+<br>• Flash evaporation (fast heating)
+<br>• Composition monitoring (EQCM)
+<br>• Feedback control
+            </div>
+
+            <h3>Sticking Coefficient</h3>
+            <div class="equation">
+s = (atoms stuck) / (atoms arriving)
+<br>
+<br>Temperature dependent:
+<br>s(T) = s₀ × exp(-E_des / kT)
+<br>E_des: desorption energy
+<br>
+<br>For metals on cold substrate:
+<br>s ≈ 1 (every atom sticks)
+<br>
+<br>For low T_melt materials:
+<br>Need T_substrate << T_melt
+<br>e.g., Ag at RT: s ≈ 0.5
+<br>
+<br>For molecules (organics):
+<br>s < 1 (re-evaporation)
+<br>Need substrate cooling
+<br>
+<br>Condensation coefficient:
+<br>Often assumed s=1 for PVD
+            </div>
+
+            <h3>Film Growth Modes</h3>
+            <div class="equation">
+Volmer-Weber (island growth):
+<br>γ_film > γ_substrate + γ_interface
+<br>Common: metals on insulators
+<br>
+<br>Frank-van der Merwe (layer-by-layer):
+<br>γ_film + γ_interface < γ_substrate
+<br>Common: epitaxial growth
+<br>
+<br>Stranski-Krastanov (mixed):
+<br>Few layers, then islands
+<br>Strain-driven
+<br>
+<br>Adatom mobility:
+<br>D_surface ∝ exp(-E_diff / kT_substrate)
+<br>
+<br>High T_substrate:
+<br>→ Smooth, large grains
+<br>Low T_substrate:
+<br>→ Rough, columnar, small grains
+            </div>
+
+            <h3>Deposition Rate Control</h3>
+            <div class="equation">
+Quartz Crystal Microbalance (QCM):
+<br>Δf / f₀ = -(ρ_film × d_film) / (ρ_quartz × d_quartz)
+<br>
+<br>Frequency shift:
+<br>Δf ∝ mass per unit area
+<br>
+<br>Sensitivity:
+<br>6 MHz crystal: ~1 Å resolution
+<br>
+<br>Feedback control:
+<br>PID loop adjusts source power
+<br>to maintain setpoint rate
+<br>
+<br>Accuracy: ±1-2% thickness
+<br>Reproducibility: ±0.5%
+<br>
+<br>Tooling factor:
+<br>Corrects QCM vs substrate geometry
+<br>Tf = d_substrate / d_QCM
+            </div>
+
+            <h3>Residual Gas Effects</h3>
+            <div class="equation">
+Impurity incorporation:
+<br>At P = 10⁻⁶ Torr, Γ_gas ≈ 10¹⁶ cm⁻²s⁻¹
+<br>
+<br>For R_dep = 10 Å/s ≈ 10¹⁵ atoms/cm²/s:
+<br>Gas/deposit ratio ≈ 10:1
+<br>
+<br>If sticking s_gas = 0.01:
+<br>Impurity level ≈ 0.1 atomic%
+<br>
+<br>Main contaminants:
+<br>H₂O → OH, O in film
+<br>CO, CO₂ → C, O in film
+<br>N₂ → N in film
+<br>
+<br>Require:
+<br>Base pressure < 10⁻⁷ Torr
+<br>for high purity films (<0.01% impurity)
+            </div>
+
+            <h3>Energy of Arriving Atoms</h3>
+            <div class="equation">
+Thermal evaporation:
+<br>E_atom ≈ 3kT_source / 2
+<br>
+<br>For T_source = 1400°C = 1673K:
+<br>E_atom ≈ 0.22 eV
+<br>
+<br>Very low energy compared to:
+<br>• Sputtering: 1-100 eV
+<br>• IBAD: 100-1000 eV
+<br>
+<br>Consequences:
+<br>• Limited adatom mobility
+<br>• Porous films (low T_substrate)
+<br>• Poor step coverage
+<br>• High defect density
+<br>
+<br>Need T_substrate > 0.3 T_melt
+<br>for dense, smooth films
+            
+            <h3>Crucible Materials and Compatibility</h3>
+            <p>Crucible selection depends on the material being evaporated, temperature requirements, and contamination constraints. Different evaporants require specific crucible materials to prevent reactions.</p>
+            <div class="equation">
+Crucible material selection:
+<br>
+<br>Tungsten (W):
+<br>• T_max = 3000°C
+<br>• Compatible: Al, Cu, Au, Ag
+<br>• Incompatible: Si, reactive metals
+<br>• Pros: High temp, low cost
+<br>• Cons: Brittle, oxidizes
+<br>
+<br>Molybdenum (Mo):
+<br>• T_max = 2600°C
+<br>• Compatible: Most metals
+<br>• Incompatible: Si, carbon
+<br>• Pros: Machinable, reusable
+<br>• Cons: Expensive
+<br>
+<br>Graphite (C):
+<br>• T_max = 3000°C (vacuum)
+<br>• Compatible: Al, Cr, Fe
+<br>• Incompatible: Ti, Zr, carbide formers
+<br>• Pros: High temp, inexpensive
+<br>• Cons: Carbon contamination
+<br>
+<br>Alumina (Al₂O₃):
+<br>• T_max = 2000°C
+<br>• Compatible: Most materials
+<br>• Incompatible: Si at high T
+<br>• Pros: Inert, insulating
+<br>• Cons: Thermal shock sensitive
+<br>
+<br>BN (Boron Nitride):
+<br>• T_max = 2000°C
+<br>• Compatible: Most materials
+<br>• Pros: Inert, machinable
+<br>• Cons: Expensive
+            </div>
+
+            <h3>Electron Beam Gun Design</h3>
+            <p>E-beam evaporation uses magnetically deflected electron beams to heat materials in water-cooled crucibles, enabling deposition of refractory materials with minimal contamination.</p>
+            <div class="equation">
+E-beam gun parameters:
+<br>Accelerating voltage: V_accel = 5-10 kV
+<br>Beam current: I_beam = 0.1-1 A
+<br>Power: P = V × I = 0.5-10 kW
+<br>
+<br>Electron energy:
+<br>E_e = e × V_accel (eV)
+<br>
+<br>Penetration depth (Kanaya-Okayama):
+<br>R = (0.0276 × A × E_e^1.67) / (ρ × Z^0.89)
+<br>A: atomic mass
+<br>ρ: density (g/cm³)
+<br>Z: atomic number
+<br>
+<br>For 10 keV e⁻ on Cu:
+<br>R ≈ 1-2 μm
+<br>
+<br>Magnetic deflection:
+<br>r_beam = (m_e × v) / (e × B)
+<br>B: magnetic field (Tesla)
+<br>
+<br>Typical deflection:
+<br>B ≈ 0.01-0.1 T
+<br>θ_deflect = 90-270° (bent beam)
+<br>
+<br>Beam sweeping:
+<br>f_sweep = 100-1000 Hz
+<br>Pattern: raster or circular
+<br>Purpose: uniform melt
+<br>
+<br>Power density:
+<br>P_density = P / A_spot
+<br>A_spot ≈ 0.1-1 cm²
+<br>P_density ≈ 10⁴-10⁶ W/cm²
+            </div>
+
+            <h3>Multi-Source Co-Evaporation</h3>
+            <p>Simultaneous evaporation from multiple sources enables alloy deposition, multilayers, and compositional gradients with precise flux control.</p>
+            <div class="equation">
+Co-evaporation from n sources:
+<br>Γ_total = Σ Γ_i × cos(θ_i) / r_i²
+<br>
+<br>Film composition:
+<br>x_A = Γ_A / (Γ_A + Γ_B + ...)
+<br>
+<br>Thickness rate:
+<br>R_total = Σ (Γ_i × M_i) / (ρ_film × N_A)
+<br>
+<br>Source positioning:
+<br>• Angular separation: 30-60°
+<br>• Height staggering
+<br>• Rotation for uniformity
+<br>
+<br>Flux calibration:
+<br>• Individual QCM sensors
+<br>• Tooling factors per source
+<br>• Cross-contamination minimized
+<br>
+<br>Feedback control:
+<br>PID loops per source
+<br>Adjust T or power
+<br>Real-time composition
+<br>
+<br>Applications:
+<br>• Ternary alloys (CuInGa)
+<br>• Multilayers (Al/Cr stack)
+<br>• Graded buffers (SiGe)
+<br>• Doped films (Al:ZnO)
+<br>
+<br>Challenges:
+<br>• Cross-talk between sources
+<br>• Stability matching
+<br>• Thickness uniformity
+<br>• Calibration complexity
+            </div>
+
+            <h3>Reactive Evaporation</h3>
+            <p>Introducing reactive gases during evaporation enables formation of compounds (oxides, nitrides) from metallic sources, but requires careful pressure and composition control.</p>
+            <div class="equation">
+Reactive evaporation process:
+<br>
+<br>Metal evaporation + O₂ → M_xO_y
+<br>Metal evaporation + N₂ → M_xN_y
+<br>
+<br>Reaction locations:
+<br>1. Gas phase (molecular)
+<br>2. Transit (atomic)
+<br>3. Substrate surface (adsorbed)
+<br>
+<br>Oxygen incorporation:
+<br>P_O₂ / P_total ≈ 10⁻⁵ - 10⁻⁴
+<br>
+<br>Higher P_O₂:
+<br>• Better stoichiometry
+<br>• Lower deposition rate
+<br>• Risk of target oxidation
+<br>
+<br>Sticking probability:
+<br>s(O) >> s(M) typically
+<br>Excess O required
+<br>
+<br>Partial pressure control:
+<br>P_O₂ = (Q_O₂ / Q_total) × P_total
+<br>Q_O₂: oxygen flow rate
+<br>
+<br>Hysteresis behavior:
+<br>Similar to reactive sputtering
+<br>• Metallic mode: low P_O₂
+<br>• Oxide mode: high P_O₂
+<br>• Transition mode: optimal
+<br>
+<br>Process window:
+<br>Narrow for stoichiometric films
+<br>Requires active feedback
+<br>Monitor optical transmission
+<br>or emission spectroscopy
+            </div>
+
+            <h3>Directional Deposition and Liftoff</h3>
+            <p>The ballistic nature of evaporation enables directional deposition for liftoff lithography, where shadowing prevents sidewall coverage.</p>
+            <div class="equation">
+Liftoff geometry:
+<br>
+<br>Undercut profile required:
+<br>w_top < w_bottom
+<br>
+<br>Evaporation angle:
+<br>θ_evap = arctan(h_resist / w_undercut)
+<br>
+<br>Critical angle:
+<br>θ_crit ≈ 70-80°
+<br>Above → sidewall coverage
+<br>Below → successful liftoff
+<br>
+<br>Resist profile optimization:
+<br>• Bilayer resist (LOR/photoresist)
+<br>• Image reversal
+<br>• Angled development
+<br>
+<br>Film thickness limit:
+<br>t_film < 0.3 × w_undercut
+<br>
+<br>For w_undercut = 1 μm:
+<br>t_max ≈ 300 nm
+<br>
+<br>Liftoff process:
+<br>1. Pattern resist
+<br>2. Evaporate metal
+<br>3. Dissolve resist (acetone, NMP)
+<br>4. Ultrasonic agitation
+<br>5. Rinse, dry
+<br>
+<br>Yield issues:
+<br>• Fence formation (sidewall)
+<br>• Incomplete liftoff
+<br>• Pattern lifting
+<br>
+<br>Mitigation:
+<br>• Optimize resist profile
+<br>• Control film stress
+<br>• Gentle liftoff chemistry
+<br>• Post-rinse inspection
+            
+            <h3>Vacuum System Design and Pumping</h3>
+            <p>Evaporation requires high vacuum (< 10⁻⁵ Torr) to ensure ballistic transport and minimize contamination. Proper pump selection and chamber design are critical.</p>
+            <div class="equation">
+Pump types for evaporation:
+<br>
+<br>Roughing pump (mechanical):
+<br>• Rotary vane or scroll
+<br>• P_ultimate ≈ 10⁻³ - 10⁻² Torr
+<br>• Speed: 50-500 L/s
+<br>• Initial pumpdown
+<br>
+<br>High vacuum pump:
+<br>• Turbomolecular pump (typical)
+<br>• Diffusion pump (legacy)
+<br>• Cryopump (UHV)
+<br>
+<br>Turbo pump performance:
+<br>S_pump = 500-5000 L/s (N₂)
+<br>P_ultimate < 10⁻⁹ Torr
+<br>Compression ratio: 10⁹ (N₂)
+<br>
+<br>Pumpdown time:
+<br>t = (V / S_eff) × ln(P_initial / P_final)
+<br>
+<br>For V = 100 L, S = 1000 L/s:
+<br>t ≈ 0.1 × ln(760/10⁻⁵) ≈ 1.6 s
+<br>(theoretical, ignoring outgassing)
+<br>
+<br>Effective pumping speed:
+<br>1/S_eff = 1/S_pump + 1/S_line
+<br>S_line = C (conductance)
+<br>
+<br>Conductance (aperture):
+<br>C = 11.6 × A × √(T/M) L/s
+<br>A: area (cm²)
+<br>T: temperature (K)
+<br>M: molecular mass
+<br>
+<br>Outgassing rate:
+<br>q = q₀ × t^(-α)
+<br>q₀: initial rate (Torr·L/s/cm²)
+<br>α ≈ 1 (typical)
+<br>
+<br>For stainless steel:
+<br>q₀ ≈ 10⁻⁶ Torr·L/s/cm²
+<br>After 1 hour: q ≈ 10⁻⁷
+<br>
+<br>Ultimate pressure:
+<br>P_ultimate = q_total / S_pump
+<br>
+<br>Bakeout benefits:
+<br>T_bake = 150-200°C
+<br>t_bake = 12-48 hours
+<br>Reduces outgassing by 10-100×
+<br>Achieves P < 10⁻⁸ Torr
+<br>
+<br>Load lock:
+<br>Separate chamber for loading
+<br>Prevents venting main chamber
+<br>Improves throughput
+<br>Reduces contamination
+            </div>
+
+            <h3>Rate Monitoring and Process Control</h3>
+            <p>Precise thickness control requires real-time monitoring of deposition rate using quartz crystal microbalances (QCM) or optical methods.</p>
+            <div class="equation">
+Quartz Crystal Microbalance (QCM):
+<br>
+<br>Sauerbrey equation:
+<br>Δf / f₀ = -2 × Δm / (A × ρ_q × t_q)
+<br>Δf: frequency shift (Hz)
+<br>f₀: resonant frequency (5-6 MHz)
+<br>Δm: mass deposited
+<br>ρ_q = 2.648 g/cm³ (quartz density)
+<br>t_q: quartz thickness
+<br>
+<br>Mass sensitivity:
+<br>C_f = -2f₀² / (ρ_q × v_q)
+<br>v_q = 3.34×10⁵ cm/s (shear wave)
+<br>
+<br>For 6 MHz crystal:
+<br>C_f ≈ -56.6 Hz·cm²/μg
+<br>
+<br>Thickness from frequency:
+<br>d = -Δf × ρ_q × Z / (ρ_film × f₀² × N)
+<br>Z: acoustic impedance
+<br>N: frequency constant
+<br>
+<br>Accuracy limitations:
+<br>• Assumes uniform film
+<br>• ρ_film must be known
+<br>• Temperature sensitivity (Δf/ΔT ≈ -20 ppm/°C)
+<br>• Valid up to ~10% Δf/f₀
+<br>
+<br>Tooling factor:
+<br>TF = d_substrate / d_QCM
+<br>Accounts for geometric difference
+<br>TF = 0.5-2.0 (typical)
+<br>Calibration needed
+<br>
+<br>Optical monitoring:
+<br>• Transmission/reflection
+<br>• Interference fringes
+<br>• Ellipsometry (ex-situ)
+<br>
+<br>Feedback control:
+<br>PID controller adjusts power
+<br>Setpoint: target rate (Å/s)
+<br>Maintains ±1-2% stability
+            </div>
+
+        </div>
+            <h3>Process Integration and Future Trends</h3>
+            <p>Advanced process integration combines multiple deposition techniques for optimal device performance.</p>
+            <div class="equation">
+Integration strategies:
+<br>• Multi-chamber cluster tools
+<br>• Sequential processing without vacuum break
+<br>• In-situ surface preparation
+<br>• Real-time endpoint detection
+<br>
+<br>Future directions:
+<br>• Atomic layer control (ALD-like precision)
+<br>• Machine learning process optimization
+<br>• Digital twin modeling
+<br>• Autonomous process control
+            </div>
+
+
+        <div class="visualization-grid">
+            <div class="viz-panel"><h2>Vapor Pressure vs Temperature</h2><div id="chart1" class="chart-container"></div></div>
+            <div class="viz-panel"><h2>Angular Distribution</h2><div id="chart2" class="chart-container"></div></div>
+            <div class="viz-panel"><h2>Thickness Uniformity Map</h2><div id="chart3" class="chart-container"></div></div>
+            <div class="viz-panel"><h2>Mean Free Path vs Pressure</h2><div id="chart4" class="chart-container"></div></div>
+            <div class="viz-panel"><h2>Evaporation Rate vs Power</h2><div id="chart5" class="chart-container"></div></div>
+            <div class="viz-panel"><h2>Film Microstructure Zones</h2><div id="chart6" class="chart-container"></div></div>
+            <div class="viz-panel"><h2>QCM Frequency Shift</h2><div id="chart7" class="chart-container"></div></div>
+        </div>
+    </div>
+
+    <script>
+        let isRunning = true, simulationTime = 0;
+        let params = { sourcePower: 5, sourceTemp: 1400, pressure: 6, sourceDistance: 40, sourceAngle: 0, speed: 1.0, sourceMaterial: 0, evapMethod: 0 };
+        const materials = ['Au', 'Al', 'Cu', 'Ag'];
+        const meltingPoints = [1064, 660, 1085, 962];
+        const vaporConstants = [[12.23, 19710], [12.95, 15900], [12.24, 17520], [12.01, 14850]];
+
+        let scene, camera, renderer, source, vapor, substrateHolder;
+
+        function initThreeJS() {
+            const container = document.getElementById('threejs-container');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000510);
+            camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer.domElement);
+
+            const sourceGeometry = new THREE.CylinderGeometry(2, 2, 0.5, 32);
+            const sourceMaterial = new THREE.MeshPhongMaterial({ color: 0xff6600, emissive: 0xff3300, emissiveIntensity: 0.8 });
+            source = new THREE.Mesh(sourceGeometry, sourceMaterial);
+            source.position.y = -10;
+            scene.add(source);
+
+            const chamberGeometry = new THREE.CylinderGeometry(15, 15, 30, 32, 1, true);
+            const chamberMaterial = new THREE.MeshBasicMaterial({ color: 0x222244, transparent: true, opacity: 0.15, side: THREE.DoubleSide });
+            const chamber = new THREE.Mesh(chamberGeometry, chamberMaterial);
+            scene.add(chamber);
+
+            const substrateGeometry = new THREE.CylinderGeometry(5, 5, 0.3, 32);
+            const substrateMaterial = new THREE.MeshPhongMaterial({ color: 0x444444 });
+            const substrate = new THREE.Mesh(substrateGeometry, substrateMaterial);
+            substrateHolder = new THREE.Group();
+            substrateHolder.add(substrate);
+            substrateHolder.position.y = 10;
+            scene.add(substrateHolder);
+
+            const vaporGeometry = new THREE.BufferGeometry();
+            const vaporPositions = [], vaporColors = [];
+            for (let i = 0; i < 3000; i++) {
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(1 - Math.random());
+                const r = Math.random() * 15;
+                const x = r * Math.sin(phi) * Math.cos(theta);
+                const y = -10 + r * Math.cos(phi) + Math.random() * 20;
+                const z = r * Math.sin(phi) * Math.sin(theta);
+                vaporPositions.push(x, y, z);
+                const intensity = 0.5 + Math.random() * 0.5;
+                vaporColors.push(1.0 * intensity, 0.6 * intensity, 0.2 * intensity);
+            }
+            vaporGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vaporPositions, 3));
+            vaporGeometry.setAttribute('color', new THREE.Float32BufferAttribute(vaporColors, 3));
+            const vaporMaterial = new THREE.PointsMaterial({ size: 0.08, vertexColors: true, transparent: true, opacity: 0.6 });
+            vapor = new THREE.Points(vaporGeometry, vaporMaterial);
+            scene.add(vapor);
+
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+            const sourceLight = new THREE.PointLight(0xff6600, 3, 100);
+            sourceLight.position.set(0, -10, 0);
+            scene.add(sourceLight);
+
+            camera.position.set(20, 5, 25);
+            camera.lookAt(0, 0, 0);
+        }
+
+        function animateThreeJS() {
+            const tempGlow = params.sourceTemp / 2500;
+            source.material.emissiveIntensity = 0.5 + tempGlow * 0.5;
+
+            substrateHolder.rotation.z = params.sourceAngle * Math.PI / 180;
+            substrateHolder.rotation.y += 0.01 * params.speed;
+
+            const positions = vapor.geometry.attributes.position.array;
+            const colors = vapor.geometry.attributes.color.array;
+            for (let i = 0; i < positions.length; i += 3) {
+                const theta = Math.atan2(positions[i+2], positions[i]);
+                const cosineProb = Math.pow(Math.abs(Math.cos(Math.atan2(Math.sqrt(positions[i]**2 + positions[i+2]**2), positions[i+1] + 10))), 1.5);
+
+                if (Math.random() < cosineProb * 0.05) {
+                    positions[i+1] += 0.15 * params.speed;
+                    positions[i] += Math.cos(theta) * 0.02;
+                    positions[i+2] += Math.sin(theta) * 0.02;
+                }
+
+                if (positions[i+1] > 10) {
+                    positions[i+1] = -10;
+                    const newTheta = Math.random() * Math.PI * 2;
+                    const newR = Math.random() * 1.5;
+                    positions[i] = newR * Math.cos(newTheta);
+                    positions[i+2] = newR * Math.sin(newTheta);
+                }
+
+                const dist = Math.sqrt(positions[i]**2 + (positions[i+1] + 10)**2 + positions[i+2]**2);
+                const intensity = 1.0 - dist / 25;
+                colors[i] = 1.0 * Math.max(0, intensity);
+                colors[i+1] = 0.6 * Math.max(0, intensity);
+                colors[i+2] = 0.2 * Math.max(0, intensity);
+            }
+            vapor.geometry.attributes.position.needsUpdate = true;
+            vapor.geometry.attributes.color.needsUpdate = true;
+
+            renderer.render(scene, camera);
+        }
+
+        function calculateEvaporation() {
+            const T_K = params.sourceTemp + 273.15;
+            const [A, B] = vaporConstants[params.sourceMaterial];
+            const P_vapor = Math.pow(10, A - B / T_K);
+            const pressureActual = Math.pow(10, -params.pressure);
+            const mfp = 5e-3 / pressureActual;
+            const evapRate = P_vapor * 100 * Math.sqrt(params.sourcePower / 5);
+            const depositionRate = evapRate / (Math.pow(params.sourceDistance / 30, 2) + 1);
+            const filmThickness = simulationTime * depositionRate * 10;
+            const uniformity = 95 - (params.sourceDistance - 40) * 0.5 - params.sourceAngle * 0.8;
+            return { evapRate, P_vapor, mfp, depositionRate, filmThickness, uniformity: Math.max(0, uniformity) };
+        }
+
+        function updateStats() {
+            const results = calculateEvaporation();
+            document.getElementById('evapRate').innerHTML = `${results.evapRate.toFixed(1)}<span class="unit">Å/s</span>`;
+            document.getElementById('vaporPressure').innerHTML = `${results.P_vapor.toExponential(2)}<span class="unit">Torr</span>`;
+            document.getElementById('meanFreePath').innerHTML = `${results.mfp.toFixed(1)}<span class="unit">m</span>`;
+            document.getElementById('depositionRate').innerHTML = `${results.depositionRate.toFixed(2)}<span class="unit">Å/s</span>`;
+            document.getElementById('filmThickness').innerHTML = `${Math.floor(results.filmThickness)}<span class="unit">nm</span>`;
+            document.getElementById('uniformity').innerHTML = `${results.uniformity.toFixed(1)}<span class="unit">%</span>`;
+        }
+
+        function updateCharts() {
+            const temps = Array.from({length: 50}, (_, i) => 800 + i * 40);
+            const pressures = materials.map((mat, idx) => ({
+                x: temps,
+                y: temps.map(T => Math.pow(10, vaporConstants[idx][0] - vaporConstants[idx][1] / (T + 273.15))),
+                name: mat,
+                type: 'scatter',
+                mode: 'lines'
+            }));
+            Plotly.newPlot('chart1', pressures, {
+                title: 'Vapor Pressure vs Temperature', xaxis: { title: 'Temperature (°C)' }, yaxis: { title: 'Pressure (Torr)', type: 'log' },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
+            });
+
+            const angles = Array.from({length: 91}, (_, i) => i);
+            const angular = angles.map(a => Math.pow(Math.cos(a * Math.PI / 180), params.evapMethod === 0 ? 1.5 : 3));
+            Plotly.newPlot('chart2', [{ x: angles, y: angular, type: 'scatter', mode: 'lines', fill: 'tozeroy', line: { color: '#667eea', width: 3 }}], {
+                title: 'Flux vs Angle', xaxis: { title: 'Angle (degrees)' }, yaxis: { title: 'Relative Flux' },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
+            });
+
+            const xPos = Array.from({length: 30}, (_, i) => -15 + i);
+            const thicknessMap = xPos.map(x => xPos.map(y => {
+                const r = Math.sqrt(x**2 + y**2);
+                const h = params.sourceDistance;
+                return 100 / Math.pow(1 + r**2 / h**2, 2);
+            }));
+            Plotly.newPlot('chart3', [{ z: thicknessMap, type: 'heatmap', colorscale: 'Viridis' }], {
+                title: 'Thickness Distribution (%)', xaxis: { showticklabels: false }, yaxis: { showticklabels: false },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
+            });
+
+            const pressureRange = Array.from({length: 50}, (_, i) => Math.pow(10, -9 + i * 0.1));
+            const mfpData = pressureRange.map(P => 5e-3 / P);
+            Plotly.newPlot('chart4', [{ x: pressureRange, y: mfpData, type: 'scatter', mode: 'lines', line: { color: '#f39c12', width: 3 }}], {
+                title: 'Mean Free Path vs Pressure', xaxis: { title: 'Pressure (Torr)', type: 'log' }, yaxis: { title: 'MFP (m)', type: 'log' },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
+            });
+
+            const powers = Array.from({length: 40}, (_, i) => 1 + i * 0.5);
+            const rates = powers.map(P => 10 * Math.sqrt(P / 5));
+            Plotly.newPlot('chart5', [{ x: powers, y: rates, type: 'scatter', mode: 'lines+markers', line: { color: '#764ba2', width: 3 }}], {
+                title: 'Evaporation Rate vs Power', xaxis: { title: 'Power (kW)' }, yaxis: { title: 'Rate (Å/s)' },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
+            });
+
+            const tempRatios = Array.from({length: 50}, (_, i) => i * 0.02);
+            const zones = tempRatios.map(ratio => ratio < 0.3 ? 1 : ratio < 0.5 ? 2 : 3);
+            Plotly.newPlot('chart6', [{ x: tempRatios, y: zones, type: 'scatter', mode: 'lines', line: { color: '#667eea', width: 4 }}], {
+                title: 'Structure Zone Model', xaxis: { title: 'T_substrate / T_melt' }, yaxis: { title: 'Zone', tickvals: [1, 2, 3], ticktext: ['Zone 1', 'Zone 2', 'Zone 3'] },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
+            });
+
+            const time = Array.from({length: 100}, (_, i) => i * 0.5);
+            const frequency = time.map(t => -1000 * (1 - Math.exp(-t / 20)));
+            Plotly.newPlot('chart7', [{ x: time, y: frequency, type: 'scatter', mode: 'lines', line: { color: '#f39c12', width: 3 }}], {
+                title: 'QCM Frequency Shift', xaxis: { title: 'Time (s)' }, yaxis: { title: 'Δf (Hz)' },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'
+            });
+        }
+
+        document.getElementById('playPauseBtn').addEventListener('click', () => {
+            isRunning = !isRunning;
+            document.getElementById('playPauseBtn').textContent = isRunning ? 'Pause' : 'Play';
+            if (isRunning) animate();
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            simulationTime = 0;
+            params = { sourcePower: 5, sourceTemp: 1400, pressure: 6, sourceDistance: 40, sourceAngle: 0, speed: 1.0, sourceMaterial: 0, evapMethod: 0 };
+            document.getElementById('sourcePower').value = params.sourcePower;
+            document.getElementById('sourcePowerValue').textContent = `${params.sourcePower} kW`;
+            document.getElementById('sourceTemp').value = params.sourceTemp;
+            document.getElementById('sourceTempValue').textContent = `${params.sourceTemp} °C`;
+            document.getElementById('pressure').value = params.pressure;
+            document.getElementById('pressureValue').textContent = `${params.pressure}e-6 Torr`;
+            document.getElementById('sourceDistance').value = params.sourceDistance;
+            document.getElementById('sourceDistanceValue').textContent = `${params.sourceDistance} cm`;
+            document.getElementById('sourceAngle').value = params.sourceAngle;
+            document.getElementById('sourceAngleValue').textContent = `${params.sourceAngle}°`;
+            document.getElementById('speed').value = params.speed;
+            document.getElementById('speedValue').textContent = `${params.speed.toFixed(1)}×`;
+            document.getElementById('sourceMaterial').value = params.sourceMaterial;
+            document.getElementById('sourceMaterialValue').textContent = materials[params.sourceMaterial];
+            document.getElementById('evapMethod').value = params.evapMethod;
+            document.getElementById('evapMethodValue').textContent = params.evapMethod === 0 ? 'E-beam' : 'Thermal';
+            updateStats();
+            updateCharts();
+        });
+
+        ['sourcePower', 'sourceTemp', 'pressure', 'sourceDistance', 'sourceAngle', 'speed', 'sourceMaterial', 'evapMethod'].forEach(param => {
+            document.getElementById(param).addEventListener('input', (e) => {
+                params[param] = parseFloat(e.target.value);
+                let valueText = e.target.value;
+                if (param === 'sourcePower') valueText += ' kW';
+                else if (param === 'sourceTemp') valueText += ' °C';
+                else if (param === 'pressure') valueText = '10⁻' + e.target.value + ' Torr';
+                else if (param === 'sourceDistance') valueText += ' cm';
+                else if (param === 'sourceAngle') valueText += ' deg';
+                else if (param === 'speed') valueText = parseFloat(e.target.value).toFixed(1) + '×';
+                else if (param === 'sourceMaterial') valueText = materials[parseInt(e.target.value)];
+                else if (param === 'evapMethod') valueText = parseInt(e.target.value) === 0 ? 'Thermal' : 'E-beam';
+                document.getElementById(param + 'Value').textContent = valueText;
+                updateStats();
+                updateCharts();
+            });
+        });
+
+        function animate() {
+            if (!isRunning) return;
+            simulationTime += 0.016 * params.speed;
+            animateThreeJS();
+            if (Math.floor(simulationTime * 60) % 30 === 0) updateStats();
+            requestAnimationFrame(animate);
+        }
+
+        initThreeJS();
+        updateStats();
+        updateCharts();
+        animate();
+
+        window.addEventListener('resize', () => {
+            const container = document.getElementById('threejs-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+    </script>
+</body>
+</html>

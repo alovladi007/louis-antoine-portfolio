@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Etching Defect Analyzer - Root Cause Analysis</title>
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar a {
+            color: #764ba2;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: color 0.3s;
+        }
+
+        .navbar a:hover {
+            color: #667eea;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        .hero {
+            background: white;
+            padding: 3rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .hero h1 {
+            color: #764ba2;
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .hero p {
+            color: #555;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .controls-panel {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            height: fit-content;
+        }
+
+        .controls-panel h3 {
+            color: #764ba2;
+            margin-bottom: 1.5rem;
+            font-size: 1.3rem;
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .input-group label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .input-group input,
+        .input-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus,
+        .input-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .input-group small {
+            color: #777;
+            font-size: 0.85rem;
+            display: block;
+            margin-top: 0.25rem;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 1rem;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+        }
+
+        .section-divider {
+            border-top: 2px solid #e0e0e0;
+            margin: 1.5rem 0;
+        }
+
+        .defect-entry {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+        }
+
+        .defect-type-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 15px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-right: 0.5rem;
+        }
+
+        .badge-critical {
+            background: #dc3545;
+            color: white;
+        }
+
+        .badge-major {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .badge-minor {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .results-panel {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .results-panel h3 {
+            color: #764ba2;
+            margin-bottom: 1.5rem;
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .summary-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+        }
+
+        .summary-card h4 {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            margin-bottom: 0.5rem;
+        }
+
+        .summary-card .value {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .summary-card .sub {
+            font-size: 0.85rem;
+            opacity: 0.8;
+            margin-top: 0.5rem;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .chart-container h4 {
+            color: #764ba2;
+            margin-bottom: 1rem;
+        }
+
+        .rca-panel {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+        }
+
+        .rca-panel h4 {
+            color: #764ba2;
+            margin-bottom: 1rem;
+        }
+
+        .rca-item {
+            background: white;
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 0.75rem;
+            border-left: 4px solid #667eea;
+        }
+
+        .rca-item h5 {
+            color: #764ba2;
+            margin-bottom: 0.5rem;
+        }
+
+        .rca-item p {
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+
+        .corrective-action {
+            background: #d4edda;
+            padding: 0.5rem;
+            border-radius: 3px;
+            font-size: 0.9rem;
+            color: #155724;
+            margin-top: 0.5rem;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left: 4px solid #17a2b8;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+
+        .defect-list {
+            background: white;
+            padding: 1rem;
+            border-radius: 5px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .defect-item {
+            padding: 0.75rem;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .defect-item:last-child {
+            border-bottom: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <a href="etching-complete-project.html">← Back to Etching Process Complete Project</a>
+    </div>
+
+    <div class="container">
+        <div class="hero">
+            <h1>Etching Defect Analyzer</h1>
+            <p>Comprehensive defect analysis and root cause investigation tool. Track defect types (micromasking, grass, notching, trenching, polymer residue, sidewall roughness, CD variation), perform Pareto analysis, visualize wafer maps, identify trends, classify severity, and access corrective action database.</p>
+        </div>
+
+        <div class="content-grid">
+            <div class="controls-panel">
+                <h3>Defect Data Input</h3>
+
+                <div class="alert alert-info">
+                    Add defect observations to build comprehensive analysis. Click "Add Defect" to record each occurrence.
+                </div>
+
+                <div class="input-group">
+                    <label for="defectType">Defect Type</label>
+                    <select id="defectType">
+                        <option value="micromasking">Micromasking</option>
+                        <option value="grass">Grass Formation</option>
+                        <option value="notching">Notching</option>
+                        <option value="trenching">Trenching</option>
+                        <option value="polymer">Polymer Residue</option>
+                        <option value="sidewall">Sidewall Roughness (LER/LWR)</option>
+                        <option value="cd_variation">CD Variation</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="severity">Severity Level</label>
+                    <select id="severity">
+                        <option value="critical">Critical (Yield Impact)</option>
+                        <option value="major">Major (Spec Violation)</option>
+                        <option value="minor">Minor (Monitor)</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="waferPosition">Wafer Position (x, y in mm)</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                        <input type="number" id="waferX" placeholder="X" min="-100" max="100" value="0">
+                        <input type="number" id="waferY" placeholder="Y" min="-100" max="100" value="0">
+                    </div>
+                    <small>Center = (0, 0), Edge = (±100, ±100)</small>
+                </div>
+
+                <div class="input-group">
+                    <label for="defectCount">Defect Count</label>
+                    <input type="number" id="defectCount" value="1" min="1" max="1000">
+                    <small>Number of defects at this location</small>
+                </div>
+
+                <div class="input-group">
+                    <label for="processConditions">Process Conditions</label>
+                    <select id="processConditions">
+                        <option value="nominal">Nominal Recipe</option>
+                        <option value="high_power">High Power</option>
+                        <option value="low_power">Low Power</option>
+                        <option value="high_pressure">High Pressure</option>
+                        <option value="low_pressure">Low Pressure</option>
+                        <option value="high_flow">High Flow</option>
+                        <option value="low_flow">Low Flow</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="lotNumber">Lot Number</label>
+                    <input type="text" id="lotNumber" placeholder="e.g., LOT-2024-001">
+                </div>
+
+                <div class="input-group">
+                    <label for="waferNumber">Wafer Number</label>
+                    <input type="number" id="waferNumber" placeholder="1-25" min="1" max="25">
+                </div>
+
+                <button class="btn" onclick="addDefect()">Add Defect</button>
+                <button class="btn btn-secondary" onclick="generateSampleDefects()">Generate Sample Data</button>
+
+                <div class="section-divider"></div>
+
+                <button class="btn" onclick="analyzeDefects()">Run Analysis</button>
+                <button class="btn btn-secondary" onclick="exportDefectReport()">Export Report</button>
+            </div>
+
+            <div class="results-panel">
+                <h3>Defect Database</h3>
+                <div class="defect-list" id="defectList">
+                    <p style="color: #666; text-align: center;">No defects recorded yet. Add defects to begin analysis.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="loading" id="loadingIndicator">
+            <div class="spinner"></div>
+            <p style="margin-top: 1rem; color: white;">Analyzing defect data...</p>
+        </div>
+
+        <div id="analysisResults" style="display: none;">
+            <div style="background: white; padding: 2rem; border-radius: 10px; margin-bottom: 2rem; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                <h3 style="color: #764ba2; margin-bottom: 1.5rem;">Analysis Summary</h3>
+
+                <div class="summary-cards">
+                    <div class="summary-card">
+                        <h4>Total Defects</h4>
+                        <div class="value" id="totalDefects">0</div>
+                        <div class="sub">across all wafers</div>
+                    </div>
+                    <div class="summary-card">
+                        <h4>Critical Defects</h4>
+                        <div class="value" id="criticalDefects">0</div>
+                        <div class="sub">yield impacting</div>
+                    </div>
+                    <div class="summary-card">
+                        <h4>Most Common</h4>
+                        <div class="value" id="commonDefect">-</div>
+                        <div class="sub">defect type</div>
+                    </div>
+                    <div class="summary-card">
+                        <h4>Affected Wafers</h4>
+                        <div class="value" id="affectedWafers">0</div>
+                        <div class="sub">unique wafers</div>
+                    </div>
+                </div>
+
+                <div class="alert alert-danger" id="criticalAlert" style="display: none;">
+                    <strong>Critical Issues Detected!</strong> Immediate corrective action required.
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <h4>Pareto Chart with Cumulative Percentage</h4>
+                    <div id="paretoChart"></div>
+                </div>
+
+                <div class="chart-container">
+                    <h4>Wafer Map Heatmap</h4>
+                    <div id="waferMapChart"></div>
+                </div>
+
+                <div class="chart-container">
+                    <h4>Defect Trend (12 Weeks)</h4>
+                    <div id="trendChart"></div>
+                </div>
+
+                <div class="chart-container">
+                    <h4>Defect Type Distribution</h4>
+                    <div id="distributionChart"></div>
+                </div>
+
+                <div class="chart-container">
+                    <h4>Severity Classification</h4>
+                    <div id="severityChart"></div>
+                </div>
+
+                <div class="chart-container">
+                    <h4>Location Distribution (Radial)</h4>
+                    <div id="locationChart"></div>
+                </div>
+
+                <div class="chart-container">
+                    <h4>Correlation to Process Parameters</h4>
+                    <div id="correlationChart"></div>
+                </div>
+
+                <div class="chart-container">
+                    <h4>Corrective Action Effectiveness</h4>
+                    <div id="effectivenessChart"></div>
+                </div>
+            </div>
+
+            <div class="rca-panel">
+                <h4>Root Cause Analysis & Corrective Actions</h4>
+                <div id="rcaList">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let defectsDatabase = [];
+        let analysisResults = {};
+
+        // Defect type metadata
+        const defectMetadata = {
+            micromasking: {
+                name: 'Micromasking',
+                causes: ['Particle contamination', 'Incomplete mask removal', 'Non-volatile residue'],
+                actions: ['Improve pre-etch cleaning', 'Add O₂ plasma descum step', 'Check mask quality']
+            },
+            grass: {
+                name: 'Grass Formation',
+                causes: ['Excessive polymer deposition', 'Low ion energy', 'Redeposition of etch products'],
+                actions: ['Increase O₂ flow ratio', 'Increase bias power', 'Optimize chamber cleaning frequency']
+            },
+            notching: {
+                name: 'Notching',
+                causes: ['Charge buildup', 'Ion deflection at interfaces', 'Overetch'],
+                actions: ['Reduce bias voltage', 'Add pulsed plasma', 'Optimize endpoint detection']
+            },
+            trenching: {
+                name: 'Trenching',
+                causes: ['Faceting at mask edge', 'Ion scattering', 'Mask erosion'],
+                actions: ['Improve mask selectivity', 'Adjust pressure', 'Optimize power settings']
+            },
+            polymer: {
+                name: 'Polymer Residue',
+                causes: ['Excessive fluorocarbon', 'Low temperature', 'Inadequate O₂'],
+                actions: ['Increase O₂ flow', 'Raise temperature', 'Add post-etch ash step']
+            },
+            sidewall: {
+                name: 'Sidewall Roughness',
+                causes: ['Plasma instability', 'Mask roughness transfer', 'Bosch process scalloping'],
+                actions: ['Stabilize plasma parameters', 'Improve mask quality', 'Optimize cycle times']
+            },
+            cd_variation: {
+                name: 'CD Variation',
+                causes: ['Non-uniform plasma', 'Temperature gradient', 'Gas flow pattern'],
+                actions: ['Optimize electrode gap', 'Improve thermal uniformity', 'Adjust gas injection']
+            }
+        };
+
+        function addDefect() {
+            const defect = {
+                id: Date.now(),
+                type: document.getElementById('defectType').value,
+                severity: document.getElementById('severity').value,
+                x: parseFloat(document.getElementById('waferX').value),
+                y: parseFloat(document.getElementById('waferY').value),
+                count: parseInt(document.getElementById('defectCount').value),
+                conditions: document.getElementById('processConditions').value,
+                lot: document.getElementById('lotNumber').value,
+                wafer: parseInt(document.getElementById('waferNumber').value),
+                timestamp: new Date().toISOString()
+            };
+
+            defectsDatabase.push(defect);
+            updateDefectList();
+
+            // Reset count
+            document.getElementById('defectCount').value = 1;
+        }
+
+        function generateSampleDefects() {
+            defectsDatabase = [];
+            const types = ['micromasking', 'grass', 'notching', 'trenching', 'polymer', 'sidewall', 'cd_variation'];
+            const severities = ['critical', 'major', 'minor'];
+            const conditions = ['nominal', 'high_power', 'low_power', 'high_pressure', 'low_pressure'];
+
+            for (let i = 0; i < 100; i++) {
+                const type = types[Math.floor(Math.random() * types.length)];
+                const severity = severities[Math.floor(Math.random() * severities.length)];
+
+                defectsDatabase.push({
+                    id: Date.now() + i,
+                    type: type,
+                    severity: severity,
+                    x: (Math.random() - 0.5) * 180,
+                    y: (Math.random() - 0.5) * 180,
+                    count: Math.floor(Math.random() * 10) + 1,
+                    conditions: conditions[Math.floor(Math.random() * conditions.length)],
+                    lot: `LOT-2024-${String(Math.floor(i / 25) + 1).padStart(3, '0')}`,
+                    wafer: (i % 25) + 1,
+                    timestamp: new Date(Date.now() - Math.random() * 12 * 7 * 24 * 60 * 60 * 1000).toISOString()
+                });
+            }
+
+            updateDefectList();
+            alert('Generated 100 sample defects across 4 lots.');
+        }
+
+        function updateDefectList() {
+            const list = document.getElementById('defectList');
+
+            if (defectsDatabase.length === 0) {
+                list.innerHTML = '<p style="color: #666; text-align: center;">No defects recorded yet. Add defects to begin analysis.</p>';
+                return;
+            }
+
+            list.innerHTML = defectsDatabase.slice().reverse().slice(0, 20).map(d => {
+                const badge = d.severity === 'critical' ? 'badge-critical' :
+                             d.severity === 'major' ? 'badge-major' : 'badge-minor';
+
+                return `
+                    <div class="defect-item">
+                        <span class="defect-type-badge ${badge}">${d.severity.toUpperCase()}</span>
+                        <strong>${defectMetadata[d.type].name}</strong><br>
+                        <small>Lot: ${d.lot}, Wafer: ${d.wafer}, Position: (${d.x.toFixed(0)}, ${d.y.toFixed(0)}), Count: ${d.count}</small>
+                    </div>
+                `;
+            }).join('') + (defectsDatabase.length > 20 ? `<p style="text-align: center; color: #666; margin-top: 1rem;">... and ${defectsDatabase.length - 20} more</p>` : '');
+        }
+
+        function analyzeDefects() {
+            if (defectsDatabase.length === 0) {
+                alert('Please add defects first.');
+                return;
+            }
+
+            document.getElementById('loadingIndicator').classList.add('active');
+            document.getElementById('analysisResults').style.display = 'none';
+
+            setTimeout(() => {
+                performAnalysis();
+                displayAnalysisResults();
+                createCharts();
+
+                document.getElementById('loadingIndicator').classList.remove('active');
+                document.getElementById('analysisResults').style.display = 'block';
+            }, 1000);
+        }
+
+        function performAnalysis() {
+            // Count by type
+            const byType = {};
+            const bySeverity = {};
+            const byConditions = {};
+            const uniqueWafers = new Set();
+
+            defectsDatabase.forEach(d => {
+                byType[d.type] = (byType[d.type] || 0) + d.count;
+                bySeverity[d.severity] = (bySeverity[d.severity] || 0) + d.count;
+                byConditions[d.conditions] = (byConditions[d.conditions] || 0) + d.count;
+                uniqueWafers.add(`${d.lot}-${d.wafer}`);
+            });
+
+            const totalDefects = Object.values(byType).reduce((a, b) => a + b, 0);
+
+            // Find most common
+            let maxType = '';
+            let maxCount = 0;
+            for (let type in byType) {
+                if (byType[type] > maxCount) {
+                    maxCount = byType[type];
+                    maxType = type;
+                }
+            }
+
+            analysisResults = {
+                total: totalDefects,
+                critical: bySeverity.critical || 0,
+                commonType: defectMetadata[maxType].name,
+                affectedWafers: uniqueWafers.size,
+                byType: byType,
+                bySeverity: bySeverity,
+                byConditions: byConditions
+            };
+        }
+
+        function displayAnalysisResults() {
+            document.getElementById('totalDefects').textContent = analysisResults.total;
+            document.getElementById('criticalDefects').textContent = analysisResults.critical;
+            document.getElementById('commonDefect').textContent = analysisResults.commonType;
+            document.getElementById('affectedWafers').textContent = analysisResults.affectedWafers;
+
+            if (analysisResults.critical > 10) {
+                document.getElementById('criticalAlert').style.display = 'block';
+            }
+
+            // Generate RCA
+            const rcaList = document.getElementById('rcaList');
+            let rcaHTML = '';
+
+            for (let type in analysisResults.byType) {
+                if (analysisResults.byType[type] > analysisResults.total * 0.1) { // More than 10%
+                    const meta = defectMetadata[type];
+                    rcaHTML += `
+                        <div class="rca-item">
+                            <h5>${meta.name} (${analysisResults.byType[type]} occurrences)</h5>
+                            <p><strong>Likely Root Causes:</strong></p>
+                            <ul>
+                                ${meta.causes.map(c => `<li>${c}</li>`).join('')}
+                            </ul>
+                            <p><strong>Recommended Corrective Actions:</strong></p>
+                            ${meta.actions.map(a => `<div class="corrective-action">✓ ${a}</div>`).join('')}
+                        </div>
+                    `;
+                }
+            }
+
+            rcaList.innerHTML = rcaHTML || '<p style="color: #666;">No significant defect patterns detected.</p>';
+        }
+
+        function createCharts() {
+            createParetoChart();
+            createWaferMapChart();
+            createTrendChart();
+            createDistributionChart();
+            createSeverityChart();
+            createLocationChart();
+            createCorrelationChart();
+            createEffectivenessChart();
+        }
+
+        function createParetoChart() {
+            const types = Object.keys(analysisResults.byType);
+            const counts = types.map(t => analysisResults.byType[t]);
+
+            // Sort by count
+            const sorted = types.map((t, i) => ({ type: t, count: counts[i] }))
+                               .sort((a, b) => b.count - a.count);
+
+            const total = sorted.reduce((a, b) => a + b.count, 0);
+            let cumulative = 0;
+            const cumulativePercent = sorted.map(s => {
+                cumulative += s.count;
+                return (cumulative / total) * 100;
+            });
+
+            const trace1 = {
+                x: sorted.map(s => defectMetadata[s.type].name),
+                y: sorted.map(s => s.count),
+                type: 'bar',
+                name: 'Count',
+                marker: { color: '#667eea' }
+            };
+
+            const trace2 = {
+                x: sorted.map(s => defectMetadata[s.type].name),
+                y: cumulativePercent,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Cumulative %',
+                yaxis: 'y2',
+                line: { color: '#dc3545', width: 3 },
+                marker: { size: 8 }
+            };
+
+            const layout = {
+                yaxis: { title: 'Defect Count' },
+                yaxis2: { title: 'Cumulative %', overlaying: 'y', side: 'right', range: [0, 100] },
+                height: 400,
+                showlegend: true
+            };
+
+            Plotly.newPlot('paretoChart', [trace1, trace2], layout, { responsive: true });
+        }
+
+        function createWaferMapChart() {
+            // Create heatmap grid
+            const gridSize = 20;
+            const grid = Array(gridSize).fill(0).map(() => Array(gridSize).fill(0));
+
+            defectsDatabase.forEach(d => {
+                const i = Math.floor((d.x + 100) / 200 * gridSize);
+                const j = Math.floor((d.y + 100) / 200 * gridSize);
+                if (i >= 0 && i < gridSize && j >= 0 && j < gridSize) {
+                    grid[j][i] += d.count;
+                }
+            });
+
+            const trace = {
+                z: grid,
+                type: 'heatmap',
+                colorscale: 'Hot',
+                reversescale: true
+            };
+
+            const layout = {
+                xaxis: { title: 'X Position' },
+                yaxis: { title: 'Y Position' },
+                height: 400
+            };
+
+            Plotly.newPlot('waferMapChart', [trace], layout, { responsive: true });
+        }
+
+        function createTrendChart() {
+            // Simulate 12 weeks of data
+            const weeks = [];
+            const counts = [];
+
+            for (let w = 1; w <= 12; w++) {
+                weeks.push(`Week ${w}`);
+
+                // Filter defects from this week (simulated)
+                const weekStart = Date.now() - (13 - w) * 7 * 24 * 60 * 60 * 1000;
+                const weekEnd = weekStart + 7 * 24 * 60 * 60 * 1000;
+
+                const weekDefects = defectsDatabase.filter(d => {
+                    const t = new Date(d.timestamp).getTime();
+                    return t >= weekStart && t < weekEnd;
+                });
+
+                counts.push(weekDefects.reduce((sum, d) => sum + d.count, 0));
+            }
+
+            const trace = {
+                x: weeks,
+                y: counts,
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: { color: '#667eea', width: 3 },
+                marker: { size: 8 }
+            };
+
+            const layout = {
+                xaxis: { title: 'Time Period' },
+                yaxis: { title: 'Defect Count' },
+                height: 400
+            };
+
+            Plotly.newPlot('trendChart', [trace], layout, { responsive: true });
+        }
+
+        function createDistributionChart() {
+            const types = Object.keys(analysisResults.byType);
+            const counts = types.map(t => analysisResults.byType[t]);
+
+            const data = [{
+                values: counts,
+                labels: types.map(t => defectMetadata[t].name),
+                type: 'pie',
+                marker: {
+                    colors: ['#667eea', '#764ba2', '#f39c12', '#e74c3c', '#3498db', '#9b59b6', '#1abc9c']
+                }
+            }];
+
+            const layout = {
+                height: 400
+            };
+
+            Plotly.newPlot('distributionChart', data, layout, { responsive: true });
+        }
+
+        function createSeverityChart() {
+            const severities = ['critical', 'major', 'minor'];
+            const counts = severities.map(s => analysisResults.bySeverity[s] || 0);
+
+            const trace = {
+                x: severities.map(s => s.charAt(0).toUpperCase() + s.slice(1)),
+                y: counts,
+                type: 'bar',
+                marker: {
+                    color: ['#dc3545', '#ffc107', '#17a2b8']
+                }
+            };
+
+            const layout = {
+                xaxis: { title: 'Severity Level' },
+                yaxis: { title: 'Count' },
+                height: 400
+            };
+
+            Plotly.newPlot('severityChart', [trace], layout, { responsive: true });
+        }
+
+        function createLocationChart() {
+            // Radial distribution
+            const radialBins = [0, 30, 60, 90, 120];
+            const counts = Array(radialBins.length - 1).fill(0);
+
+            defectsDatabase.forEach(d => {
+                const r = Math.sqrt(d.x * d.x + d.y * d.y);
+                for (let i = 0; i < radialBins.length - 1; i++) {
+                    if (r >= radialBins[i] && r < radialBins[i + 1]) {
+                        counts[i] += d.count;
+                        break;
+                    }
+                }
+            });
+
+            const trace = {
+                x: radialBins.slice(0, -1).map((v, i) => `${v}-${radialBins[i + 1]}mm`),
+                y: counts,
+                type: 'bar',
+                marker: { color: '#667eea' }
+            };
+
+            const layout = {
+                xaxis: { title: 'Radial Position from Center' },
+                yaxis: { title: 'Defect Count' },
+                height: 400
+            };
+
+            Plotly.newPlot('locationChart', [trace], layout, { responsive: true });
+        }
+
+        function createCorrelationChart() {
+            const conditions = Object.keys(analysisResults.byConditions);
+            const counts = conditions.map(c => analysisResults.byConditions[c]);
+
+            const trace = {
+                x: conditions.map(c => c.replace(/_/g, ' ')),
+                y: counts,
+                type: 'bar',
+                marker: {
+                    color: counts,
+                    colorscale: 'Viridis'
+                }
+            };
+
+            const layout = {
+                xaxis: { title: 'Process Conditions' },
+                yaxis: { title: 'Defect Count' },
+                height: 400
+            };
+
+            Plotly.newPlot('correlationChart', [trace], layout, { responsive: true });
+        }
+
+        function createEffectivenessChart() {
+            // Simulated effectiveness data
+            const actions = [
+                'Increased O₂ flow',
+                'Chamber cleaning',
+                'Adjusted power',
+                'Temperature control',
+                'Improved masking'
+            ];
+
+            const effectiveness = [85, 72, 68, 55, 45];
+
+            const trace = {
+                x: effectiveness,
+                y: actions,
+                type: 'bar',
+                orientation: 'h',
+                marker: {
+                    color: effectiveness,
+                    colorscale: 'RdYlGn',
+                    showscale: true
+                }
+            };
+
+            const layout = {
+                xaxis: { title: 'Effectiveness %', range: [0, 100] },
+                height: 400
+            };
+
+            Plotly.newPlot('effectivenessChart', [trace], layout, { responsive: true });
+        }
+
+        function exportDefectReport() {
+            if (defectsDatabase.length === 0) {
+                alert('No defects to export.');
+                return;
+            }
+
+            const report = {
+                timestamp: new Date().toISOString(),
+                summary: analysisResults,
+                defects: defectsDatabase,
+                rootCauses: Object.keys(analysisResults.byType).map(type => ({
+                    type: defectMetadata[type].name,
+                    count: analysisResults.byType[type],
+                    causes: defectMetadata[type].causes,
+                    actions: defectMetadata[type].actions
+                }))
+            };
+
+            const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `defect_analysis_report_${Date.now()}.json`;
+            a.click();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PIN Photodetector - Interactive Demo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #0a0a0a;
+            color: #e0e0e0;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .navigation-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .hero-section {
+            position: relative;
+            min-height: 50vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem 2rem;
+            margin-top: 60px;
+            overflow: hidden;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .hero-title {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-subtitle {
+            font-size: 1.2rem;
+            color: #a0a0a0;
+            margin-bottom: 2rem;
+        }
+
+        .hero-description {
+            font-size: 1.1rem;
+            color: #b0b0b0;
+            max-width: 800px;
+            margin: 0 auto 2rem;
+        }
+
+        .section {
+            padding: 4rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .section-subtitle {
+            font-size: 1.3rem;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .section-description {
+            font-size: 1.1rem;
+            color: #b0b0b0;
+            margin-bottom: 2rem;
+        }
+
+        .demo-container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 2rem;
+            margin: 2rem 0;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .control-group {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 1.5rem;
+            border-radius: 10px;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .control-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #667eea;
+        }
+
+        .control-slider {
+            width: 100%;
+            margin: 0.5rem 0;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 6px;
+            border-radius: 3px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            outline: none;
+        }
+
+        .control-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+        }
+
+        .control-value {
+            font-size: 0.9rem;
+            color: #a0a0a0;
+            margin-top: 0.5rem;
+        }
+
+        .control-button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 0.5rem 0.5rem 0.5rem 0;
+        }
+
+        .control-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .metric-card {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 1.5rem;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            color: #a0a0a0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 1.5rem;
+            border-radius: 10px;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .feature-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #e0e0e0;
+        }
+
+        .feature-description {
+            color: #b0b0b0;
+            font-size: 0.95rem;
+        }
+
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2rem;
+            }
+            
+            .controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navigation-bar">
+        <a href="silicon-photonics-transceiver.html" class="nav-btn">
+            <i class="fas fa-arrow-left"></i> Back to Project
+        </a>
+        <h2>PIN Photodetector Design</h2>
+    </nav>
+
+    <section class="hero-section">
+        <div class="hero-content">
+            <h1 class="hero-title">PIN Photodetector</h1>
+            <p class="hero-subtitle">High-Responsivity Optical Detection & Analysis</p>
+            <p class="hero-description">
+                Interactive design and simulation of silicon PIN photodetectors for high-speed optical communication. 
+                Optimize absorption region design, analyze responsivity characteristics, and evaluate noise performance for sensitive optical detection.
+            </p>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="section-title">Interactive Design Parameters</h2>
+        <p class="section-description">
+            Adjust key design parameters to optimize photodetector performance for your specific application requirements.
+        </p>
+
+        <div class="demo-container">
+            <div class="controls">
+                <div class="control-group">
+                    <label class="control-label">Absorption Length (μm)</label>
+                    <input type="range" class="control-slider" id="absLength" min="1" max="20" value="10" step="0.5">
+                    <div class="control-value" id="absLengthValue">10.0 μm</div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Intrinsic Width (μm)</label>
+                    <input type="range" class="control-slider" id="intrinsicWidth" min="0.5" max="3" value="1.5" step="0.1">
+                    <div class="control-value" id="intrinsicWidthValue">1.5 μm</div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Doping Concentration (cm⁻³)</label>
+                    <input type="range" class="control-slider" id="doping" min="1e15" max="1e18" value="1e16" step="1e15">
+                    <div class="control-value" id="dopingValue">1.0×10¹⁶ cm⁻³</div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Bias Voltage (V)</label>
+                    <input type="range" class="control-slider" id="biasVoltage" min="0" max="10" value="5" step="0.1">
+                    <div class="control-value" id="biasVoltageValue">5.0 V</div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Wavelength (nm)</label>
+                    <input type="range" class="control-slider" id="wavelength" min="1500" max="1600" value="1550" step="10">
+                    <div class="control-value" id="wavelengthValue">1550 nm</div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Temperature (°C)</label>
+                    <input type="range" class="control-slider" id="temperature" min="0" max="100" value="25" step="5">
+                    <div class="control-value" id="temperatureValue">25°C</div>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin: 1rem 0;">
+                <button class="control-button" onclick="runMeasurement()">
+                    Run Measurement
+                </button>
+                <button class="control-button" onclick="updateSimulation()">Update Simulation</button>
+                <button class="control-button" onclick="resetParameters()">Reset Parameters</button>
+            </div>
+        </div>
+
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-value" id="responsivityValue">0.8</div>
+                <div class="metric-label">Responsivity (A/W)</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="darkCurrentValue">0.1</div>
+                <div class="metric-label">Dark Current (nA)</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="quantumEfficiencyValue">65.2</div>
+                <div class="metric-label">Quantum Efficiency (%)</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="bandwidthValue">28.5</div>
+                <div class="metric-label">3-dB Bandwidth (GHz)</div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <div id="responsivitySpectrum" style="height: 400px;"></div>
+        </div>
+
+        <div class="chart-container">
+            <div id="currentVoltage" style="height: 400px;"></div>
+        </div>
+
+        <div class="chart-container">
+            <div id="frequencyResponse" style="height: 400px;"></div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="section-title">Design Features</h2>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-broadcast-tower"></i></div>
+                <h3 class="feature-title">High Responsivity</h3>
+                <p class="feature-description">
+                    Optimized absorption region design for maximum responsivity at 1550 nm wavelength, 
+                    enabling sensitive detection of optical signals.
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-volume-mute"></i></div>
+                <h3 class="feature-title">Low Dark Current</h3>
+                <p class="feature-description">
+                    Careful design of the intrinsic region and doping profile to minimize dark current 
+                    and improve signal-to-noise ratio.
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-tachometer-alt"></i></div>
+                <h3 class="feature-title">High-Speed Response</h3>
+                <p class="feature-description">
+                    Optimized for high-speed operation with excellent frequency response and 
+                    minimal transit time effects.
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-shield-alt"></i></div>
+                <h3 class="feature-title">Reliable Operation</h3>
+                <p class="feature-description">
+                    Robust design for reliable operation over extended periods with excellent 
+                    temperature stability and aging characteristics.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="section-title">Mathematical Model</h2>
+        <p class="section-description">
+            The PIN photodetector performance is governed by the following key equations:
+        </p>
+        
+        <div class="demo-container">
+            <h3 class="section-subtitle">Responsivity Calculation</h3>
+            <p>The responsivity is given by:</p>
+            <p style="text-align: center; font-size: 1.2rem; margin: 1rem 0;">
+                $$R = \frac{\eta q \lambda}{hc}$$
+            </p>
+            <p>Where η is the quantum efficiency, q is the electron charge, λ is the wavelength, h is Planck's constant, and c is the speed of light.</p>
+            
+            <h3 class="section-subtitle">Quantum Efficiency</h3>
+            <p>The quantum efficiency is calculated as:</p>
+            <p style="text-align: center; font-size: 1.2rem; margin: 1rem 0;">
+                $$\eta = (1 - R_f)(1 - e^{-\alpha L})$$
+            </p>
+            <p>Where R<sub>f</sub> is the front surface reflectivity, α is the absorption coefficient, and L is the absorption length.</p>
+            
+            <h3 class="section-subtitle">Dark Current</h3>
+            <p>The dark current is given by:</p>
+            <p style="text-align: center; font-size: 1.2rem; margin: 1rem 0;">
+                $$I_{dark} = q n_i^2 \frac{D_n}{N_A L_n} A$$
+            </p>
+            <p>Where n<sub>i</sub> is the intrinsic carrier concentration, D<sub>n</sub> is the electron diffusion coefficient, N<sub>A</sub> is the acceptor concentration, L<sub>n</sub> is the electron diffusion length, and A is the device area.</p>
+        </div>
+    </section>
+
+    <script>
+        // Initialize simulation
+        function initializeSimulation() {
+            updateSimulation();
+        }
+
+        // Run measurement simulation
+        function runMeasurement() {
+            const button = event.target;
+            const originalText = button.textContent;
+            button.textContent = 'Measuring...';
+            button.disabled = true;
+            
+            // Store original values
+            const originalAbsLength = parseFloat(document.getElementById('absLength').value);
+            const originalIntrinsicWidth = parseFloat(document.getElementById('intrinsicWidth').value);
+            const originalDoping = parseFloat(document.getElementById('doping').value);
+            const originalBiasVoltage = parseFloat(document.getElementById('biasVoltage').value);
+            const originalWavelength = parseFloat(document.getElementById('wavelength').value);
+            const originalTemperature = parseFloat(document.getElementById('temperature').value);
+            
+            // Simulate measurement progress with real data changes
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += 20;
+                button.textContent = `Measuring... ${progress}%`;
+                
+                // Update parameters during simulation to show progress
+                const absLength = originalAbsLength + (Math.random() - 0.5) * 0.1;
+                const intrinsicWidth = originalIntrinsicWidth + (Math.random() - 0.5) * 0.05;
+                const doping = originalDoping + (Math.random() - 0.5) * 0.5;
+                const biasVoltage = originalBiasVoltage + (Math.random() - 0.5) * 0.1;
+                const wavelength = originalWavelength + (Math.random() - 0.5) * 5;
+                const temperature = originalTemperature + (Math.random() - 0.5) * 1;
+                
+                document.getElementById('absLength').value = absLength.toFixed(2);
+                document.getElementById('intrinsicWidth').value = intrinsicWidth.toFixed(2);
+                document.getElementById('doping').value = doping.toFixed(1);
+                document.getElementById('biasVoltage').value = biasVoltage.toFixed(1);
+                document.getElementById('wavelength').value = wavelength.toFixed(1);
+                document.getElementById('temperature').value = temperature.toFixed(1);
+                
+                // Update display values
+                document.getElementById('absLengthValue').textContent = absLength.toFixed(2) + ' μm';
+                document.getElementById('intrinsicWidthValue').textContent = intrinsicWidth.toFixed(2) + ' μm';
+                document.getElementById('dopingValue').textContent = doping.toFixed(1) + ' ×10¹⁸ cm⁻³';
+                document.getElementById('biasVoltageValue').textContent = biasVoltage.toFixed(1) + ' V';
+                document.getElementById('wavelengthValue').textContent = wavelength.toFixed(1) + ' nm';
+                document.getElementById('temperatureValue').textContent = temperature.toFixed(1) + '°C';
+                
+                // Update charts in real-time
+                updateSimulation();
+                
+                if (progress >= 100) {
+                    clearInterval(progressInterval);
+                    button.textContent = originalText;
+                    button.disabled = false;
+                    
+                    // Restore original values
+                    document.getElementById('absLength').value = originalAbsLength;
+                    document.getElementById('intrinsicWidth').value = originalIntrinsicWidth;
+                    document.getElementById('doping').value = originalDoping;
+                    document.getElementById('biasVoltage').value = originalBiasVoltage;
+                    document.getElementById('wavelength').value = originalWavelength;
+                    document.getElementById('temperature').value = originalTemperature;
+                    
+                    // Restore display values
+                    document.getElementById('absLengthValue').textContent = originalAbsLength.toFixed(2) + ' μm';
+                    document.getElementById('intrinsicWidthValue').textContent = originalIntrinsicWidth.toFixed(2) + ' μm';
+                    document.getElementById('dopingValue').textContent = originalDoping.toFixed(1) + ' ×10¹⁸ cm⁻³';
+                    document.getElementById('biasVoltageValue').textContent = originalBiasVoltage.toFixed(1) + ' V';
+                    document.getElementById('wavelengthValue').textContent = originalWavelength.toFixed(1) + ' nm';
+                    document.getElementById('temperatureValue').textContent = originalTemperature.toFixed(1) + '°C';
+                    
+                    updateSimulation();
+                    
+                    // Show completion message
+                    const completionMsg = document.createElement('div');
+                    completionMsg.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #10b981; color: white; padding: 1rem; border-radius: 8px; z-index: 10000;';
+                    completionMsg.textContent = 'PIN Photodetector Measurement Complete!';
+                    document.body.appendChild(completionMsg);
+                    setTimeout(() => completionMsg.remove(), 3000);
+                }
+            }, 200);
+        }
+
+        // Update simulation based on current parameters
+        function updateSimulation() {
+            const absLength = parseFloat(document.getElementById('absLength').value);
+            const intrinsicWidth = parseFloat(document.getElementById('intrinsicWidth').value);
+            const doping = parseFloat(document.getElementById('doping').value);
+            const biasVoltage = parseFloat(document.getElementById('biasVoltage').value);
+            const wavelength = parseFloat(document.getElementById('wavelength').value);
+            const temperature = parseFloat(document.getElementById('temperature').value);
+
+            // Calculate performance metrics
+            const responsivity = calculateResponsivity(wavelength, absLength);
+            const darkCurrent = calculateDarkCurrent(doping, intrinsicWidth, temperature);
+            const quantumEfficiency = calculateQuantumEfficiency(wavelength, absLength);
+            const bandwidth = calculateBandwidth(intrinsicWidth, biasVoltage);
+
+            // Update metric displays
+            document.getElementById('responsivityValue').textContent = responsivity.toFixed(1);
+            document.getElementById('darkCurrentValue').textContent = darkCurrent.toFixed(1);
+            document.getElementById('quantumEfficiencyValue').textContent = quantumEfficiency.toFixed(1);
+            document.getElementById('bandwidthValue').textContent = bandwidth.toFixed(1);
+
+            // Update charts
+            updateResponsivitySpectrum(absLength);
+            updateCurrentVoltage(biasVoltage, responsivity);
+            updateFrequencyResponse(bandwidth);
+        }
+
+        // Calculate responsivity
+        function calculateResponsivity(wavelength, absLength) {
+            const q = 1.602e-19; // Electron charge
+            const h = 6.626e-34; // Planck's constant
+            const c = 3e8; // Speed of light
+            const alpha = 1000; // Absorption coefficient (cm⁻¹)
+            const eta = 1 - Math.exp(-alpha * absLength * 1e-4); // Quantum efficiency
+            const responsivity = (eta * q * wavelength * 1e-9) / (h * c);
+            return responsivity;
+        }
+
+        // Calculate dark current
+        function calculateDarkCurrent(doping, intrinsicWidth, temperature) {
+            const q = 1.602e-19;
+            const k = 1.381e-23; // Boltzmann constant
+            const ni = 1.5e10 * Math.pow(temperature + 273.15, 1.5) * Math.exp(-0.785 / (k * (temperature + 273.15))); // Intrinsic concentration
+            const Dn = 35; // Electron diffusion coefficient (cm²/s)
+            const Ln = 100; // Electron diffusion length (μm)
+            const A = 100; // Device area (μm²)
+            const darkCurrent = q * Math.pow(ni, 2) * Dn / (doping * Ln * 1e-4) * A * 1e-12; // Convert to nA
+            return darkCurrent;
+        }
+
+        // Calculate quantum efficiency
+        function calculateQuantumEfficiency(wavelength, absLength) {
+            const alpha = 1000; // Absorption coefficient (cm⁻¹)
+            const Rf = 0.3; // Front surface reflectivity
+            const eta = (1 - Rf) * (1 - Math.exp(-alpha * absLength * 1e-4));
+            return eta * 100; // Convert to percentage
+        }
+
+        // Calculate bandwidth
+        function calculateBandwidth(intrinsicWidth, biasVoltage) {
+            const vd = 1e7; // Drift velocity (cm/s)
+            const bandwidth = vd / (2 * Math.PI * intrinsicWidth * 1e-4);
+            return bandwidth / 1e9; // Convert to GHz
+        }
+
+        // Update responsivity spectrum chart
+        function updateResponsivitySpectrum(absLength) {
+            const wavelengths = Array.from({length: 101}, (_, i) => 1400 + i * 2);
+            const responsivities = wavelengths.map(wl => {
+                const alpha = 1000;
+                const eta = 1 - Math.exp(-alpha * absLength * 1e-4);
+                const q = 1.602e-19;
+                const h = 6.626e-34;
+                const c = 3e8;
+                return (eta * q * wl * 1e-9) / (h * c);
+            });
+
+            const trace = {
+                x: wavelengths,
+                y: responsivities,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Responsivity',
+                line: { color: '#667eea', width: 3 }
+            };
+
+            const layout = {
+                title: 'Responsivity vs Wavelength',
+                xaxis: { title: 'Wavelength (nm)', gridcolor: 'rgba(102, 126, 234, 0.2)' },
+                yaxis: { title: 'Responsivity (A/W)', gridcolor: 'rgba(102, 126, 234, 0.2)' },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                showlegend: false
+            };
+
+            Plotly.newPlot('responsivitySpectrum', [trace], layout);
+        }
+
+        // Update current-voltage chart
+        function updateCurrentVoltage(biasVoltage, responsivity) {
+            const voltages = Array.from({length: 101}, (_, i) => i * 0.1);
+            const darkCurrent = 0.1; // nA
+            const photocurrent = responsivity * 1e-3; // Assume 1 mW optical power
+            const currents = voltages.map(v => darkCurrent + photocurrent * Math.tanh(v / 2));
+
+            const trace = {
+                x: voltages,
+                y: currents,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Photocurrent',
+                line: { color: '#c084fc', width: 3 }
+            };
+
+            const layout = {
+                title: 'Current-Voltage Characteristics',
+                xaxis: { title: 'Bias Voltage (V)', gridcolor: 'rgba(102, 126, 234, 0.2)' },
+                yaxis: { title: 'Current (nA)', gridcolor: 'rgba(102, 126, 234, 0.2)' },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                showlegend: false
+            };
+
+            Plotly.newPlot('currentVoltage', [trace], layout);
+        }
+
+        // Update frequency response chart
+        function updateFrequencyResponse(bandwidth) {
+            const frequencies = Array.from({length: 201}, (_, i) => i * 0.1);
+            const responses = frequencies.map(f => {
+                const normalizedFreq = f / bandwidth;
+                return 1 / Math.sqrt(1 + Math.pow(normalizedFreq, 2));
+            });
+
+            const trace = {
+                x: frequencies,
+                y: responses,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Frequency Response',
+                line: { color: '#10b981', width: 3 }
+            };
+
+            const layout = {
+                title: 'Frequency Response',
+                xaxis: { title: 'Frequency (GHz)', gridcolor: 'rgba(102, 126, 234, 0.2)' },
+                yaxis: { title: 'Normalized Response', gridcolor: 'rgba(102, 126, 234, 0.2)' },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                showlegend: false
+            };
+
+            Plotly.newPlot('frequencyResponse', [trace], layout);
+        }
+
+        // Reset parameters to default values
+        function resetParameters() {
+            document.getElementById('absLength').value = 10;
+            document.getElementById('intrinsicWidth').value = 1.5;
+            document.getElementById('doping').value = 1e16;
+            document.getElementById('biasVoltage').value = 5;
+            document.getElementById('wavelength').value = 1550;
+            document.getElementById('temperature').value = 25;
+            
+            updateSliderValues();
+            updateSimulation();
+        }
+
+        // Update slider value displays
+        function updateSliderValues() {
+            document.getElementById('absLengthValue').textContent = document.getElementById('absLength').value + ' μm';
+            document.getElementById('intrinsicWidthValue').textContent = document.getElementById('intrinsicWidth').value + ' μm';
+            document.getElementById('dopingValue').textContent = (parseFloat(document.getElementById('doping').value) / 1e15).toFixed(1) + '×10¹⁵ cm⁻³';
+            document.getElementById('biasVoltageValue').textContent = document.getElementById('biasVoltage').value + ' V';
+            document.getElementById('wavelengthValue').textContent = document.getElementById('wavelength').value + ' nm';
+            document.getElementById('temperatureValue').textContent = document.getElementById('temperature').value + '°C';
+        }
+
+        // Add event listeners to sliders
+        document.addEventListener('DOMContentLoaded', function() {
+            const sliders = document.querySelectorAll('.control-slider');
+            sliders.forEach(slider => {
+                slider.addEventListener('input', updateSliderValues);
+                slider.addEventListener('input', updateSimulation);
+            });
+            
+            initializeSimulation();
+        });
+    </script>
+</body>
+</html>

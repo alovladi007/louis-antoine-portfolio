@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PCM Parameter Calculator - Device & Material Properties</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a0a2a 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid rgba(147, 51, 234, 0.3);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .back-btn {
+            background: linear-gradient(135deg, #9333ea, #7c3aed);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .main-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .page-title {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #9333ea, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .calculator-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+        }
+
+        .calculator-card {
+            background: rgba(20, 20, 20, 0.8);
+            border: 1px solid rgba(147, 51, 234, 0.2);
+            border-radius: 15px;
+            padding: 2rem;
+        }
+
+        .calc-title {
+            font-size: 1.5rem;
+            color: #c084fc;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .calc-icon {
+            color: #9333ea;
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .input-label {
+            display: block;
+            color: #c084fc;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(147, 51, 234, 0.1);
+            border: 1px solid rgba(147, 51, 234, 0.3);
+            color: #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: #9333ea;
+            box-shadow: 0 0 10px rgba(147, 51, 234, 0.3);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #9333ea, #7c3aed);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(147, 51, 234, 0.4);
+        }
+
+        .result-box {
+            background: rgba(147, 51, 234, 0.1);
+            border: 1px solid rgba(147, 51, 234, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(147, 51, 234, 0.1);
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-label {
+            color: #a0a0a0;
+        }
+
+        .result-value {
+            color: #9333ea;
+            font-weight: bold;
+        }
+
+        .formula-display {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(147, 51, 234, 0.2);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+            font-family: 'Courier New', monospace;
+            color: #c084fc;
+            text-align: center;
+        }
+
+        .unit-selector {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .unit-btn {
+            flex: 1;
+            padding: 0.5rem;
+            background: rgba(147, 51, 234, 0.1);
+            border: 1px solid rgba(147, 51, 234, 0.3);
+            color: #c084fc;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .unit-btn.active {
+            background: rgba(147, 51, 234, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h2 style="color: #c084fc;">Parameter Calculator</h2>
+            <a href="pcm-complete-project.html" class="back-btn">
+                <i class="fas fa-arrow-left"></i> Back to PCM Suite
+            </a>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <h1 class="page-title">PCM Parameter Calculator</h1>
+        
+        <div class="calculator-grid">
+            <!-- Thermal Calculator -->
+            <div class="calculator-card">
+                <h2 class="calc-title">
+                    <i class="fas fa-fire calc-icon"></i>
+                    Thermal Parameters
+                </h2>
+                
+                <div class="formula-display">
+                    τ<sub>thermal</sub> = R<sub>th</sub> × C<sub>th</sub>
+                </div>
+                
+                <div class="input-group">
+                    <label class="input-label">Thermal Resistance (K/W)</label>
+                    <input type="number" class="input-field" id="rth-input" value="1e7" step="1e6">
+                </div>
+                
+                <div class="input-group">
+                    <label class="input-label">Thermal Capacitance (J/K)</label>
+                    <input type="number" class="input-field" id="cth-input" value="1e-15" step="1e-16">
+                </div>
+                
+                <div class="input-group">
+                    <label class="input-label">Power Input (mW)</label>
+                    <input type="number" class="input-field" id="power-input" value="10" step="1">
+                </div>
+                
+                <button class="btn" onclick="calculateThermal()">
+                    <i class="fas fa-calculator"></i> Calculate
+                </button>
+                
+                <div class="result-box" id="thermal-results" style="display: none;">
+                    <div class="result-item">
+                        <span class="result-label">Time Constant</span>
+                        <span class="result-value" id="tau-result">--</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Steady-State ΔT</span>
+                        <span class="result-value" id="delta-t-result">--</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Peak Temperature</span>
+                        <span class="result-value" id="peak-temp-result">--</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Crystallization Calculator -->
+            <div class="calculator-card">
+                <h2 class="calc-title">
+                    <i class="fas fa-gem calc-icon"></i>
+                    Crystallization Kinetics
+                </h2>
+                
+                <div class="formula-display">
+                    k(T) = k₀ × exp(-E<sub>a</sub>/k<sub>B</sub>T)
+                </div>
+                
+                <div class="input-group">
+                    <label class="input-label">Temperature (K)</label>
+                    <input type="number" class="input-field" id="temp-k-input" value="500" step="10">
+                </div>
+                
+                <div class="input-group">
+                    <label class="input-label">Activation Energy (eV)</label>
+                    <input type="number" class="input-field" id="ea-input" value="1.8" step="0.1">
+                </div>
+                
+                <div class="input-group">
+                    <label class="input-label">Pre-exponential k₀ (1/s)</label>
+                    <input type="number" class="input-field" id="k0-input" value="1e16" step="1e15">
+                </div>
+                
+                <div class="input-group">
+                    <label class="input-label">Avrami Exponent n</label>
+                    <input type="number" class="input-field" id="n-input" value="3.0" step="0.1">
+                </div>
+                
+                <button class="btn" onclick="calculateCrystallization()">
+                    <i class="fas fa-calculator"></i> Calculate
+                </button>
+                
+                <div class="result-box" id="crystal-results" style="display: none;">
+                    <div class="result-item">
+                        <span class="result-label">Rate Constant k(T)</span>
+                        <span class="result-value" id="k-result">--</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">t₅₀ (50% crystallization)</span>
+                        <span class="result-value" id="t50-result">--</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">t₉₀ (90% crystallization)</span>
+                        <span class="result-value" id="t90-result">--</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Electrical Calculator -->
+            <div class="calculator-card">
+                <h2 class="calc-title">
+                    <i class="fas fa-bolt calc-icon"></i>
+                    Electrical Properties
+                </h2>
+                
+                <div class="formula-display">
+                    P = V²/R = I²×R
+                </div>
+                
+                <div class="input-group">
+                    <label class="input-label">Voltage (V)</label>
+                    <input type="number" class="input-field" id="voltage-input" value="3.0" step="0.1">
+                </div>
+                
+                <div class="input-group">
+                    <label class="input-label">Amorphous Resistance (Ω)</label>
+                    <input type="number" class="input-field" id="ra-input" value="1e6" step="1e5">
+                </div>
+                
+                <div class="input-group">
+                    <label class="input-label">Crystalline Resistance (Ω)</label>
+                    <input type="number" class="input-field" id="rc-input" value="1e3" step="100">
+                </div>
+                
+                <div class="input-group">
+                    <label class="input-label">Crystalline Fraction X</label>
+                    <input type="range" class="input-field" id="x-input" min="0" max="1" value="0.5" step="0.01">
+                    <span id="x-display" style="color: #9333ea;">0.50</span>
+                </div>
+                
+                <button class="btn" onclick="calculateElectrical()">
+                    <i class="fas fa-calculator"></i> Calculate
+                </button>
+                
+                <div class="result-box" id="electrical-results" style="display: none;">
+                    <div class="result-item">
+                        <span class="result-label">Mixed Resistance</span>
+                        <span class="result-value" id="rmix-result">--</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Current</span>
+                        <span class="result-value" id="current-result">--</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Power Dissipation</span>
+                        <span class="result-value" id="power-result">--</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Resistance Ratio</span>
+                        <span class="result-value" id="ratio-result">--</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Energy Calculator -->
+            <div class="calculator-card">
+                <h2 class="calc-title">
+                    <i class="fas fa-battery-half calc-icon"></i>
+                    Energy & Power
+                </h2>
+                
+                <div class="formula-display">
+                    E = ∫ V(t)×I(t) dt
+                </div>
+                
+                <div class="input-group">
+                    <label class="input-label">Pulse Type</label>
+                    <select class="input-field" id="pulse-type-select">
+                        <option value="reset">RESET (Amorphization)</option>
+                        <option value="set">SET (Crystallization)</option>
+                        <option value="read">READ</option>
+                    </select>
+                </div>
+                
+                <div class="input-group">
+                    <label class="input-label">Pulse Voltage (V)</label>
+                    <input type="number" class="input-field" id="pulse-v-input" value="3.0" step="0.1">
+                </div>
+                
+                <div class="input-group">
+                    <label class="input-label">Pulse Duration (ns)</label>
+                    <input type="number" class="input-field" id="pulse-t-input" value="50" step="10">
+                </div>
+                
+                <div class="input-group">
+                    <label class="input-label">Device Resistance (Ω)</label>
+                    <input type="number" class="input-field" id="device-r-input" value="1e6" step="1e5">
+                </div>
+                
+                <button class="btn" onclick="calculateEnergy()">
+                    <i class="fas fa-calculator"></i> Calculate
+                </button>
+                
+                <div class="result-box" id="energy-results" style="display: none;">
+                    <div class="result-item">
+                        <span class="result-label">Pulse Energy</span>
+                        <span class="result-value" id="energy-result">--</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Average Power</span>
+                        <span class="result-value" id="avg-power-result">--</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Peak Current</span>
+                        <span class="result-value" id="peak-current-result">--</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Scaling Calculator -->
+            <div class="calculator-card">
+                <h2 class="calc-title">
+                    <i class="fas fa-compress calc-icon"></i>
+                    Scaling Analysis
+                </h2>
+                
+                <div class="formula-display">
+                    I<sub>RESET</sub> ∝ Area, E<sub>write</sub> ∝ Volume
+                </div>
+                
+                <div class="input-group">
+                    <label class="input-label">Cell Diameter (nm)</label>
+                    <input type="number" class="input-field" id="diameter-input" value="22" step="1">
+                </div>
+                
+                <div class="input-group">
+                    <label class="input-label">GST Thickness (nm)</label>
+                    <input type="number" class="input-field" id="thickness-input" value="10" step="1">
+                </div>
+                
+                <div class="input-group">
+                    <label class="input-label">Reference I_RESET (μA)</label>
+                    <input type="number" class="input-field" id="iref-input" value="100" step="10">
+                </div>
+                
+                <button class="btn" onclick="calculateScaling()">
+                    <i class="fas fa-calculator"></i> Calculate
+                </button>
+                
+                <div class="result-box" id="scaling-results" style="display: none;">
+                    <div class="result-item">
+                        <span class="result-label">Cell Area</span>
+                        <span class="result-value" id="area-result">--</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Cell Volume</span>
+                        <span class="result-value" id="volume-result">--</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Scaled I_RESET</span>
+                        <span class="result-value" id="iscaled-result">--</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Write Energy</span>
+                        <span class="result-value" id="write-energy-result">--</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Unit Converter -->
+            <div class="calculator-card">
+                <h2 class="calc-title">
+                    <i class="fas fa-exchange-alt calc-icon"></i>
+                    Unit Converter
+                </h2>
+                
+                <div class="input-group">
+                    <label class="input-label">Value</label>
+                    <input type="number" class="input-field" id="convert-value" value="1" step="any">
+                </div>
+                
+                <div class="input-group">
+                    <label class="input-label">Convert From</label>
+                    <select class="input-field" id="from-unit">
+                        <option value="eV">eV (Energy)</option>
+                        <option value="J">Joules</option>
+                        <option value="K">Kelvin</option>
+                        <option value="C">Celsius</option>
+                        <option value="ns">Nanoseconds</option>
+                        <option value="s">Seconds</option>
+                        <option value="nm">Nanometers</option>
+                        <option value="m">Meters</option>
+                    </select>
+                </div>
+                
+                <div class="input-group">
+                    <label class="input-label">Convert To</label>
+                    <select class="input-field" id="to-unit">
+                        <option value="J">Joules</option>
+                        <option value="eV">eV (Energy)</option>
+                        <option value="C">Celsius</option>
+                        <option value="K">Kelvin</option>
+                        <option value="s">Seconds</option>
+                        <option value="ns">Nanoseconds</option>
+                        <option value="m">Meters</option>
+                        <option value="nm">Nanometers</option>
+                    </select>
+                </div>
+                
+                <button class="btn" onclick="convertUnits()">
+                    <i class="fas fa-exchange-alt"></i> Convert
+                </button>
+                
+                <div class="result-box" id="convert-results" style="display: none;">
+                    <div class="result-item">
+                        <span class="result-label">Result</span>
+                        <span class="result-value" id="convert-result">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Constants
+        const kb = 8.617333262e-5; // eV/K
+        const eV_to_J = 1.602176634e-19;
+        
+        // Update slider display
+        document.getElementById('x-input').addEventListener('input', function() {
+            document.getElementById('x-display').textContent = parseFloat(this.value).toFixed(2);
+        });
+        
+        // Thermal Calculator
+        function calculateThermal() {
+            const Rth = parseFloat(document.getElementById('rth-input').value);
+            const Cth = parseFloat(document.getElementById('cth-input').value);
+            const P = parseFloat(document.getElementById('power-input').value) * 1e-3; // Convert to W
+            
+            const tau = Rth * Cth * 1e9; // Convert to ns
+            const deltaT = P * Rth;
+            const peakT = 300 + deltaT;
+            
+            document.getElementById('tau-result').textContent = tau.toFixed(2) + ' ns';
+            document.getElementById('delta-t-result').textContent = deltaT.toFixed(0) + ' K';
+            document.getElementById('peak-temp-result').textContent = peakT.toFixed(0) + ' K';
+            document.getElementById('thermal-results').style.display = 'block';
+        }
+        
+        // Crystallization Calculator
+        function calculateCrystallization() {
+            const T = parseFloat(document.getElementById('temp-k-input').value);
+            const Ea = parseFloat(document.getElementById('ea-input').value);
+            const k0 = parseFloat(document.getElementById('k0-input').value);
+            const n = parseFloat(document.getElementById('n-input').value);
+            
+            const k = k0 * Math.exp(-Ea / (kb * T));
+            const t50 = Math.pow(-Math.log(0.5), 1/n) / k;
+            const t90 = Math.pow(-Math.log(0.1), 1/n) / k;
+            
+            document.getElementById('k-result').textContent = k.toExponential(2) + ' 1/s';
+            document.getElementById('t50-result').textContent = formatTime(t50);
+            document.getElementById('t90-result').textContent = formatTime(t90);
+            document.getElementById('crystal-results').style.display = 'block';
+        }
+        
+        // Electrical Calculator
+        function calculateElectrical() {
+            const V = parseFloat(document.getElementById('voltage-input').value);
+            const Ra = parseFloat(document.getElementById('ra-input').value);
+            const Rc = parseFloat(document.getElementById('rc-input').value);
+            const X = parseFloat(document.getElementById('x-input').value);
+            
+            const Rmix = Rc * X + Ra * (1 - X);
+            const I = V / Rmix;
+            const P = V * V / Rmix;
+            const ratio = Ra / Rc;
+            
+            document.getElementById('rmix-result').textContent = Rmix.toExponential(2) + ' Ω';
+            document.getElementById('current-result').textContent = (I * 1e6).toFixed(2) + ' μA';
+            document.getElementById('power-result').textContent = (P * 1e3).toFixed(2) + ' mW';
+            document.getElementById('ratio-result').textContent = ratio.toFixed(0) + '×';
+            document.getElementById('electrical-results').style.display = 'block';
+        }
+        
+        // Energy Calculator
+        function calculateEnergy() {
+            const V = parseFloat(document.getElementById('pulse-v-input').value);
+            const t = parseFloat(document.getElementById('pulse-t-input').value) * 1e-9; // Convert to s
+            const R = parseFloat(document.getElementById('device-r-input').value);
+            
+            const I = V / R;
+            const P = V * V / R;
+            const E = P * t;
+            
+            document.getElementById('energy-result').textContent = (E * 1e12).toFixed(2) + ' pJ';
+            document.getElementById('avg-power-result').textContent = (P * 1e3).toFixed(2) + ' mW';
+            document.getElementById('peak-current-result').textContent = (I * 1e6).toFixed(2) + ' μA';
+            document.getElementById('energy-results').style.display = 'block';
+        }
+        
+        // Scaling Calculator
+        function calculateScaling() {
+            const d = parseFloat(document.getElementById('diameter-input').value);
+            const t = parseFloat(document.getElementById('thickness-input').value);
+            const Iref = parseFloat(document.getElementById('iref-input').value);
+            
+            const area = Math.PI * Math.pow(d/2, 2);
+            const volume = area * t;
+            const Iscaled = Iref * (d/22) * (d/22); // Scale with area
+            const Ewrite = 3 * 3 / 1e6 * 50e-9 * (volume / 3800); // Scale with volume
+            
+            document.getElementById('area-result').textContent = area.toFixed(0) + ' nm²';
+            document.getElementById('volume-result').textContent = volume.toFixed(0) + ' nm³';
+            document.getElementById('iscaled-result').textContent = Iscaled.toFixed(1) + ' μA';
+            document.getElementById('write-energy-result').textContent = (Ewrite * 1e12).toFixed(2) + ' pJ';
+            document.getElementById('scaling-results').style.display = 'block';
+        }
+        
+        // Unit Converter
+        function convertUnits() {
+            const value = parseFloat(document.getElementById('convert-value').value);
+            const from = document.getElementById('from-unit').value;
+            const to = document.getElementById('to-unit').value;
+            
+            let result;
+            
+            // Convert to base unit first
+            let baseValue = value;
+            switch(from) {
+                case 'eV': baseValue = value * eV_to_J; break;
+                case 'C': baseValue = value + 273.15; break;
+                case 'ns': baseValue = value * 1e-9; break;
+                case 'nm': baseValue = value * 1e-9; break;
+            }
+            
+            // Convert from base to target
+            switch(to) {
+                case 'J': result = from === 'eV' ? baseValue : 'Invalid conversion'; break;
+                case 'eV': result = from === 'J' ? value / eV_to_J : 'Invalid conversion'; break;
+                case 'K': result = from === 'C' ? baseValue : 'Invalid conversion'; break;
+                case 'C': result = from === 'K' ? value - 273.15 : 'Invalid conversion'; break;
+                case 's': result = from === 'ns' ? baseValue : 'Invalid conversion'; break;
+                case 'ns': result = from === 's' ? value * 1e9 : 'Invalid conversion'; break;
+                case 'm': result = from === 'nm' ? baseValue : 'Invalid conversion'; break;
+                case 'nm': result = from === 'm' ? value * 1e9 : 'Invalid conversion'; break;
+                default: result = 'Invalid conversion';
+            }
+            
+            if (typeof result === 'number') {
+                document.getElementById('convert-result').textContent = result.toExponential(4) + ' ' + to;
+            } else {
+                document.getElementById('convert-result').textContent = result;
+            }
+            document.getElementById('convert-results').style.display = 'block';
+        }
+        
+        // Helper function to format time
+        function formatTime(t) {
+            if (t < 1e-9) return (t * 1e12).toFixed(2) + ' ps';
+            if (t < 1e-6) return (t * 1e9).toFixed(2) + ' ns';
+            if (t < 1e-3) return (t * 1e6).toFixed(2) + ' μs';
+            if (t < 1) return (t * 1e3).toFixed(2) + ' ms';
+            return t.toFixed(2) + ' s';
+        }
+    </script>
+</body>
+</html>

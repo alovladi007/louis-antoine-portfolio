@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Electrical Performance - Interactive Demo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #0a0a0a;
+            color: #e0e0e0;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .navigation-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .hero-section {
+            position: relative;
+            min-height: 50vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem 2rem;
+            margin-top: 60px;
+            overflow: hidden;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .hero-title {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-subtitle {
+            font-size: 1.2rem;
+            color: #a0a0a0;
+            margin-bottom: 2rem;
+        }
+
+        .hero-description {
+            font-size: 1.1rem;
+            color: #b0b0b0;
+            max-width: 800px;
+            margin: 0 auto 2rem;
+        }
+
+        .section {
+            padding: 4rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .section-subtitle {
+            font-size: 1.3rem;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .section-description {
+            font-size: 1.1rem;
+            color: #b0b0b0;
+            margin-bottom: 2rem;
+        }
+
+        .demo-container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 2rem;
+            margin: 2rem 0;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .control-group {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 1.5rem;
+            border-radius: 10px;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .control-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #667eea;
+        }
+
+        .control-slider {
+            width: 100%;
+            margin: 0.5rem 0;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 6px;
+            border-radius: 3px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            outline: none;
+        }
+
+        .control-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+        }
+
+        .control-value {
+            font-size: 0.9rem;
+            color: #a0a0a0;
+            margin-top: 0.5rem;
+        }
+
+        .control-button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 0.5rem 0.5rem 0.5rem 0;
+        }
+
+        .control-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .metric-card {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 1.5rem;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            color: #a0a0a0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 1.5rem;
+            border-radius: 10px;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .feature-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #e0e0e0;
+        }
+
+        .feature-description {
+            color: #b0b0b0;
+            font-size: 0.95rem;
+        }
+
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2rem;
+            }
+            
+            .controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navigation-bar">
+        <a href="silicon-photonics-transceiver.html" class="nav-btn">
+            <i class="fas fa-arrow-left"></i> Back to Project
+        </a>
+        <h2>Electrical Performance</h2>
+    </nav>
+
+    <section class="hero-section">
+        <div class="hero-content">
+            <h1 class="hero-title">Electrical Performance</h1>
+            <p class="hero-subtitle">Comprehensive Electrical Characterization & Analysis</p>
+            <p class="hero-description">
+                Electrical characterization including bandwidth, noise analysis, power consumption, 
+                and signal integrity measurements for silicon photonics transceiver electronics.
+            </p>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="section-title">Interactive Electrical Parameters</h2>
+        <p class="section-description">
+            Adjust electrical parameters to analyze different performance characteristics and operating conditions.
+        </p>
+
+        <div class="demo-container">
+            <div class="controls">
+                <div class="control-group">
+                    <label class="control-label">Supply Voltage (V)</label>
+                    <input type="range" class="control-slider" id="supplyVoltage" min="1.8" max="5" value="3.3" step="0.1">
+                    <div class="control-value" id="supplyVoltageValue">3.3 V</div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Frequency (GHz)</label>
+                    <input type="range" class="control-slider" id="frequency" min="1" max="50" value="25" step="1">
+                    <div class="control-value" id="frequencyValue">25 GHz</div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Load Resistance (Ω)</label>
+                    <input type="range" class="control-slider" id="loadResistance" min="25" max="100" value="50" step="5">
+                    <div class="control-value" id="loadResistanceValue">50 Ω</div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Temperature (°C)</label>
+                    <input type="range" class="control-slider" id="temperature" min="0" max="100" value="25" step="5">
+                    <div class="control-value" id="temperatureValue">25°C</div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Input Signal (dBm)</label>
+                    <input type="range" class="control-slider" id="inputSignal" min="-20" max="10" value="0" step="1">
+                    <div class="control-value" id="inputSignalValue">0 dBm</div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Circuit Type</label>
+                    <select id="circuitType" style="width: 100%; padding: 0.5rem; background: rgba(255,255,255,0.1); border: 1px solid rgba(102,126,234,0.3); border-radius: 5px; color: #e0e0e0;">
+                        <option value="driver">Driver Circuit</option>
+                        <option value="tia">TIA Circuit</option>
+                        <option value="complete">Complete System</option>
+                        <option value="test">Test Circuit</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin: 1rem 0;">
+                <button class="control-button" onclick="updateAnalysis()">Update Analysis</button>
+                <button class="control-button" onclick="resetParameters()">Reset Parameters</button>
+                <button class="control-button" onclick="runMeasurement()">Run Measurement</button>
+            </div>
+        </div>
+
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-value" id="bandwidthValue">28.5</div>
+                <div class="metric-label">3-dB Bandwidth (GHz)</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="noiseValue">2.1</div>
+                <div class="metric-label">Noise (nV/√Hz)</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="powerValue">125</div>
+                <div class="metric-label">Power (mW)</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="gainValue">15.2</div>
+                <div class="metric-label">Gain (dB)</div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <div id="frequencyResponse" style="height: 400px;"></div>
+        </div>
+
+        <div class="chart-container">
+            <div id="noiseAnalysis" style="height: 400px;"></div>
+        </div>
+
+        <div class="chart-container">
+            <div id="powerConsumption" style="height: 400px;"></div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="section-title">Analysis Features</h2>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-bolt"></i></div>
+                <h3 class="feature-title">Bandwidth Analysis</h3>
+                <p class="feature-description">
+                    High-frequency response analysis including 3-dB bandwidth measurement, 
+                    group delay analysis, and phase response characterization.
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-volume-mute"></i></div>
+                <h3 class="feature-title">Noise Analysis</h3>
+                <p class="feature-description">
+                    Comprehensive noise analysis including thermal noise, flicker noise, 
+                    and shot noise characterization for signal integrity assessment.
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fas fa-battery-half"></i></div>
+                <h3 class="feature-title">Power Analysis</h3>
+                <p class="feature-description">
+                    Power consumption analysis including static and dynamic power measurements, 
+                    efficiency calculations, and thermal management assessment.
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="fas fa-chart-line"></i></div>
+                <h3 class="feature-title">Signal Integrity</h3>
+                <p class="feature-description">
+                    Signal integrity analysis including eye diagram measurements, 
+                    jitter analysis, and distortion characterization for high-speed operation.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="section-title">Electrical Models</h2>
+        <p class="section-description">
+            The electrical performance analysis uses comprehensive models for accurate characterization:
+        </p>
+        
+        <div class="demo-container">
+            <h3 class="section-subtitle">Frequency Response</h3>
+            <p>The frequency response is given by:</p>
+            <p style="text-align: center; font-size: 1.2rem; margin: 1rem 0;">
+                $$H(f) = \frac{A_0}{1 + j\frac{f}{f_c}}$$
+            </p>
+            <p>Where A<sub>0</sub> is the DC gain and f<sub>c</sub> is the 3-dB cutoff frequency.</p>
+            
+            <h3 class="section-subtitle">Noise Analysis</h3>
+            <p>The total noise power is:</p>
+            <p style="text-align: center; font-size: 1.2rem; margin: 1rem 0;">
+                $$N_{total} = N_{thermal} + N_{flicker} = 4kTB + \frac{K_f}{f} \frac{g_m^2}{C_{ox} WL}$$
+            </p>
+            <p>Where k is Boltzmann's constant, T is temperature, B is bandwidth, and K<sub>f</sub> is the flicker noise coefficient.</p>
+            
+            <h3 class="section-subtitle">Power Consumption</h3>
+            <p>The total power consumption is:</p>
+            <p style="text-align: center; font-size: 1.2rem; margin: 1rem 0;">
+                $$P_{total} = P_{static} + P_{dynamic} = V_{DD} I_{DD} + \alpha C V_{DD}^2 f$$
+            </p>
+            <p>Where V<sub>DD</sub> is the supply voltage, I<sub>DD</sub> is the supply current, α is the activity factor, C is the capacitance, and f is the frequency.</p>
+        </div>
+    </section>
+
+    <script>
+        // Initialize analysis
+        function initializeAnalysis() {
+            updateAnalysis();
+        }
+
+        // Update analysis based on current parameters
+        function updateAnalysis() {
+            const supplyVoltage = parseFloat(document.getElementById('supplyVoltage').value);
+            const frequency = parseFloat(document.getElementById('frequency').value);
+            const loadResistance = parseFloat(document.getElementById('loadResistance').value);
+            const temperature = parseFloat(document.getElementById('temperature').value);
+            const inputSignal = parseFloat(document.getElementById('inputSignal').value);
+            const circuitType = document.getElementById('circuitType').value;
+
+            // Calculate performance metrics
+            const bandwidth = calculateBandwidth(frequency, circuitType);
+            const noise = calculateNoise(temperature, loadResistance);
+            const power = calculatePower(supplyVoltage, frequency, circuitType);
+            const gain = calculateGain(supplyVoltage, circuitType);
+
+            // Update metric displays
+            document.getElementById('bandwidthValue').textContent = bandwidth.toFixed(1);
+            document.getElementById('noiseValue').textContent = noise.toFixed(1);
+            document.getElementById('powerValue').textContent = power.toFixed(0);
+            document.getElementById('gainValue').textContent = gain.toFixed(1);
+
+            // Update charts
+            updateFrequencyResponse(frequency, bandwidth);
+            updateNoiseAnalysis(noise, temperature);
+            updatePowerConsumption(power, supplyVoltage);
+        }
+
+        // Calculate bandwidth
+        function calculateBandwidth(frequency, circuitType) {
+            let baseBandwidth = 25;
+            if (circuitType === 'driver') baseBandwidth = 30;
+            if (circuitType === 'tia') baseBandwidth = 20;
+            if (circuitType === 'complete') baseBandwidth = 25;
+            if (circuitType === 'test') baseBandwidth = 35;
+            
+            return baseBandwidth + 0.1 * frequency;
+        }
+
+        // Calculate noise
+        function calculateNoise(temperature, loadResistance) {
+            const k = 1.381e-23; // Boltzmann constant
+            const T = temperature + 273.15; // Temperature in Kelvin
+            const B = 1e9; // Bandwidth in Hz
+            const noise = Math.sqrt(4 * k * T * B * loadResistance) * 1e9; // Convert to nV/√Hz
+            return noise;
+        }
+
+        // Calculate power consumption
+        function calculatePower(supplyVoltage, frequency, circuitType) {
+            let basePower = 50;
+            if (circuitType === 'driver') basePower = 80;
+            if (circuitType === 'tia') basePower = 60;
+            if (circuitType === 'complete') basePower = 120;
+            if (circuitType === 'test') basePower = 40;
+            
+            const dynamicPower = 0.1 * supplyVoltage * supplyVoltage * frequency;
+            return basePower + dynamicPower;
+        }
+
+        // Calculate gain
+        function calculateGain(supplyVoltage, circuitType) {
+            let baseGain = 10;
+            if (circuitType === 'driver') baseGain = 15;
+            if (circuitType === 'tia') baseGain = 20;
+            if (circuitType === 'complete') baseGain = 12;
+            if (circuitType === 'test') baseGain = 8;
+            
+            return baseGain + 2 * (supplyVoltage - 3.3);
+        }
+
+        // Update frequency response chart
+        function updateFrequencyResponse(frequency, bandwidth) {
+            const frequencies = Array.from({length: 201}, (_, i) => i * 0.25);
+            const responses = frequencies.map(f => {
+                const normalizedFreq = f / bandwidth;
+                return 1 / Math.sqrt(1 + Math.pow(normalizedFreq, 2));
+            });
+
+            const trace = {
+                x: frequencies,
+                y: responses,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Frequency Response',
+                line: { color: '#667eea', width: 3 }
+            };
+
+            const layout = {
+                title: 'Frequency Response',
+                xaxis: { title: 'Frequency (GHz)', gridcolor: 'rgba(102, 126, 234, 0.2)' },
+                yaxis: { title: 'Normalized Response', gridcolor: 'rgba(102, 126, 234, 0.2)' },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                showlegend: false
+            };
+
+            Plotly.newPlot('frequencyResponse', [trace], layout);
+        }
+
+        // Update noise analysis chart
+        function updateNoiseAnalysis(noise, temperature) {
+            const frequencies = Array.from({length: 201}, (_, i) => i * 0.25);
+            const noiseSpectrum = frequencies.map(f => {
+                const thermalNoise = noise * Math.sqrt(f);
+                const flickerNoise = noise * 0.1 / Math.sqrt(f);
+                return Math.sqrt(Math.pow(thermalNoise, 2) + Math.pow(flickerNoise, 2));
+            });
+
+            const trace = {
+                x: frequencies,
+                y: noiseSpectrum,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Noise Spectrum',
+                line: { color: '#c084fc', width: 3 }
+            };
+
+            const layout = {
+                title: 'Noise Analysis',
+                xaxis: { title: 'Frequency (GHz)', gridcolor: 'rgba(102, 126, 234, 0.2)' },
+                yaxis: { title: 'Noise (nV/√Hz)', gridcolor: 'rgba(102, 126, 234, 0.2)' },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                showlegend: false
+            };
+
+            Plotly.newPlot('noiseAnalysis', [trace], layout);
+        }
+
+        // Update power consumption chart
+        function updatePowerConsumption(power, supplyVoltage) {
+            const voltages = Array.from({length: 101}, (_, i) => 1.8 + i * 0.032);
+            const powers = voltages.map(v => {
+                const basePower = 50;
+                const dynamicPower = 0.1 * v * v * 25; // Assume 25 GHz
+                return basePower + dynamicPower;
+            });
+
+            const trace = {
+                x: voltages,
+                y: powers,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Power Consumption',
+                line: { color: '#10b981', width: 3 }
+            };
+
+            const layout = {
+                title: 'Power Consumption vs Supply Voltage',
+                xaxis: { title: 'Supply Voltage (V)', gridcolor: 'rgba(102, 126, 234, 0.2)' },
+                yaxis: { title: 'Power Consumption (mW)', gridcolor: 'rgba(102, 126, 234, 0.2)' },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e0e0e0' },
+                showlegend: false
+            };
+
+            Plotly.newPlot('powerConsumption', [trace], layout);
+        }
+
+        // Run measurement
+        function runMeasurement() {
+            const button = event.target;
+            const originalText = button.textContent;
+            button.textContent = 'Measuring...';
+            button.disabled = true;
+            
+            // Store original values
+            const originalVoltage = parseFloat(document.getElementById('supplyVoltage').value);
+            const originalFrequency = parseFloat(document.getElementById('frequency').value);
+            const originalCurrent = parseFloat(document.getElementById('biasCurrent').value);
+            
+            // Simulate measurement progress with real data changes
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += 18;
+                button.textContent = `Measuring... ${progress}%`;
+                
+                // Update parameters during simulation to show progress
+                const voltage = originalVoltage + (Math.random() - 0.5) * 0.1;
+                const frequency = originalFrequency + (Math.random() - 0.5) * 1;
+                const current = originalCurrent + (Math.random() - 0.5) * 2;
+                
+                document.getElementById('supplyVoltage').value = voltage.toFixed(1);
+                document.getElementById('frequency').value = frequency.toFixed(1);
+                document.getElementById('biasCurrent').value = current.toFixed(1);
+                
+                // Update charts in real-time
+                updateAnalysis();
+                
+                if (progress >= 100) {
+                    clearInterval(progressInterval);
+                    button.textContent = originalText;
+                    button.disabled = false;
+                    
+                    // Restore original values
+                    document.getElementById('supplyVoltage').value = originalVoltage;
+                    document.getElementById('frequency').value = originalFrequency;
+                    document.getElementById('biasCurrent').value = originalCurrent;
+                    updateAnalysis();
+                    
+                    // Show completion message
+                    const completionMsg = document.createElement('div');
+                    completionMsg.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #10b981; color: white; padding: 1rem; border-radius: 8px; z-index: 10000;';
+                    completionMsg.textContent = 'Electrical Measurement Complete!';
+                    document.body.appendChild(completionMsg);
+                    setTimeout(() => completionMsg.remove(), 3000);
+                }
+            }, 180);
+        }
+
+        // Reset parameters to default values
+        function resetParameters() {
+            document.getElementById('supplyVoltage').value = 3.3;
+            document.getElementById('frequency').value = 25;
+            document.getElementById('loadResistance').value = 50;
+            document.getElementById('temperature').value = 25;
+            document.getElementById('inputSignal').value = 0;
+            document.getElementById('circuitType').value = 'driver';
+            
+            updateSliderValues();
+            updateAnalysis();
+        }
+
+        // Update slider value displays
+        function updateSliderValues() {
+            document.getElementById('supplyVoltageValue').textContent = document.getElementById('supplyVoltage').value + ' V';
+            document.getElementById('frequencyValue').textContent = document.getElementById('frequency').value + ' GHz';
+            document.getElementById('loadResistanceValue').textContent = document.getElementById('loadResistance').value + ' Ω';
+            document.getElementById('temperatureValue').textContent = document.getElementById('temperature').value + '°C';
+            document.getElementById('inputSignalValue').textContent = document.getElementById('inputSignal').value + ' dBm';
+        }
+
+        // Add event listeners to sliders
+        document.addEventListener('DOMContentLoaded', function() {
+            const sliders = document.querySelectorAll('.control-slider');
+            sliders.forEach(slider => {
+                slider.addEventListener('input', updateSliderValues);
+                slider.addEventListener('input', updateAnalysis);
+            });
+            
+            const select = document.getElementById('circuitType');
+            select.addEventListener('change', updateAnalysis);
+            
+            initializeAnalysis();
+        });
+    </script>
+</body>
+</html>

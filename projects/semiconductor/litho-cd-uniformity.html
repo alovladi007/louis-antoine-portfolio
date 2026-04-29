@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CD Uniformity Analysis - Lithography Demo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.26.0/plotly.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #e0e0e0; }
+        .navbar { background: rgba(10, 10, 10, 0.95); padding: 1rem 2rem; border-bottom: 1px solid rgba(102, 126, 234, 0.3); position: sticky; top: 0; z-index: 100; }
+        .nav-content { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        .nav-title { color: #667eea; font-size: 1.3rem; font-weight: 600; }
+        .nav-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.5rem 1.5rem; border-radius: 8px; text-decoration: none; transition: transform 0.2s; }
+        .nav-btn:hover { transform: scale(1.05); }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .header h1 { font-size: 2.8rem; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; margin-bottom: 1rem; }
+        .subtitle { text-align: center; color: #a0a0a0; font-size: 1.1rem; margin-bottom: 2rem; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
+        .stat-card { background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.3); padding: 1.5rem; border-radius: 12px; text-align: center; }
+        .stat-value { font-size: 2rem; font-weight: bold; background: linear-gradient(135deg, #667eea, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .stat-label { color: #a0a0a0; font-size: 0.9rem; margin-top: 0.5rem; }
+        .controls-section { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; margin-bottom: 2rem; }
+        .controls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+        .control-group { margin-bottom: 1rem; }
+        .control-label { display: flex; justify-content: space-between; margin-bottom: 0.5rem; color: #667eea; font-weight: 500; }
+        .control-value { color: #f39c12; }
+        .slider { width: 100%; height: 6px; border-radius: 3px; background: rgba(102, 126, 234, 0.3); outline: none; -webkit-appearance: none; }
+        .slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #f39c12); cursor: pointer; }
+        .slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #f39c12); cursor: pointer; border: none; }
+        .visualization { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 15px; padding: 2rem; margin-bottom: 2rem; }
+        .section-title { color: #667eea; font-size: 1.5rem; margin-bottom: 1.5rem; }
+        .chart-container { background: rgba(0, 0, 0, 0.3); border-radius: 10px; padding: 1rem; min-height: 400px; }
+        #canvas3d { width: 100%; height: 500px; border-radius: 10px; background: rgba(0, 0, 0, 0.5); }
+        .equation-box { background: rgba(102, 126, 234, 0.1); border-left: 3px solid #667eea; padding: 1rem; margin: 1rem 0; border-radius: 5px; font-family: 'Courier New', monospace; color: #e0e0e0; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-content">
+            <div class="nav-title"><i class="fas fa-bullseye"></i> CD Uniformity Analysis</div>
+            <a href="lithography-research.html" class="nav-btn"><i class="fas fa-arrow-left"></i> Back to Research</a>
+        </div>
+    </nav>
+    <div class="container">
+        <div class="header">
+            <h1>Critical Dimension Uniformity (CDU)</h1>
+            <p class="subtitle">Wafer-Scale CD Control & Zernike Decomposition</p>
+        </div>
+        <div class="stats-grid">
+            <div class="stat-card"><div class="stat-value" id="stat-cdu">1.8 nm</div><div class="stat-label">CDU (3σ/mean)</div></div>
+            <div class="stat-card"><div class="stat-value" id="stat-radial">1.2 nm</div><div class="stat-label">Radial Component</div></div>
+            <div class="stat-card"><div class="stat-value" id="stat-random">1.1 nm</div><div class="stat-label">Random Component</div></div>
+            <div class="stat-card"><div class="stat-value" id="stat-matching">0.8 nm</div><div class="stat-label">Scanner Matching</div></div>
+        </div>
+        <div class="equation-box">
+            <strong>Key Physics Equations:</strong><br>
+            CDU = 3σ/mean × 100%<br>
+            Radial: CD(r) = a₀ + a₁r + a₂r² + a₃r³<br>
+            Zernike: CD(ρ,θ) = Σ Zⁿₘ Rⁿₘ(ρ) cos(mθ)<br>
+            Dose contribution: σ_dose = (∂CD/∂E) × σ_E<br>
+            Total: σ²_total = σ²_systematic + σ²_random
+        </div>
+        <div class="controls-section">
+            <h2 class="section-title">Uniformity Parameters</h2>
+            <div class="controls-grid">
+                <div class="control-group"><div class="control-label"><span>Mean CD (nm)</span><span class="control-value" id="val-meancd">50</span></div><input type="range" class="slider" id="slider-meancd" min="30" max="70" step="1" value="50"></div>
+                <div class="control-group"><div class="control-label"><span>Radial σ (nm)</span><span class="control-value" id="val-radial">1.5</span></div><input type="range" class="slider" id="slider-radial" min="0" max="3" step="0.1" value="1.5"></div>
+                <div class="control-group"><div class="control-label"><span>Random σ (nm)</span><span class="control-value" id="val-random">1.0</span></div><input type="range" class="slider" id="slider-random" min="0" max="2" step="0.1" value="1.0"></div>
+                <div class="control-group"><div class="control-label"><span>Dose Non-Uniformity (%)</span><span class="control-value" id="val-dose">2.0</span></div><input type="range" class="slider" id="slider-dose" min="0" max="5" step="0.1" value="2.0"></div>
+                <div class="control-group"><div class="control-label"><span>Lens Aberration (mλ)</span><span class="control-value" id="val-lens">25</span></div><input type="range" class="slider" id="slider-lens" min="0" max="50" step="1" value="25"></div>
+                <div class="control-group"><div class="control-label"><span>Scanner Tilt (°)</span><span class="control-value" id="val-tilt">0.05</span></div><input type="range" class="slider" id="slider-tilt" min="0" max="0.1" step="0.01" value="0.05"></div>
+                <div class="control-group"><div class="control-label"><span>Chuck Temp (°C)</span><span class="control-value" id="val-temp">22</span></div><input type="range" class="slider" id="slider-temp" min="19" max="25" step="0.5" value="22"></div>
+                <div class="control-group"><div class="control-label"><span>Edge Exclusion (mm)</span><span class="control-value" id="val-edge">2</span></div><input type="range" class="slider" id="slider-edge" min="0" max="5" step="0.5" value="2"></div>
+            </div>
+        </div>
+        <div class="visualization"><h2 class="section-title">1. 2D Wafer CD Map</h2><div class="chart-container"><div id="chart1"></div></div></div>
+        <div class="visualization"><h2 class="section-title">2. Radial CD Profile</h2><div class="chart-container"><div id="chart2"></div></div></div>
+        <div class="visualization"><h2 class="section-title">3. CDU Distribution Histogram</h2><div class="chart-container"><div id="chart3"></div></div></div>
+        <div class="visualization"><h2 class="section-title">4. Zernike Decomposition</h2><div class="chart-container"><div id="chart4"></div></div></div>
+        <div class="visualization"><h2 class="section-title">5. Systematic vs Random Variance</h2><div class="chart-container"><div id="chart5"></div></div></div>
+        <div class="visualization"><h2 class="section-title">6. Scanner-to-Scanner Matching</h2><div class="chart-container"><div id="chart6"></div></div></div>
+        <div class="visualization"><h2 class="section-title">7. CD vs Position Cross-Wafer</h2><div class="chart-container"><div id="chart7"></div></div></div>
+        <div class="visualization"><h2 class="section-title">3D Wafer CD Map</h2><div id="canvas3d"></div></div>
+    </div>
+    <script>
+    window.addEventListener('load', function() {
+        let params = { meancd: 50, radial: 1.5, random: 1.0, dose: 2.0, lens: 25, tilt: 0.05, temp: 22, edge: 2 };
+
+        document.getElementById('slider-meancd').oninput = function(e) { params.meancd = parseFloat(e.target.value); document.getElementById('val-meancd').textContent = params.meancd; updateAll(); };
+        document.getElementById('slider-radial').oninput = function(e) { params.radial = parseFloat(e.target.value); document.getElementById('val-radial').textContent = params.radial.toFixed(1); updateAll(); };
+        document.getElementById('slider-random').oninput = function(e) { params.random = parseFloat(e.target.value); document.getElementById('val-random').textContent = params.random.toFixed(1); updateAll(); };
+        document.getElementById('slider-dose').oninput = function(e) { params.dose = parseFloat(e.target.value); document.getElementById('val-dose').textContent = params.dose.toFixed(1); updateAll(); };
+        document.getElementById('slider-lens').oninput = function(e) { params.lens = parseFloat(e.target.value); document.getElementById('val-lens').textContent = params.lens; updateAll(); };
+        document.getElementById('slider-tilt').oninput = function(e) { params.tilt = parseFloat(e.target.value); document.getElementById('val-tilt').textContent = params.tilt.toFixed(2); updateAll(); };
+        document.getElementById('slider-temp').oninput = function(e) { params.temp = parseFloat(e.target.value); document.getElementById('val-temp').textContent = params.temp; updateAll(); };
+        document.getElementById('slider-edge').oninput = function(e) { params.edge = parseFloat(e.target.value); document.getElementById('val-edge').textContent = params.edge; updateAll(); };
+
+        function calculateCD(r, theta) {
+            const radialCD = params.radial * (r / 150) * (1 + 0.5 * (r / 150) * (r / 150));
+            const aberrationCD = (params.lens / 50) * Math.sin(3 * theta) * (r / 150);
+            const tiltCD = params.tilt * 10 * (r / 150) * Math.cos(theta);
+            const tempCD = (params.temp - 22) * 0.3 * (r / 150);
+            const randomCD = (Math.random() - 0.5) * 2 * params.random;
+            return params.meancd + radialCD + aberrationCD + tiltCD + tempCD + randomCD;
+        }
+
+        function updateStats() {
+            const totalSigma = Math.sqrt(params.radial * params.radial + params.random * params.random);
+            document.getElementById('stat-cdu').textContent = totalSigma.toFixed(1) + ' nm';
+            document.getElementById('stat-radial').textContent = params.radial.toFixed(1) + ' nm';
+            document.getElementById('stat-random').textContent = params.random.toFixed(1) + ' nm';
+            document.getElementById('stat-matching').textContent = (params.tilt * 10 + params.lens / 50).toFixed(1) + ' nm';
+        }
+
+        function updateChart1() {
+            const gridSize = 30;
+            const x = [], y = [], z = [];
+            for (let i = 0; i < gridSize; i++) {
+                for (let j = 0; j < gridSize; j++) {
+                    const xi = -150 + (i / gridSize) * 300;
+                    const yj = -150 + (j / gridSize) * 300;
+                    const r = Math.sqrt(xi * xi + yj * yj);
+                    const theta = Math.atan2(yj, xi);
+                    x.push(xi); y.push(yj);
+                    z.push(r < 150 - params.edge ? calculateCD(r, theta) : null);
+                }
+            }
+            Plotly.newPlot('chart1', [{x: x, y: y, z: z, type: 'scatter', mode: 'markers', marker: {size: 8, color: z, colorscale: [[0, '#764ba2'], [0.5, '#667eea'], [1, '#f39c12']], showscale: true, colorbar: {title: 'CD (nm)'}}}], {paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: '#e0e0e0'}, xaxis: {title: 'X (μm)', gridcolor: 'rgba(102,126,234,0.2)'}, yaxis: {title: 'Y (μm)', gridcolor: 'rgba(102,126,234,0.2)'}, margin: {t: 20, r: 20, b: 50, l: 60}}, {responsive: true});
+        }
+
+        function updateChart2() {
+            const r = Array.from({length: 50}, function(_, i) { return i * 3; });
+            const cd = r.map(function(ri) { return params.meancd + params.radial * (ri / 150) * (1 + 0.5 * (ri / 150) * (ri / 150)); });
+            Plotly.newPlot('chart2', [{x: r, y: cd, type: 'scatter', mode: 'lines', line: {color: '#667eea', width: 3}, fill: 'tozeroy', fillcolor: 'rgba(102,126,234,0.3)'}], {paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: '#e0e0e0'}, xaxis: {title: 'Radius (μm)', gridcolor: 'rgba(102,126,234,0.2)'}, yaxis: {title: 'CD (nm)', gridcolor: 'rgba(102,126,234,0.2)'}, margin: {t: 20, r: 20, b: 50, l: 60}}, {responsive: true});
+        }
+
+        function updateChart3() {
+            const samples = [];
+            for (let i = 0; i < 500; i++) {
+                const r = Math.random() * 150;
+                const theta = Math.random() * 2 * Math.PI;
+                samples.push(calculateCD(r, theta));
+            }
+            Plotly.newPlot('chart3', [{x: samples, type: 'histogram', nbinsx: 30, marker: {color: '#f39c12'}}], {paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: '#e0e0e0'}, xaxis: {title: 'CD (nm)', gridcolor: 'rgba(102,126,234,0.2)'}, yaxis: {title: 'Count', gridcolor: 'rgba(102,126,234,0.2)'}, margin: {t: 20, r: 20, b: 50, l: 60}}, {responsive: true});
+        }
+
+        function updateChart4() {
+            const labels = ['Z1 (tilt)', 'Z2 (tip)', 'Z3 (defocus)', 'Z4 (astig-0°)', 'Z5 (astig-45°)', 'Z6 (coma-x)', 'Z7 (coma-y)', 'Z8 (spherical)'];
+            const values = [params.tilt * 20, params.tilt * 15, params.lens / 2, params.lens * 0.3, params.lens * 0.2, params.dose * 2, params.dose * 1.5, params.radial * 3];
+            Plotly.newPlot('chart4', [{x: labels, y: values, type: 'bar', marker: {color: '#764ba2'}}], {paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: '#e0e0e0'}, xaxis: {gridcolor: 'rgba(102,126,234,0.2)'}, yaxis: {title: 'Magnitude (nm)', gridcolor: 'rgba(102,126,234,0.2)'}, margin: {t: 20, r: 20, b: 50, l: 100}}, {responsive: true});
+        }
+
+        function updateChart5() {
+            const systematic = params.radial * params.radial;
+            const random = params.random * params.random;
+            Plotly.newPlot('chart5', [{values: [systematic, random], labels: ['Systematic', 'Random'], type: 'pie', marker: {colors: ['#667eea', '#f39c12']}, textinfo: 'label+percent'}], {paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: '#e0e0e0'}, margin: {t: 20, r: 20, b: 50, l: 60}}, {responsive: true});
+        }
+
+        function updateChart6() {
+            const x = Array.from({length: 30}, function(_, i) { return -150 + i * 10; });
+            const scanner1 = x.map(function(xi) { return params.meancd + (params.tilt * 10) * (xi / 150); });
+            const scanner2 = x.map(function(xi) { return params.meancd + (params.tilt * 10) * (xi / 150) + 0.5; });
+            Plotly.newPlot('chart6', [{x: x, y: scanner1, type: 'scatter', mode: 'lines', name: 'Scanner A', line: {color: '#667eea', width: 3}}, {x: x, y: scanner2, type: 'scatter', mode: 'lines', name: 'Scanner B', line: {color: '#f39c12', width: 3}}], {paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: '#e0e0e0'}, xaxis: {title: 'Position (μm)', gridcolor: 'rgba(102,126,234,0.2)'}, yaxis: {title: 'CD (nm)', gridcolor: 'rgba(102,126,234,0.2)'}, margin: {t: 20, r: 20, b: 50, l: 60}, showlegend: true}, {responsive: true});
+        }
+
+        function updateChart7() {
+            const angles = [0, Math.PI / 4, Math.PI / 2, 3 * Math.PI / 4];
+            const traces = angles.map(function(theta, idx) {
+                const r = Array.from({length: 50}, function(_, i) { return i * 3; });
+                const cd = r.map(function(ri) { return calculateCD(ri, theta); });
+                return {x: r, y: cd, type: 'scatter', mode: 'lines', name: (theta * 180 / Math.PI).toFixed(0) + '°', line: {width: 2}};
+            });
+            Plotly.newPlot('chart7', traces, {paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: '#e0e0e0'}, xaxis: {title: 'Radius (μm)', gridcolor: 'rgba(102,126,234,0.2)'}, yaxis: {title: 'CD (nm)', gridcolor: 'rgba(102,126,234,0.2)'}, margin: {t: 20, r: 20, b: 50, l: 60}, showlegend: true}, {responsive: true});
+        }
+
+        let scene, camera, renderer, mesh;
+        function init3D() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
+            const container = document.getElementById('canvas3d');
+            renderer.setSize(container.clientWidth, 500);
+            container.appendChild(renderer.domElement);
+            camera.position.set(5, 5, 5);
+            camera.lookAt(0, 0, 0);
+            const light = new THREE.DirectionalLight(0x667eea, 1);
+            light.position.set(1, 1, 1);
+            scene.add(light);
+            update3D();
+            animate3D();
+        }
+
+        function update3D() {
+            if (mesh) scene.remove(mesh);
+            const geometry = new THREE.BufferGeometry();
+            const vertices = [];
+            const colors = [];
+            for (let i = 0; i < 40; i++) {
+                for (let j = 0; j < 40; j++) {
+                    const x = -2 + (i / 40) * 4;
+                    const z = -2 + (j / 40) * 4;
+                    const r = Math.sqrt(x * x + z * z) * 75;
+                    const theta = Math.atan2(z, x);
+                    const cd = r < 150 ? calculateCD(r, theta) : params.meancd;
+                    const y = (cd - params.meancd) / 20;
+                    vertices.push(x, y, z);
+                    const colorVal = (cd - params.meancd + 5) / 10;
+                    colors.push(0.4 + colorVal * 0.3, 0.49, 0.91 - colorVal * 0.3);
+                }
+            }
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            mesh = new THREE.Points(geometry, new THREE.PointsMaterial({size: 0.1, vertexColors: true}));
+            scene.add(mesh);
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+            if (mesh) mesh.rotation.y += 0.005;
+            renderer.render(scene, camera);
+        }
+
+        function updateAll() {
+            updateStats();
+            updateChart1();
+            updateChart2();
+            updateChart3();
+            updateChart4();
+            updateChart5();
+            updateChart6();
+            updateChart7();
+            update3D();
+        }
+
+        updateAll();
+        init3D();
+    });
+    </script>
+</body>
+</html>

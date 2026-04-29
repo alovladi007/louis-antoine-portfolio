@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sheath Dynamics Simulator - Louis Antoine Portfolio</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .navbar a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s;
+        }
+
+        .navbar a:hover {
+            color: #f39c12;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .hero {
+            background: white;
+            border-radius: 20px;
+            padding: 3rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .hero h1 {
+            color: #667eea;
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .hero p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .info-box {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+        }
+
+        .controls {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .control-group label {
+            display: block;
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: linear-gradient(to right, #667eea, #764ba2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .control-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #f39c12;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .control-group input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #f39c12;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .value-display {
+            color: #f39c12;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            border-left: 5px solid #667eea;
+        }
+
+        .stat-card h3 {
+            color: #667eea;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card .value {
+            color: #f39c12;
+            font-size: 1.8rem;
+            font-weight: bold;
+        }
+
+        .stat-card .unit {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .visualization {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .visualization h2 {
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        #threeCanvas {
+            width: 100%;
+            height: 500px;
+            border-radius: 10px;
+        }
+
+        .chart {
+            margin-bottom: 2rem;
+        }
+
+        .theory-section {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .theory-section h2 {
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .equation {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .sim-controls {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .btn-play {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+        }
+
+        .btn-play:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .btn-pause {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+        }
+
+        .btn-pause:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .btn-reset {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+        }
+
+        .btn-reset:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4CAF50;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-dot.paused {
+            background: #f39c12;
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .speed-control label {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .speed-control input[type="range"] {
+            width: 150px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="etching-complete-project.html">← Back to Plasma Etching Project</a>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h1>Sheath Dynamics & Ion Bombardment Simulator</h1>
+            <p>Advanced modeling of plasma sheath formation, ion acceleration, and energy/angular distributions. Simulate Child-Langmuir sheath voltage, Bohm criterion, RF modulation effects, and ion trajectory dynamics critical for anisotropic etching.</p>
+        </div>
+
+        <div class="info-box">
+            <h3>Key Physics</h3>
+            <p>The plasma sheath is a thin boundary layer with strong electric fields that accelerates ions toward the wafer surface. The ion energy distribution function (IEDF) and angular distribution determine etch anisotropy, selectivity, and damage. RF bias creates time-varying sheath voltages crucial for directionality control.</p>
+        </div>
+
+        <div class="sim-controls">
+            <button id="playBtn" class="btn btn-play">Play</button>
+            <button id="pauseBtn" class="btn btn-pause" style="display: none;">Pause</button>
+            <button id="resetBtn" class="btn btn-reset">Reset</button>
+            <div class="status-indicator">
+                <div id="statusDot" class="status-dot"></div>
+                <span id="statusText">Running</span>
+            </div>
+            <div class="speed-control">
+                <label for="speedControl">Speed:</label>
+                <input type="range" id="speedControl" min="0.5" max="5" value="1" step="0.5">
+                <span id="speedValue" class="value-display">1.0×</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <h2 style="color: #667eea; margin-bottom: 1.5rem;">Sheath & Bias Parameters</h2>
+            <div class="grid-2">
+                <div class="control-group">
+                    <label for="rfPower">RF Power: <span class="value-display" id="rfPowerValue">800</span> W</label>
+                    <input type="range" id="rfPower" min="100" max="2000" value="800" step="50">
+                </div>
+                <div class="control-group">
+                    <label for="pressure">Pressure: <span class="value-display" id="pressureValue">15</span> mTorr</label>
+                    <input type="range" id="pressure" min="1" max="100" value="15" step="1">
+                </div>
+                <div class="control-group">
+                    <label for="biasVoltage">DC Bias Voltage: <span class="value-display" id="biasVoltageValue">-150</span> V</label>
+                    <input type="range" id="biasVoltage" min="-500" max="0" value="-150" step="10">
+                </div>
+                <div class="control-group">
+                    <label for="frequency">RF Frequency: <span class="value-display" id="frequencyValue">13.56</span> MHz</label>
+                    <input type="range" id="frequency" min="1" max="60" value="13.56" step="0.5">
+                </div>
+                <div class="control-group">
+                    <label for="ionMass">Ion Mass: <span class="value-display" id="ionMassValue">40</span> amu (Ar⁺)</label>
+                    <input type="range" id="ionMass" min="4" max="131" value="40" step="1">
+                </div>
+                <div class="control-group">
+                    <label for="electronTemp">Electron Temperature: <span class="value-display" id="electronTempValue">3.5</span> eV</label>
+                    <input type="range" id="electronTemp" min="1" max="10" value="3.5" step="0.1">
+                </div>
+                <div class="control-group">
+                    <label for="plasmaDensity">Plasma Density: <span class="value-display" id="plasmaDensityValue">1.0e11</span> cm⁻³</label>
+                    <input type="range" id="plasmaDensity" min="9" max="12" value="11" step="0.1">
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Sheath Voltage</h3>
+                <div class="value" id="sheathVoltage">-245</div>
+                <div class="unit">V</div>
+            </div>
+            <div class="stat-card">
+                <h3>Ion Energy (Mean)</h3>
+                <div class="value" id="ionEnergy">245</div>
+                <div class="unit">eV</div>
+            </div>
+            <div class="stat-card">
+                <h3>Ion Flux</h3>
+                <div class="value" id="ionFlux">3.2e16</div>
+                <div class="unit">cm⁻²s⁻¹</div>
+            </div>
+            <div class="stat-card">
+                <h3>Sheath Thickness</h3>
+                <div class="value" id="sheathThickness">1.8</div>
+                <div class="unit">mm</div>
+            </div>
+            <div class="stat-card">
+                <h3>Bohm Velocity</h3>
+                <div class="value" id="bohmVelocity">2.3e5</div>
+                <div class="unit">cm/s</div>
+            </div>
+            <div class="stat-card">
+                <h3>Angular Spread</h3>
+                <div class="value" id="angularSpread">2.1</div>
+                <div class="unit">degrees</div>
+            </div>
+        </div>
+
+        <div class="visualization">
+            <h2>3D Ion Trajectory Simulation</h2>
+            <div id="threeCanvas"></div>
+        </div>
+
+        <div class="chart">
+            <div id="sheathPotentialChart"></div>
+        </div>
+
+        <div class="chart">
+            <div id="iedfChart"></div>
+        </div>
+
+        <div class="chart">
+            <div id="ionFluxChart"></div>
+        </div>
+
+        <div class="chart">
+            <div id="angularChart"></div>
+        </div>
+
+        <div class="chart">
+            <div id="energyTimeChart"></div>
+        </div>
+
+        <div class="chart">
+            <div id="sheathThicknessChart"></div>
+        </div>
+
+        <div class="theory-section">
+            <h2>Theoretical Background</h2>
+
+            <h3>Bohm Criterion</h3>
+            <p>Ions must enter the sheath with minimum velocity (Bohm velocity) for stable sheath formation:</p>
+            <div class="equation">
+u_B = √(k_B T_e / M_i)
+
+where T_e is electron temperature and M_i is ion mass
+            </div>
+
+            <h3>Child-Langmuir Sheath Voltage</h3>
+            <p>The sheath voltage drop is governed by space-charge limited current:</p>
+            <div class="equation">
+V_sheath ≈ -0.5 k_B T_e [ln(M_i / (2π m_e)) + 1]
+
+For collisionless sheath (typical: 3-5 T_e)
+            </div>
+
+            <h3>Sheath Thickness</h3>
+            <p>The Debye length scaled sheath thickness:</p>
+            <div class="equation">
+s = λ_D · (2V_sheath / T_e)^(3/4)
+
+where λ_D = √(ε₀ k_B T_e / (n_e e²)) is the Debye length
+            </div>
+
+            <h3>Ion Energy Distribution Function (IEDF)</h3>
+            <p>For collisionless sheath, ions gain energy from sheath voltage:</p>
+            <div class="equation">
+E_ion = e·V_sheath + (1/2)M_i·u_B²
+
+For RF bias, IEDF shows bimodal structure due to time-varying sheath
+            </div>
+
+            <h3>RF Sheath Modulation</h3>
+            <p>Time-dependent sheath voltage for capacitively coupled RF:</p>
+            <div class="equation">
+V_sheath(t) = V_DC + V_RF·cos(ωt)
+
+where V_RF = √(2P·Z_plasma) and ω = 2πf
+            </div>
+
+            <h3>Ion Angular Distribution</h3>
+            <p>Angular spread due to lateral ion temperature and collisions:</p>
+            <div class="equation">
+θ_rms = √(k_B T_i / E_ion)
+
+Collisional scattering adds: Δθ ∝ (p·s) / √E_ion
+            </div>
+
+            <h3>Ion Flux to Surface</h3>
+            <p>The ion saturation current density:</p>
+            <div class="equation">
+J_i = 0.61 · e · n_e · u_B
+
+Flux: Γ_i = J_i / e = 0.61 · n_e · √(k_B T_e / M_i)
+            </div>
+
+            <h3>Presheath Formation</h3>
+            <p>The quasi-neutral presheath accelerates ions to Bohm velocity:</p>
+            <div class="equation">
+Presheath potential drop: ΔV_pre ≈ 0.5 k_B T_e / e
+
+Total potential drop: V_total = V_sheath + ΔV_pre
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simulation state
+        let isRunning = true;
+        let simulationSpeed = 1.0;
+        let simulationTime = 0;
+
+        // Get DOM elements
+        const playBtn = document.getElementById('playBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const speedControl = document.getElementById('speedControl');
+        const speedValue = document.getElementById('speedValue');
+
+        const rfPowerInput = document.getElementById('rfPower');
+        const pressureInput = document.getElementById('pressure');
+        const biasVoltageInput = document.getElementById('biasVoltage');
+        const frequencyInput = document.getElementById('frequency');
+        const ionMassInput = document.getElementById('ionMass');
+        const electronTempInput = document.getElementById('electronTemp');
+        const plasmaDensityInput = document.getElementById('plasmaDensity');
+
+        // Value displays
+        const rfPowerValue = document.getElementById('rfPowerValue');
+        const pressureValue = document.getElementById('pressureValue');
+        const biasVoltageValue = document.getElementById('biasVoltageValue');
+        const frequencyValue = document.getElementById('frequencyValue');
+        const ionMassValue = document.getElementById('ionMassValue');
+        const electronTempValue = document.getElementById('electronTempValue');
+        const plasmaDensityValue = document.getElementById('plasmaDensityValue');
+
+        // Stat displays
+        const sheathVoltageDisplay = document.getElementById('sheathVoltage');
+        const ionEnergyDisplay = document.getElementById('ionEnergy');
+        const ionFluxDisplay = document.getElementById('ionFlux');
+        const sheathThicknessDisplay = document.getElementById('sheathThickness');
+        const bohmVelocityDisplay = document.getElementById('bohmVelocity');
+        const angularSpreadDisplay = document.getElementById('angularSpread');
+
+        // Physical constants
+        const k_B = 1.381e-23; // Boltzmann constant (J/K)
+        const e = 1.602e-19; // Elementary charge (C)
+        const m_e = 9.109e-31; // Electron mass (kg)
+        const epsilon_0 = 8.854e-12; // Vacuum permittivity
+        const amu = 1.66054e-27; // Atomic mass unit (kg)
+        const eV_to_J = 1.602e-19;
+
+        // Update value displays
+        rfPowerInput.addEventListener('input', (e) => {
+            rfPowerValue.textContent = e.target.value;
+            updateCalculations();
+        });
+
+        pressureInput.addEventListener('input', (e) => {
+            pressureValue.textContent = e.target.value;
+            updateCalculations();
+        });
+
+        biasVoltageInput.addEventListener('input', (e) => {
+            biasVoltageValue.textContent = e.target.value;
+            updateCalculations();
+        });
+
+        frequencyInput.addEventListener('input', (e) => {
+            frequencyValue.textContent = parseFloat(e.target.value).toFixed(2);
+            updateCalculations();
+        });
+
+        ionMassInput.addEventListener('input', (e) => {
+            const mass = parseFloat(e.target.value);
+            let ionName = 'amu';
+            if (mass === 4) ionName = 'amu (He⁺)';
+            else if (mass === 40) ionName = 'amu (Ar⁺)';
+            else if (mass === 69) ionName = 'amu (CF₃⁺)';
+            else if (mass === 131) ionName = 'amu (Xe⁺)';
+            ionMassValue.textContent = mass + ' ' + ionName;
+            updateCalculations();
+        });
+
+        electronTempInput.addEventListener('input', (e) => {
+            electronTempValue.textContent = parseFloat(e.target.value).toFixed(1);
+            updateCalculations();
+        });
+
+        plasmaDensityInput.addEventListener('input', (e) => {
+            const density = Math.pow(10, parseFloat(e.target.value));
+            plasmaDensityValue.textContent = density.toExponential(1);
+            updateCalculations();
+        });
+
+        // Simulation controls
+        playBtn.addEventListener('click', () => {
+            isRunning = true;
+            playBtn.style.display = 'none';
+            pauseBtn.style.display = 'inline-block';
+            statusDot.classList.remove('paused');
+            statusText.textContent = 'Running';
+            startSimulation();
+        });
+
+        pauseBtn.addEventListener('click', () => {
+            isRunning = false;
+            pauseBtn.style.display = 'none';
+            playBtn.style.display = 'inline-block';
+            statusDot.classList.add('paused');
+            statusText.textContent = 'Paused';
+        });
+
+        resetBtn.addEventListener('click', () => {
+            simulationTime = 0;
+            rfPowerInput.value = 800;
+            pressureInput.value = 15;
+            biasVoltageInput.value = -150;
+            frequencyInput.value = 13.56;
+            ionMassInput.value = 40;
+            electronTempInput.value = 3.5;
+            plasmaDensityInput.value = 11;
+
+            rfPowerValue.textContent = '800';
+            pressureValue.textContent = '15';
+            biasVoltageValue.textContent = '-150';
+            frequencyValue.textContent = '13.56';
+            ionMassValue.textContent = '40 amu (Ar⁺)';
+            electronTempValue.textContent = '3.5';
+            plasmaDensityValue.textContent = '1.0e11';
+
+            updateCalculations();
+        });
+
+        speedControl.addEventListener('input', (e) => {
+            simulationSpeed = parseFloat(e.target.value);
+            speedValue.textContent = simulationSpeed.toFixed(1) + '×';
+        });
+
+        function updateCalculations() {
+            const P_rf = parseFloat(rfPowerInput.value); // W
+            const pressure = parseFloat(pressureInput.value); // mTorr
+            const V_bias = parseFloat(biasVoltageInput.value); // V
+            const freq = parseFloat(frequencyInput.value) * 1e6; // Hz
+            const M_i = parseFloat(ionMassInput.value) * amu; // kg
+            const T_e = parseFloat(electronTempInput.value); // eV
+            const n_e = Math.pow(10, parseFloat(plasmaDensityInput.value)); // cm⁻³
+
+            // Bohm velocity
+            const u_B = Math.sqrt(T_e * eV_to_J / M_i) * 100; // cm/s
+
+            // Child-Langmuir sheath voltage
+            const V_sheath_CL = -0.5 * T_e * (Math.log(M_i / (2 * Math.PI * m_e)) + 1);
+
+            // RF modulation voltage
+            const Z_plasma = 50; // Assumed plasma impedance (Ω)
+            const V_rf = Math.sqrt(2 * P_rf * Z_plasma);
+
+            // Total sheath voltage
+            const V_sheath = V_sheath_CL + V_bias - V_rf * 0.5;
+
+            // Ion energy (eV)
+            const E_ion = Math.abs(V_sheath) + 0.5 * M_i * u_B * u_B / eV_to_J;
+
+            // Debye length
+            const T_e_K = T_e * 11604; // Convert eV to K
+            const lambda_D = Math.sqrt(epsilon_0 * k_B * T_e_K / (n_e * 1e6 * e * e)) * 100; // cm
+
+            // Sheath thickness
+            const s = lambda_D * Math.pow(2 * Math.abs(V_sheath) / T_e, 0.75); // cm
+
+            // Ion flux
+            const Gamma_i = 0.61 * n_e * u_B; // cm⁻²s⁻¹
+
+            // Angular spread (collisionless + collisional)
+            const T_i = 0.03; // Ion temperature (eV)
+            const theta_thermal = Math.sqrt(T_i / E_ion) * 180 / Math.PI; // degrees
+            const theta_collision = 0.1 * pressure * s / Math.sqrt(E_ion); // degrees
+            const theta_total = Math.sqrt(theta_thermal * theta_thermal + theta_collision * theta_collision);
+
+            // Update displays
+            sheathVoltageDisplay.textContent = V_sheath.toFixed(0);
+            ionEnergyDisplay.textContent = E_ion.toFixed(0);
+            ionFluxDisplay.textContent = Gamma_i.toExponential(1);
+            sheathThicknessDisplay.textContent = (s * 10).toFixed(1); // Convert to mm
+            bohmVelocityDisplay.textContent = u_B.toExponential(1);
+            angularSpreadDisplay.textContent = theta_total.toFixed(1);
+
+            updateCharts(V_sheath, E_ion, T_e, n_e, u_B, s, Gamma_i, freq, V_rf, pressure, M_i);
+            updateThreeJS(s, E_ion, theta_total);
+        }
+
+        function updateCharts(V_sheath, E_ion, T_e, n_e, u_B, s, Gamma_i, freq, V_rf, pressure, M_i) {
+            // Sheath potential profile
+            const positions = Array.from({length: 100}, (_, i) => i * s / 100);
+            const potentials = positions.map(x => {
+                const normalized = x / s;
+                return V_sheath * Math.pow(normalized, 4/3);
+            });
+
+            Plotly.newPlot('sheathPotentialChart', [{
+                x: positions.map(x => x * 10), // Convert to mm
+                y: potentials,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Sheath Potential',
+                line: { color: '#667eea', width: 3 },
+                fill: 'tozeroy'
+            }], {
+                title: 'Sheath Potential Profile',
+                xaxis: { title: 'Distance from Plasma (mm)' },
+                yaxis: { title: 'Potential (V)' },
+                plot_bgcolor: '#f8f9fa',
+                paper_bgcolor: 'white'
+            });
+
+            // Ion Energy Distribution Function (IEDF)
+            const energies = Array.from({length: 200}, (_, i) => i * E_ion * 2 / 200);
+            const iedf_collisionless = energies.map(E => {
+                const sigma = 5; // Energy spread (eV)
+                return Math.exp(-Math.pow(E - E_ion, 2) / (2 * sigma * sigma));
+            });
+
+            // RF modulated IEDF (bimodal)
+            const iedf_rf = energies.map(E => {
+                const sigma = 8;
+                const E_max = E_ion + Math.abs(V_rf);
+                const E_min = E_ion - Math.abs(V_rf);
+                return 0.5 * (Math.exp(-Math.pow(E - E_max, 2) / (2 * sigma * sigma)) +
+                             Math.exp(-Math.pow(E - E_min, 2) / (2 * sigma * sigma)));
+            });
+
+            Plotly.newPlot('iedfChart', [
+                {
+                    x: energies,
+                    y: iedf_collisionless,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'DC Bias Only',
+                    line: { color: '#667eea', width: 2.5 }
+                },
+                {
+                    x: energies,
+                    y: iedf_rf,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'RF Modulated',
+                    line: { color: '#f39c12', width: 2.5 }
+                }
+            ], {
+                title: 'Ion Energy Distribution Function (IEDF)',
+                xaxis: { title: 'Ion Energy (eV)' },
+                yaxis: { title: 'Probability Density (a.u.)', type: 'log' },
+                plot_bgcolor: '#f8f9fa',
+                paper_bgcolor: 'white'
+            });
+
+            // Ion flux vs pressure
+            const pressures = Array.from({length: 50}, (_, i) => 1 + i * 2);
+            const fluxes = pressures.map(p => {
+                // Flux decreases with pressure due to collisions
+                const mfp = 0.5 / p; // Mean free path (cm)
+                const transmission = Math.exp(-s / mfp);
+                return Gamma_i * transmission;
+            });
+
+            Plotly.newPlot('ionFluxChart', [{
+                x: pressures,
+                y: fluxes,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Ion Flux',
+                line: { color: '#764ba2', width: 3 }
+            }], {
+                title: 'Ion Flux vs Pressure',
+                xaxis: { title: 'Pressure (mTorr)' },
+                yaxis: { title: 'Ion Flux (cm⁻²s⁻¹)' },
+                plot_bgcolor: '#f8f9fa',
+                paper_bgcolor: 'white'
+            });
+
+            // Angular distribution
+            const angles = Array.from({length: 180}, (_, i) => -45 + i * 0.5);
+            const theta_rms = Math.sqrt(0.03 / E_ion) * 180 / Math.PI;
+            const angular_dist = angles.map(theta => {
+                return Math.exp(-theta * theta / (2 * theta_rms * theta_rms));
+            });
+
+            Plotly.newPlot('angularChart', [{
+                x: angles,
+                y: angular_dist,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Angular Distribution',
+                line: { color: '#e67e22', width: 3 },
+                fill: 'tozeroy'
+            }], {
+                title: 'Ion Angular Distribution',
+                xaxis: { title: 'Angle from Normal (degrees)' },
+                yaxis: { title: 'Intensity (a.u.)' },
+                plot_bgcolor: '#f8f9fa',
+                paper_bgcolor: 'white',
+                annotations: [{
+                    x: 0,
+                    y: 1,
+                    text: `FWHM: ${(2.355 * theta_rms).toFixed(1)}°`,
+                    showarrow: false,
+                    yref: 'paper'
+                }]
+            });
+
+            // Ion bombardment energy vs time (RF period)
+            const omega = 2 * Math.PI * freq;
+            const period = 1 / freq * 1e9; // ns
+            const times = Array.from({length: 200}, (_, i) => i * period / 200);
+            const energies_t = times.map(t => {
+                const V_t = V_sheath + V_rf * Math.cos(omega * t * 1e-9);
+                return Math.abs(V_t);
+            });
+
+            Plotly.newPlot('energyTimeChart', [{
+                x: times,
+                y: energies_t,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Ion Energy',
+                line: { color: '#e74c3c', width: 3 }
+            }], {
+                title: 'Ion Bombardment Energy vs Time (RF Modulation)',
+                xaxis: { title: 'Time (ns)' },
+                yaxis: { title: 'Ion Energy (eV)' },
+                plot_bgcolor: '#f8f9fa',
+                paper_bgcolor: 'white'
+            });
+
+            // Sheath thickness vs electron temperature
+            const temperatures = Array.from({length: 50}, (_, i) => 1 + i * 0.2);
+            const thicknesses = temperatures.map(Te => {
+                const lambda = Math.sqrt(epsilon_0 * k_B * Te * 11604 / (n_e * 1e6 * e * e)) * 100;
+                return lambda * Math.pow(2 * Math.abs(V_sheath) / Te, 0.75) * 10; // mm
+            });
+
+            Plotly.newPlot('sheathThicknessChart', [{
+                x: temperatures,
+                y: thicknesses,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Sheath Thickness',
+                line: { color: '#3498db', width: 3 }
+            }], {
+                title: 'Sheath Thickness vs Electron Temperature',
+                xaxis: { title: 'Electron Temperature (eV)' },
+                yaxis: { title: 'Sheath Thickness (mm)' },
+                plot_bgcolor: '#f8f9fa',
+                paper_bgcolor: 'white'
+            });
+        }
+
+        // Three.js 3D Ion Trajectory Visualization
+        let scene, camera, renderer, ionTrajectories = [];
+
+        function initThreeJS() {
+            const container = document.getElementById('threeCanvas');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf8f9fa);
+
+            camera = new THREE.PerspectiveCamera(75, container.clientWidth / 500, 0.1, 1000);
+            camera.position.set(0, 15, 25);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, 500);
+            container.appendChild(renderer.domElement);
+
+            // Create wafer surface
+            const waferGeometry = new THREE.CircleGeometry(10, 64);
+            const waferMaterial = new THREE.MeshPhongMaterial({
+                color: 0x3498db,
+                side: THREE.DoubleSide,
+                shininess: 100
+            });
+            const wafer = new THREE.Mesh(waferGeometry, waferMaterial);
+            wafer.rotation.x = Math.PI / 2;
+            wafer.position.y = -10;
+            scene.add(wafer);
+
+            // Create sheath boundary
+            const sheathGeometry = new THREE.PlaneGeometry(25, 25);
+            const sheathMaterial = new THREE.MeshBasicMaterial({
+                color: 0x667eea,
+                transparent: true,
+                opacity: 0.2,
+                side: THREE.DoubleSide
+            });
+            const sheathPlane = new THREE.Mesh(sheathGeometry, sheathMaterial);
+            sheathPlane.rotation.x = Math.PI / 2;
+            sheathPlane.position.y = 5;
+            scene.add(sheathPlane);
+
+            // Create ion trajectories
+            for (let i = 0; i < 50; i++) {
+                const points = [];
+                const startX = (Math.random() - 0.5) * 15;
+                const startZ = (Math.random() - 0.5) * 15;
+
+                for (let j = 0; j <= 20; j++) {
+                    const t = j / 20;
+                    const y = 5 - 15 * t;
+                    const deviation = (Math.random() - 0.5) * 0.5 * (1 - t);
+                    points.push(new THREE.Vector3(startX + deviation, y, startZ + deviation));
+                }
+
+                const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                const material = new THREE.LineBasicMaterial({
+                    color: 0xf39c12,
+                    transparent: true,
+                    opacity: 0.6
+                });
+                const line = new THREE.Line(geometry, material);
+                scene.add(line);
+                ionTrajectories.push(line);
+            }
+
+            // Add lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 20, 10);
+            scene.add(directionalLight);
+
+            // Add grid
+            const gridHelper = new THREE.GridHelper(30, 30, 0x667eea, 0xcccccc);
+            gridHelper.position.y = -10;
+            scene.add(gridHelper);
+
+            animate();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Rotate camera slowly
+            const time = Date.now() * 0.0001 * (isRunning ? simulationSpeed : 0);
+            camera.position.x = Math.sin(time) * 25;
+            camera.position.z = Math.cos(time) * 25;
+            camera.lookAt(0, 0, 0);
+
+            renderer.render(scene, camera);
+        }
+
+        // Auto-evolving simulation
+        function startSimulation() {
+            function evolveSimulation() {
+                if (!isRunning) return;
+
+                simulationTime += 0.1 * simulationSpeed;
+
+                // Oscillate parameters to create dynamic evolution
+                const t = simulationTime;
+                const powerOsc = 800 + 300 * Math.sin(t * 0.08);
+                const biasOsc = -150 - 80 * Math.sin(t * 0.12);
+                const tempOsc = 3.5 + 0.8 * Math.sin(t * 0.1);
+
+                rfPowerInput.value = powerOsc.toFixed(0);
+                biasVoltageInput.value = biasOsc.toFixed(0);
+                electronTempInput.value = tempOsc.toFixed(1);
+
+                rfPowerValue.textContent = powerOsc.toFixed(0);
+                biasVoltageValue.textContent = biasOsc.toFixed(0);
+                electronTempValue.textContent = tempOsc.toFixed(1);
+
+                updateCalculations();
+
+                setTimeout(evolveSimulation, 100 / simulationSpeed);
+            }
+
+            evolveSimulation();
+        }
+
+        function updateThreeJS(s, E_ion, theta_total) {
+            // Update ion trajectories based on parameters
+            ionTrajectories.forEach((trajectory, index) => {
+                const positions = trajectory.geometry.attributes.position.array;
+                const startX = (Math.random() - 0.5) * 15;
+                const startZ = (Math.random() - 0.5) * 15;
+
+                const maxDeviation = Math.tan(theta_total * Math.PI / 180) * 15;
+
+                for (let i = 0; i < positions.length; i += 3) {
+                    const pointIndex = i / 3;
+                    const t = pointIndex / 20;
+                    const y = 5 - 15 * t;
+                    const deviation = (Math.random() - 0.5) * maxDeviation * t;
+
+                    positions[i] = startX + deviation;
+                    positions[i + 1] = y;
+                    positions[i + 2] = startZ + deviation;
+                }
+
+                trajectory.geometry.attributes.position.needsUpdate = true;
+            });
+        }
+
+        // Initialize
+        initThreeJS();
+        updateCalculations();
+
+        // Auto-start simulation
+        playBtn.style.display = 'none';
+        pauseBtn.style.display = 'inline-block';
+        startSimulation();
+    </script>
+</body>
+</html>

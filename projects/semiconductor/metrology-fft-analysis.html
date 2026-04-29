@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FFT Analysis Visualizer - Thin-Film Metrology</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #fff;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: linear-gradient(135deg, rgba(15, 12, 41, 0.9), rgba(48, 43, 99, 0.9));
+            padding: 30px 20px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2.2em;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: #b8b8d1;
+            font-size: 1.1em;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 30px;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            text-decoration: none;
+            color: #fff;
+            transition: all 0.3s ease;
+        }
+
+        .back-link:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .fft-grid {
+            display: grid;
+            grid-template-columns: 400px 1fr;
+            gap: 30px;
+            margin: 30px 0;
+        }
+
+        @media (max-width: 1200px) {
+            .fft-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .control-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            height: fit-content;
+        }
+
+        .control-panel h2 {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: #fff;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #b8b8d1;
+            font-size: 0.95em;
+        }
+
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 1em;
+        }
+
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .btn {
+            padding: 14px 25px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .results-area {
+            display: grid;
+            gap: 20px;
+        }
+
+        .plot-container {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+        }
+
+        .plot-container h3 {
+            margin-bottom: 15px;
+            color: #fff;
+            font-size: 1.3em;
+        }
+
+        #spectrumPlot, #fftPlot, #windowedPlot {
+            width: 100%;
+            height: 400px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+        }
+
+        .results-card {
+            background: rgba(102, 126, 234, 0.15);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 10px;
+            padding: 25px;
+        }
+
+        .results-card h4 {
+            color: #fff;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .result-box {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .result-label {
+            color: #9090aa;
+            font-size: 0.85em;
+            margin-bottom: 5px;
+        }
+
+        .result-value {
+            color: #fff;
+            font-size: 1.4em;
+            font-weight: bold;
+        }
+
+        .result-unit {
+            color: #b8b8d1;
+            font-size: 0.9em;
+            margin-left: 5px;
+        }
+
+        .info-box {
+            background: rgba(255, 255, 255, 0.05);
+            border-left: 3px solid #667eea;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .info-box h4 {
+            color: #fff;
+            margin-bottom: 8px;
+            font-size: 1em;
+        }
+
+        .info-box p {
+            color: #b8b8d1;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin: 15px 0;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 10px;
+        }
+
+        .checkbox-group label {
+            margin: 0;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <h1><i class="fas fa-wave-square"></i> FFT Analysis Visualizer</h1>
+            <p>Fourier-based fringe analysis for rapid thickness estimation</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <a href="thin-film-metrology-complete.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Metrology Suite
+        </a>
+
+        <div class="fft-grid">
+            <div class="control-panel">
+                <h2>Sample Parameters</h2>
+
+                <div class="input-group">
+                    <label>Film Thickness (nm)</label>
+                    <input type="number" id="thickness" value="300" min="50" max="1000" step="10">
+                </div>
+
+                <div class="input-group">
+                    <label>Film Material</label>
+                    <select id="material">
+                        <option value="sio2">SiO₂ (n = 1.46)</option>
+                        <option value="si3n4">Si₃N₄ (n = 2.02)</option>
+                        <option value="tio2">TiO₂ (n = 2.30)</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label>Noise Level (%)</label>
+                    <input type="number" id="noise" value="1" min="0" max="10" step="0.5">
+                </div>
+
+                <h3 style="margin: 25px 0 15px; color: #fff; font-size: 1.2em;">FFT Processing</h3>
+
+                <div class="input-group">
+                    <label>Window Function</label>
+                    <select id="windowType">
+                        <option value="hann">Hann Window</option>
+                        <option value="hamming">Hamming Window</option>
+                        <option value="blackman">Blackman Window</option>
+                        <option value="none">No Window</option>
+                    </select>
+                </div>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="detrendCheck" checked>
+                    <label for="detrendCheck">Apply Detrending</label>
+                </div>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="zeroPadCheck">
+                    <label for="zeroPadCheck">Zero-Padding (2x)</label>
+                </div>
+
+                <button class="btn" onclick="performFFT()">
+                    <i class="fas fa-play"></i> Perform FFT Analysis
+                </button>
+
+                <div class="info-box" style="margin-top: 25px;">
+                    <h4><i class="fas fa-lightbulb"></i> How It Works</h4>
+                    <p>
+                        FFT analysis converts the spectral interference pattern to the frequency domain,
+                        where peaks correspond to optical thickness values. This enables rapid thickness
+                        estimation without iterative fitting.
+                    </p>
+                </div>
+
+                <div class="info-box">
+                    <h4><i class="fas fa-info-circle"></i> Thickness Formula</h4>
+                    <p>
+                        <strong>d = (f_peak) / (2n)</strong><br>
+                        where f_peak is the dominant frequency and n is the film refractive index.
+                    </p>
+                </div>
+            </div>
+
+            <div class="results-area">
+                <div class="results-card">
+                    <h4><i class="fas fa-check-circle"></i> FFT Results</h4>
+                    <div class="result-grid">
+                        <div class="result-box">
+                            <div class="result-label">Estimated Thickness</div>
+                            <div class="result-value" id="estThickness">-</div>
+                        </div>
+                        <div class="result-box">
+                            <div class="result-label">True Thickness</div>
+                            <div class="result-value" id="trueThickness">-</div>
+                        </div>
+                        <div class="result-box">
+                            <div class="result-label">Error</div>
+                            <div class="result-value" id="errorVal">-</div>
+                        </div>
+                        <div class="result-box">
+                            <div class="result-label">Confidence</div>
+                            <div class="result-value" id="confidence">-</div>
+                        </div>
+                        <div class="result-box">
+                            <div class="result-label">Peak Frequency</div>
+                            <div class="result-value" id="peakFreq">-</div>
+                        </div>
+                        <div class="result-box">
+                            <div class="result-label">SNR</div>
+                            <div class="result-value" id="snr">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="plot-container">
+                    <h3>Spectral Reflectance</h3>
+                    <div id="spectrumPlot"></div>
+                </div>
+
+                <div class="plot-container">
+                    <h3>Windowed & Detrended Signal</h3>
+                    <div id="windowedPlot"></div>
+                </div>
+
+                <div class="plot-container">
+                    <h3>FFT Power Spectrum</h3>
+                    <div id="fftPlot"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function getMaterialIndex(material, wavelength) {
+            const lambda_um = wavelength / 1000;
+            const materials = {
+                'sio2': { A: 1.4508, B: 0.0036 },
+                'si3n4': { A: 1.9963, B: 0.0068 },
+                'tio2': { A: 2.2716, B: 0.0179 }
+            };
+            const params = materials[material] || materials['sio2'];
+            return params.A + params.B / (lambda_um ** 2);
+        }
+
+        function calculateReflectance(wavelength, thickness, material) {
+            const n0 = 1.0;
+            const n1 = getMaterialIndex(material, wavelength);
+            const n2 = 3.48;
+
+            const r01 = (n0 - n1) / (n0 + n1);
+            const r12 = (n1 - n2) / (n1 + n2);
+            const delta = 4 * Math.PI * n1 * thickness / wavelength;
+
+            const numerator = r01**2 + r12**2 + 2*r01*r12*Math.cos(delta);
+            const denominator = 1 + (r01*r12)**2 + 2*r01*r12*Math.cos(delta);
+
+            return numerator / denominator;
+        }
+
+        function detrend(data) {
+            const n = data.length;
+            const meanX = (n - 1) / 2;
+            const meanY = data.reduce((a, b) => a + b) / n;
+
+            let sumXY = 0, sumX2 = 0;
+            for (let i = 0; i < n; i++) {
+                sumXY += (i - meanX) * (data[i] - meanY);
+                sumX2 += (i - meanX) ** 2;
+            }
+
+            const slope = sumXY / sumX2;
+            const intercept = meanY - slope * meanX;
+
+            return data.map((y, i) => y - (slope * i + intercept));
+        }
+
+        function applyWindow(data, type) {
+            const n = data.length;
+            let window = new Array(n);
+
+            for (let i = 0; i < n; i++) {
+                const x = i / (n - 1);
+                if (type === 'hann') {
+                    window[i] = 0.5 * (1 - Math.cos(2 * Math.PI * x));
+                } else if (type === 'hamming') {
+                    window[i] = 0.54 - 0.46 * Math.cos(2 * Math.PI * x);
+                } else if (type === 'blackman') {
+                    window[i] = 0.42 - 0.5 * Math.cos(2 * Math.PI * x) + 0.08 * Math.cos(4 * Math.PI * x);
+                } else {
+                    window[i] = 1.0;
+                }
+            }
+
+            return data.map((val, i) => val * window[i]);
+        }
+
+        function fft(data) {
+            const n = data.length;
+            if (n <= 1) return data.map(x => ({ re: x, im: 0 }));
+
+            // Simple DFT implementation for browser
+            const result = [];
+            for (let k = 0; k < n; k++) {
+                let re = 0, im = 0;
+                for (let j = 0; j < n; j++) {
+                    const angle = -2 * Math.PI * k * j / n;
+                    re += data[j] * Math.cos(angle);
+                    im += data[j] * Math.sin(angle);
+                }
+                result.push({ re, im });
+            }
+            return result;
+        }
+
+        function performFFT() {
+            const thickness = parseFloat(document.getElementById('thickness').value);
+            const material = document.getElementById('material').value;
+            const noise = parseFloat(document.getElementById('noise').value) / 100;
+            const windowType = document.getElementById('windowType').value;
+            const doDetrend = document.getElementById('detrendCheck').checked;
+            const doZeroPad = document.getElementById('zeroPadCheck').checked;
+
+            // Generate spectrum
+            const wavelengths = [];
+            const reflectances = [];
+
+            for (let lambda = 400; lambda <= 800; lambda += 2) {
+                const R = calculateReflectance(lambda, thickness, material);
+                const noiseVal = (Math.random() - 0.5) * 2 * noise * R;
+                wavelengths.push(lambda);
+                reflectances.push(Math.max(0, R + noiseVal));
+            }
+
+            // Plot original spectrum
+            const trace1 = {
+                x: wavelengths,
+                y: reflectances,
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: { color: '#667eea', width: 2 },
+                marker: { size: 4 },
+                name: 'Measured'
+            };
+
+            const layout1 = {
+                xaxis: { title: 'Wavelength (nm)', color: '#b8b8d1', gridcolor: '#333' },
+                yaxis: { title: 'Reflectance', color: '#b8b8d1', gridcolor: '#333' },
+                plot_bgcolor: 'rgba(0,0,0,0.2)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#b8b8d1' }
+            };
+
+            Plotly.newPlot('spectrumPlot', [trace1], layout1);
+
+            // FFT preprocessing
+            let processed = [...reflectances];
+
+            if (doDetrend) {
+                processed = detrend(processed);
+            }
+
+            processed = applyWindow(processed, windowType);
+
+            if (doZeroPad) {
+                const zeros = new Array(processed.length).fill(0);
+                processed = [...processed, ...zeros];
+            }
+
+            // Plot windowed signal
+            const xWindowed = doZeroPad ?
+                [...wavelengths, ...wavelengths.map(w => w + 400)] :
+                wavelengths;
+
+            const trace2 = {
+                x: xWindowed.slice(0, processed.length),
+                y: processed,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#764ba2', width: 2 },
+                name: 'Processed'
+            };
+
+            const layout2 = {
+                xaxis: { title: 'Index', color: '#b8b8d1', gridcolor: '#333' },
+                yaxis: { title: 'Signal', color: '#b8b8d1', gridcolor: '#333' },
+                plot_bgcolor: 'rgba(0,0,0,0.2)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#b8b8d1' }
+            };
+
+            Plotly.newPlot('windowedPlot', [trace2], layout2);
+
+            // Perform FFT
+            const fftResult = fft(processed);
+            const n = fftResult.length;
+            const power = fftResult.map(x => Math.sqrt(x.re**2 + x.im**2));
+
+            // Frequency axis (in units of optical thickness)
+            const avgN = getMaterialIndex(material, 600); // at center wavelength
+            const freqs = [];
+            for (let i = 0; i < n/2; i++) {
+                freqs.push(i);
+            }
+
+            const powerHalf = power.slice(0, n/2);
+
+            // Find peak (excluding DC component)
+            let peakIdx = 1;
+            let peakVal = powerHalf[1];
+            for (let i = 2; i < powerHalf.length; i++) {
+                if (powerHalf[i] > peakVal) {
+                    peakVal = powerHalf[i];
+                    peakIdx = i;
+                }
+            }
+
+            // Estimate thickness
+            // Convert frequency index to optical thickness
+            const deltLambda = wavelengths[1] - wavelengths[0];
+            const estOpticalThickness = peakIdx * (600 ** 2) / (2 * deltLambda * n);
+            const estThickness = estOpticalThickness / avgN;
+
+            // Calculate error
+            const error = Math.abs(estThickness - thickness);
+            const errorPercent = (error / thickness * 100).toFixed(1);
+
+            // Confidence (peak-to-mean ratio)
+            const meanPower = powerHalf.reduce((a, b) => a + b) / powerHalf.length;
+            const confidence = (peakVal / meanPower).toFixed(1);
+
+            // SNR
+            const snr = (10 * Math.log10(peakVal / meanPower)).toFixed(1);
+
+            // Update results
+            document.getElementById('estThickness').innerHTML = `${estThickness.toFixed(1)} <span class="result-unit">nm</span>`;
+            document.getElementById('trueThickness').innerHTML = `${thickness.toFixed(1)} <span class="result-unit">nm</span>`;
+            document.getElementById('errorVal').innerHTML = `${error.toFixed(1)} <span class="result-unit">nm (${errorPercent}%)</span>`;
+            document.getElementById('confidence').textContent = confidence;
+            document.getElementById('peakFreq').innerHTML = `${peakIdx} <span class="result-unit">bins</span>`;
+            document.getElementById('snr').innerHTML = `${snr} <span class="result-unit">dB</span>`;
+
+            // Plot FFT
+            const trace3 = {
+                x: freqs,
+                y: powerHalf,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#4caf50', width: 2 },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(76, 175, 80, 0.2)',
+                name: 'Power'
+            };
+
+            const tracePeak = {
+                x: [peakIdx],
+                y: [peakVal],
+                type: 'scatter',
+                mode: 'markers',
+                marker: { color: '#ff3333', size: 12, symbol: 'star' },
+                name: 'Peak'
+            };
+
+            const layout3 = {
+                xaxis: { title: 'Frequency Bin', color: '#b8b8d1', gridcolor: '#333' },
+                yaxis: { title: 'Power', type: 'log', color: '#b8b8d1', gridcolor: '#333' },
+                plot_bgcolor: 'rgba(0,0,0,0.2)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#b8b8d1' },
+                showlegend: true
+            };
+
+            Plotly.newPlot('fftPlot', [trace3, tracePeak], layout3);
+        }
+
+        // Initialize
+        window.onload = function() {
+            performFFT();
+        };
+    </script>
+</body>
+</html>
