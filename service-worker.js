@@ -1,5 +1,5 @@
 // Service Worker for PWA functionality
-const CACHE_NAME = 'portfolio-v2.0.0';
+const CACHE_NAME = 'portfolio-v2.1.0';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -49,49 +49,49 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
-// Fetch event - serve from cache, fallback to network
+// Fetch event
+// HTML / navigations: network-first (so content updates show up immediately, cache is offline fallback).
+// Other GETs: cache-first with background refresh.
 self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // Cache hit - return response
-        if (response) {
-          return response;
-        }
+  if (event.request.method !== 'GET') {
+    return;
+  }
 
-        // Clone the request
-        const fetchRequest = event.request.clone();
+  const isHTML = event.request.mode === 'navigate' ||
+    (event.request.destination === 'document') ||
+    (event.request.headers.get('accept') || '').includes('text/html');
 
-        return fetch(fetchRequest).then(response => {
-          // Check if valid response
-          if (!response || response.status !== 200 || response.type === 'opaque') {
-            return response;
+  if (isHTML) {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          if (response && response.status === 200 && response.type !== 'opaque') {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
           }
-
-          // Clone the response
-          const responseToCache = response.clone();
-
-          // Cache the fetched response for future use
-          caches.open(CACHE_NAME)
-            .then(cache => {
-              // Don't cache POST requests or non-GET requests
-              if (event.request.method === 'GET') {
-                cache.put(event.request, responseToCache);
-              }
-            });
-
           return response;
-        });
-      })
-      .catch(error => {
-        // Offline fallback
-        console.error('Fetch failed:', error);
-        
-        // Return offline page for navigation requests
-        if (event.request.mode === 'navigate') {
-          return caches.match('/offline.html');
+        })
+        .catch(() => caches.match(event.request).then(cached => cached || caches.match('/offline.html')))
+    );
+    return;
+  }
+
+  event.respondWith(
+    caches.match(event.request).then(cached => {
+      if (cached) {
+        return cached;
+      }
+      return fetch(event.request.clone()).then(response => {
+        if (!response || response.status !== 200 || response.type === 'opaque') {
+          return response;
         }
-      })
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+        return response;
+      });
+    }).catch(error => {
+      console.error('Fetch failed:', error);
+    })
   );
 });
 
