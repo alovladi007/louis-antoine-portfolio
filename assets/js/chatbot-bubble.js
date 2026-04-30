@@ -65,11 +65,11 @@
       'transition:transform .2s ease,box-shadow .2s ease,opacity .2s ease,bottom .25s ease;' +
       'opacity:0;transform:translateY(12px) scale(.96);pointer-events:auto;}' +
       '.cb-bubble.cb-show{opacity:1;transform:translateY(0) scale(1);}' +
-      // When a live-chat widget is present, lift the AI bubble above its
-      // ~70px floating button (Tawk default) so the two stack vertically
-      // with a small gap. On narrow screens a smaller offset still clears.
-      '.cb-bubble.cb-with-livechat{bottom:100px;}' +
-      '@media (max-width:480px){.cb-bubble.cb-with-livechat{bottom:88px;}}' +
+      // When a live-chat widget is present, lift the AI bubble well above
+      // its floating button (Tawk default ~70px tall) so the two stack
+      // with a clear gap. On narrow screens we keep a similar offset.
+      '.cb-bubble.cb-with-livechat{bottom:140px;}' +
+      '@media (max-width:480px){.cb-bubble.cb-with-livechat{bottom:120px;}}' +
       '.cb-bubble:hover{transform:translateY(-2px) scale(1.03);' +
       'box-shadow:0 14px 40px rgba(102,126,234,.55),0 4px 12px rgba(0,0,0,.35);}' +
       '.cb-bubble:focus-visible{outline:3px solid #fff;outline-offset:3px;}' +
