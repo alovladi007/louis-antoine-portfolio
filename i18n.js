@@ -220,6 +220,9 @@
                 designDecisions: 'Design Decisions',
                 performanceOpt: 'Performance Optimization',
                 copyright: '© 2024 Louis Antoine. All rights reserved.'
+            },
+            chatbot: {
+                bubble: 'Ask the AI Assistant'
             }
         },
         fr: {
@@ -439,6 +442,9 @@
                 designDecisions: 'Décisions de Conception',
                 performanceOpt: 'Optimisation des Performances',
                 copyright: '© 2024 Louis Antoine. Tous droits réservés.'
+            },
+            chatbot: {
+                bubble: "Demander à l'assistant IA"
             }
         },
         es: {
@@ -658,6 +664,9 @@
                 designDecisions: 'Decisiones de Diseño',
                 performanceOpt: 'Optimización del Rendimiento',
                 copyright: '© 2024 Louis Antoine. Todos los derechos reservados.'
+            },
+            chatbot: {
+                bubble: 'Pregunta al asistente de IA'
             }
         }
     };
