@@ -313,8 +313,7 @@ document.addEventListener('click', function initAudio() {
 
 // New About Section 3D Functions
 window.showAboutSection3D = function(section) {
-    console.log('Switching to section:', section);
-    
+
     // Prevent event bubbling
     if (typeof event !== 'undefined' && event) {
         event.stopPropagation();
@@ -394,7 +393,7 @@ function updateCarousel(section) {
     const container = document.querySelector(`#${section}-section .carousel-track`);
     
     if (!container) {
-        console.log('Carousel container not found for section:', section);
+        // No carousel on this page — bail silently (script.js is loaded site-wide).
         return;
     }
     
@@ -644,8 +643,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize About Me section tabs
     setTimeout(() => {
-        console.log('Initializing About Me section...');
-        
         // Make sure the intro section is visible
         const introSection = document.getElementById('intro-section');
         if (introSection) {
