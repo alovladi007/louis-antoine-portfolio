@@ -10,7 +10,7 @@ const urlsToCache = [
   '/manifest.json',
   '/electronics-projects.html',
   '/photonics-projects.html',
-  '/machine-learning-projects.html',
+  '/projects/ml-ai/ml-projects.html',
   '/innovation-projects.html',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css'
 ];

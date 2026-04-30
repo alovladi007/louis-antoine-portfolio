@@ -9,7 +9,7 @@ The site is a static HTML/CSS/JS app deployed via GitHub Pages, with hundreds of
 - **Homepage** — [`index.html`](index.html)
 - **Electronics projects** — [`electronics-projects.html`](electronics-projects.html)
 - **Photonics projects** — [`photonics-projects.html`](photonics-projects.html)
-- **Machine Learning & Data Science** — [`machine-learning-projects.html`](machine-learning-projects.html)
+- **Machine Learning & Data Science** — [`projects/ml-ai/ml-projects.html`](projects/ml-ai/ml-projects.html)
 - **Innovation projects** — [`innovation-projects.html`](innovation-projects.html)
 
 ## Repository layout
@@ -19,7 +19,6 @@ The site is a static HTML/CSS/JS app deployed via GitHub Pages, with hundreds of
 ├── index.html                       # Homepage
 ├── electronics-projects.html        # Hub: electronics
 ├── photonics-projects.html          # Hub: photonics
-├── machine-learning-projects.html   # Hub: ML/DS
 ├── innovation-projects.html         # Hub: innovation
 │
 ├── projects/                        # All project pages, grouped by domain
