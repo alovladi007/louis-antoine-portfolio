@@ -432,14 +432,8 @@
                 <div class="search-suggestions" id="searchSuggestions"></div>
             </div>
 
-            <div class="quick-filters">
-                <button class="quick-filter-btn" data-filter="ai">AI/ML</button>
-                <button class="quick-filter-btn" data-filter="hardware">Hardware</button>
-                <button class="quick-filter-btn" data-filter="rf">RF/Wireless</button>
-                <button class="quick-filter-btn" data-filter="security">Security</button>
-                <button class="quick-filter-btn" data-filter="embedded">Embedded</button>
-                <button class="quick-filter-btn" data-filter="web">Web Dev</button>
-                <button class="quick-filter-btn" data-filter="research">Research</button>
+            <div class="quick-filters" id="quickFilters">
+                <!-- Section filter buttons populated from index -->
             </div>
 
             <a href="#" class="advanced-search-toggle" onclick="toggleAdvancedSearch(event)">
@@ -449,48 +443,11 @@
             <div class="advanced-search" id="advancedSearch">
                 <div class="filters">
                     <div class="filter-group">
-                        <label class="filter-label">Technology Stack</label>
-                        <select class="filter-select" id="techFilter">
-                            <option value="">All Technologies</option>
-                            <option value="python">Python</option>
-                            <option value="javascript">JavaScript</option>
-                            <option value="verilog">Verilog/VHDL</option>
-                            <option value="cpp">C/C++</option>
-                            <option value="matlab">MATLAB</option>
-                            <option value="tensorflow">TensorFlow</option>
-                            <option value="react">React</option>
-                            <option value="nodejs">Node.js</option>
+                        <label class="filter-label" for="categoryFilter">Category</label>
+                        <select class="filter-select" id="categoryFilter">
+                            <option value="">All Categories</option>
+                            <!-- options populated from index -->
                         </select>
-                    </div>
-
-                    <div class="filter-group">
-                        <label class="filter-label">Domain</label>
-                        <select class="filter-select" id="domainFilter">
-                            <option value="">All Domains</option>
-                            <option value="semiconductor">Semiconductor</option>
-                            <option value="ai">Artificial Intelligence</option>
-                            <option value="embedded">Embedded Systems</option>
-                            <option value="telecommunications">Telecommunications</option>
-                            <option value="security">Cybersecurity</option>
-                            <option value="research">Research</option>
-                        </select>
-                    </div>
-
-                    <div class="filter-group">
-                        <label class="filter-label">Complexity</label>
-                        <select class="filter-select" id="complexityFilter">
-                            <option value="">All Levels</option>
-                            <option value="1">Beginner</option>
-                            <option value="2">Intermediate</option>
-                            <option value="3">Advanced</option>
-                            <option value="4">Expert</option>
-                            <option value="5">Research-Level</option>
-                        </select>
-                    </div>
-
-                    <div class="filter-group">
-                        <label class="filter-label">Year</label>
-                        <input type="number" class="filter-input" id="yearFilter" placeholder="2024" min="2020" max="2024">
                     </div>
                 </div>
             </div>
@@ -498,15 +455,14 @@
 
         <div class="results-info">
             <div class="results-count">
-                Found <span id="resultCount">24</span> projects
+                Found <span id="resultCount">0</span> pages
             </div>
             <div class="sort-options">
-                <label style="margin-right: 0.5rem;">Sort by:</label>
+                <label for="sortSelect" style="margin-right: 0.5rem;">Sort by:</label>
                 <select class="filter-select" id="sortSelect" style="width: auto;">
                     <option value="relevance">Relevance</option>
-                    <option value="newest">Newest First</option>
-                    <option value="complexity">Complexity</option>
-                    <option value="popularity">Most Popular</option>
+                    <option value="title">Title (A–Z)</option>
+                    <option value="category">Category</option>
                 </select>
             </div>
         </div>
@@ -523,8 +479,9 @@
     </div>
 
     <script>
-        // Project database
-        const projects = [
+        // Project database — kept as fallback if the JSON index fails to load.
+        // The real index is fetched from ../assets/data/search-index.json (~880 pages).
+        const projectsFallback = [
             {
                 id: 1,
                 title: "mmWave RF Frontend Design",
@@ -671,68 +628,130 @@
             }
         ];
 
-        let currentFilters = {
+        // Section icons (FontAwesome) for filter buttons
+        const SECTION_ICONS = {
+            projects: 'fa-folder-open',
+            demos:    'fa-play-circle',
+            research: 'fa-flask',
+            blog:     'fa-pen-fancy',
+            about:    'fa-user',
+            pages:    'fa-file-alt'
+        };
+
+        // State
+        let projects = [];
+        const currentFilters = {
             search: '',
-            quickFilter: '',
-            technology: '',
-            domain: '',
-            complexity: '',
-            year: '',
+            section: '',
+            category: '',
             sort: 'relevance'
         };
 
-        function initializeSearch() {
-            renderResults(projects);
+        // Escape user input before injecting into HTML / regexes
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, ch => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[ch]));
+        }
+        function escapeRegex(s) {
+            return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        // Build URL relative to /pages/ — index entries are paths from repo root,
+        // and this file lives in /pages/, so prepend "../".
+        function indexUrl(rel) {
+            if (/^https?:/.test(rel)) return rel;
+            return rel.startsWith('../') ? rel : '../' + rel;
+        }
+
+        // -------- Initialization --------
+        async function initializeSearch() {
+            try {
+                const res = await fetch('../assets/data/search-index.json', { cache: 'no-store' });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                projects = (data.items || []).slice();
+            } catch (err) {
+                console.warn('Falling back to inline index:', err);
+                projects = projectsFallback || [];
+            }
+
+            renderQuickFilters();
+            renderCategoryFilter();
             setupEventListeners();
             setupSearchSuggestions();
+
+            // Honor ?q= query string and ?section= for deep-linkable searches
+            const params = new URLSearchParams(location.search);
+            const q = params.get('q');
+            const section = params.get('section');
+            if (q) {
+                document.getElementById('searchInput').value = q;
+                currentFilters.search = q.toLowerCase();
+            }
+            if (section) {
+                currentFilters.section = section;
+                document.querySelectorAll('.quick-filter-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.filter === section);
+                });
+            }
+
+            filterAndRenderResults();
+        }
+
+        function renderQuickFilters() {
+            // Build section list with counts, sorted by count desc
+            const counts = {};
+            projects.forEach(p => { counts[p.section] = (counts[p.section] || 0) + 1; });
+            const sections = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+
+            const container = document.getElementById('quickFilters');
+            container.innerHTML = sections.map(([sec, n]) => `
+                <button class="quick-filter-btn" data-filter="${escapeHtml(sec)}">
+                    <i class="fas ${SECTION_ICONS[sec] || 'fa-folder'}"></i>
+                    ${escapeHtml(sec.charAt(0).toUpperCase() + sec.slice(1))}
+                    <span style="opacity:.7;font-size:.85em;margin-left:.25rem;">${n}</span>
+                </button>
+            `).join('');
+        }
+
+        function renderCategoryFilter() {
+            const select = document.getElementById('categoryFilter');
+            const cats = {};
+            projects.forEach(p => {
+                if (!cats[p.categorySlug]) cats[p.categorySlug] = { name: p.category, count: 0 };
+                cats[p.categorySlug].count++;
+            });
+            const sorted = Object.entries(cats).sort((a, b) => a[1].name.localeCompare(b[1].name));
+            select.innerHTML = '<option value="">All Categories</option>' + sorted.map(([slug, info]) => `
+                <option value="${escapeHtml(slug)}">${escapeHtml(info.name)} (${info.count})</option>
+            `).join('');
         }
 
         function setupEventListeners() {
-            // Search input
             document.getElementById('searchInput').addEventListener('input', (e) => {
                 currentFilters.search = e.target.value.toLowerCase();
                 filterAndRenderResults();
                 updateSearchSuggestions(e.target.value);
             });
 
-            // Quick filters
-            document.querySelectorAll('.quick-filter-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const filter = e.target.dataset.filter;
-                    
-                    // Toggle active state
-                    if (btn.classList.contains('active')) {
-                        btn.classList.remove('active');
-                        currentFilters.quickFilter = '';
-                    } else {
-                        // Remove active from all buttons
-                        document.querySelectorAll('.quick-filter-btn').forEach(b => b.classList.remove('active'));
-                        btn.classList.add('active');
-                        currentFilters.quickFilter = filter;
-                    }
-                    
-                    filterAndRenderResults();
-                });
-            });
-
-            // Advanced filters
-            document.getElementById('techFilter').addEventListener('change', (e) => {
-                currentFilters.technology = e.target.value;
+            document.getElementById('quickFilters').addEventListener('click', (e) => {
+                const btn = e.target.closest('.quick-filter-btn');
+                if (!btn) return;
+                const sec = btn.dataset.filter;
+                if (btn.classList.contains('active')) {
+                    btn.classList.remove('active');
+                    currentFilters.section = '';
+                } else {
+                    document.querySelectorAll('.quick-filter-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentFilters.section = sec;
+                }
                 filterAndRenderResults();
             });
 
-            document.getElementById('domainFilter').addEventListener('change', (e) => {
-                currentFilters.domain = e.target.value;
-                filterAndRenderResults();
-            });
-
-            document.getElementById('complexityFilter').addEventListener('change', (e) => {
-                currentFilters.complexity = e.target.value;
-                filterAndRenderResults();
-            });
-
-            document.getElementById('yearFilter').addEventListener('input', (e) => {
-                currentFilters.year = e.target.value;
+            document.getElementById('categoryFilter').addEventListener('change', (e) => {
+                currentFilters.category = e.target.value;
                 filterAndRenderResults();
             });
 
@@ -742,75 +761,50 @@
             });
         }
 
+        // -------- Filter + sort --------
         function filterAndRenderResults() {
-            let filtered = projects.filter(project => {
-                // Search filter
-                if (currentFilters.search) {
-                    const searchTerm = currentFilters.search;
-                    const matchesSearch = 
-                        project.title.toLowerCase().includes(searchTerm) ||
-                        project.description.toLowerCase().includes(searchTerm) ||
-                        project.tags.some(tag => tag.toLowerCase().includes(searchTerm));
-                    
-                    if (!matchesSearch) return false;
+            const term = currentFilters.search.trim();
+            let filtered = projects.filter(p => {
+                if (term) {
+                    const hay = (p.title + ' ' + p.description + ' ' + (p.tags || []).join(' ') + ' ' + p.category).toLowerCase();
+                    if (!hay.includes(term)) return false;
                 }
-
-                // Quick filter
-                if (currentFilters.quickFilter) {
-                    const filter = currentFilters.quickFilter;
-                    const matchesQuickFilter = 
-                        project.tags.some(tag => tag.toLowerCase().includes(filter)) ||
-                        project.domain === filter ||
-                        project.category.toLowerCase().includes(filter);
-                    
-                    if (!matchesQuickFilter) return false;
-                }
-
-                // Technology filter
-                if (currentFilters.technology && !project.technologies.includes(currentFilters.technology)) {
-                    return false;
-                }
-
-                // Domain filter
-                if (currentFilters.domain && project.domain !== currentFilters.domain) {
-                    return false;
-                }
-
-                // Complexity filter
-                if (currentFilters.complexity && project.complexity != currentFilters.complexity) {
-                    return false;
-                }
-
-                // Year filter
-                if (currentFilters.year && project.year != currentFilters.year) {
-                    return false;
-                }
-
+                if (currentFilters.section && p.section !== currentFilters.section) return false;
+                if (currentFilters.category && p.categorySlug !== currentFilters.category) return false;
                 return true;
             });
 
-            // Sort results
-            filtered = sortResults(filtered, currentFilters.sort);
-
+            filtered = sortResults(filtered, currentFilters.sort, term);
             renderResults(filtered);
         }
 
-        function sortResults(results, sortBy) {
-            switch(sortBy) {
-                case 'newest':
-                    return results.sort((a, b) => b.year - a.year);
-                case 'complexity':
-                    return results.sort((a, b) => b.complexity - a.complexity);
-                case 'popularity':
-                    // Simulate popularity by ID (newer projects more popular)
-                    return results.sort((a, b) => a.id - b.id);
+        function scoreRelevance(p, term) {
+            if (!term) return 0;
+            const t = p.title.toLowerCase();
+            if (t === term) return 1000;
+            if (t.startsWith(term)) return 500;
+            if (t.includes(term)) return 200;
+            if ((p.tags || []).some(tag => tag.toLowerCase() === term)) return 150;
+            if ((p.description || '').toLowerCase().includes(term)) return 50;
+            return 1;
+        }
+
+        function sortResults(results, sortBy, term) {
+            const arr = results.slice();
+            switch (sortBy) {
+                case 'title':
+                    return arr.sort((a, b) => a.title.localeCompare(b.title));
+                case 'category':
+                    return arr.sort((a, b) =>
+                        a.category.localeCompare(b.category) || a.title.localeCompare(b.title));
                 case 'relevance':
                 default:
-                    // Keep original order for relevance
-                    return results;
+                    if (!term) return arr.sort((a, b) => a.title.localeCompare(b.title));
+                    return arr.sort((a, b) => scoreRelevance(b, term) - scoreRelevance(a, term));
             }
         }
 
+        // -------- Render --------
         function renderResults(results) {
             const grid = document.getElementById('resultsGrid');
             const noResults = document.getElementById('noResults');
@@ -823,60 +817,60 @@
                 noResults.style.display = 'block';
                 return;
             }
-
             grid.style.display = 'grid';
             noResults.style.display = 'none';
 
-            grid.innerHTML = results.map(project => `
-                <div class="result-card" onclick="window.location.href='${project.url}'">
+            // Cap visible results to keep DOM size sane on huge unfiltered queries
+            const MAX_VISIBLE = 200;
+            const visible = results.slice(0, MAX_VISIBLE);
+
+            grid.innerHTML = visible.map(p => `
+                <a class="result-card" href="${escapeHtml(indexUrl(p.url))}" style="text-decoration:none;color:inherit;display:block;">
                     <div class="result-header">
                         <div>
-                            <h3 class="result-title">${highlightSearchTerm(project.title)}</h3>
-                            <span class="result-category">${project.category}</span>
+                            <h3 class="result-title">${highlightSearchTerm(p.title)}</h3>
+                            <span class="result-category">
+                                <i class="fas ${SECTION_ICONS[p.section] || 'fa-folder'}" style="margin-right:.35rem;"></i>${escapeHtml(p.category)}
+                            </span>
                         </div>
                     </div>
-                    <p class="result-description">${highlightSearchTerm(project.description)}</p>
+                    <p class="result-description">${highlightSearchTerm(p.description || '')}</p>
                     <div class="result-tags">
-                        ${project.tags.map(tag => `<span class="result-tag">${tag}</span>`).join('')}
+                        ${(p.tags || []).slice(0, 6).map(t => `<span class="result-tag">${escapeHtml(t)}</span>`).join('')}
                     </div>
                     <div class="result-meta">
-                        <div class="complexity-indicator">
-                            ${generateComplexityDots(project.complexity)}
-                        </div>
-                        <a href="${project.url}" class="view-project-btn" onclick="event.stopPropagation()">
-                            View Project <i class="fas fa-arrow-right"></i>
-                        </a>
+                        <span style="color:var(--primary);font-size:.85rem;opacity:.8;">${escapeHtml(p.url)}</span>
+                        <span class="view-project-btn">View <i class="fas fa-arrow-right"></i></span>
                     </div>
-                </div>
+                </a>
             `).join('');
-        }
 
-        function generateComplexityDots(level) {
-            let dots = '';
-            for (let i = 1; i <= 5; i++) {
-                dots += `<span class="complexity-dot ${i <= level ? 'filled' : ''}"></span>`;
+            if (results.length > MAX_VISIBLE) {
+                grid.insertAdjacentHTML('beforeend',
+                    `<div style="grid-column:1/-1;text-align:center;padding:1.5rem;opacity:.7;">
+                        Showing first ${MAX_VISIBLE} of ${results.length}. Refine your search to narrow down.
+                     </div>`);
             }
-            return dots;
         }
 
         function highlightSearchTerm(text) {
-            if (!currentFilters.search) return text;
-            
-            const regex = new RegExp(`(${currentFilters.search})`, 'gi');
-            return text.replace(regex, '<mark style="background: rgba(102, 126, 234, 0.3); color: white; padding: 0 2px;">$1</mark>');
+            const safe = escapeHtml(text || '');
+            if (!currentFilters.search) return safe;
+            const term = currentFilters.search.trim();
+            if (!term) return safe;
+            const regex = new RegExp(`(${escapeRegex(term)})`, 'gi');
+            return safe.replace(regex, '<mark style="background:rgba(102,126,234,.35);color:#fff;padding:0 2px;border-radius:2px;">$1</mark>');
         }
 
         function toggleAdvancedSearch(e) {
             e.preventDefault();
-            const advancedSearch = document.getElementById('advancedSearch');
-            advancedSearch.classList.toggle('active');
+            document.getElementById('advancedSearch').classList.toggle('active');
         }
 
+        // -------- Suggestions (lightweight) --------
         function setupSearchSuggestions() {
             const searchInput = document.getElementById('searchInput');
             const suggestions = document.getElementById('searchSuggestions');
-
-            // Hide suggestions when clicking outside
             document.addEventListener('click', (e) => {
                 if (!searchInput.contains(e.target) && !suggestions.contains(e.target)) {
                     suggestions.classList.remove('active');
@@ -886,59 +880,32 @@
 
         function updateSearchSuggestions(query) {
             const suggestions = document.getElementById('searchSuggestions');
-            
-            if (query.length < 2) {
+            const q = (query || '').trim().toLowerCase();
+            if (q.length < 2 || projects.length === 0) {
                 suggestions.classList.remove('active');
                 return;
             }
-
-            // Generate suggestions based on projects
-            const suggestionList = [];
-            
-            // Add matching project titles
-            projects.forEach(project => {
-                if (project.title.toLowerCase().includes(query.toLowerCase())) {
-                    suggestionList.push({
-                        type: 'project',
-                        text: project.title,
-                        icon: 'fa-folder'
-                    });
-                }
-            });
-
-            // Add matching tags
-            const allTags = [...new Set(projects.flatMap(p => p.tags))];
-            allTags.forEach(tag => {
-                if (tag.toLowerCase().includes(query.toLowerCase()) && suggestionList.length < 5) {
-                    suggestionList.push({
-                        type: 'tag',
-                        text: tag,
-                        icon: 'fa-tag'
-                    });
-                }
-            });
-
-            if (suggestionList.length > 0) {
-                suggestions.innerHTML = suggestionList.slice(0, 5).map(item => `
-                    <div class="suggestion-item" onclick="selectSuggestion('${item.text}')">
-                        <i class="fas ${item.icon}" style="margin-right: 0.5rem; color: var(--primary);"></i>
-                        ${item.text}
-                    </div>
-                `).join('');
-                suggestions.classList.add('active');
-            } else {
-                suggestions.classList.remove('active');
+            // Top title matches
+            const matches = [];
+            for (const p of projects) {
+                if (matches.length >= 6) break;
+                if (p.title.toLowerCase().includes(q)) matches.push(p);
             }
+            if (!matches.length) {
+                suggestions.classList.remove('active');
+                return;
+            }
+            suggestions.innerHTML = matches.map(p => `
+                <a class="suggestion-item" href="${escapeHtml(indexUrl(p.url))}" style="display:flex;align-items:center;color:var(--text);text-decoration:none;">
+                    <i class="fas ${SECTION_ICONS[p.section] || 'fa-folder'}" style="margin-right:.5rem;color:var(--primary);"></i>
+                    <span style="flex:1;">${escapeHtml(p.title)}</span>
+                    <span style="font-size:.75rem;opacity:.6;">${escapeHtml(p.section)}</span>
+                </a>
+            `).join('');
+            suggestions.classList.add('active');
         }
 
-        function selectSuggestion(text) {
-            document.getElementById('searchInput').value = text;
-            currentFilters.search = text.toLowerCase();
-            filterAndRenderResults();
-            document.getElementById('searchSuggestions').classList.remove('active');
-        }
-
-        // Initialize on page load
+        // Boot
         document.addEventListener('DOMContentLoaded', initializeSearch);
     </script>
 </body>

@@ -11,7 +11,8 @@
                 projects: 'Projects',
                 experience: 'Experience',
                 certifications: 'Certifications',
-                contact: 'Contact'
+                contact: 'Contact',
+                search: 'Search'
             },
             hero: {
                 greeting: "Hi, I'm",
@@ -229,7 +230,8 @@
                 projects: 'Projets',
                 experience: 'Expérience',
                 certifications: 'Certifications',
-                contact: 'Contact'
+                contact: 'Contact',
+                search: 'Rechercher'
             },
             hero: {
                 greeting: 'Bonjour, je suis',
@@ -447,7 +449,8 @@
                 projects: 'Proyectos',
                 experience: 'Experiencia',
                 certifications: 'Certificaciones',
-                contact: 'Contacto'
+                contact: 'Contacto',
+                search: 'Buscar'
             },
             hero: {
                 greeting: 'Hola, soy',
