@@ -149,20 +149,27 @@ window.currentSlide = function(n) {
 function showSlide(n) {
     let slides = document.getElementsByClassName("slide");
     let dots = document.getElementsByClassName("dot");
-    
+
+    // No carousel on this page — bail (script.js is loaded site-wide).
+    if (slides.length === 0) { return; }
+
     if (n > slides.length) { slideIndex = 1 }
     if (n < 1) { slideIndex = slides.length }
-    
+
     for (let i = 0; i < slides.length; i++) {
         slides[i].classList.remove('active');
     }
-    
+
     for (let i = 0; i < dots.length; i++) {
         dots[i].classList.remove('active');
     }
-    
-    slides[slideIndex-1].classList.add('active');
-    dots[slideIndex-1].classList.add('active');
+
+    if (slides[slideIndex-1]) {
+        slides[slideIndex-1].classList.add('active');
+    }
+    if (dots[slideIndex-1]) {
+        dots[slideIndex-1].classList.add('active');
+    }
 }
 
 // Work slideshow functionality
@@ -227,23 +234,17 @@ function showMissionSlide(n) {
 
 // Initialize slideshows when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    // Auto-advance About Me slideshow
-    setInterval(() => {
-        slideIndex++;
-        showSlide(slideIndex);
-    }, 5000); // Change slide every 5 seconds
-    
-    // Auto-advance Work slideshow
-    setInterval(() => {
-        workSlideIndex++;
-        showWorkSlide(workSlideIndex);
-    }, 4000); // Change slide every 4 seconds
-    
-    // Auto-advance Mission slideshow
-    setInterval(() => {
-        missionSlideIndex++;
-        showMissionSlide(missionSlideIndex);
-    }, 4500); // Change slide every 4.5 seconds
+    // Only auto-advance carousels if they actually exist on this page
+    // (script.js is loaded site-wide; most pages don't have these).
+    if (document.getElementsByClassName('slide').length > 0) {
+        setInterval(() => { slideIndex++; showSlide(slideIndex); }, 5000);
+    }
+    if (document.getElementsByClassName('work-slide').length > 0) {
+        setInterval(() => { workSlideIndex++; showWorkSlide(workSlideIndex); }, 4000);
+    }
+    if (document.getElementsByClassName('mission-slide').length > 0) {
+        setInterval(() => { missionSlideIndex++; showMissionSlide(missionSlideIndex); }, 4500);
+    }
 });
 
 // Audio control functionality - DISABLED (using YouTube player instead)
