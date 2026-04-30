@@ -47,289 +47,308 @@ class AIAssistantBackendV2 {
 
     // Initialize comprehensive knowledge base
     initializeKnowledgeBase() {
+        // Knowledge base sourced from Louis Antoine's actual resume
+        // (assets/pdfs/ElectricalEngineeringresume2026.pdf) and the homepage
+        // timeline/skills sections. Do not add fabricated content here —
+        // if a fact isn't on the resume or the site, it doesn't belong.
+
         return {
+            // Personal contact info — matches the homepage and resume.
+            personal: {
+                name: "Louis Antoine",
+                title: "Electrical Engineer & Applied Scientist",
+                location: "New Haven, CT 06515",
+                email: "alovladi@gmail.com",
+                phone: "(203) 360-5619",
+                portfolio: "https://alovladi007.github.io/louis-antoine-portfolio/",
+                github: "https://github.com/alovladi007",
+                linkedin: "https://www.linkedin.com/in/louis-antoine-333199a0",
+                summary: "Early-career Electrical Engineer with hands-on integration and test experience on precision electro-optical equipment (ASML), strong documentation discipline (ICDs, test procedures), and data-driven validation in Python/MATLAB. Comfortable across requirements, design, and verification & validation (V&V) with configuration control and safety in mind."
+            },
+
+            // Featured projects — these are real pages on the portfolio site.
+            // Specs that aren't backed by the resume or a real project page
+            // have been removed; only the title, category, summary, and the
+            // canonical URL remain so the assistant can route users there.
             projects: {
                 "mmwave-rf": {
                     title: "mmWave RF Frontend Design",
-                    category: "RF Semiconductor Design",
-                    description: "28 GHz 5G NR n257 band phased array system",
-                    details: {
-                        frequency: "27-29 GHz",
-                        architecture: "8x8 phased array",
-                        power: "38 dBm output",
-                        efficiency: "42% PAE",
-                        noise: "1.2 dB NF",
-                        steering: "±60° beam steering",
-                        technology: "GaN HEMT",
-                        applications: ["5G NR", "mmWave communications", "Beamforming"]
-                    },
-                    technical_specs: {
-                        pa_specs: {
-                            technology: "0.15μm GaN HEMT",
-                            topology: "2-stage Doherty",
-                            gain: "25 dB",
-                            p1db: "35 dBm",
-                            psat: "38 dBm",
-                            pae_peak: "42%",
-                            bandwidth: "2 GHz"
-                        },
-                        lna_specs: {
-                            technology: "65nm CMOS",
-                            stages: 3,
-                            gain: "20 dB",
-                            nf: "1.2 dB",
-                            iip3: "-5 dBm",
-                            current: "8 mA"
-                        },
-                        beamforming: {
-                            elements: "8x8 array",
-                            spacing: "λ/2",
-                            scan_angle: "±60°",
-                            sidelobe: "-13 dB",
-                            beam_width: "12°",
-                            gain_variation: "< 3 dB"
-                        }
-                    },
-                    challenges_solved: [
-                        "High-frequency parasitic effects",
-                        "Thermal management at high power",
-                        "Phase synchronization across array",
-                        "Wideband impedance matching",
-                        "Digital predistortion implementation"
-                    ],
-                    tools_used: ["Keysight ADS", "ANSYS HFSS", "Cadence", "MATLAB", "Python"],
-                    outcomes: [
-                        "Successfully demonstrated 5G NR compliance",
-                        "Achieved industry-leading efficiency",
-                        "Published in IEEE conference",
-                        "Patent pending on DPD algorithm"
-                    ]
+                    category: "Communications & RF",
+                    description: "28 GHz 5G NR (n257 band) phased-array RF frontend study with beamforming, GaN PA, and LNA design.",
+                    url: "projects/comms/mmwave-rf-complete.html",
+                    tools_used: ["Keysight ADS", "ANSYS HFSS", "Cadence", "MATLAB", "Python"]
                 },
-                
-                "risc-v-soc": {
+
+                "riscv-soc": {
                     title: "RISC-V SoC with Custom Accelerators",
-                    category: "Hardware/Embedded Systems",
-                    description: "64-bit RISC-V processor with ML and crypto accelerators",
-                    details: {
-                        architecture: "RV64IMAFDC",
-                        pipeline: "5-stage, out-of-order",
-                        frequency: "1.2 GHz @ 28nm",
-                        cache: "32KB L1I/D, 256KB L2",
-                        accelerators: ["ML inference", "AES-256", "SHA-3"],
-                        noc: "2D mesh, 4x4",
-                        memory: "DDR4-3200 controller"
-                    },
-                    technical_specs: {
-                        core: {
-                            isa: "RV64IMAFDC",
-                            pipeline_stages: 5,
-                            issue_width: 2,
-                            rob_size: 64,
-                            branch_predictor: "TAGE, 4K entries",
-                            btb_size: "2K entries",
-                            ras_size: 16,
-                            performance: "2.3 DMIPS/MHz"
-                        },
-                        ml_accelerator: {
-                            type: "Systolic array",
-                            size: "16x16 MACs",
-                            precision: "INT8/INT16/FP16",
-                            peak_ops: "512 GOPS",
-                            supported_ops: ["Conv2D", "MatMul", "Pooling", "ReLU"],
-                            memory: "128KB scratchpad"
-                        },
-                        security: {
-                            crypto: ["AES-256-GCM", "SHA-3", "RSA-2048"],
-                            features: ["Secure boot", "TrustZone", "PUF"],
-                            side_channel: "Power analysis resistant",
-                            certifications: "FIPS 140-2 Level 2"
-                        }
-                    },
-                    verification: {
-                        methodology: "UVM",
-                        coverage: "98% functional, 95% code",
-                        tests: "10,000+ directed, 1M+ random",
-                        formal: "Property checking for critical paths",
-                        emulation: "Xilinx VCU128 FPGA"
-                    },
-                    performance: {
-                        coremark: "5.2 CoreMark/MHz",
-                        dhrystone: "2.3 DMIPS/MHz",
-                        ml_benchmarks: {
-                            resnet50: "120 fps @ INT8",
-                            mobilenet: "450 fps @ INT8",
-                            bert: "30 sequences/sec"
-                        },
-                        power: "2.5W typical, 4W peak"
-                    }
+                    category: "Power Electronics & Hardware",
+                    description: "64-bit RISC-V processor with ML and crypto accelerators on a 2D mesh NoC; Verilog/SystemVerilog implementation with UVM verification flow.",
+                    url: "projects/power-electronics/riscv-soc-complete.html",
+                    tools_used: ["Verilog", "SystemVerilog", "UVM", "Vivado", "ModelSim"]
                 },
-                
+
                 "cryptography": {
-                    title: "Post-Quantum Cryptography Research",
-                    category: "Security Research",
-                    description: "Implementation and optimization of NIST PQC algorithms",
-                    details: {
-                        algorithms: ["CRYSTALS-Kyber", "CRYSTALS-Dilithium", "FALCON", "SPHINCS+"],
-                        platforms: ["FPGA", "ASIC", "Software"],
-                        attacks_studied: ["Side-channel", "Fault injection", "Quantum"],
-                        optimizations: ["Hardware acceleration", "Constant-time", "Memory-efficient"]
-                    },
-                    implementations: {
-                        kyber: {
-                            security_level: [512, 768, 1024],
-                            key_gen: "0.05ms",
-                            encapsulation: "0.06ms",
-                            decapsulation: "0.07ms",
-                            hw_resources: "15K LUTs, 8 DSPs",
-                            sw_performance: "100K ops/sec"
-                        },
-                        dilithium: {
-                            security_level: [2, 3, 5],
-                            key_gen: "0.1ms",
-                            sign: "0.3ms",
-                            verify: "0.1ms",
-                            signature_size: "2420 bytes",
-                            hw_acceleration: "5x speedup"
-                        }
-                    },
-                    research_contributions: [
-                        "Novel side-channel countermeasures",
-                        "Optimized NTT implementation",
-                        "Hybrid classical-PQC protocols",
-                        "Lightweight PQC for IoT"
-                    ]
+                    title: "Cryptography Research",
+                    category: "Research",
+                    description: "Survey and implementation of post-quantum cryptography algorithms (CRYSTALS-Kyber, Dilithium, FALCON, SPHINCS+) with hardware acceleration.",
+                    url: "research/cryptography-research.html",
+                    tools_used: ["Python", "C", "Verilog", "FPGA"]
                 },
-                
+
                 "pcm": {
-                    title: "Phase Change Memory Research",
+                    title: "Phase-Change Memory (GST) Research",
                     category: "Semiconductor Research",
-                    description: "Next-generation non-volatile memory technology",
-                    details: {
-                        material: "Ge2Sb2Te5 (GST)",
-                        cell_size: "4F²",
-                        endurance: "10^9 cycles",
-                        retention: "10 years @ 85°C",
-                        switching_time: "50ns",
-                        multi_level: "2 bits/cell"
-                    },
-                    research_areas: {
-                        materials: [
-                            "Doped GST optimization",
-                            "Alternative chalcogenides",
-                            "Superlattice structures",
-                            "Interfacial engineering"
-                        ],
-                        device_physics: [
-                            "Threshold switching mechanisms",
-                            "Crystallization dynamics",
-                            "Thermal modeling",
-                            "Reliability physics"
-                        ],
-                        circuit_design: [
-                            "Write driver optimization",
-                            "Sense amplifier design",
-                            "Wear leveling algorithms",
-                            "Error correction codes"
-                        ]
-                    },
-                    achievements: [
-                        "10x improvement in write endurance",
-                        "50% reduction in reset current",
-                        "Demonstrated 3D crosspoint array",
-                        "Published in Nature Electronics"
-                    ]
+                    description: "Ge₂Sb₂Te₅ (GST) phase-change memory device modeling, materials engineering, and circuit/array design.",
+                    url: "projects/semiconductor/pcm-complete-project.html",
+                    tools_used: ["Python", "MATLAB", "Device simulation"]
+                },
+
+                "duv-energy-deposition": {
+                    title: "DUV Energy Deposition: Monte Carlo vs Double Gaussian",
+                    category: "Semiconductor Research",
+                    description: "Compares aerial-image energy deposition predicted by a Double-Gaussian PSF against a Monte Carlo particle model. Includes partial-coherence modeling, flare analysis, swing curves, and statistical validation with PDF report generation.",
+                    url: "projects/semiconductor/duv-energy-deposition-project.html",
+                    tools_used: ["Python", "MATLAB", "Monte Carlo simulation"]
+                },
+
+                "quantum-memory-eit": {
+                    title: "Quantum Memory System for EIT",
+                    category: "Quantum",
+                    description: "Quantum memory system using Electromagnetically Induced Transparency (EIT) in cold-atom ensembles for quantum information processing.",
+                    url: "projects/quantum/quantum-memory-project.html",
+                    tools_used: ["Python", "MATLAB", "Optical alignment"]
+                },
+
+                "maxwell-bloch-eit": {
+                    title: "Full Maxwell-Bloch Simulation for EIT",
+                    category: "Quantum",
+                    description: "Simulation framework for quantum-optics experiments based on Maxwell-Bloch equations: Doppler broadening, pulse storage and retrieval, geometry effects.",
+                    url: "research/maxwell-bloch-eit-project.html",
+                    tools_used: ["Python", "Density-matrix formalism"]
+                },
+
+                "vertical-gan": {
+                    title: "Vertical GaN Power Electronics",
+                    category: "Power Electronics",
+                    description: "Vertical-architecture GaN FETs for >1 kV power devices, combining GaN switching speed with SiC-class voltage handling for EV drivetrains and utility-scale converters.",
+                    url: "demos/vertical-gan-project.html",
+                    tools_used: ["MATLAB", "Sentaurus / TCAD", "Python"]
+                },
+
+                "silicon-photonics-ring": {
+                    title: "Silicon Photonics — Microring Resonator WDM Filter",
+                    category: "Photonics",
+                    description: "Design and FDTD simulation of a silicon microring resonator WDM filter at 1550 nm. Q ≈ 1950, ER ≥ 20 dB, FSR ≈ 100 GHz.",
+                    url: "projects/semiconductor/silicon-photonics-project.html",
+                    tools_used: ["Lumerical FDTD", "Python", "PIC layout tools"]
+                },
+
+                "semi-process-optimization": {
+                    title: "Semiconductor Process Optimization",
+                    category: "Semiconductor Process",
+                    description: "ML-driven process control combining CatBoost virtual metrology, double-EWMA control, and SPC/FDC integration across lithography, etch, and deposition modules.",
+                    url: "projects/semiconductor/semiconductor-optimization-complete-suite.html",
+                    tools_used: ["Python", "CatBoost", "EWMA", "SPC/FDC"]
                 }
             },
-            
+
+            // Skills — adapted from the resume's "Skills" section and the
+            // homepage Skills section. Programming list is intentionally
+            // small and honest; tooling and domains reflect actual ASML +
+            // UConn work.
             skills: {
                 programming: {
-                    expert: ["Python", "Verilog", "SystemVerilog", "C++"],
-                    proficient: ["JavaScript", "MATLAB", "TCL", "Bash"],
-                    familiar: ["Rust", "Julia", "Scala", "VHDL"]
+                    proficient: ["Python", "MATLAB", "Bash"],
+                    familiar:   ["JavaScript", "C", "TCL", "Verilog", "SystemVerilog"]
                 },
-                
-                tools: {
-                    eda: ["Cadence Virtuoso", "Synopsys Design Compiler", "Mentor Calibre"],
-                    rf: ["Keysight ADS", "ANSYS HFSS", "CST Studio", "AWR"],
-                    fpga: ["Vivado", "Quartus", "ModelSim", "VCS"],
-                    software: ["Git", "Docker", "TensorFlow", "PyTorch"]
-                },
-                
-                domains: {
-                    hardware: ["Digital Design", "Analog/RF", "VLSI", "PCB Design"],
-                    software: ["Full-Stack Web", "Embedded", "ML/AI", "DevOps"],
-                    research: ["Device Physics", "Cryptography", "Signal Processing", "Computer Architecture"]
-                }
-            },
-            
-            experience: {
-                current: {
-                    position: "RF Design Engineer",
-                    company: "Leading Tech Company",
-                    duration: "2022 - Present",
-                    responsibilities: [
-                        "Lead 5G mmWave frontend development",
-                        "Design high-efficiency PAs and LNAs",
-                        "Implement beamforming algorithms",
-                        "Collaborate with system architects"
+
+                semiconductor: {
+                    lithography: [
+                        "Photolithography process development",
+                        "EUV / DUV tool operation and calibration",
+                        "Optical Proximity Correction (OPC)",
+                        "Resolution Enhancement Techniques (RET)",
+                        "Reticle and pellicle management (binary masks, PSM)",
+                        "Immersion lithography",
+                        "Overlay metrology"
                     ],
-                    achievements: [
-                        "Reduced PA power consumption by 30%",
-                        "Improved beamforming accuracy to ±1°",
-                        "Led team of 5 engineers",
-                        "Filed 3 patents"
+                    deposition_etch: [
+                        "Thin-film deposition: PVD, CVD, LPCVD, MOCVD, PECVD, ALD, MBE",
+                        "Crystal growth, dopant diffusion, oxidation kinetics",
+                        "Wet etching, dry/plasma etching, atomic layer etching",
+                        "Etchback process using photoresist and spin-on-glass (SOG)",
+                        "CMP (Applied Materials Reflection)"
+                    ],
+                    metrology: [
+                        "Ellipsometry, XRR/XRD, profilometry",
+                        "CD-SEM, AFM, scatterometry",
+                        "Diffraction-based overlay metrology (YieldStar)",
+                        "Line-edge roughness (LER), swing curves, focus-exposure data",
+                        "I-V, C-V, mobility, sheet-resistance correlations"
+                    ],
+                    process_control: [
+                        "SPC (control charts, Cp/Cpk)",
+                        "FDC (Fault Detection and Classification)",
+                        "DOE (Design of Experiments)",
+                        "FMEA, 5 Whys, Pareto analysis",
+                        "Tool qualification (install, baseline, spec check, system readiness)",
+                        "Chamber matching and recipe optimization"
                     ]
                 },
-                
+
+                systems_engineering: [
+                    "Requirements decomposition and traceability",
+                    "CONOPS / use cases",
+                    "Interface Control Documents (ICDs)",
+                    "Verification Cross-Reference Matrix (VCRM)",
+                    "Verification & Validation (V&V) execution",
+                    "Trade studies, risk and issues management",
+                    "Configuration control and documentation"
+                ],
+
+                analysis: [
+                    "Image processing and analysis (MATLAB, Python, OpenCV, scikit-image)",
+                    "Monte Carlo simulation (electron scattering / energy deposition)",
+                    "Density-matrix formalism for three-level Λ systems",
+                    "Statistical data analysis"
+                ],
+
+                tools: {
+                    rf:        ["Keysight ADS", "ANSYS HFSS", "CST Studio"],
+                    fpga_eda:  ["Vivado", "Quartus", "ModelSim", "Cadence Virtuoso"],
+                    cleanroom: ["YieldStar 375 F / 380 G / 1385", "AMAT Reflection CMP"],
+                    software:  ["Git", "Docker", "TensorFlow", "PyTorch", "SAP", "Excel"],
+                    lab:       ["Oscilloscopes", "Multimeters", "Power probes", "Spectrometers", "Power meters"]
+                }
+            },
+
+            // Experience — verbatim from the resume.
+            experience: {
+                current: null, // No current full-time role on the resume.
                 previous: [
                     {
-                        position: "Hardware Engineer Intern",
-                        company: "Semiconductor Startup",
-                        duration: "Summer 2021",
+                        position: "Student Equipment Design & Test Specialist",
+                        company:  "University of Connecticut",
+                        location: "Storrs, CT",
+                        duration: "10/2021 – 04/2024",
                         highlights: [
-                            "Developed RISC-V peripherals",
-                            "Implemented UVM testbenches",
-                            "Optimized critical paths for timing"
+                            "Modeling and evaluation of GaN-based power devices for high-frequency switching applications",
+                            "Detailed SiC MOSFET models for harsh, high-voltage environments",
+                            "Monte Carlo simulation of electron scattering and energy deposition in EUV masks; outperformed analytical proximity-correction models on 3D absorber structures",
+                            "Supported semiconductor and optoelectronics labs with precision measurements (front-end and back-end interconnect / dual-Damascene)",
+                            "Lithography (optical pattern formation, photoresists, wafer steppers, scanners, immersion, EUV)",
+                            "Etching and CMP (wet, dry/plasma, atomic-layer; familiarity with AMAT Reflection CMP)",
+                            "Deposition (CVD, ELO, LPCVD, MOCVD, PECVD, ALD, MBE)",
+                            "Mentored undergraduates on independent research projects"
                         ]
                     },
                     {
-                        position: "Research Assistant",
-                        company: "University Lab",
-                        duration: "2020 - 2022",
+                        position: "Optical Metrology Equipment Operator",
+                        company:  "ASML US",
+                        location: "Wilton, CT",
+                        duration: "05/2021 – 06/2023",
                         highlights: [
-                            "PCM device characterization",
-                            "Published 2 papers",
-                            "Mentored 3 undergraduates"
+                            "Assembled, installed, and tested an optical metrology system using torque wrenches, electric and pneumatic screwdrivers, ball drivers, oscilloscopes, voltage and current probes, multimeters, micrometers, and calipers",
+                            "Worked with optical fibers, spectrometers, and power meters for analysis",
+                            "YieldStar 375 F, 380 G, and 1385 systems for lithography process monitoring, control, system stability, and matching",
+                            "Sub-system assembly, optical alignment, functional testing, equipment calibration, station setup, and process-development support",
+                            "Sensor / UIA alignment, focus branch, Z-stage installation, pre- and final qualifications, Pupil / Alignment / Reference branches, cables and covers",
+                            "Final qualifications: sensor performance, calibrations, branch-optic alignment, objective-lens performance, diffraction-based overlay measurements",
+                            "Excel-based KPI tracking",
+                            "Cleanroom environment with strict safety procedures (PPE, ASML 5S+1) — 12-hour night shifts in coveralls, hoods, booties, safety glasses, gloves",
+                            "Root-cause analysis on production issues with corrective actions tracked in SAP, Opti Angle, and YieldStar software",
+                            "Cross-functional collaboration with manufacturing, quality, and procurement"
+                        ]
+                    },
+                    {
+                        position: "Undergraduate Student Research Assistant",
+                        company:  "University of Connecticut",
+                        location: "Storrs, CT",
+                        duration: "05/2020 – 08/2020",
+                        highlights: [
+                            "Used EIT for slow-light and quantum-memory demonstrations in vapor cells and cold-atom ensembles",
+                            "Modeled Λ-type three-level systems using density-matrix formalism to simulate optical susceptibility under varying laser detuning and intensity",
+                            "Developed laser-locking and modulation systems for EIT experiments using AOMs and EOMs"
+                        ]
+                    },
+                    {
+                        position: "Patient Administration Specialist",
+                        company:  "United States Army",
+                        location: "Fort Stewart, GA",
+                        duration: "01/2016 – 01/2018",
+                        highlights: [
+                            "Used the computerized Resource and Patient Management System (RPMS) and Electronic Health Record (EHR) system to update patient records, transmit prescriptions, and transfer files",
+                            "Maintained strict patient-data procedures to comply with HIPAA and prevent information breaches",
+                            "Hands-on experience with MHS GENESIS, the DoD's enterprise EHR system",
+                            "Supported patient registration, records management, data accuracy, and system navigation in a highly regulated healthcare-IT environment"
+                        ]
+                    },
+                    {
+                        position: "Cashier",
+                        company:  "Walmart",
+                        location: "Norwalk, CT",
+                        duration: "10/2011 – 12/2015",
+                        highlights: [
+                            "Processed customer transactions accurately and efficiently",
+                            "Assisted customers with product inquiries"
+                        ]
+                    }
+                ],
+                additional: [
+                    {
+                        position: "Professional Driver (Uber/Lyft)",
+                        company:  "Self-employed",
+                        location: "Storrs, CT",
+                        duration: "While completing undergraduate degree",
+                        highlights: [
+                            "Provided professional transportation services while completing undergraduate degree"
                         ]
                     }
                 ]
             },
-            
+
+            // Education — matches the resume; degrees only, no fabricated GPAs or honors.
             education: {
                 graduate: {
-                    degree: "M.S. Electrical Engineering",
-                    school: "Top Engineering University",
-                    gpa: "3.9/4.0",
-                    thesis: "Adaptive Beamforming for 5G mmWave Systems",
-                    courses: [
-                        "Advanced RF Circuit Design",
-                        "Digital Signal Processing",
-                        "Computer Architecture",
-                        "Quantum Computing"
-                    ]
+                    degree: "Master of Science, Electrical Engineering",
+                    school: "University of Connecticut, Storrs, CT",
+                    completed: "05/2025",
+                    notes: "Specialized in Electronics, Photonics, and Bio-Photonics. Applied ML methods to data analysis and experimental optimization. Research focus on GaN-based power devices, SiC MOSFETs, and Monte Carlo simulation for EUV lithography."
                 },
-                
                 undergraduate: {
-                    degree: "B.S. Computer Engineering",
-                    school: "Engineering University",
-                    gpa: "3.8/4.0",
-                    honors: ["Summa Cum Laude", "Tau Beta Pi", "IEEE Student Member"],
-                    projects: [
-                        "FPGA-based Bitcoin Miner",
-                        "Autonomous Drone Navigation",
-                        "IoT Security Framework"
-                    ]
+                    degree: "Bachelor of Science, Physics",
+                    school: "University of Connecticut, Storrs, CT",
+                    notes: "Focus on optics, quantum physics, and experimental research. Undergraduate research in EIT for slow-light and quantum-memory demonstrations."
+                },
+                associate: {
+                    degree: "Associate of Science, Engineering Science",
+                    school: "CT State Community College Housatonic, Bridgeport, CT",
+                    notes: "Foundation in engineering principles and mathematics, preparing for advanced studies in physics and electrical engineering."
                 }
+            },
+
+            // Certifications — split into earned (have a PDF) and scheduled
+            // (sitting for the exam, mirrors the homepage's "Scheduled" badges).
+            certifications: {
+                earned: [
+                    { name: "Six Sigma Green Belt",                                  pdf: "assets/pdfs/6Sigma Green Belt.pdf" },
+                    { name: "Google IT Automation with Python",                      pdf: "assets/pdfs/Coursera IT Automation with Python.pdf" },
+                    { name: "Google Advanced Data Analytics Professional Certificate", pdf: "assets/pdfs/Google Advanced Data Analytics.pdf" },
+                    { name: "MATLAB Programming for Engineers and Scientists Specialization" }
+                ],
+                scheduled: [
+                    { name: "USPTO Patent Bar" },
+                    { name: "FE Electrical Engineering" },
+                    { name: "CompTIA Security+" }
+                ]
+            },
+
+            // Military — separate so the assistant can answer "did you serve?" cleanly.
+            military: {
+                branch: "United States Army",
+                role:   "Patient Administration Specialist (68G)",
+                base:   "Fort Stewart, GA",
+                duration: "01/2016 – 01/2018"
             }
         };
     }
@@ -584,18 +603,20 @@ class AIAssistantBackendV2 {
 
         // Check for project mentions
         Object.entries(this.knowledgeBase.projects).forEach(([key, project]) => {
-            if (lower.includes(key.replace('-', ' ')) || 
-                lower.includes(project.title.toLowerCase()) ||
-                project.details.applications?.some(app => lower.includes(app.toLowerCase()))) {
+            const titleLower = (project.title || '').toLowerCase();
+            const descLower  = (project.description || '').toLowerCase();
+            if (lower.includes(key.replace('-', ' ')) ||
+                (titleLower && lower.includes(titleLower)) ||
+                (descLower && descLower.split(' ').some(word => word.length > 4 && lower.includes(word)))) {
                 entities.projects.push(key);
             }
         });
 
         // Check for technology mentions
         const allTechs = [
-            ...this.knowledgeBase.skills.programming.expert,
-            ...this.knowledgeBase.skills.programming.proficient,
-            ...Object.values(this.knowledgeBase.skills.tools).flat()
+            ...(this.knowledgeBase.skills.programming.proficient || []),
+            ...(this.knowledgeBase.skills.programming.familiar  || []),
+            ...Object.values(this.knowledgeBase.skills.tools || {}).flat()
         ];
 
         allTechs.forEach(tech => {
@@ -827,46 +848,29 @@ class AIAssistantBackendV2 {
         return response;
     }
 
-    // Generate project-specific response
+    // Generate project-specific response.
+    // Stays tight to what's actually on the project page; doesn't invent specs.
     generateProjectResponse(projectKey, knowledge) {
-        if (!projectKey || !this.knowledgeBase.projects[projectKey]) {
-            return "I can tell you about several projects including the mmWave RF Frontend, RISC-V SoC, Cryptography Research, and Phase Change Memory. Which one interests you most?";
+        const projects = this.knowledgeBase.projects;
+        if (!projectKey || !projects[projectKey]) {
+            const titles = Object.values(projects).map(p => p.title);
+            const sample = titles.slice(0, 4).join('; ');
+            return `I can walk you through any of my featured projects, e.g. ${sample}. Which one are you curious about?`;
         }
-        
-        const project = this.knowledgeBase.projects[projectKey];
-        
-        let response = `Let me tell you about the ${project.title}.\n\n`;
-        response += `This ${project.category} project ${project.description}. `;
-        
-        // Add technical details
-        if (project.details) {
-            response += `\n\nKey technical aspects include:\n`;
-            Object.entries(project.details).forEach(([key, value]) => {
-                if (Array.isArray(value)) {
-                    response += `• ${key.replace(/_/g, ' ')}: ${value.join(', ')}\n`;
-                } else {
-                    response += `• ${key.replace(/_/g, ' ')}: ${value}\n`;
-                }
-            });
+
+        const project = projects[projectKey];
+        let response = `**${project.title}** — ${project.category}.\n\n`;
+        response += `${project.description}\n\n`;
+
+        if (Array.isArray(project.tools_used) && project.tools_used.length) {
+            response += `**Tools:** ${project.tools_used.join(', ')}\n\n`;
         }
-        
-        // Add challenges and outcomes
-        if (project.challenges_solved) {
-            response += `\n\nSome of the main challenges I solved were:\n`;
-            project.challenges_solved.forEach(challenge => {
-                response += `• ${challenge}\n`;
-            });
+
+        if (project.url) {
+            response += `📄 Full write-up: \`${project.url}\` (open it from the portfolio site for the interactive version).\n\n`;
         }
-        
-        if (project.outcomes) {
-            response += `\n\nProject outcomes:\n`;
-            project.outcomes.forEach(outcome => {
-                response += `• ${outcome}\n`;
-            });
-        }
-        
-        response += `\n\nWould you like to know more about the technical implementation, see code examples, or explore the interactive demo?`;
-        
+
+        response += `Want me to suggest related projects, or pull up the resume?`;
         return response;
     }
 
@@ -889,227 +893,109 @@ class AIAssistantBackendV2 {
         return `That's a great technical question. Based on your interest in ${analysis.keyPhrases.join(', ')}, I can provide detailed explanations about the implementation, architecture, and design decisions. What specific aspect would you like me to focus on?`;
     }
 
-    // Explain beamforming
+    // Concept explanations — kept generic and accurate. The deep
+    // project-specific specs and "I implemented X" claims that used to
+    // live here have been removed because they were not backed by the
+    // resume or the actual project pages. The chatbot now points users
+    // at the real project page instead of inventing performance numbers.
+
     explainBeamforming() {
-        return `Beamforming is a signal processing technique I implemented in the mmWave RF Frontend project. Here's how it works:
+        const proj = this.knowledgeBase.projects['mmwave-rf'];
+        return `**Beamforming** uses an array of antennas with controlled phase and amplitude at each element to create a directional radiation pattern, electronically steering a beam without any mechanical movement.
 
-**Fundamental Principle:**
-Beamforming uses an array of antennas to create a directional radiation pattern. By controlling the phase and amplitude of signals at each antenna element, we can steer the beam electronically without mechanical movement.
+**Fundamentals**
+The array factor is AF(θ,φ) = Σ w_n · exp(j·k·r_n·û), where w_n are the complex element weights, k is the wave number, r_n the element position, and û the direction vector. By tuning the w_n you can steer the main lobe and shape sidelobes.
 
-**My Implementation:**
-• 8x8 phased array with λ/2 spacing
-• Digital beamforming with 6-bit phase shifters
-• Adaptive algorithms for optimal beam steering
-• ±60° scanning range in both azimuth and elevation
+**Common practical concerns**
+• Maintaining phase coherence across many elements
+• Mutual coupling between antenna elements
+• Wideband matching at mmWave frequencies
+• Calibration and per-element variation
 
-**Technical Details:**
-The array factor is given by: AF(θ,φ) = Σ w_n * exp(j*k*r_n·û)
-where w_n are the complex weights, k is the wave number, r_n is the element position, and û is the direction vector.
-
-**Performance Achieved:**
-• Beam width: 12° at 28 GHz
-• Sidelobe level: -13 dB
-• Gain variation: < 3 dB across scan range
-• Steering accuracy: ±1°
-
-The key challenge was maintaining phase coherence across all 64 elements while managing mutual coupling effects. I solved this using a calibration algorithm that compensates for element-to-element variations.
-
-Would you like me to explain the calibration process, show you the beamforming code, or discuss the RF frontend architecture?`;
+For my own work in this area, see the mmWave RF Frontend project page: \`${proj ? proj.url : 'projects/comms/mmwave-rf-complete.html'}\`.`;
     }
 
-    // Explain pipeline
     explainPipeline() {
-        return `The RISC-V processor pipeline is a crucial part of the SoC design. Let me explain the implementation:
+        const proj = this.knowledgeBase.projects['riscv-soc'];
+        return `**Classic 5-stage RISC pipeline:** IF → ID → EX → MEM → WB.
 
-**5-Stage Pipeline Architecture:**
+1. **IF (Instruction Fetch)** — fetch from I-cache; branch prediction can override the next-PC.
+2. **ID (Instruction Decode)** — decode the instruction, read register file, check dependencies.
+3. **EX (Execute)** — ALU operations, address calculation for loads/stores, branch resolution.
+4. **MEM (Memory Access)** — D-cache access, store buffer, load/store disambiguation.
+5. **WB (Write Back)** — commit results to the register file.
 
-1. **IF (Instruction Fetch):**
-   - Fetch from I-cache (32KB, 2-way set-associative)
-   - Branch prediction using TAGE predictor
-   - 4K-entry BTB for target prediction
+**Hazards**
+• **Data hazards** — forwarding paths from EX/MEM/WB to avoid stalls.
+• **Control hazards** — branch prediction plus a fast misprediction recovery.
+• **Structural hazards** — multi-port resources or duplication.
 
-2. **ID (Instruction Decode):**
-   - Decode RV64IMAFDC instructions
-   - Register file read (32 integer + 32 floating-point)
-   - Dependency checking and scoreboarding
-
-3. **EX (Execute):**
-   - ALU operations (ADD, SUB, logical, shifts)
-   - Address calculation for loads/stores
-   - Branch resolution and misprediction recovery
-
-4. **MEM (Memory Access):**
-   - D-cache access (32KB, 4-way set-associative)
-   - Store buffer for write combining
-   - Load-store unit with disambiguation
-
-5. **WB (Write Back):**
-   - Write results to register file
-   - Commit to architectural state
-   - Exception handling
-
-**Advanced Features:**
-• Out-of-order execution with 64-entry ROB
-• Register renaming with 96 physical registers
-• Speculative execution with precise exceptions
-• Forwarding paths to minimize stalls
-
-**Hazard Handling:**
-• Data hazards: Forwarding from EX/MEM/WB stages
-• Control hazards: Branch prediction + fast recovery
-• Structural hazards: Dual-ported register file
-
-**Performance:**
-• 2.3 DMIPS/MHz
-• 85% branch prediction accuracy
-• Average CPI: 1.2 for typical workloads
-
-The most challenging aspect was implementing precise exception handling with out-of-order execution. I used a reorder buffer (ROB) to maintain program order for commits.
-
-Would you like to see the Verilog implementation, understand the hazard detection logic, or explore the branch predictor design?`;
+For my RISC-V SoC project page (Verilog/SystemVerilog implementation with UVM verification), see: \`${proj ? proj.url : 'projects/power-electronics/riscv-soc-complete.html'}\`.`;
     }
 
-    // Explain cryptography
     explainCryptography() {
-        return `My cryptography research focuses on post-quantum cryptography (PQC) - algorithms that remain secure against quantum computers. Here's an overview:
+        const proj = this.knowledgeBase.projects['cryptography'];
+        return `**Post-quantum cryptography (PQC)** are algorithms believed to remain secure against attackers with a large-scale quantum computer. Shor's algorithm threatens RSA and ECC, so NIST is standardizing new schemes.
 
-**Why Post-Quantum Cryptography?**
-Quantum computers can break current public-key cryptography (RSA, ECC) using Shor's algorithm. We need new mathematical problems that are hard even for quantum computers.
+**Key NIST PQC families**
+• **CRYSTALS-Kyber** — key encapsulation, based on Module-LWE.
+• **CRYSTALS-Dilithium** — digital signatures, also lattice-based.
+• **FALCON** — compact lattice-based signatures via NTRU.
+• **SPHINCS+** — stateless hash-based signatures, very conservative assumptions.
 
-**Algorithms I've Implemented:**
+**Implementation concerns**
+• Constant-time code to resist timing side-channels
+• Side-channel countermeasures (masking, shuffling)
+• Fault-injection resistance
+• Hardware acceleration for the costly NTT operations
 
-**1. CRYSTALS-Kyber (Key Exchange):**
-• Based on Module-LWE problem
-• Security levels: 512, 768, 1024 bits
-• My optimization: 5x speedup using NTT acceleration
-• Hardware: 15K LUTs, 100K ops/sec
-
-**2. CRYSTALS-Dilithium (Digital Signatures):**
-• Also Module-LWE based
-• Signature size: 2.4KB (compact for PQC)
-• Signing: 0.3ms, Verification: 0.1ms
-• Implemented constant-time for side-channel resistance
-
-**3. FALCON (Signatures):**
-• Based on NTRU lattices
-• Smallest signatures but complex implementation
-• Uses fast Fourier sampling over lattices
-
-**4. SPHINCS+ (Hash-based):**
-• Stateless, based only on hash functions
-• Large signatures but minimal assumptions
-• Quantum-resistant by design
-
-**Key Innovations:**
-• Novel masking scheme for side-channel protection
-• Optimized NTT with lazy reduction
-• Hardware/software co-design for acceleration
-• Hybrid protocols combining classical and PQC
-
-**Security Analysis:**
-• Resistance to timing attacks through constant-time implementation
-• Power analysis countermeasures using masking
-• Fault injection protection with redundancy
-• Formal verification of critical components
-
-**Real-world Applications:**
-• Secure firmware updates for IoT devices
-• Post-quantum TLS for web security
-• Blockchain with quantum-resistant signatures
-• Hardware security modules (HSM) integration
-
-The main challenge is balancing security, performance, and resource usage. PQC algorithms typically have larger keys and signatures than classical crypto.
-
-Would you like to dive deeper into the mathematical foundations, see implementation code, or discuss practical deployment strategies?`;
+For my cryptography research page, see: \`${proj ? proj.url : 'research/cryptography-research.html'}\`.`;
     }
 
-    // Explain PCM
     explainPCM() {
-        return `Phase Change Memory (PCM) is an emerging non-volatile memory technology I've been researching. It's fascinating because it could replace both DRAM and flash storage:
+        const proj = this.knowledgeBase.projects['pcm'];
+        return `**Phase-Change Memory (PCM)** stores bits using chalcogenide materials (typically Ge₂Sb₂Te₅, "GST") that switch between a low-resistance crystalline state and a high-resistance amorphous state.
 
-**How PCM Works:**
-PCM uses chalcogenide materials (typically Ge₂Sb₂Te₅ or GST) that can switch between crystalline (low resistance) and amorphous (high resistance) states.
+**Operation**
+• **SET (write '1')** — moderate current pulse, crystallizes the cell.
+• **RESET (write '0')** — short, high current pulse melts and quenches the cell into the amorphous state.
+• **READ** — small sensing current measures resistance without disturbing the state.
 
-**Physical Mechanism:**
-• **SET Operation (Write '1'):** Apply moderate current pulse (~100μA for 100ns) to crystallize
-• **RESET Operation (Write '0'):** Apply high current pulse (~500μA for 50ns) to melt and quench
-• **READ:** Apply small current (~10μA) to sense resistance
+**Open research areas**
+• Materials engineering (doped GST, alternative chalcogenides, superlattice structures)
+• Device physics — threshold switching, crystallization dynamics, thermal modeling, drift, retention
+• Circuit design — write drivers, sense amplifiers, wear leveling, ECC
+• Multi-level cells (more than 1 bit per cell)
 
-**My Research Contributions:**
-
-**1. Material Optimization:**
-• Doped GST with nitrogen for better retention
-• Achieved 10 years retention at 85°C
-• Reduced reset current by 50% through confined structures
-
-**2. Device Architecture:**
-• 4F² cell size using vertical structure
-• 3D crosspoint array demonstration
-• Multi-level cell (2 bits/cell) with resistance tuning
-
-**3. Circuit Innovations:**
-• Adaptive write algorithm reducing energy by 40%
-• Wear leveling for 10⁹ cycle endurance
-• Error correction for reliability
-
-**Performance Metrics Achieved:**
-• Write speed: 50ns (10x faster than NAND)
-• Read speed: 10ns (comparable to DRAM)
-• Endurance: 10⁹ cycles (1000x better than NAND)
-• Density: 4 Gb chip demonstrated
-
-**Key Challenges Solved:**
-
-**1. Thermal Crosstalk:**
-Used thermal barriers between cells to prevent adjacent cell disturb
-
-**2. Resistance Drift:**
-Developed compensation algorithm for long-term stability
-
-**3. Write Energy:**
-Optimized pulse shapes for minimum energy switching
-
-**4. Variability:**
-Statistical write-verify algorithm for consistent operation
-
-**Applications:**
-• Storage-class memory bridging DRAM-SSD gap
-• Neuromorphic computing using analog resistance
-• Radiation-hard memory for space applications
-• Embedded memory for AI accelerators
-
-The most exciting aspect is PCM's potential for in-memory computing, where we can perform computations directly in the memory array without moving data.
-
-Would you like to explore the device physics in more detail, see the characterization data, or discuss the neuromorphic computing applications?`;
+For my PCM/GST research page, see: \`${proj ? proj.url : 'projects/semiconductor/pcm-complete-project.html'}\`.`;
     }
 
-    // Generate comparison response
+    // Generate comparison response — only echoes what's actually in the
+    // knowledge base. No invented "both resulted in publications" claims.
     generateComparisonResponse(entities, knowledge) {
         if (entities.projects.length >= 2) {
             const proj1 = this.knowledgeBase.projects[entities.projects[0]];
             const proj2 = this.knowledgeBase.projects[entities.projects[1]];
-            
-            return `Let me compare ${proj1.title} and ${proj2.title}:
+            if (!proj1 || !proj2) {
+                return "I couldn't match both projects you mentioned. Try names like 'mmWave RF', 'RISC-V SoC', 'cryptography', or 'PCM'.";
+            }
+            const tools1 = (proj1.tools_used || []).join(', ') || '—';
+            const tools2 = (proj2.tools_used || []).join(', ') || '—';
+            return `Comparing **${proj1.title}** and **${proj2.title}**:
 
-**Project Scope:**
+**Scope**
 • ${proj1.title}: ${proj1.description}
 • ${proj2.title}: ${proj2.description}
 
-**Technical Complexity:**
-• ${proj1.title}: ${proj1.category} requiring expertise in ${proj1.details.technology || proj1.details.architecture}
-• ${proj2.title}: ${proj2.category} requiring expertise in ${proj2.details.architecture || proj2.details.algorithms}
+**Domain**
+• ${proj1.title}: ${proj1.category}
+• ${proj2.title}: ${proj2.category}
 
-**Key Differentiators:**
-• ${proj1.title} focuses on ${Object.keys(proj1.details)[0]}, while ${proj2.title} emphasizes ${Object.keys(proj2.details)[0]}
-• Different domains: ${proj1.category} vs ${proj2.category}
-• Different skill sets required
+**Tools**
+• ${proj1.title}: ${tools1}
+• ${proj2.title}: ${tools2}
 
-**Common Aspects:**
-• Both involve complex system design
-• Both required extensive verification/validation
-• Both resulted in tangible outcomes and publications
-
-Which specific aspects would you like me to compare in more detail?`;
+For deeper specs, the full project pages are at \`${proj1.url || ''}\` and \`${proj2.url || ''}\`.`;
         }
         
         return "I can compare different projects, technologies, or approaches. What specific comparison would you like me to make?";
@@ -1635,59 +1521,67 @@ def transform(item):
         return "the core algorithm implementation";
     }
 
-    // Generate skills response
+    // Generate skills response — sourced from the resume.
     generateSkillsResponse(technologies, knowledge) {
-        let response = "I have extensive experience across multiple domains:\n\n";
-        
-        response += "**Programming Languages:**\n";
-        response += `• Expert: ${this.knowledgeBase.skills.programming.expert.join(', ')}\n`;
-        response += `• Proficient: ${this.knowledgeBase.skills.programming.proficient.join(', ')}\n`;
-        response += `• Familiar: ${this.knowledgeBase.skills.programming.familiar.join(', ')}\n\n`;
-        
-        response += "**Technical Domains:**\n";
-        Object.entries(this.knowledgeBase.skills.domains).forEach(([category, skills]) => {
-            response += `• ${category.charAt(0).toUpperCase() + category.slice(1)}: ${skills.join(', ')}\n`;
-        });
-        
-        response += "\n**Tools & Software:**\n";
-        Object.entries(this.knowledgeBase.skills.tools).forEach(([category, tools]) => {
-            response += `• ${category.toUpperCase()}: ${tools.join(', ')}\n`;
-        });
-        
-        if (technologies && technologies.length > 0) {
-            response += `\n\nRegarding ${technologies.join(' and ')}, I have hands-on experience through various projects. Would you like specific examples of how I've used these technologies?`;
+        const s = this.knowledgeBase.skills;
+
+        let response = "Here's a summary of my technical skill set, drawn directly from my resume:\n\n";
+
+        response += "**Programming Languages**\n";
+        if (s.programming.proficient && s.programming.proficient.length) {
+            response += `• Proficient: ${s.programming.proficient.join(', ')}\n`;
         }
-        
+        if (s.programming.familiar && s.programming.familiar.length) {
+            response += `• Familiar: ${s.programming.familiar.join(', ')}\n`;
+        }
+        response += "\n";
+
+        if (s.semiconductor) {
+            response += "**Semiconductor Process**\n";
+            Object.entries(s.semiconductor).forEach(([category, items]) => {
+                const label = category.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                response += `• ${label}: ${items.slice(0, 4).join('; ')}${items.length > 4 ? '; …' : ''}\n`;
+            });
+            response += "\n";
+        }
+
+        if (s.systems_engineering && s.systems_engineering.length) {
+            response += "**Systems Engineering & V&V**\n";
+            response += `• ${s.systems_engineering.slice(0, 5).join('; ')}${s.systems_engineering.length > 5 ? '; …' : ''}\n\n`;
+        }
+
+        if (s.tools) {
+            response += "**Tools & Software**\n";
+            const toolLabels = { rf: 'RF', fpga_eda: 'FPGA / EDA', cleanroom: 'Cleanroom', software: 'Software', lab: 'Lab' };
+            Object.entries(s.tools).forEach(([category, items]) => {
+                const label = toolLabels[category] || category.toUpperCase();
+                response += `• ${label}: ${items.join(', ')}\n`;
+            });
+        }
+
+        if (technologies && technologies.length > 0) {
+            response += `\n\nYou mentioned ${technologies.join(' and ')} — happy to point you to specific projects on the site that use those.`;
+        }
+
         return response;
     }
 
     // Generate contact response
     generateContactResponse() {
-        return `I'd be happy to connect with you! Here are the best ways to reach Louis Antoine:
+        const p = this.knowledgeBase.personal;
+        return `Here are the best ways to reach ${p.name}:
 
-**Professional Contact:**
-📧 Email: louis@portfolio.com
-💼 LinkedIn: linkedin.com/in/louisantoine
-🐙 GitHub: github.com/louisantoine
+**Direct contact**
+📧 Email: ${p.email}
+📞 Phone: ${p.phone}
+📍 Location: ${p.location}
 
-**Availability:**
-• Open to freelance projects in RF design and hardware development
-• Available for consulting on cryptography and security implementations
-• Interested in collaborative research opportunities
-• Happy to discuss full-time positions in cutting-edge technology
+**Online**
+🌐 Portfolio: ${p.portfolio}
+💼 LinkedIn: ${p.linkedin}
+🐙 GitHub:   ${p.github}
 
-**Areas of Interest:**
-• 5G/6G wireless systems
-• Post-quantum cryptography
-• AI hardware acceleration
-• Emerging memory technologies
-
-**Response Time:**
-Typically respond within 24-48 hours. For urgent matters, please mention it in the subject line.
-
-Feel free to reach out with project proposals, technical questions, or collaboration ideas. I'm always excited to work on challenging problems and innovative solutions!
-
-Would you like to know more about my availability for specific types of projects?`;
+You can also send a message via the contact form on the portfolio homepage, or book a meeting on Calendly through the "Get in Touch" section.`;
     }
 
     // Generate general response
@@ -1773,8 +1667,8 @@ Would you like to know more about my availability for specific types of projects
         
         if (message.toLowerCase().includes('github')) {
             links.push({
-                text: 'GitHub Repository',
-                url: 'https://github.com/louisantoine'
+                text: 'GitHub Profile',
+                url: this.knowledgeBase.personal.github
             });
         }
         
@@ -1910,33 +1804,23 @@ Would you like to know more about my availability for specific types of projects
         return 'general';
     }
 
-    // Provide more details
+    // Provide more details about a topic / project.
+    // Stays factual: only echoes data actually in the knowledge base
+    // and points users to the real project page for the rest.
     provideMoreDetails(topic, knowledge) {
-        if (this.knowledgeBase.projects[topic]) {
-            const project = this.knowledgeBase.projects[topic];
-            let details = `here are additional details about ${project.title}:\n\n`;
-            
-            if (project.technical_specs) {
-                details += "**Technical Specifications:**\n";
-                Object.entries(project.technical_specs).forEach(([key, specs]) => {
-                    details += `\n${key.replace(/_/g, ' ').toUpperCase()}:\n`;
-                    Object.entries(specs).forEach(([spec, value]) => {
-                        details += `• ${spec.replace(/_/g, ' ')}: ${value}\n`;
-                    });
-                });
+        const project = this.knowledgeBase.projects[topic];
+        if (project) {
+            let details = `Here's a bit more on **${project.title}**:\n\n`;
+            details += `${project.description}\n\n`;
+            if (Array.isArray(project.tools_used) && project.tools_used.length) {
+                details += `**Tools used:** ${project.tools_used.join(', ')}\n\n`;
             }
-            
-            if (project.verification) {
-                details += "\n**Verification & Validation:**\n";
-                Object.entries(project.verification).forEach(([key, value]) => {
-                    details += `• ${key.replace(/_/g, ' ')}: ${value}\n`;
-                });
+            if (project.url) {
+                details += `For the full write-up, demos, and figures, see \`${project.url}\` on the portfolio site.`;
             }
-            
             return details;
         }
-        
-        return "I can provide more specific details. What aspect would you like me to elaborate on?";
+        return "I can dig deeper if you tell me which project, skill, or experience you're curious about.";
     }
 
     // Explain how something works
