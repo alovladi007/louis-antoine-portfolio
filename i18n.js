@@ -16,10 +16,10 @@
             },
             hero: {
                 greeting: "Hi, I'm",
-                name: 'Louis Antoine',
-                subtitle: 'Electrical Engineer & Applied Scientist',
-                desc1: 'Hands-on expertise in semiconductor manufacturing, optical metrology, and advanced process development. Strong foundation in materials science, device physics, and cleanroom operations.',
-                desc2: 'Passionate about applying machine learning, data analytics, and statistical methods to solve complex engineering challenges. Experienced in process optimization, yield improvement, and cross-functional collaboration in fast-paced technical environments.',
+                name: 'Louis Vladimir Antoine',
+                subtitle: 'Electrical Engineer',
+                desc1: 'Production floor lithography at ASML Wilton. Graduate device research on AlGaN/GaN HEMTs. Quality and NDT inspection at General Dynamics Electric Boat.',
+                desc2: 'Semiconductor, photonics, and device engineering. Precision manufacturing and hands on equipment work backed by graduate device physics.',
                 cta: 'View Projects',
                 contact: 'Get in Touch',
                 scroll: 'Scroll to explore'
@@ -244,10 +244,10 @@
             },
             hero: {
                 greeting: 'Bonjour, je suis',
-                name: 'Louis Antoine',
-                subtitle: 'Ingénieur Électrique & Scientifique Appliqué',
-                desc1: 'Expertise pratique en fabrication de semiconducteurs, métrologie optique et développement de processus avancés. Solide formation en science des matériaux, physique des dispositifs et opérations en salle blanche.',
-                desc2: "Passionné par l'application de l'apprentissage automatique, l'analyse de données et les méthodes statistiques pour résoudre des défis d'ingénierie complexes. Expérimenté en optimisation de processus, amélioration du rendement et collaboration interfonctionnelle.",
+                name: 'Louis Vladimir Antoine',
+                subtitle: 'Ingénieur Électrique',
+                desc1: "Lithographie sur plancher de production chez ASML Wilton. Recherche doctorale sur les dispositifs AlGaN/GaN HEMT. Inspection qualité et essais non destructifs chez General Dynamics Electric Boat.",
+                desc2: "Semiconducteurs, photonique et ingénierie de dispositifs. Fabrication de précision et travail direct sur équipement, soutenus par la physique des dispositifs au niveau études supérieures.",
                 cta: 'Voir les Projets',
                 contact: 'Me Contacter',
                 scroll: 'Faites défiler pour explorer'
@@ -472,10 +472,10 @@
             },
             hero: {
                 greeting: 'Hola, soy',
-                name: 'Louis Antoine',
-                subtitle: 'Ingeniero Eléctrico y Científico Aplicado',
-                desc1: 'Experiencia práctica en fabricación de semiconductores, metrología óptica y desarrollo de procesos avanzados. Sólida formación en ciencia de materiales, física de dispositivos y operaciones en sala limpia.',
-                desc2: 'Apasionado por aplicar aprendizaje automático, análisis de datos y métodos estadísticos para resolver desafíos de ingeniería complejos. Experimentado en optimización de procesos, mejora del rendimiento y colaboración interfuncional.',
+                name: 'Louis Vladimir Antoine',
+                subtitle: 'Ingeniero Eléctrico',
+                desc1: 'Litografía en planta de producción en ASML Wilton. Investigación doctoral en dispositivos AlGaN/GaN HEMT. Inspección de calidad y END en General Dynamics Electric Boat.',
+                desc2: 'Semiconductores, fotónica e ingeniería de dispositivos. Fabricación de precisión y trabajo directo con equipo, respaldados por física de dispositivos a nivel de posgrado.',
                 cta: 'Ver Proyectos',
                 contact: 'Contáctame',
                 scroll: 'Desplázate para explorar'
