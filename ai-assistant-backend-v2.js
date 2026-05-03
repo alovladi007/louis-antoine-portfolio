@@ -112,11 +112,11 @@ class AIAssistantBackendV2 {
                 },
 
                 "quantum-memory-eit": {
-                    title: "Quantum Memory System for EIT",
-                    category: "Quantum",
-                    description: "Quantum memory system using Electromagnetically Induced Transparency (EIT) in cold-atom ensembles for quantum information processing.",
+                    title: "EIT Computational Study: Slow Light and Quantum Memory in 87Rb",
+                    category: "Quantum (undergraduate)",
+                    description: "Undergraduate computational study of Electromagnetically Induced Transparency (EIT) in 87Rb-style atomic systems, reproducing slow-light and quantum memory phenomena from the published literature.",
                     url: "projects/quantum/quantum-memory-project.html",
-                    tools_used: ["Python", "MATLAB", "Optical alignment"]
+                    tools_used: ["Python", "MATLAB"]
                 },
 
                 "maxwell-bloch-eit": {
