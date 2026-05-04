@@ -55,15 +55,15 @@ class AIAssistantBackendV2 {
         return {
             // Personal contact info — matches the homepage and resume.
             personal: {
-                name: "Louis Antoine",
-                title: "Electrical Engineer & Applied Scientist",
+                name: "Louis Vladimir Antoine",
+                title: "Electrical Engineer",
                 location: "New Haven, CT 06515",
                 email: "alovladi@gmail.com",
                 phone: "(203) 360-5619",
                 portfolio: "https://alovladi007.github.io/louis-antoine-portfolio/",
                 github: "https://github.com/alovladi007",
                 linkedin: "https://www.linkedin.com/in/louis-antoine-333199a0",
-                summary: "Early-career Electrical Engineer with hands-on integration and test experience on precision electro-optical equipment (ASML), strong documentation discipline (ICDs, test procedures), and data-driven validation in Python/MATLAB. Comfortable across requirements, design, and verification & validation (V&V) with configuration control and safety in mind."
+                summary: "Electrical engineer focused on semiconductor manufacturing, device research, and quality and inspection work. Production-floor experience at ASML Wilton (Senior Production Technician on the YieldStar optical metrology platform); current quality and NDT inspection at General Dynamics Electric Boat on Virginia and Columbia class submarine programs; graduate device research at UConn on AlGaN/GaN HEMT electrothermal TCAD modeling. US Army veteran."
             },
 
             // Featured projects — these are real pages on the portfolio site.

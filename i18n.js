@@ -26,7 +26,7 @@
             },
             about: {
                 title: 'About Me',
-                description: 'Engineer and Applied Scientist with expertise in advanced manufacturing, data-driven optimization, machine learning, and process development across semiconductor, photonics, and emerging technologies.',
+                description: 'Electrical engineer focused on semiconductor manufacturing, device research, and quality and inspection work. Production-floor experience at ASML Wilton; current quality and NDT inspection at General Dynamics Electric Boat; graduate device research at UConn.',
                 tabIntro: 'About Me',
                 tabIntroBack: 'Discover',
                 tabWork: 'What I Do',
@@ -205,7 +205,7 @@
             },
             footer: {
                 aboutTitle: 'About',
-                aboutDesc: 'Engineer and Applied Scientist with expertise in manufacturing, data analytics, and process optimization across multiple technical domains.',
+                aboutDesc: 'Electrical engineer focused on semiconductor manufacturing, device research, and quality and inspection work. Production-floor experience at ASML Wilton; current quality and NDT inspection at General Dynamics Electric Boat; graduate device research at UConn.',
                 quickLinks: 'Quick Links',
                 features: 'Interactive Features',
                 resources: 'Resources & Tools',
@@ -254,7 +254,7 @@
             },
             about: {
                 title: 'À Propos de Moi',
-                description: 'Ingénieur et scientifique appliqué avec expertise en fabrication avancée, optimisation basée sur les données, apprentissage automatique et développement de processus dans les semiconducteurs, la photonique et les technologies émergentes.',
+                description: "Ingénieur électrique axé sur la fabrication de semiconducteurs, la recherche sur les dispositifs et le travail de qualité et d'inspection. Expérience sur le plancher de production chez ASML Wilton ; inspection qualité et essais non destructifs en cours chez General Dynamics Electric Boat ; recherche doctorale sur les dispositifs à UConn.",
                 tabIntro: 'À Propos',
                 tabIntroBack: 'Découvrir',
                 tabWork: 'Mon Travail',
@@ -433,7 +433,7 @@
             },
             footer: {
                 aboutTitle: 'À Propos',
-                aboutDesc: 'Ingénieur et scientifique appliqué avec expertise en fabrication, analyse de données et optimisation de processus dans plusieurs domaines techniques.',
+                aboutDesc: "Ingénieur électrique axé sur la fabrication de semiconducteurs, la recherche sur les dispositifs et le travail de qualité et d'inspection. Expérience sur le plancher de production chez ASML Wilton ; inspection qualité et essais non destructifs en cours chez General Dynamics Electric Boat ; recherche doctorale sur les dispositifs à UConn.",
                 quickLinks: 'Liens Rapides',
                 features: 'Fonctionnalités Interactives',
                 resources: 'Ressources & Outils',
@@ -482,7 +482,7 @@
             },
             about: {
                 title: 'Sobre Mí',
-                description: 'Ingeniero y científico aplicado con experiencia en fabricación avanzada, optimización basada en datos, aprendizaje automático y desarrollo de procesos en semiconductores, fotónica y tecnologías emergentes.',
+                description: 'Ingeniero eléctrico enfocado en fabricación de semiconductores, investigación de dispositivos y trabajo de calidad e inspección. Experiencia en planta de producción en ASML Wilton; inspección de calidad y END en curso en General Dynamics Electric Boat; investigación doctoral de dispositivos en UConn.',
                 tabIntro: 'Sobre Mí',
                 tabIntroBack: 'Descubrir',
                 tabWork: 'Lo Que Hago',
@@ -661,7 +661,7 @@
             },
             footer: {
                 aboutTitle: 'Sobre Mí',
-                aboutDesc: 'Ingeniero y científico aplicado con experiencia en fabricación, análisis de datos y optimización de procesos en múltiples dominios técnicos.',
+                aboutDesc: 'Ingeniero eléctrico enfocado en fabricación de semiconductores, investigación de dispositivos y trabajo de calidad e inspección. Experiencia en planta de producción en ASML Wilton; inspección de calidad y END en curso en General Dynamics Electric Boat; investigación doctoral de dispositivos en UConn.',
                 quickLinks: 'Enlaces Rápidos',
                 features: 'Funciones Interactivas',
                 resources: 'Recursos y Herramientas',
