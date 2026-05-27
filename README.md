@@ -1,16 +1,22 @@
 # Louis Antoine — Engineering Portfolio
 
-The source for [alovladi007.github.io/louis-antoine-portfolio](https://alovladi007.github.io/louis-antoine-portfolio/) — a multi-section portfolio covering semiconductor process engineering, photonics, quantum optics, machine learning, autonomy, and adjacent applied-physics work.
+[![Deploy](https://github.com/alovladi007/louis-antoine-portfolio/actions/workflows/static.yml/badge.svg?branch=main)](https://github.com/alovladi007/louis-antoine-portfolio/actions/workflows/static.yml)
+[![Live site](https://img.shields.io/badge/live-alovladi007.github.io%2Flouis--antoine--portfolio-2563eb?logo=githubpages&logoColor=white)](https://alovladi007.github.io/louis-antoine-portfolio/)
+[![License](https://img.shields.io/badge/license-MIT%20code%20%2F%20RR%20content-informational)](LICENSE)
 
-The site is a static HTML/CSS/JS app deployed via GitHub Pages, with hundreds of interactive simulators, tools, and project write-ups organized by domain.
+A multi-section engineering portfolio covering semiconductor process work, photonics, quantum optics, machine learning, autonomy, and adjacent applied-physics topics.
 
-## Live site
+The site is a static HTML/CSS/JS app deployed to GitHub Pages, with hundreds of interactive simulators, tools, and project write-ups organized by domain.
 
-- **Homepage** — [`index.html`](index.html)
-- **Electronics projects** — [`electronics-projects.html`](electronics-projects.html)
-- **Photonics projects** — [`photonics-projects.html`](photonics-projects.html)
-- **Machine Learning & Data Science** — [`projects/ml-ai/ml-projects.html`](projects/ml-ai/ml-projects.html)
-- **Innovation projects** — [`innovation-projects.html`](innovation-projects.html)
+**Live site →** <https://alovladi007.github.io/louis-antoine-portfolio/>
+
+## Section hubs
+
+- Homepage — [`index.html`](index.html)
+- Electronics — [`electronics-projects.html`](electronics-projects.html)
+- Photonics — [`photonics-projects.html`](photonics-projects.html)
+- Machine Learning & Data Science — [`projects/ml-ai/ml-projects.html`](projects/ml-ai/ml-projects.html)
+- Innovation — [`innovation-projects.html`](innovation-projects.html)
 
 ## Repository layout
 
@@ -22,7 +28,7 @@ The site is a static HTML/CSS/JS app deployed via GitHub Pages, with hundreds of
 ├── innovation-projects.html         # Hub: innovation
 │
 ├── projects/                        # All project pages, grouped by domain
-│   ├── cmp/                         # Chemical-mechanical polishing (23)
+│   ├── cmp/                         # Chemical-mechanical polishing (~23)
 │   ├── semiconductor/               # Process, lithography, deposition, etching (~240)
 │   ├── photonics/                   # Metamaterials & integrated photonics (~14)
 │   ├── comms/                       # Communications & RF (~51)
@@ -42,52 +48,46 @@ The site is a static HTML/CSS/JS app deployed via GitHub Pages, with hundreds of
 ├── research/                        # Research hubs + algorithm simulators
 ├── demos/                           # Standalone demos and showcase pages
 ├── pages/                           # Site utilities (FAQ, sitemap, legal, dashboards)
-├── tests/                           # Dev/debug pages
+├── tests/                           # Dev/debug pages (not deployed)
 │
 ├── assets/
 │   ├── images/                      # Photos, illustrations, backgrounds
 │   ├── pdfs/                        # Resume, diplomas, certifications
 │   └── data/                        # Datasets, captions
 │
-├── docs/                            # Status notes, READMEs, project guides, notebooks
-├── scripts/                         # Helper scripts (.py, .sh, .mac, .jsl, .sql)
-├── archives/                        # Old project bundles (.zip, .tar.gz)
-├── logs/                            # Server log files
+├── backend/                         # Flask app for self-driving demo (not deployed)
+├── docs/                            # Status notes, project guides (not deployed)
+├── scripts/                         # Helper scripts (not deployed)
 │
 ├── styles.css, styles-advanced.css  # Site-wide CSS
-├── script.js, script-advanced.js, enhance.js, i18n.js  # Site-wide JS
+├── script.js, script-advanced.js,
+├── enhance.js, i18n.js              # Site-wide JS
 ├── service-worker.js, manifest.json # PWA config (must stay at root)
-├── package.json, requirements.txt   # Dependencies
+├── package.json, requirements.txt   # Dev tooling
+├── LICENSE                          # MIT for code / all-rights-reserved for content
 └── .nojekyll                        # Disable Jekyll on GitHub Pages
 ```
 
 ## Tech stack
 
-- **Build**: Vite (configured via [`package.json`](package.json))
-- **3D / visualization**: Three.js, Plotly.js
-- **Animation**: GSAP, Lottie-web, AOS, Particles.js
-- **ML in-browser**: TensorFlow.js
-- **PWA**: `manifest.json` + `service-worker.js`
-- **Internationalization**: [`i18n.js`](i18n.js) (EN / FR / ES)
+- **Runtime libs** (CDN-loaded, no bundler) — Three.js, GSAP, AOS, Swiper, Typed.js, particles.js, Font Awesome
+- **PWA** — `manifest.json` + `service-worker.js`
+- **Internationalization** — [`i18n.js`](i18n.js) (EN / FR / ES)
+- **Backend demo** — Flask + OpenCV DNN ([`backend/`](backend/))
+
+The site ships as plain HTML; there is no build step. All runtime libraries load from CDN inside the HTML files. `package.json` exists only for the `npm run serve` helper.
 
 ## Local development
 
 ```bash
-# Static-server preview (no build step required)
+# Static-server preview
 python3 -m http.server 8765
 # then open http://localhost:8765/
-
-# Vite dev server (with HMR)
-npm install
-npm run dev
-
-# Production build
-npm run build
 ```
 
 ## Self-driving demo (Flask backend)
 
-Inside [`backend/`](backend/) is a standalone Flask app implementing the self-driving vision project page — real-time lane detection (Canny + probabilistic Hough), object detection (YOLOv3-tiny via OpenCV DNN), and collision risk scoring.
+[`backend/app.py`](backend/app.py) is a standalone Flask app implementing the self-driving vision page — real-time lane detection (Canny + probabilistic Hough), object detection (YOLOv3-tiny via OpenCV DNN), and collision risk scoring.
 
 ```bash
 pip install -r requirements.txt
@@ -95,19 +95,28 @@ python backend/app.py
 # then open frontend/index.html in a browser
 ```
 
-YOLO weights/config/labels go in `backend/model/` — see [`backend/`](backend/) for sources.
+YOLO weights/config/labels go in `backend/model/` — these are gitignored; fetch from <https://pjreddie.com/darknet/yolo/>.
+
+## Deployment
+
+Push to `main` → [.github/workflows/static.yml](.github/workflows/static.yml) assembles a trimmed `_site/` directory (excludes `backend/`, `scripts/`, `docs/`, `tests/`, internal `*.md`, dev tooling, and VCS metadata) and uploads it to GitHub Pages.
 
 ## Recovery
 
-Every reorganization in this repo's history is committed in small, revertible commits. To roll back any single migration:
+Every reorganization is committed in small, revertible commits:
 
 ```bash
 git log --oneline | head -20            # find the commit
 git revert <commit-sha>                  # safely undo it
 ```
 
-Project content moves through git history are preserved with rename detection (`git log --follow path/to/file`).
+Renames are preserved (`git log --follow path/to/file`).
 
 ## License & attribution
 
-Personal portfolio. Project pages credit upstream papers and reference implementations where applicable.
+See [LICENSE](LICENSE). In short:
+
+- **Code** (`*.py`, `*.js`, `*.ts`, `*.css`, `*.sv`, build files, HTML scaffolding) — MIT.
+- **Personal content** (photos, diplomas, resume PDFs, biographical text, employer affiliations) — all rights reserved.
+
+Project pages credit upstream papers and reference implementations where applicable.
