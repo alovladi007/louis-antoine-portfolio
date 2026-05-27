@@ -1,6 +1,16 @@
 // Community Hub Backend API Simulator
-// This simulates a backend API for the community hub
-// In production, this would be replaced with actual server-side code
+//
+// THIS IS A UI DEMO, NOT A LIVE BACKEND.
+//
+// Discussion threads, replies, member counts, and newsletter signups are
+// seeded placeholder data persisted to the visitor's own localStorage.
+// No data ever leaves the browser. There are no real users named
+// "Alex Chen", "Sarah Johnson", or "Mike Wilson" — they are seed records.
+// The pages that load this file (pages/community.html and
+// pages/community-hub-enhanced.html) carry a sticky banner saying so.
+//
+// If this is ever replaced with a real backend, remove the seed data
+// and the demo banners in those two pages.
 
 class CommunityBackend {
     constructor() {
