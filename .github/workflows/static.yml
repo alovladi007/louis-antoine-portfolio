@@ -83,13 +83,24 @@ jobs:
           set -euo pipefail
           npm install --silent --no-audit --no-fund --global csso-cli@4
           before=$(find _site -name '*.css' -print0 | xargs -0 wc -c | tail -1 | awk '{print $1}')
-          # Skip already-minified files (someone might add a *.min.css later)
-          find _site -name '*.css' -not -name '*.min.css' -print0 \
-            | while IFS= read -r -d '' f; do
-                csso "$f" --output "$f"
-              done
+          skipped=0
+          minified=0
+          # Skip already-minified files (someone might add a *.min.css later).
+          # Per-file try/continue: a single weird file (e.g. Tailwind source
+          # with @tailwind directives that csso can't parse) shouldn't fail
+          # the whole deploy.
+          while IFS= read -r -d '' f; do
+            if csso "$f" --output "$f" 2>/dev/null; then
+              minified=$((minified + 1))
+            else
+              echo "  skipped (csso parse error): $f"
+              skipped=$((skipped + 1))
+            fi
+          done < <(find _site -name '*.css' -not -name '*.min.css' -print0)
           after=$(find _site -name '*.css' -print0 | xargs -0 wc -c | tail -1 | awk '{print $1}')
           echo "--- CSS minification ---"
+          echo "files minified: $minified"
+          echo "files skipped:  $skipped"
           echo "before: $before bytes"
           echo "after:  $after bytes"
           if [ "$before" -gt 0 ]; then
