@@ -67,11 +67,19 @@ test.describe('portfolio smoke', () => {
     expect(ctype).toMatch(/application\/(manifest\+)?json/);
   });
 
-  test('kept-on-purpose download zip still resolves', async ({ request }) => {
-    // pcm-gst-research.zip is whitelisted in .gitignore because it's
-    // wired as a download button on 4 project pages. If this 404s the
-    // download buttons are broken.
-    const response = await request.head('projects/pcm-gst-research.zip');
-    expect(response.status()).toBeLessThan(400);
-  });
+  // Downloadable project bundles live in the v1-downloads GitHub Release,
+  // not in the repo. Four project pages link to pcm-gst-research.zip and
+  // one to riscv_soc_paper_assets.zip; if either 302→404s the buttons are
+  // broken. HEAD follows the GitHub → S3 redirect with maxRedirects.
+  const releaseAssets = [
+    'pcm-gst-research.zip',
+    'riscv_soc_paper_assets.zip',
+  ];
+  for (const asset of releaseAssets) {
+    test(`release asset still resolves: ${asset}`, async ({ request }) => {
+      const url = `https://github.com/alovladi007/louis-antoine-portfolio/releases/download/v1-downloads/${asset}`;
+      const response = await request.head(url, { maxRedirects: 5 });
+      expect(response.status(), `${asset} HTTP status`).toBeLessThan(400);
+    });
+  }
 });
