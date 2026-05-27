@@ -23,12 +23,53 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # Build a trimmed site/ directory and upload that, instead of
+      # shipping the whole repo (which was dragging tens of MB of internal
+      # docs, dev scripts, the Flask backend, and the entire .git tree
+      # into every Pages deploy).
+      - name: Assemble deploy artifact
+        run: |
+          set -euo pipefail
+          mkdir -p _site
+          rsync -a \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='.gitignore' \
+            --exclude='.cursorignore' \
+            --exclude='.nojekyll' \
+            --exclude='node_modules/' \
+            --exclude='_site/' \
+            --exclude='backend/' \
+            --exclude='scripts/' \
+            --exclude='docs/' \
+            --exclude='tests/' \
+            --exclude='archives/' \
+            --exclude='logs/' \
+            --exclude='*.md' \
+            --exclude='LICENSE' \
+            --exclude='package.json' \
+            --exclude='requirements.txt' \
+            --exclude='__pycache__/' \
+            --exclude='*.py' \
+            --exclude='*.pyc' \
+            --exclude='*.log' \
+            ./ _site/
+          # Restore .nojekyll so Pages serves files starting with _
+          touch _site/.nojekyll
+          echo "--- artifact size ---"
+          du -sh _site/
+          echo "--- top-level entries ---"
+          ls -1 _site/ | head -50
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: '_site'
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
