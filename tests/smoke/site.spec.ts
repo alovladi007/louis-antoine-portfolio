@@ -31,6 +31,16 @@ test.describe('portfolio smoke', () => {
     await expect(page.locator('.hero-title')).toHaveText(/Louis Vladimir Antoine/i);
   });
 
+  test('homepage has accessibility landmarks (skip-link + main)', async ({ page }) => {
+    // Regression guard for the a11y pass: skip-link must be present and
+    // point at a real #main-content landmark. If a future redesign removes
+    // either, this test will catch it.
+    await page.goto('./', { waitUntil: 'domcontentloaded' });
+    const skipLink = page.locator('a.skip-link');
+    await expect(skipLink).toHaveAttribute('href', '#main-content');
+    await expect(page.locator('main#main-content')).toBeAttached();
+  });
+
   // Hub pages — if any of these 404 the front-page nav is broken.
   const hubs: Array<{ path: string; titleMatch: RegExp; selector?: string }> = [
     { path: 'electronics-projects.html', titleMatch: /electronics/i },
