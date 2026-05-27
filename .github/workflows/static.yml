@@ -69,6 +69,34 @@ jobs:
           echo "--- top-level entries ---"
           ls -1 _site/ | head -50
 
+      # Minify every CSS file in the artifact, in place. The source
+      # CSS in the repo stays readable; only the deployed copy is
+      # compressed. csso is the minifier — solid track record, doesn't
+      # do anything semantically risky at default settings.
+      #
+      # Why this is worth the ~15 seconds: the homepage ships ~193 KB
+      # of unminified CSS (styles.css + styles-advanced.css) on every
+      # page load. Minification typically wins 20-30% before gzip and
+      # ~10% after gzip; the bigger win is parse time on slow CPUs.
+      - name: Minify CSS
+        run: |
+          set -euo pipefail
+          npm install --silent --no-audit --no-fund --global csso-cli@4
+          before=$(find _site -name '*.css' -print0 | xargs -0 wc -c | tail -1 | awk '{print $1}')
+          # Skip already-minified files (someone might add a *.min.css later)
+          find _site -name '*.css' -not -name '*.min.css' -print0 \
+            | while IFS= read -r -d '' f; do
+                csso "$f" --output "$f"
+              done
+          after=$(find _site -name '*.css' -print0 | xargs -0 wc -c | tail -1 | awk '{print $1}')
+          echo "--- CSS minification ---"
+          echo "before: $before bytes"
+          echo "after:  $after bytes"
+          if [ "$before" -gt 0 ]; then
+            saved_pct=$(awk -v b="$before" -v a="$after" 'BEGIN { printf "%.1f", (b-a)*100.0/b }')
+            echo "saved:  ${saved_pct}%"
+          fi
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
