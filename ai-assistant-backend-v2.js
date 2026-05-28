@@ -514,15 +514,21 @@ class AIAssistantBackendV2 {
             links: []
         };
 
-        // Check if this is a follow-up question
-        const isFollowUp = this.isFollowUpQuestion(message, context);
-        
-        // Generate contextual response
+        // Any confidently-classified intent bypasses the follow-up router.
+        // isFollowUpQuestion is permissive — it returns true for any
+        // message under 20 chars, OR when the new message shares a token
+        // with the assistant's previous reply (so "tell me about the mmWave
+        // RF project" was being misclassified as a follow-up because the
+        // assistant's greeting had already mentioned "RF"). Routing only on
+        // intent=='general' makes follow-up the genuine fallback it should be.
+        const hasConfidentIntent = analysis.intent && analysis.intent !== 'general';
+        const isFollowUp = !hasConfidentIntent && this.isFollowUpQuestion(message, context);
+
         if (isFollowUp && context.messageHistory.length > 2) {
             // Continue previous topic with context
             responseContent = this.generateFollowUpResponse(message, context, relevantKnowledge);
         } else {
-            // New topic or direct question
+            // New topic, direct question, or conversational intent
             responseContent = this.generateTopicResponse(message, analysis, relevantKnowledge);
         }
 
@@ -550,8 +556,13 @@ class AIAssistantBackendV2 {
         const lower = message.toLowerCase();
         const words = lower.split(/\s+/);
         
-        // Enhanced intent detection
+        // Enhanced intent detection.
+        // Greeting must match the ENTIRE message (anchored) so "hi, tell me
+        // about the projects" still routes to project_inquiry, not greeting.
         const intents = {
+            greeting: /^\s*(hi|hello|hey|hiya|howdy|yo|sup|greetings|good\s+(morning|afternoon|evening|day))[\s!.,?'-]*$/i,
+            thanks: /^\s*(thanks|thank you|thx|ty|cheers|appreciate it)[\s!.,?'-]*$/i,
+            goodbye: /^\s*(bye|goodbye|see you|see ya|later|farewell)[\s!.,?'-]*$/i,
             project_inquiry: /tell me about|explain|describe|what is the|show me the/i,
             technical_question: /how does|how to|implement|design|architecture|technical/i,
             comparison: /compare|versus|vs|difference|better|choose between/i,
@@ -694,7 +705,12 @@ class AIAssistantBackendV2 {
             currentEntities.projects.some(p => previousEntities.projects.includes(p)) ||
             currentEntities.technologies.some(t => previousEntities.technologies.includes(t));
         
-        return startsWithFollowUp || hasSharedEntities || message.length < 20;
+        // Follow-up requires an actual signal: either an explicit follow-up
+        // word ("more", "and", "it", etc.) or entity overlap with what the
+        // assistant said last. The old `|| message.length < 20` heuristic
+        // was too aggressive — it routed bare "?" / "ok" / "yes" to the
+        // follow-up generator which produced nonsense.
+        return startsWithFollowUp || hasSharedEntities;
     }
 
     // Extract entities from message history
@@ -817,30 +833,42 @@ class AIAssistantBackendV2 {
         
         // Handle specific intents
         switch (analysis.intent) {
+            case 'greeting':
+                response = this.generateGreetingResponse(message);
+                break;
+
+            case 'thanks':
+                response = this.generateThanksResponse();
+                break;
+
+            case 'goodbye':
+                response = this.generateGoodbyeResponse();
+                break;
+
             case 'project_inquiry':
                 response = this.generateProjectResponse(analysis.entities.projects[0], knowledge);
                 break;
-                
+
             case 'technical_question':
                 response = this.generateTechnicalResponse(message, analysis, knowledge);
                 break;
-                
+
             case 'comparison':
                 response = this.generateComparisonResponse(analysis.entities, knowledge);
                 break;
-                
+
             case 'code_request':
                 response = this.generateCodeResponse(message, analysis, knowledge);
                 break;
-                
+
             case 'skills_inquiry':
                 response = this.generateSkillsResponse(analysis.entities.technologies, knowledge);
                 break;
-                
+
             case 'contact':
                 response = this.generateContactResponse();
                 break;
-                
+
             default:
                 response = this.generateGeneralResponse(message, analysis, knowledge);
         }
@@ -1584,34 +1612,67 @@ def transform(item):
 You can also send a message via the contact form on the portfolio homepage, or book a meeting on Calendly through the "Get in Touch" section.`;
     }
 
-    // Generate general response
+    // Generate general response.
+    // Avoids the "I understand you're interested in '<echo of user input>'"
+    // anti-pattern, which made short or unusual inputs ("hi", "?", "test")
+    // produce nonsensical replies. Instead it leads with whatever entities
+    // were actually detected and falls back to a plain "what would you like
+    // to know" prompt if nothing was detected.
     generateGeneralResponse(message, analysis, knowledge) {
-        // Try to provide helpful response even for general queries
-        let response = `I understand you're interested in "${message}". `;
-        
-        if (analysis.entities.projects.length > 0) {
-            response += `\n\nBased on your mention of ${analysis.entities.projects.join(' and ')}, `;
-            response += `I can provide detailed information about these projects, including technical specifications, challenges solved, and outcomes. `;
+        const hasProjects = analysis.entities.projects.length > 0;
+        const hasTechs = analysis.entities.technologies.length > 0;
+        const hasConcepts = analysis.entities.concepts.length > 0;
+
+        let response = '';
+
+        if (hasProjects) {
+            response += `I can give you the details on ${analysis.entities.projects.join(' and ')}. `;
+            response += `Want me to walk through the design, the results, or the source code?`;
+        } else if (hasTechs) {
+            response += `${analysis.entities.technologies.join(' and ')} comes up in a few projects on the site. `;
+            response += `Want me to point you to specific ones, or talk about how Louis has used it?`;
+        } else if (hasConcepts) {
+            response += `${analysis.entities.concepts.join(', ')} shows up in Louis's work. `;
+            response += `Tell me a bit more about what you want to dig into and I'll point you to the right project.`;
+        } else {
+            response += `Happy to help — what would you like to know? `;
+            response += `You can ask about the projects, the skills (RF, GaN devices, semiconductor process), the experience at ASML / GDEB / UConn, or how to get in touch.`;
         }
-        
-        if (analysis.entities.technologies.length > 0) {
-            response += `\n\nRegarding ${analysis.entities.technologies.join(' and ')}, `;
-            response += `I have practical experience with these technologies and can share implementation details or code examples. `;
-        }
-        
-        if (analysis.entities.concepts.length > 0) {
-            response += `\n\nThe concepts you mentioned (${analysis.entities.concepts.join(', ')}) `;
-            response += `are areas I've worked on extensively. I can explain the theory, show practical implementations, or discuss real-world applications. `;
-        }
-        
-        response += `\n\nHow can I help you explore this topic further? Would you like:
-• Technical details and explanations
-• Code examples and implementations
-• Project demonstrations
-• Practical applications
-• Related resources and documentation`;
-        
+
         return response;
+    }
+
+    // Greeting response. Pulls randomly from the templates seeded in the
+    // constructor so successive greetings don't repeat verbatim.
+    generateGreetingResponse(message) {
+        const greetings = (this.responsePatterns && this.responsePatterns.greetings) || [
+            "Hi! How can I help you explore the portfolio?",
+            "Hello — what would you like to know?",
+            "Hey, glad you stopped by. What are you looking for?"
+        ];
+        const opener = greetings[Math.floor(Math.random() * greetings.length)];
+        return `${opener}<br><br>You can ask me about the projects, the skills (RF, GaN devices, semiconductor process), the experience at ASML / GDEB / UConn, or how to get in touch.`;
+    }
+
+    // Short acknowledgement when the user just thanks us. Doesn't echo
+    // their text and doesn't try to derail back into a topic.
+    generateThanksResponse() {
+        const options = [
+            "Anytime. Let me know if anything else comes up.",
+            "Glad it helped. Ask me whatever else you want to know.",
+            "Sure thing — happy to dig deeper into any of it."
+        ];
+        return options[Math.floor(Math.random() * options.length)];
+    }
+
+    // Short acknowledgement when the user signs off.
+    generateGoodbyeResponse() {
+        const options = [
+            "Take care. The contact section has email and LinkedIn if you want to reach Louis directly.",
+            "See you around. Reach out via the contact section anytime.",
+            "Bye for now. The portfolio stays up at the URL in the address bar."
+        ];
+        return options[Math.floor(Math.random() * options.length)];
     }
 
     // Check if should include code
