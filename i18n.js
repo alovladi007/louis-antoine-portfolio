@@ -18,8 +18,8 @@
                 greeting: "Hi, I'm",
                 name: 'Louis Vladimir Antoine',
                 subtitle: 'Electrical Engineer',
-                desc1: 'AlGaN/GaN HEMT electrothermal TCAD modeling and wide bandgap power devices from graduate research at UConn. GaN power amplifier design with Doherty architecture and digital predistortion for 28 GHz 5G and 6G mmWave frontends. ASML Wilton photolithography production floor, with quality control and NDT inspection on Virginia and Columbia class submarine programs at General Dynamics Electric Boat.',
-                desc2: 'Devices, RF, and systems engineering. US Army veteran. Registered for the USPTO patent bar exam.',
+                desc1: 'Electrical engineer working across device physics, mmWave RF for 5G and 6G, photolithography production, and submarine quality inspection.',
+                desc2: 'US Army veteran. Registered for the USPTO patent bar.',
                 cta: 'View Projects',
                 contact: 'Get in Touch',
                 scroll: 'Scroll to explore'
@@ -247,8 +247,8 @@
                 greeting: 'Bonjour, je suis',
                 name: 'Louis Vladimir Antoine',
                 subtitle: 'Ingénieur Électrique',
-                desc1: "Modélisation TCAD électrothermique des HEMT AlGaN/GaN et dispositifs de puissance à large bande interdite, issus de la recherche doctorale à UConn. Conception d'amplificateurs de puissance GaN avec architecture Doherty et prédistorsion numérique pour les frontaux mmWave 5G et 6G à 28 GHz. Plancher de production photolithographique d'ASML Wilton, avec contrôle qualité et inspection END sur les programmes de sous-marins des classes Virginia et Columbia chez General Dynamics Electric Boat.",
-                desc2: "Dispositifs, RF et ingénierie des systèmes. Vétéran de l'armée américaine. Inscrit à l'examen du barreau des brevets de l'USPTO.",
+                desc1: "Ingénieur électrique travaillant sur la physique des dispositifs, la RF mmWave pour la 5G et la 6G, la production photolithographique et l'inspection qualité de sous-marins.",
+                desc2: "Vétéran de l'armée américaine. Inscrit à l'examen du barreau des brevets de l'USPTO.",
                 cta: 'Voir les Projets',
                 contact: 'Me Contacter',
                 scroll: 'Faites défiler pour explorer'
@@ -476,8 +476,8 @@
                 greeting: 'Hola, soy',
                 name: 'Louis Vladimir Antoine',
                 subtitle: 'Ingeniero Eléctrico',
-                desc1: 'Modelado TCAD electrotérmico de HEMT AlGaN/GaN y dispositivos de potencia de banda prohibida amplia, en investigación doctoral en UConn. Diseño de amplificadores de potencia GaN con arquitectura Doherty y predistorsión digital para frontales mmWave 5G y 6G a 28 GHz. Planta de producción fotolitográfica de ASML Wilton, con control de calidad e inspección END en los programas de submarinos clase Virginia y Columbia en General Dynamics Electric Boat.',
-                desc2: 'Dispositivos, RF e ingeniería de sistemas. Veterano del Ejército de EE. UU. Inscrito en el examen del colegio de patentes de la USPTO.',
+                desc1: 'Ingeniero eléctrico que trabaja en física de dispositivos, RF mmWave para 5G y 6G, producción fotolitográfica e inspección de calidad de submarinos.',
+                desc2: 'Veterano del Ejército de EE. UU. Inscrito en el examen del colegio de patentes de la USPTO.',
                 cta: 'Ver Proyectos',
                 contact: 'Contáctame',
                 scroll: 'Desplázate para explorar'
