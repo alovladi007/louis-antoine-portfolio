@@ -18,7 +18,7 @@
                 greeting: "Hi, I'm",
                 name: 'Louis Vladimir Antoine',
                 subtitle: 'Electrical Engineer',
-                desc1: 'Hardware engineer across mmWave RF, GaN devices, and semiconductor process. Interested in architecture, system integration, and trade space work.',
+                desc1: 'Hardware engineer across mmWave RF, GaN devices, semiconductor process. Interested in architecture, integration, trade space.',
                 desc2: 'US Army veteran. Scheduled for the FE Electrical and Computer Engineering exam.',
                 cta: 'View Projects',
                 contact: 'Get in Touch',
@@ -206,7 +206,7 @@
             },
             footer: {
                 aboutTitle: 'About',
-                aboutDesc: 'Hardware engineer across mmWave RF, GaN devices, and semiconductor process. Interested in architecture, system integration, and trade space work. US Army veteran. Scheduled for the FE Electrical and Computer Engineering exam.',
+                aboutDesc: 'Hardware engineer across mmWave RF, GaN devices, semiconductor process. Interested in architecture, integration, trade space. US Army veteran. Scheduled for the FE Electrical and Computer Engineering exam.',
                 quickLinks: 'Quick Links',
                 features: 'Interactive Features',
                 resources: 'Resources & Tools',
