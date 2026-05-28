@@ -16,7 +16,9 @@
 //   - YouTube IFrame player init (binds onYouTubeIframeAPIReady by global name)
 //   - Google Analytics gtag.js stub
 //   - Microsoft Clarity stub
-//   - Tawk.to widget loader
+// (Tawk.to widget was previously inline here; removed alongside the
+//  positioning sweep because it shipped with B2B "Customer Support"
+//  copy that didn't fit and overlapped the custom AI Assistant bubble.)
 //
 // =============================================================================
 // 1. About Me section: tabs + auto-sliding carousel
