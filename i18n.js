@@ -18,8 +18,8 @@
                 greeting: "Hi, I'm",
                 name: 'Louis Vladimir Antoine',
                 subtitle: 'Electrical Engineer',
-                desc1: 'Hardware engineer across mmWave RF, GaN devices, and semiconductor process. Interested in architecture, system integration, and trade-space work.',
-                desc2: 'US Army veteran. Registered for the USPTO patent bar.',
+                desc1: 'Hardware engineer across mmWave RF, GaN devices, and semiconductor process. Interested in architecture, system integration, and trade space work.',
+                desc2: 'US Army veteran. Scheduled for the FE Electrical and Computer Engineering exam.',
                 cta: 'View Projects',
                 contact: 'Get in Touch',
                 scroll: 'Scroll to explore'
@@ -248,7 +248,7 @@
                 name: 'Louis Vladimir Antoine',
                 subtitle: 'Ingénieur Électrique',
                 desc1: "Ingénieur matériel travaillant sur la RF mmWave, les dispositifs GaN et les procédés semi-conducteurs. Intéressé par l'architecture, l'intégration système et l'analyse d'espaces de compromis.",
-                desc2: "Vétéran de l'armée américaine. Inscrit à l'examen du barreau des brevets de l'USPTO.",
+                desc2: "Vétéran de l'armée américaine. Programmé pour l'examen FE en génie électrique et informatique.",
                 cta: 'Voir les Projets',
                 contact: 'Me Contacter',
                 scroll: 'Faites défiler pour explorer'
@@ -477,7 +477,7 @@
                 name: 'Louis Vladimir Antoine',
                 subtitle: 'Ingeniero Eléctrico',
                 desc1: 'Ingeniero de hardware que trabaja en RF mmWave, dispositivos GaN y procesos de semiconductores. Interesado en arquitectura, integración de sistemas y análisis de espacios de compromiso.',
-                desc2: 'Veterano del Ejército de EE. UU. Inscrito en el examen del colegio de patentes de la USPTO.',
+                desc2: 'Veterano del Ejército de EE. UU. Programado para el examen FE en Ingeniería Eléctrica e Informática.',
                 cta: 'Ver Proyectos',
                 contact: 'Contáctame',
                 scroll: 'Desplázate para explorar'
