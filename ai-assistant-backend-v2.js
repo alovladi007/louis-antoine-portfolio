@@ -63,7 +63,7 @@ class AIAssistantBackendV2 {
                 portfolio: "https://alovladi007.github.io/louis-antoine-portfolio/",
                 github: "https://github.com/alovladi007",
                 linkedin: "https://www.linkedin.com/in/louis-antoine-333199a0",
-                summary: "Electrical engineer focused on semiconductor manufacturing, device research, and quality and inspection work. Production-floor experience at ASML Wilton (Senior Production Technician on the YieldStar optical metrology platform); current quality control NDT inspection at General Dynamics Electric Boat on Virginia and Columbia class submarine programs; graduate device research at UConn on AlGaN/GaN HEMT electrothermal TCAD modeling. US Army veteran."
+                summary: "Hardware engineer across mmWave RF, GaN devices, and semiconductor process. Interested in architecture, system integration, and trade space work. Production-floor experience at ASML Wilton (Senior Production Technician on the YieldStar optical metrology platform). Current quality control NDT inspection at General Dynamics Electric Boat on Virginia and Columbia class submarine programs. Graduate device research at UConn on AlGaN/GaN HEMT electrothermal TCAD modeling. US Army veteran. Scheduled for the FE Electrical and Computer Engineering exam."
             },
 
             // Featured projects — these are real pages on the portfolio site.

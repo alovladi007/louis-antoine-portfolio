@@ -26,7 +26,7 @@
             },
             about: {
                 title: 'About Me',
-                description: 'Electrical engineer focused on semiconductor manufacturing, device research, and quality and inspection work. Production-floor experience at ASML Wilton; current quality control NDT inspection at General Dynamics Electric Boat; graduate device research at UConn.',
+                description: 'Hardware engineer across mmWave RF, GaN devices, and semiconductor process. Production-floor experience at ASML Wilton, current quality control NDT inspection at General Dynamics Electric Boat, graduate device research at UConn. Interested in architecture, system integration, and trade space work. US Army veteran.',
                 tabIntro: 'About Me',
                 tabIntroBack: 'Discover',
                 tabWork: 'What I Do',
@@ -206,7 +206,7 @@
             },
             footer: {
                 aboutTitle: 'About',
-                aboutDesc: 'Electrical engineer focused on semiconductor manufacturing, device research, and quality and inspection work. Production-floor experience at ASML Wilton; current quality control NDT inspection at General Dynamics Electric Boat; graduate device research at UConn.',
+                aboutDesc: 'Hardware engineer across mmWave RF, GaN devices, and semiconductor process. Interested in architecture, system integration, and trade space work. US Army veteran. Scheduled for the FE Electrical and Computer Engineering exam.',
                 quickLinks: 'Quick Links',
                 features: 'Interactive Features',
                 resources: 'Resources & Tools',
@@ -255,7 +255,7 @@
             },
             about: {
                 title: 'À Propos de Moi',
-                description: "Ingénieur électrique axé sur la fabrication de semiconducteurs, la recherche sur les dispositifs et le travail de qualité et d'inspection. Expérience sur le plancher de production chez ASML Wilton ; contrôle qualité et essais non destructifs en cours chez General Dynamics Electric Boat ; recherche doctorale sur les dispositifs à UConn.",
+                description: "Ingénieur matériel travaillant sur la RF mmWave, les dispositifs GaN et les procédés semi-conducteurs. Expérience sur le plancher de production chez ASML Wilton, contrôle qualité et essais non destructifs en cours chez General Dynamics Electric Boat, recherche doctorale à UConn. Intéressé par l'architecture, l'intégration système et l'analyse d'espaces de compromis. Vétéran de l'armée américaine.",
                 tabIntro: 'À Propos',
                 tabIntroBack: 'Découvrir',
                 tabWork: 'Mon Travail',
@@ -435,7 +435,7 @@
             },
             footer: {
                 aboutTitle: 'À Propos',
-                aboutDesc: "Ingénieur électrique axé sur la fabrication de semiconducteurs, la recherche sur les dispositifs et le travail de qualité et d'inspection. Expérience sur le plancher de production chez ASML Wilton ; contrôle qualité et essais non destructifs en cours chez General Dynamics Electric Boat ; recherche doctorale sur les dispositifs à UConn.",
+                aboutDesc: "Ingénieur matériel travaillant sur la RF mmWave, les dispositifs GaN et les procédés semi-conducteurs. Intéressé par l'architecture, l'intégration système et l'analyse d'espaces de compromis. Vétéran de l'armée américaine. Programmé pour l'examen FE en génie électrique et informatique.",
                 quickLinks: 'Liens Rapides',
                 features: 'Fonctionnalités Interactives',
                 resources: 'Ressources & Outils',
@@ -484,7 +484,7 @@
             },
             about: {
                 title: 'Sobre Mí',
-                description: 'Ingeniero eléctrico enfocado en fabricación de semiconductores, investigación de dispositivos y trabajo de calidad e inspección. Experiencia en planta de producción en ASML Wilton; control de calidad y END en curso en General Dynamics Electric Boat; investigación doctoral de dispositivos en UConn.',
+                description: 'Ingeniero de hardware que trabaja en RF mmWave, dispositivos GaN y procesos de semiconductores. Experiencia en planta de producción en ASML Wilton, inspección de calidad y END en curso en General Dynamics Electric Boat, investigación doctoral en UConn. Interesado en arquitectura, integración de sistemas y análisis de espacios de compromiso. Veterano del Ejército de EE. UU.',
                 tabIntro: 'Sobre Mí',
                 tabIntroBack: 'Descubrir',
                 tabWork: 'Lo Que Hago',
@@ -664,7 +664,7 @@
             },
             footer: {
                 aboutTitle: 'Sobre Mí',
-                aboutDesc: 'Ingeniero eléctrico enfocado en fabricación de semiconductores, investigación de dispositivos y trabajo de calidad e inspección. Experiencia en planta de producción en ASML Wilton; control de calidad y END en curso en General Dynamics Electric Boat; investigación doctoral de dispositivos en UConn.',
+                aboutDesc: 'Ingeniero de hardware que trabaja en RF mmWave, dispositivos GaN y procesos de semiconductores. Interesado en arquitectura, integración de sistemas y análisis de espacios de compromiso. Veterano del Ejército de EE. UU. Programado para el examen FE en Ingeniería Eléctrica e Informática.',
                 quickLinks: 'Enlaces Rápidos',
                 features: 'Funciones Interactivas',
                 resources: 'Recursos y Herramientas',
