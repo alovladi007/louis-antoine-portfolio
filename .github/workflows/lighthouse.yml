@@ -17,9 +17,30 @@ permissions:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
+# ----------------------------------------------------------------------------
+# About the thresholds in .lighthouserc.json (JSON can't carry comments)
+# ----------------------------------------------------------------------------
+# Category floors (hard error on regression):
+#   performance     >= 0.60   The hero loads Three.js + GSAP + Swiper + AOS +
+#                             Typed.js from CDN and embeds a YouTube iframe
+#                             for background music. 100 isn't reachable
+#                             without removing those; 60 is the line where
+#                             something genuinely regressed beyond the known
+#                             ceiling.
+#   accessibility   >= 0.90   The axe-core suite in tests/smoke/a11y.spec.ts
+#                             catches critical/serious violations as hard
+#                             fails; this Lighthouse threshold is the
+#                             complementary don't-backslide guardrail.
+#   best-practices  >= 0.80
+#   seo             >= 0.90
+#
+# Core Web Vitals (warn rather than error so a YouTube/CDN cold-start
+# blip doesn't fail the build):
+#   LCP <= 4000 ms,  CLS <= 0.10,  TBT <= 600 ms,  FCP <= 3000 ms
+# ----------------------------------------------------------------------------
+
 jobs:
   lighthouse:
-    # Skip if the deploy that triggered us didn't succeed
     if: >-
       github.event_name != 'workflow_run' ||
       github.event.workflow_run.conclusion == 'success'
@@ -29,18 +50,14 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Audit homepage with Lighthouse
-        # treosh/lighthouse-ci-action is the canonical wrapper around
-        # @lhci/cli. It runs Lighthouse, applies budgets/asserts from
-        # the .lighthouserc.json below, and uploads the report.
         uses: treosh/lighthouse-ci-action@v12
         with:
           urls: |
             https://alovladi007.github.io/louis-antoine-portfolio/
             https://alovladi007.github.io/louis-antoine-portfolio/electronics-projects.html
             https://alovladi007.github.io/louis-antoine-portfolio/photonics-projects.html
-          # Run each URL 3 times so the median absorbs network jitter
+          # 3 runs per URL, median absorbs network jitter
           runs: 3
           configPath: ./.lighthouserc.json
-          # Token is for temporary public storage; not strictly required.
           uploadArtifacts: true
           temporaryPublicStorage: true
