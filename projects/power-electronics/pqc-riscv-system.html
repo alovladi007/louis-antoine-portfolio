@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PQC on RISC-V: Hardware-Accelerated Post-Quantum Crypto System</title>
+    <meta name="description" content="Systems-engineering project: hardware-accelerated Kyber768 (ML-KEM) and Dilithium (ML-DSA) on a RISC-V soft core with side-channel-aware design. Architecture, trade studies, threat model.">
+    <link rel="canonical" href="https://alovladi007.github.io/louis-antoine-portfolio/projects/power-electronics/pqc-riscv-system.html">
+    <meta property="og:title" content="PQC on RISC-V — Systems Engineering Project">
+    <meta property="og:description" content="Hardware-accelerated post-quantum cryptography on a RISC-V soft core. Architecture, trade-space analysis, side-channel threat model.">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0a0a18 0%, #0f1530 50%, #0a0a18 100%);
+            color: #e5e7eb;
+            line-height: 1.65;
+            min-height: 100vh;
+            padding-bottom: 5rem;
+        }
+        a { color: #8ab4ff; }
+        a:hover { color: #b8d0ff; }
+        .container { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem; }
+
+        /* Back link */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            padding: 0.65rem 1.25rem;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            color: #e5e7eb;
+            text-decoration: none;
+            border-radius: 25px;
+            margin: 1.5rem 0 2rem;
+            transition: all 0.2s;
+        }
+        .back-link:hover { background: rgba(255,255,255,0.12); color: #fff; }
+
+        /* Hero */
+        .hero {
+            padding: 3rem 0 2rem;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            margin-bottom: 3rem;
+        }
+        .hero h1 {
+            font-size: 2.4rem; font-weight: 700;
+            background: linear-gradient(135deg, #8ab4ff, #c4a8ff);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+        .hero .subtitle {
+            font-size: 1.15rem; color: #a0a8c0; margin-bottom: 1.5rem;
+        }
+        .status-badge {
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            padding: 0.35rem 0.85rem;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #fff; font-size: 0.78rem; font-weight: 600;
+            border-radius: 12px;
+            text-transform: uppercase; letter-spacing: 0.05em;
+        }
+
+        /* Sections */
+        section { margin-bottom: 3rem; }
+        section h2 {
+            font-size: 1.45rem; font-weight: 600;
+            color: #fff; margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(138, 180, 255, 0.2);
+        }
+        section h2 i { color: #8ab4ff; margin-right: 0.5rem; }
+        section h3 {
+            font-size: 1.1rem; font-weight: 600;
+            color: #c8d0e0; margin: 1.5rem 0 0.75rem;
+        }
+        section p { margin-bottom: 1rem; color: #cbd5e1; }
+        section ul, section ol { margin: 0.5rem 0 1rem 1.5rem; color: #cbd5e1; }
+        section li { margin-bottom: 0.35rem; }
+
+        /* Card */
+        .card {
+            background: rgba(255,255,255,0.035);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .card.accent {
+            border-left: 4px solid #f59e0b;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: 0.93rem;
+        }
+        th, td {
+            padding: 0.75rem 0.9rem;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            text-align: left;
+            vertical-align: top;
+        }
+        th {
+            color: #8ab4ff; font-weight: 600; font-size: 0.85rem;
+            text-transform: uppercase; letter-spacing: 0.03em;
+            background: rgba(138, 180, 255, 0.05);
+        }
+        td code { color: #c4a8ff; font-size: 0.88em; }
+        .pick {
+            display: inline-block;
+            background: rgba(16, 185, 129, 0.15);
+            color: #6ee7b7;
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+
+        /* Block diagram (ASCII-ish, monospaced) */
+        .arch-diagram {
+            background: #0d1424;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 8px;
+            padding: 1.25rem;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: 0.85rem;
+            color: #a8d4ff;
+            overflow-x: auto;
+            white-space: pre;
+            line-height: 1.5;
+        }
+
+        /* Two-column for paired content */
+        .two-col {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+        .stat {
+            background: rgba(138, 180, 255, 0.05);
+            border-radius: 8px;
+            padding: 1rem;
+            border-left: 3px solid #8ab4ff;
+        }
+        .stat .label {
+            font-size: 0.78rem; color: #8ab4ff;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            margin-bottom: 0.3rem;
+        }
+        .stat .value { font-size: 1.05rem; font-weight: 600; color: #fff; }
+
+        /* Source-code section */
+        .source-card {
+            background: rgba(196, 168, 255, 0.05);
+            border: 1px solid rgba(196, 168, 255, 0.2);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .source-card .planned {
+            display: inline-block;
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+        .link-pills {
+            display: flex; flex-wrap: wrap; gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        .link-pill {
+            padding: 0.5rem 1rem;
+            background: rgba(138, 180, 255, 0.1);
+            border: 1px solid rgba(138, 180, 255, 0.25);
+            border-radius: 20px;
+            text-decoration: none;
+            color: #b8d0ff;
+            font-size: 0.88rem;
+            display: inline-flex; align-items: center; gap: 0.4rem;
+        }
+        .link-pill:hover { background: rgba(138, 180, 255, 0.2); color: #fff; }
+
+        @media (max-width: 700px) {
+            .hero h1 { font-size: 1.8rem; }
+            section h2 { font-size: 1.2rem; }
+            .arch-diagram { font-size: 0.72rem; }
+        }
+    </style>
+</head>
+<body>
+    <a href="#main-content" class="skip-link" style="position:absolute;top:-100px;left:0;z-index:10000;padding:.75rem 1.5rem;background:#1f2937;color:#fff;text-decoration:none;border-radius:0 0 8px 0;">Skip to main content</a>
+
+    <div class="container">
+        <a href="../../electronics-projects.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Electronics Projects
+        </a>
+
+        <main id="main-content">
+
+        <header class="hero">
+            <h1>PQC on RISC-V: Hardware-Accelerated Post-Quantum Crypto</h1>
+            <p class="subtitle">
+                Kyber768 (ML-KEM) and Dilithium3 (ML-DSA) accelerated as a custom RISC-V instruction extension, with side-channel-aware microarchitecture.
+            </p>
+            <span class="status-badge"><i class="fas fa-drafting-compass"></i> Architecture &amp; design phase</span>
+        </header>
+
+        <section>
+            <h2><i class="fas fa-info-circle"></i> What this is</h2>
+            <div class="card accent">
+                <p>
+                    A systems-engineering project to design a hardware-accelerated post-quantum cryptography subsystem on a RISC-V soft core. The target primitives are <strong>NIST FIPS 203 (ML-KEM, Kyber768)</strong> for key encapsulation and <strong>NIST FIPS 204 (ML-DSA, Dilithium3)</strong> for digital signatures. Design platform is a mid-range Xilinx FPGA (Kria KV260 class).
+                </p>
+                <p>
+                    This page documents the architecture, trade studies, threat model, and verification plan. The implementation is the next phase; the current artifact is the systems-engineering package that scopes it.
+                </p>
+            </div>
+        </section>
+
+        <section>
+            <h2><i class="fas fa-list-check"></i> System requirements</h2>
+            <table>
+                <thead>
+                    <tr><th>ID</th><th>Requirement</th><th>Source</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>SR-01</code></td><td>Implement ML-KEM-768 (Kyber768) key encapsulation per FIPS 203</td><td>NIST FIPS 203 (Aug 2024)</td></tr>
+                    <tr><td><code>SR-02</code></td><td>Implement ML-DSA-65 (Dilithium3) signature scheme per FIPS 204</td><td>NIST FIPS 204 (Aug 2024)</td></tr>
+                    <tr><td><code>SR-03</code></td><td>Constant-time execution for all secret-dependent operations</td><td>CNSA 2.0; NIST SP 800-90B</td></tr>
+                    <tr><td><code>SR-04</code></td><td>Hardware-accelerated keygen / encaps / decaps in &lt; 10× soft-core baseline</td><td>Project goal</td></tr>
+                    <tr><td><code>SR-05</code></td><td>Acceptable LUT / DSP / BRAM footprint on Kria KV260 (Zynq UltraScale+)</td><td>Platform constraint</td></tr>
+                    <tr><td><code>SR-06</code></td><td>Side-channel hygiene: TVLA test suite, target T &lt; 4.5</td><td>ISO/IEC 17825</td></tr>
+                    <tr><td><code>SR-07</code></td><td>Open-source under permissive license; reproducible from commit + toolchain hash</td><td>Project goal</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section>
+            <h2><i class="fas fa-sitemap"></i> Architecture</h2>
+            <p>RISC-V soft core (CV32E40P or VexRiscv) with a custom co-processor reachable via the RoCC-style coprocessor interface. Crypto primitives expose a small ISA extension (<code>kem.keygen</code>, <code>kem.encaps</code>, <code>kem.decaps</code>, <code>dsa.sign</code>, <code>dsa.verify</code>). NTT and Keccak are accelerated; Montgomery / Barrett reductions are inlined.</p>
+
+            <div class="arch-diagram">+------------------------------------------------------------------+
+|                  RISC-V Application Core (rv32imc)               |
+|  +-----------+   +-----------+   +--------------------------+    |
+|  |  Fetch    |-->|  Decode   |-->|  Execute / Custom-instr  |    |
+|  +-----------+   +-----------+   +-------------+------------+    |
+|                                                | RoCC iface       |
++------------------------------------------------|------------------+
+                                                 v
++------------------------------------------------------------------+
+|                    PQC Co-Processor (this work)                  |
+|                                                                  |
+|   +----------------+   +----------------+   +----------------+   |
+|   |  NTT engine    |   |  Keccak-f[1600]|   |  Sampler       |   |
+|   |  (radix-2/4)   |   |  (24-round)    |   |  (CBD / rej.)  |   |
+|   +----------------+   +----------------+   +----------------+   |
+|                                                                  |
+|   +----------------+   +----------------+   +----------------+   |
+|   |  Mod-q ALU     |   |  Constant-time |   |  Secure key    |   |
+|   |  (q=3329)      |   |  control FSM   |   |  buffer (BRAM) |   |
+|   +----------------+   +----------------+   +----------------+   |
+|                                                                  |
+|   +----------------------------------------------------------+   |
+|   |              TRNG (ring-osc, von-Neumann debias)         |   |
+|   +----------------------------------------------------------+   |
++------------------------------------------------------------------+</div>
+
+            <h3>Interfaces</h3>
+            <ul>
+                <li><strong>Core ↔ co-processor:</strong> RoCC-style (rd, rs1, rs2, funct7). 1-cycle dispatch, multi-cycle execute, response on completion.</li>
+                <li><strong>Co-processor ↔ key buffer:</strong> dual-port BRAM, write-protected from core unless explicit unlock.</li>
+                <li><strong>TRNG ↔ sampler:</strong> 256-bit entropy pool refresh on demand; health-test FSM gates output.</li>
+                <li><strong>Host ↔ system:</strong> AXI-Lite control / status; AXI-Stream for bulk plaintext / ciphertext.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2><i class="fas fa-balance-scale"></i> Trade studies</h2>
+
+            <h3>1. Acceleration partition</h3>
+            <table>
+                <thead><tr><th>Option</th><th>Speedup vs SW</th><th>FPGA cost</th><th>Side-channel surface</th><th>Effort</th><th>Verdict</th></tr></thead>
+                <tbody>
+                    <tr><td>SW-only on rv32imc</td><td>1×</td><td>~0</td><td>Low (well-studied)</td><td>Low</td><td>Baseline</td></tr>
+                    <tr><td>NTT-only co-processor</td><td>~6–8×</td><td>Modest</td><td>Modest</td><td>Medium</td><td>—</td></tr>
+                    <tr><td>NTT + Keccak co-proc</td><td>~15–25×</td><td>Medium</td><td>Bounded</td><td>Medium</td><td><span class="pick">Selected</span></td></tr>
+                    <tr><td>Full primitive in HW</td><td>~30–50×</td><td>High</td><td>Larger attack surface</td><td>High</td><td>Deferred (V2)</td></tr>
+                </tbody>
+            </table>
+            <p>Rationale: the NTT + Keccak split captures &gt; 80% of the cycle budget for Kyber/Dilithium per literature (e.g., Banerjee et al, IEEE TCAD 2019) while keeping the high-level scheme in software where review and patching is cheap.</p>
+
+            <h3>2. RISC-V core selection</h3>
+            <table>
+                <thead><tr><th>Core</th><th>License</th><th>RoCC-style coproc</th><th>Constant-time DIV</th><th>Verdict</th></tr></thead>
+                <tbody>
+                    <tr><td>CV32E40P (OpenHW)</td><td>Solderpad</td><td>Native</td><td>Yes</td><td><span class="pick">Selected</span></td></tr>
+                    <tr><td>VexRiscv</td><td>MIT</td><td>Plugin model</td><td>Configurable</td><td>Alternate</td></tr>
+                    <tr><td>Ibex (lowRISC)</td><td>Apache-2</td><td>No (would need custom)</td><td>Yes</td><td>Rejected</td></tr>
+                    <tr><td>Rocket</td><td>BSD</td><td>RoCC native</td><td>Yes</td><td>Considered (too large for Kria)</td></tr>
+                </tbody>
+            </table>
+
+            <h3>3. TRNG topology</h3>
+            <table>
+                <thead><tr><th>Option</th><th>NIST SP 800-90B compliance path</th><th>FPGA cost</th><th>Verdict</th></tr></thead>
+                <tbody>
+                    <tr><td>Ring oscillator + von-Neumann debias</td><td>Achievable with health tests</td><td>Low</td><td><span class="pick">Selected (V1)</span></td></tr>
+                    <tr><td>Free-running ring + LFSR whitening</td><td>Harder (bias modeling)</td><td>Low</td><td>—</td></tr>
+                    <tr><td>External TRNG IC (e.g., Infineon SLE)</td><td>Vendor-attested</td><td>BOM cost</td><td>V2 option</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section>
+            <h2><i class="fas fa-shield-halved"></i> Threat model &amp; security analysis</h2>
+            <p>Explicit threat model is the artifact that separates "I implemented a crypto primitive" from "I engineered a system that defends against the attacks the primitive actually faces." This is the section a security-cleared hiring panel reads first.</p>
+
+            <table>
+                <thead><tr><th>Threat</th><th>Capability assumed</th><th>Mitigation in this design</th><th>Residual risk</th></tr></thead>
+                <tbody>
+                    <tr><td>Timing analysis</td><td>Remote attacker, statistical timing</td><td>Constant-time control FSM; no data-dependent branches in secret-handling paths</td><td>Verified by TVLA timing variant</td></tr>
+                    <tr><td>Simple Power Analysis (SPA)</td><td>Local, single trace</td><td>Constant-time + Hamming-weight balanced state encoding</td><td>Low</td></tr>
+                    <tr><td>Differential Power Analysis (DPA)</td><td>Local, many traces</td><td>First-order masking on NTT butterflies (Boolean masking for Kyber); shuffled rejection sampling</td><td>Higher-order DPA not addressed in V1</td></tr>
+                    <tr><td>EM side-channel (TEMPEST)</td><td>Near-field probe</td><td>Same masking; shield recommended at integration</td><td>Out of scope for V1; documented for integrator</td></tr>
+                    <tr><td>Fault injection (voltage / clock glitch)</td><td>Physical access</td><td>Redundant computation on signing path; sanity checks on NTT output</td><td>Laser fault not addressed</td></tr>
+                    <tr><td>Trojan-horse / supply chain</td><td>Compromised bitstream</td><td>Reproducible build (toolchain hash pinned); deterministic synthesis flow</td><td>Open</td></tr>
+                </tbody>
+            </table>
+
+            <h3>Standards alignment</h3>
+            <ul>
+                <li><strong>NIST FIPS 203</strong> (ML-KEM) — primitive correctness</li>
+                <li><strong>NIST FIPS 204</strong> (ML-DSA) — primitive correctness</li>
+                <li><strong>NIST SP 800-90B</strong> — entropy source assessment for the TRNG</li>
+                <li><strong>ISO/IEC 17825</strong> — non-invasive side-channel attack testing (TVLA)</li>
+                <li><strong>CNSA 2.0</strong> — operational guidance from NSA on PQC migration</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2><i class="fas fa-gauge-high"></i> Performance &amp; resource budget</h2>
+            <p>Targets, not yet measurements. Will be back-annotated as the implementation lands.</p>
+            <div class="two-col">
+                <div class="stat"><div class="label">Kyber768 encaps</div><div class="value">≤ 60 µs target</div></div>
+                <div class="stat"><div class="label">Kyber768 decaps</div><div class="value">≤ 70 µs target</div></div>
+                <div class="stat"><div class="label">Dilithium3 sign</div><div class="value">≤ 800 µs target</div></div>
+                <div class="stat"><div class="label">Dilithium3 verify</div><div class="value">≤ 250 µs target</div></div>
+                <div class="stat"><div class="label">LUT budget</div><div class="value">≤ 35 k (Kria KV260)</div></div>
+                <div class="stat"><div class="label">BRAM budget</div><div class="value">≤ 40 × 36 Kb</div></div>
+                <div class="stat"><div class="label">DSP slices</div><div class="value">≤ 32</div></div>
+                <div class="stat"><div class="label">TVLA target</div><div class="value">|T| &lt; 4.5 @ 10⁵ traces</div></div>
+            </div>
+        </section>
+
+        <section>
+            <h2><i class="fas fa-check-double"></i> Verification &amp; validation plan</h2>
+            <ol>
+                <li><strong>Primitive correctness</strong> — run NIST KAT (Known Answer Tests) for ML-KEM-768 and ML-DSA-65; bit-exact match required.</li>
+                <li><strong>Constant-time check</strong> — static analysis with <code>dudect</code> on each secret-handling routine before tape-out to FPGA.</li>
+                <li><strong>Functional verification</strong> — cocotb / UVM testbench at the co-processor boundary; 10⁵ random vector tests per opcode.</li>
+                <li><strong>Side-channel evaluation</strong> — TVLA on power traces captured with ChipWhisperer Husky / CW313 target board. Fixed-vs-random t-test on raw and aligned traces.</li>
+                <li><strong>System-level integration test</strong> — TLS 1.3 handshake using the accelerator as the KEM backend (via OpenSSL provider shim). End-to-end timing on a real connection.</li>
+                <li><strong>Regression CI</strong> — every commit runs KAT + cocotb in GitHub Actions; weekly synthesis check against utilization budget.</li>
+            </ol>
+        </section>
+
+        <section>
+            <h2><i class="fas fa-route"></i> Roadmap</h2>
+            <ul>
+                <li><strong>Phase 1 (current):</strong> Architecture, trade studies, threat model — this document.</li>
+                <li><strong>Phase 2:</strong> Bare-metal SW reference of Kyber768 on CV32E40P, profiling to confirm hot spots.</li>
+                <li><strong>Phase 3:</strong> NTT and Keccak co-processor RTL; cocotb verification.</li>
+                <li><strong>Phase 4:</strong> Integration on Kria KV260; KAT validation on real silicon.</li>
+                <li><strong>Phase 5:</strong> Side-channel evaluation with ChipWhisperer; iterate on masking until TVLA target met.</li>
+                <li><strong>Phase 6:</strong> Add ML-DSA-65 (Dilithium3); OpenSSL provider shim for end-to-end TLS demo.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2><i class="fas fa-code-branch"></i> Source &amp; documentation</h2>
+            <div class="source-card">
+                <p>
+                    <strong>Repository</strong> <span class="planned">Planned</span><br>
+                    Will live at <code>github.com/alovladi007/pqc-riscv-system</code> once the Phase 2 reference implementation is ready. The architecture and trade studies on this page are the systems-engineering artifact that scopes that work.
+                </p>
+                <div class="link-pills">
+                    <a href="riscv-soc-complete.html" class="link-pill"><i class="fas fa-microchip"></i> Related: base RISC-V SoC project</a>
+                    <a href="../../research/cryptography-research.html" class="link-pill"><i class="fas fa-shield-halved"></i> Related: cryptography research hub</a>
+                    <a href="https://csrc.nist.gov/pubs/fips/203/final" class="link-pill" target="_blank" rel="noopener"><i class="fas fa-file-pdf"></i> FIPS 203 (ML-KEM)</a>
+                    <a href="https://csrc.nist.gov/pubs/fips/204/final" class="link-pill" target="_blank" rel="noopener"><i class="fas fa-file-pdf"></i> FIPS 204 (ML-DSA)</a>
+                </div>
+            </div>
+        </section>
+
+        </main>
+    </div>
+
+    <script src="../../assets/js/chatbot-bubble.js" defer></script>
+</body>
+</html>

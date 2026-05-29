@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CV-QKD Network Architecture: Scaling the PIC Link to a Trusted-Node Backbone</title>
+    <meta name="description" content="Systems-engineering project: scaling the PIC-based CV-QKD link to a metropolitan-scale trusted-node network. Topology trade studies, hybrid PQC+QKD key management, detector-attack threat model.">
+    <meta name="keywords" content="CV-QKD, quantum key distribution, network architecture, PQC, hybrid cryptography, trusted node, key management, photonic integration">
+    <link rel="canonical" href="https://alovladi007.github.io/louis-antoine-portfolio/projects/quantum/cvqkd-network-architecture.html">
+    <meta property="og:title" content="CV-QKD Network Architecture — Systems Engineering Project">
+    <meta property="og:description" content="Network-scale architecture for a continuous-variable quantum key distribution backbone. Topology trade-space, threat model, hybrid key management.">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0a0018 0%, #150030 50%, #0a0018 100%);
+            color: #e5e7eb;
+            line-height: 1.65;
+            min-height: 100vh;
+            padding-bottom: 5rem;
+        }
+        a { color: #c4a8ff; }
+        a:hover { color: #e4d0ff; }
+        .container { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem; }
+
+        .back-link {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            padding: 0.65rem 1.25rem;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            color: #e5e7eb;
+            text-decoration: none;
+            border-radius: 25px;
+            margin: 1.5rem 0 2rem;
+            transition: all 0.2s;
+        }
+        .back-link:hover { background: rgba(255,255,255,0.12); color: #fff; }
+
+        .hero {
+            padding: 3rem 0 2rem;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            margin-bottom: 3rem;
+        }
+        .hero h1 {
+            font-size: 2.4rem; font-weight: 700;
+            background: linear-gradient(135deg, #c4a8ff, #8ab4ff);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+        .hero .subtitle {
+            font-size: 1.15rem; color: #b8a8d0; margin-bottom: 1.5rem;
+        }
+        .status-badge {
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            padding: 0.35rem 0.85rem;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #fff; font-size: 0.78rem; font-weight: 600;
+            border-radius: 12px;
+            text-transform: uppercase; letter-spacing: 0.05em;
+        }
+
+        section { margin-bottom: 3rem; }
+        section h2 {
+            font-size: 1.45rem; font-weight: 600;
+            color: #fff; margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(196, 168, 255, 0.2);
+        }
+        section h2 i { color: #c4a8ff; margin-right: 0.5rem; }
+        section h3 {
+            font-size: 1.1rem; font-weight: 600;
+            color: #d0c8e0; margin: 1.5rem 0 0.75rem;
+        }
+        section p { margin-bottom: 1rem; color: #cbd5e1; }
+        section ul, section ol { margin: 0.5rem 0 1rem 1.5rem; color: #cbd5e1; }
+        section li { margin-bottom: 0.35rem; }
+
+        .card {
+            background: rgba(255,255,255,0.035);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .card.accent {
+            border-left: 4px solid #f59e0b;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: 0.93rem;
+        }
+        th, td {
+            padding: 0.75rem 0.9rem;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            text-align: left;
+            vertical-align: top;
+        }
+        th {
+            color: #c4a8ff; font-weight: 600; font-size: 0.85rem;
+            text-transform: uppercase; letter-spacing: 0.03em;
+            background: rgba(196, 168, 255, 0.05);
+        }
+        td code { color: #8ab4ff; font-size: 0.88em; }
+        .pick {
+            display: inline-block;
+            background: rgba(16, 185, 129, 0.15);
+            color: #6ee7b7;
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+
+        .arch-diagram {
+            background: #150030;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 8px;
+            padding: 1.25rem;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: 0.85rem;
+            color: #d4b8ff;
+            overflow-x: auto;
+            white-space: pre;
+            line-height: 1.5;
+        }
+
+        .two-col {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+        .stat {
+            background: rgba(196, 168, 255, 0.05);
+            border-radius: 8px;
+            padding: 1rem;
+            border-left: 3px solid #c4a8ff;
+        }
+        .stat .label {
+            font-size: 0.78rem; color: #c4a8ff;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            margin-bottom: 0.3rem;
+        }
+        .stat .value { font-size: 1.05rem; font-weight: 600; color: #fff; }
+
+        .source-card {
+            background: rgba(138, 180, 255, 0.05);
+            border: 1px solid rgba(138, 180, 255, 0.2);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .source-card .planned {
+            display: inline-block;
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+        .link-pills {
+            display: flex; flex-wrap: wrap; gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        .link-pill {
+            padding: 0.5rem 1rem;
+            background: rgba(196, 168, 255, 0.1);
+            border: 1px solid rgba(196, 168, 255, 0.25);
+            border-radius: 20px;
+            text-decoration: none;
+            color: #d4b8ff;
+            font-size: 0.88rem;
+            display: inline-flex; align-items: center; gap: 0.4rem;
+        }
+        .link-pill:hover { background: rgba(196, 168, 255, 0.2); color: #fff; }
+
+        @media (max-width: 700px) {
+            .hero h1 { font-size: 1.8rem; }
+            section h2 { font-size: 1.2rem; }
+            .arch-diagram { font-size: 0.72rem; }
+        }
+    </style>
+</head>
+<body>
+    <a href="#main-content" class="skip-link" style="position:absolute;top:-100px;left:0;z-index:10000;padding:.75rem 1.5rem;background:#1f2937;color:#fff;text-decoration:none;border-radius:0 0 8px 0;">Skip to main content</a>
+
+    <div class="container">
+        <a href="../../photonics-projects.html" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Photonics Projects
+        </a>
+
+        <main id="main-content">
+
+        <header class="hero">
+            <h1>CV-QKD Network Architecture</h1>
+            <p class="subtitle">
+                Scaling the PIC-based continuous-variable QKD link to a metropolitan-scale trusted-node backbone, with hybrid PQC + QKD key management and a detector-attack threat model.
+            </p>
+            <span class="status-badge"><i class="fas fa-drafting-compass"></i> Architecture &amp; design phase</span>
+        </header>
+
+        <section>
+            <h2><i class="fas fa-info-circle"></i> What this is</h2>
+            <div class="card accent">
+                <p>
+                    A systems-engineering project that takes the existing single-span <a href="cvqkd-complete-project.html">PIC-based CV-QKD link</a> and asks the next question: <em>what does it take to operate a real network of these?</em> The answer is not just more photonics. The hard problems live in <strong>topology, key management, integration with classical PKI, and a threat model that takes implementation attacks seriously</strong>.
+                </p>
+                <p>
+                    The deliverable on this page is the architecture and trade-space artifact. Simulation and protocol code are the next phase; the artifacts here are what scope and justify that work.
+                </p>
+            </div>
+        </section>
+
+        <section>
+            <h2><i class="fas fa-list-check"></i> System requirements</h2>
+            <table>
+                <thead>
+                    <tr><th>ID</th><th>Requirement</th><th>Source</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>SR-01</code></td><td>Metropolitan-scale coverage (≤ 100 km between trusted nodes over standard SMF-28)</td><td>Project scope</td></tr>
+                    <tr><td><code>SR-02</code></td><td>Secret key rate ≥ 1 kbps end-to-end at 50 km, finite-size composable security</td><td>ETSI GS QKD 002 V1.1.1</td></tr>
+                    <tr><td><code>SR-03</code></td><td>Integration with classical PKI; QKD-derived keys used for AES-256-GCM session keys via hybrid KDF</td><td>ETSI GS QKD 014; NIST SP 800-56C</td></tr>
+                    <tr><td><code>SR-04</code></td><td>Co-existence with classical DWDM traffic on the same fiber where physically possible</td><td>Operational realism</td></tr>
+                    <tr><td><code>SR-05</code></td><td>Resilient to single-trusted-node compromise (defense in depth via PQC overlay)</td><td>Threat model</td></tr>
+                    <tr><td><code>SR-06</code></td><td>Standardized northbound API for key delivery (ETSI GS QKD 014)</td><td>Standards compliance</td></tr>
+                    <tr><td><code>SR-07</code></td><td>Documented detector-attack countermeasures (calibration attack, Trojan-horse, saturation)</td><td>Threat model</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section>
+            <h2><i class="fas fa-sitemap"></i> Network architecture</h2>
+            <p>The proposed architecture is a <strong>trusted-node backbone</strong> with hybrid PQC+QKD key derivation at every hop. End-to-end key material is the XOR of a QKD-derived key and a PQC-derived key (per ETSI GS QKD 014 hybrid mode), so a compromise of either layer alone does not break confidentiality.</p>
+
+            <div class="arch-diagram">                        Metropolitan-scale CV-QKD trusted-node backbone
+
+  Site A                Trusted Node 1            Trusted Node 2            Site B
+  +----------+          +-----------+             +-----------+          +----------+
+  | App / KMS|          | CV-QKD Tx |             | CV-QKD Tx |          | App / KMS|
+  +----+-----+          | + Rx      |             | + Rx      |          +----+-----+
+       |                | + Key mgr |             | + Key mgr |               |
+       | ETSI 014 API   +-----+-----+             +-----+-----+   ETSI 014 API|
+       v                      |                         |                      v
+  +----+------+               |  k_AB^QKD               |  k_BC^QKD     +-----+----+
+  | Hybrid KDF|<------- QKD --+----- single span ------>+---- span ---->| Hybrid   |
+  | (QKD xor  |               |   (CV-QKD over fiber)   |               | KDF      |
+  |  PQC)     |               |                         |               |          |
+  +-----------+         +-----+-----+             +-----+-----+         +----------+
+                        | PQC (Kyber|             | PQC (Kyber|
+                        | 768) KEM  |             | 768) KEM  |
+                        +-----------+             +-----------+
+                          shared k_AB^PQC          shared k_BC^PQC
+                          (classical channel)      (classical channel)
+
+  End-to-end key k_AB = HKDF( k_AB^QKD || k_AB^PQC ),  similar for k_BC.
+  Trusted-node compromise leaks one hop's k_QKD but not the PQC overlay end-to-end.</div>
+
+            <h3>Layer model</h3>
+            <ul>
+                <li><strong>L1 Physical:</strong> CV-QKD with Gaussian-modulated coherent states; homodyne or heterodyne detection (trade study below).</li>
+                <li><strong>L2 Sift &amp; reconcile:</strong> multi-dimensional reconciliation (LDPC with rate ≥ 95% of Shannon limit); slice or RAW reconciliation per literature.</li>
+                <li><strong>L3 Privacy amplification:</strong> finite-size composable security accounting per Pirandola et al, ETSI GS QKD 002.</li>
+                <li><strong>L4 Key management:</strong> per-hop QKD key store + PQC KEM overlay; HKDF combines both into the application key.</li>
+                <li><strong>L5 Application:</strong> ETSI GS QKD 014 REST API (<code>get_key</code> / <code>get_key_with_key_ids</code>) for downstream consumers (IPsec, MACsec, TLS-with-EKMS).</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2><i class="fas fa-balance-scale"></i> Trade studies</h2>
+
+            <h3>1. Network topology</h3>
+            <table>
+                <thead><tr><th>Option</th><th>Reach</th><th>End-to-end trust assumptions</th><th>Cost</th><th>Verdict</th></tr></thead>
+                <tbody>
+                    <tr><td>Point-to-point only</td><td>≤ 80 km</td><td>Endpoints only</td><td>Low</td><td>Baseline (matches existing link work)</td></tr>
+                    <tr><td>Trusted-node chain</td><td>Unlimited (per added node)</td><td>Every node trusted</td><td>Medium</td><td><span class="pick">V1 selection</span></td></tr>
+                    <tr><td>Star (hub-and-spoke QKD switch)</td><td>≤ 80 km radius</td><td>Hub trusted</td><td>Medium (single hub failure)</td><td>Considered for campus deployments</td></tr>
+                    <tr><td>Measurement-Device-Independent QKD</td><td>Asymmetric reach</td><td>Endpoints only (untrusted relay)</td><td>High (MDI-QKD hardware not yet at this maturity for CV)</td><td>V2 roadmap</td></tr>
+                    <tr><td>End-to-end via quantum repeaters</td><td>Unlimited</td><td>Endpoints only</td><td>Out of band (research-only)</td><td>Out of scope</td></tr>
+                </tbody>
+            </table>
+            <p>Trusted-node is the only topology with a credible deployment path at metropolitan scale today. Hybrid PQC overlay compensates for the trust assumption so a single compromised node does not collapse end-to-end confidentiality.</p>
+
+            <h3>2. Detection scheme</h3>
+            <table>
+                <thead><tr><th>Option</th><th>Information per pulse</th><th>Hardware</th><th>Side-channel exposure</th><th>Verdict</th></tr></thead>
+                <tbody>
+                    <tr><td>Homodyne (X xor P, switched basis)</td><td>1 quadrature</td><td>Single balanced receiver + active LO basis switch</td><td>LO calibration attack surface</td><td>—</td></tr>
+                    <tr><td>Heterodyne (X and P simultaneously)</td><td>Both quadratures (with 3 dB penalty)</td><td>Dual balanced + 90° hybrid</td><td>Wider RF surface but no basis-switching exploit</td><td><span class="pick">Selected (no-switching protocol)</span></td></tr>
+                </tbody>
+            </table>
+
+            <h3>3. PQC overlay primitive</h3>
+            <table>
+                <thead><tr><th>Option</th><th>Throughput</th><th>FIPS approval</th><th>Verdict</th></tr></thead>
+                <tbody>
+                    <tr><td>ML-KEM-768 (Kyber768)</td><td>High</td><td>FIPS 203, Aug 2024</td><td><span class="pick">Selected</span></td></tr>
+                    <tr><td>ML-KEM-1024</td><td>High</td><td>FIPS 203</td><td>Optional for category-5 deployments</td></tr>
+                    <tr><td>Classic McEliece</td><td>Low (giant pub keys)</td><td>Not yet FIPS-approved</td><td>Rejected (key-size impractical)</td></tr>
+                </tbody>
+            </table>
+            <p>Direct synergy with the <a href="../power-electronics/pqc-riscv-system.html">PQC-on-RISC-V system project</a>: the trusted-node hardware can host the same Kyber768 accelerator used as the network-overlay primitive here.</p>
+        </section>
+
+        <section>
+            <h2><i class="fas fa-shield-halved"></i> Threat model</h2>
+            <p>CV-QKD's information-theoretic security proof holds for the protocol but <em>not</em> automatically for its implementation. The catalog below is what an attacker can actually try against a deployed CV-QKD network, and how this architecture defends.</p>
+
+            <table>
+                <thead><tr><th>Threat</th><th>Vector</th><th>Mitigation</th><th>Residual risk</th></tr></thead>
+                <tbody>
+                    <tr><td>Trusted-node compromise</td><td>Physical or insider access to one relay</td><td>Hybrid PQC overlay: end-to-end key remains computationally secure under PQC assumption even if one hop's QKD key leaks</td><td>Multiple-node compromise still possible (out of scope of single-vector defense)</td></tr>
+                    <tr><td>Local-oscillator calibration attack</td><td>Eve manipulates LO intensity reference to fake low shot noise</td><td>Real-time shot-noise calibration with per-pulse monitoring; outlier rejection</td><td>Sophisticated correlated attacks not fully addressed in V1</td></tr>
+                    <tr><td>Trojan-horse attack</td><td>Eve injects bright light into Tx to probe modulator state</td><td>Optical isolator (&gt; 80 dB) and spectral filter at Tx output; backlight monitor</td><td>Low</td></tr>
+                    <tr><td>Detector saturation</td><td>Eve forces detector into nonlinear regime</td><td>Variable optical attenuator with calibrated set-point; live linearity monitoring</td><td>Bandwidth-limited; documented for integrators</td></tr>
+                    <tr><td>Side-channel on classical post-processing</td><td>Timing or power analysis of reconciliation / privacy amplification</td><td>Constant-time LDPC decoding; hardware-accelerated HKDF</td><td>Same posture as the PQC project — TVLA target</td></tr>
+                    <tr><td>Quantum-computer attack on PQC overlay</td><td>Future CRQC breaks Kyber</td><td>QKD layer remains information-theoretically secure under one assumption (correct implementation); rotate to ML-KEM-1024 + larger if CNSA guidance changes</td><td>Tracked via NIST PQC bulletins</td></tr>
+                </tbody>
+            </table>
+
+            <h3>Standards alignment</h3>
+            <ul>
+                <li><strong>ETSI GS QKD 002</strong> — use cases, finite-size security accounting</li>
+                <li><strong>ETSI GS QKD 014</strong> — REST API for key delivery to applications</li>
+                <li><strong>ETSI GS QKD 015</strong> — control interface for SDN-managed networks</li>
+                <li><strong>NIST SP 800-56C</strong> — KDF for combining QKD and PQC key material</li>
+                <li><strong>CNSA 2.0</strong> — operational guidance on PQC migration; provides the framing for the hybrid overlay</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2><i class="fas fa-gauge-high"></i> Performance budget</h2>
+            <p>Targets, not measurements. Will be back-annotated as the simulation model produces numbers.</p>
+            <div class="two-col">
+                <div class="stat"><div class="label">Span loss target</div><div class="value">≤ 10 dB (≈ 50 km SMF)</div></div>
+                <div class="stat"><div class="label">Excess noise target</div><div class="value">ξ ≤ 0.02 SNU</div></div>
+                <div class="stat"><div class="label">Reconciliation efficiency</div><div class="value">β ≥ 0.95</div></div>
+                <div class="stat"><div class="label">Secret key rate @ 50 km</div><div class="value">≥ 1 kbps (finite-size)</div></div>
+                <div class="stat"><div class="label">Per-hop key store</div><div class="value">≥ 10 Mb buffered</div></div>
+                <div class="stat"><div class="label">API latency (ETSI 014)</div><div class="value">≤ 100 ms p95</div></div>
+                <div class="stat"><div class="label">PQC overlay throughput</div><div class="value">≥ 1k handshakes/s</div></div>
+                <div class="stat"><div class="label">Composable security ε</div><div class="value">≤ 10⁻¹⁰</div></div>
+            </div>
+        </section>
+
+        <section>
+            <h2><i class="fas fa-check-double"></i> Verification &amp; validation plan</h2>
+            <ol>
+                <li><strong>Link-level simulation</strong> — Python / NumPy model of single-span CV-QKD with realistic excess noise, finite-size effects, and reconciliation cost. Output: secret key rate vs distance curves.</li>
+                <li><strong>Network-level simulation</strong> — NS-3 or OMNeT++ model of the trusted-node backbone; trace key consumption against application demand profiles (IPsec rekey rate, MACsec, TLS).</li>
+                <li><strong>Protocol-level fuzzing</strong> — formal-style property tests on the ETSI GS QKD 014 API: replay safety, key-ID uniqueness, key destruction on read.</li>
+                <li><strong>Threat-model exercise</strong> — for each entry in the threat table, document the experiment that would validate the mitigation if hardware were available (testbed list).</li>
+                <li><strong>Standards conformance</strong> — REST API exposed by the simulator passes the ETSI GS QKD 014 test vector pack.</li>
+            </ol>
+        </section>
+
+        <section>
+            <h2><i class="fas fa-route"></i> Roadmap</h2>
+            <ul>
+                <li><strong>Phase 1 (current):</strong> Architecture, topology trade studies, threat model, performance budget — this document.</li>
+                <li><strong>Phase 2:</strong> Single-span Python simulator (key-rate model + finite-size accounting). Plot SKR vs distance and compare to published CV-QKD results.</li>
+                <li><strong>Phase 3:</strong> Multi-hop NS-3 model with per-hop key stores, application demand, and PQC overlay rekey.</li>
+                <li><strong>Phase 4:</strong> ETSI GS QKD 014 reference server in Python; conformance tests.</li>
+                <li><strong>Phase 5:</strong> Integration story with the <a href="../power-electronics/pqc-riscv-system.html">PQC-on-RISC-V accelerator</a>: trusted-node hardware bill of materials.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2><i class="fas fa-code-branch"></i> Source &amp; documentation</h2>
+            <div class="source-card">
+                <p>
+                    <strong>Repository</strong> <span class="planned">Planned</span><br>
+                    Will live at <code>github.com/alovladi007/cvqkd-network</code> once the Phase 2 single-span simulator is ready. The architecture and trade studies on this page are the systems-engineering artifact that scopes that work.
+                </p>
+                <div class="link-pills">
+                    <a href="cvqkd-complete-project.html" class="link-pill"><i class="fas fa-link"></i> Related: PIC-based CV-QKD link optimizer</a>
+                    <a href="../power-electronics/pqc-riscv-system.html" class="link-pill"><i class="fas fa-shield-halved"></i> Related: PQC on RISC-V</a>
+                    <a href="https://www.etsi.org/deliver/etsi_gs/QKD/001_099/014/01.01.01_60/gs_qkd014v010101p.pdf" class="link-pill" target="_blank" rel="noopener"><i class="fas fa-file-pdf"></i> ETSI GS QKD 014 (key delivery API)</a>
+                    <a href="https://www.etsi.org/deliver/etsi_gs/QKD/001_099/002/01.01.01_60/gs_qkd002v010101p.pdf" class="link-pill" target="_blank" rel="noopener"><i class="fas fa-file-pdf"></i> ETSI GS QKD 002 (use cases)</a>
+                </div>
+            </div>
+        </section>
+
+        </main>
+    </div>
+
+    <script src="../../assets/js/chatbot-bubble.js" defer></script>
+</body>
+</html>
