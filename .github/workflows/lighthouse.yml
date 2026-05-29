@@ -1,0 +1,46 @@
+name: Lighthouse
+
+on:
+  workflow_run:
+    workflows: ["Deploy static content to Pages"]
+    types: [completed]
+    branches: [main]
+  schedule:
+    # Daily at 13:30 UTC — 30 min after the smoke cron — to catch any
+    # CDN-side regression that doesn't show up immediately after deploy.
+    - cron: "30 13 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  lighthouse:
+    # Skip if the deploy that triggered us didn't succeed
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Audit homepage with Lighthouse
+        # treosh/lighthouse-ci-action is the canonical wrapper around
+        # @lhci/cli. It runs Lighthouse, applies budgets/asserts from
+        # the .lighthouserc.json below, and uploads the report.
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          urls: |
+            https://alovladi007.github.io/louis-antoine-portfolio/
+            https://alovladi007.github.io/louis-antoine-portfolio/electronics-projects.html
+            https://alovladi007.github.io/louis-antoine-portfolio/photonics-projects.html
+          # Run each URL 3 times so the median absorbs network jitter
+          runs: 3
+          configPath: ./.lighthouserc.json
+          # Token is for temporary public storage; not strictly required.
+          uploadArtifacts: true
+          temporaryPublicStorage: true
