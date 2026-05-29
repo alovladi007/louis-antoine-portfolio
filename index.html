@@ -95,17 +95,13 @@
     }
     </script>
 
-    <!-- Start TLS handshake for the three CDNs before script tags hit them -->
+    <!-- Start TLS handshake for the CDN host that actually serves runtime
+         assets (Font Awesome). jsdelivr/unpkg preconnects were removed
+         alongside the 7 unused libs they used to serve. -->
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link rel="preconnect" href="https://unpkg.com" crossorigin>
     <!-- YouTube background music: dns-prefetch only, it loads after main render -->
     <link rel="dns-prefetch" href="https://www.youtube.com">
     <link rel="dns-prefetch" href="https://i.ytimg.com">
-
-    <!-- Advanced Libraries CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/aos@2.3.4/dist/aos.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
 
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -208,17 +204,60 @@
         
         <!-- Hidden YouTube Player for Background Music -->
         <div id="youtube-player" style="position: absolute; width: 0; height: 0; visibility: hidden; pointer-events: none;"></div>
-        
+
         <script>
+            // -----------------------------------------------------------------
+            // YouTube background music — lazy loader
+            // -----------------------------------------------------------------
+            // The YT IFrame API is ~30 KB compressed and pulls in additional
+            // requests (player_api, base.js, the iframe, captions, etc.) that
+            // collectively dominate the homepage's TBT. Loading it on first
+            // paint blew Lighthouse perf to ~0.56.
+            //
+            // It is now deferred until either:
+            //   (a) the first real user interaction (scroll, click, touch,
+            //       keydown, pointermove), or
+            //   (b) 4 s after window load — whichever comes first.
+            //
+            // This matches browser reality anyway: most browsers block
+            // autoplay-with-sound until user interaction, so the YT player
+            // couldn't actually start music on a cold load. Lazy-loading
+            // here is both a perf win and an alignment with what works.
+            //
+            // The onYouTubeIframeAPIReady / onPlayerReady callbacks are
+            // unchanged below; only the moment we kick off the API fetch
+            // moves later.
+            // -----------------------------------------------------------------
+
             let player;
-            
-            // Load YouTube IFrame API
-            const tag = document.createElement('script');
-            tag.src = "https://www.youtube.com/iframe_api";
-            const firstScriptTag = document.getElementsByTagName('script')[0];
-            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-            
-            // YouTube API Ready - Autoplay background music
+            let ytApiKicked = false;
+
+            function loadYouTubeApi() {
+                if (ytApiKicked) return;
+                ytApiKicked = true;
+                const tag = document.createElement('script');
+                tag.src = 'https://www.youtube.com/iframe_api';
+                const firstScriptTag = document.getElementsByTagName('script')[0];
+                firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+            }
+
+            // Kick on first user interaction
+            const interactionEvents = ['scroll', 'click', 'touchstart', 'keydown', 'pointermove'];
+            const onFirstInteraction = () => {
+                loadYouTubeApi();
+                interactionEvents.forEach(e =>
+                    window.removeEventListener(e, onFirstInteraction, { passive: true })
+                );
+            };
+            interactionEvents.forEach(e =>
+                window.addEventListener(e, onFirstInteraction, { passive: true, once: true })
+            );
+
+            // Or fall back to 4 s after load (covers visitors who never interact)
+            window.addEventListener('load', () => setTimeout(loadYouTubeApi, 4000));
+
+            // YouTube API Ready - configure the player when the lazy-loaded
+            // API eventually fires this global callback.
             function onYouTubeIframeAPIReady() {
                 player = new YT.Player('youtube-player', {
                     height: '0',
@@ -239,22 +278,22 @@
                     }
                 });
             }
-            
+
             function onPlayerReady(event) {
                 console.log('Background music ready');
                 player.setVolume(30); // Lower volume for background music
-                player.playVideo(); // Start playing automatically
-                
+                player.playVideo();
+
                 // Remove any play button symbols that might appear
                 document.querySelectorAll('*').forEach(el => {
-                    if (el.textContent === '▶️' || el.textContent === '⏸️' || 
+                    if (el.textContent === '▶️' || el.textContent === '⏸️' ||
                         el.textContent === '▶' || el.textContent === '⏸') {
                         el.style.display = 'none';
                         el.remove();
                     }
                 });
             }
-            
+
             function onPlayerStateChange(event) {
                 if (event.data === YT.PlayerState.ENDED) {
                     player.playVideo(); // Loop the music
@@ -1370,14 +1409,15 @@
     -->
     <script defer src="script.js"></script>
 
-    <!-- Advanced JavaScript Libraries -->
-    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
-    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.4/gsap.min.js"></script>
-    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.4/ScrollTrigger.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/typed.js@2.1.0/dist/typed.umd.js"></script>
-    <script defer src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    <!--
+        Removed: Three.js, particles.js, GSAP + ScrollTrigger, Typed.js,
+        AOS, Swiper. All seven were loaded from CDN on every visit but
+        never actually called by any code on the homepage (zero hits for
+        THREE, particlesJS, gsap, ScrollTrigger, Typed, AOS, Swiper
+        across script.js, script-advanced.js, site-init.js, i18n.js,
+        enhance.js, and every inline <script> block in this file).
+        Same removal applied to the AOS + Swiper CSS in <head>.
+    -->
     <script defer src="script-advanced.js"></script>
     <script defer src="i18n.js"></script>
 
