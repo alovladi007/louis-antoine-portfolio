@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Two systems-engineering projects in two weekends — Louis Antoine</title>
+    <meta name="description" content="A practical walkthrough of how I scoped, architected, and shipped two systems-engineering projects (post-quantum crypto on RISC-V, and a CV-QKD trusted-node network) without waiting for the perfect lab. The takeaway: the architecture artifact is the project.">
+    <link rel="canonical" href="https://alovladi007.github.io/louis-antoine-portfolio/blog/blog-systems-engineering-sprint.html">
+    <meta property="og:title" content="Two systems-engineering projects in two weekends">
+    <meta property="og:description" content="The architecture artifact is the project. A walkthrough of scoping PQC on RISC-V and a CV-QKD trusted-node network from concept to working code.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://alovladi007.github.io/louis-antoine-portfolio/blog/blog-systems-engineering-sprint.html">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0a0a18 0%, #0f1530 50%, #0a0a18 100%);
+            color: #e5e7eb;
+            line-height: 1.75;
+            min-height: 100vh;
+        }
+        a { color: #8ab4ff; }
+        a:hover { color: #b8d0ff; }
+        .container { max-width: 760px; margin: 0 auto; padding: 0 1.5rem; }
+
+        .nav-back {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            padding: 0.65rem 1.25rem;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            color: #e5e7eb; text-decoration: none;
+            border-radius: 25px;
+            margin: 1.5rem 0 2rem;
+            transition: all 0.2s;
+            font-size: 0.95rem;
+        }
+        .nav-back:hover { background: rgba(255,255,255,0.12); color: #fff; }
+
+        header.post {
+            padding: 2rem 0 2rem;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            margin-bottom: 3rem;
+        }
+        .post-tag {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            background: rgba(196, 168, 255, 0.12);
+            color: #c4a8ff;
+            font-size: 0.78rem;
+            font-weight: 600;
+            border-radius: 12px;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            margin-bottom: 1.2rem;
+        }
+        header.post h1 {
+            font-size: 2.25rem;
+            font-weight: 700;
+            line-height: 1.18;
+            margin-bottom: 1.2rem;
+            background: linear-gradient(135deg, #ffffff 0%, #d4d8ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.01em;
+        }
+        .meta {
+            display: flex; flex-wrap: wrap; gap: 1.25rem;
+            color: #9aa3b8; font-size: 0.95rem;
+        }
+        .meta i { margin-right: 0.35rem; opacity: 0.7; }
+
+        article { padding-bottom: 4rem; }
+        article h2 {
+            font-size: 1.55rem; font-weight: 600;
+            color: #fff; margin: 3rem 0 1rem;
+            padding-bottom: 0.4rem;
+            border-bottom: 1px solid rgba(138, 180, 255, 0.18);
+        }
+        article h3 {
+            font-size: 1.18rem; font-weight: 600;
+            color: #d4d8e6; margin: 1.75rem 0 0.75rem;
+        }
+        article p { margin-bottom: 1.15rem; color: #cbd5e1; }
+        article ul, article ol { margin: 0.5rem 0 1.15rem 1.5rem; color: #cbd5e1; }
+        article li { margin-bottom: 0.4rem; }
+        article strong { color: #fff; }
+        article code {
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: 0.88em;
+            background: rgba(196, 168, 255, 0.1);
+            color: #c4a8ff;
+            padding: 0.12em 0.4em;
+            border-radius: 4px;
+        }
+        article blockquote {
+            margin: 1.5rem 0;
+            padding: 1rem 1.4rem;
+            border-left: 4px solid #8ab4ff;
+            background: rgba(138, 180, 255, 0.06);
+            border-radius: 0 8px 8px 0;
+            color: #cbd5e1;
+            font-style: italic;
+        }
+        article blockquote p:last-child { margin-bottom: 0; }
+        article figure {
+            margin: 1.75rem 0;
+            background: #0d1424;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 8px;
+            padding: 1.25rem;
+            overflow-x: auto;
+        }
+        article figure pre {
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: 0.85rem;
+            color: #a8d4ff;
+            white-space: pre;
+            line-height: 1.5;
+        }
+        article figcaption {
+            margin-top: 0.6rem;
+            font-size: 0.85rem;
+            color: #8d96b0;
+            text-align: center;
+        }
+
+        .takeaway {
+            margin: 2.5rem 0;
+            padding: 1.5rem;
+            background: rgba(245, 158, 11, 0.08);
+            border: 1px solid rgba(245, 158, 11, 0.25);
+            border-left: 4px solid #f59e0b;
+            border-radius: 8px;
+        }
+        .takeaway strong { color: #fbbf24; }
+
+        footer.post-footer {
+            margin-top: 3.5rem; padding-top: 2rem;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            color: #9aa3b8; font-size: 0.95rem;
+        }
+        footer.post-footer h3 {
+            color: #fff; margin-bottom: 0.5rem; font-size: 1.05rem;
+        }
+        .repo-links { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.75rem; }
+        .repo-pill {
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            padding: 0.5rem 1rem;
+            background: rgba(138, 180, 255, 0.1);
+            border: 1px solid rgba(138, 180, 255, 0.25);
+            border-radius: 20px;
+            text-decoration: none;
+            color: #b8d0ff;
+            font-size: 0.88rem;
+        }
+        .repo-pill:hover { background: rgba(138, 180, 255, 0.2); color: #fff; }
+
+        a:focus-visible {
+            outline: 3px solid #fbbf24;
+            outline-offset: 3px;
+            border-radius: 2px;
+        }
+
+        @media (max-width: 700px) {
+            header.post h1 { font-size: 1.7rem; }
+            article h2 { font-size: 1.25rem; }
+        }
+    </style>
+</head>
+<body>
+    <a href="#main" class="skip-link" style="position:absolute;top:-100px;left:0;z-index:10000;padding:.75rem 1.5rem;background:#1f2937;color:#fff;text-decoration:none;border-radius:0 0 8px 0;">Skip to main content</a>
+
+    <div class="container">
+        <a href="blog.html" class="nav-back">
+            <i class="fas fa-arrow-left"></i> Back to the blog
+        </a>
+
+        <main id="main">
+
+        <header class="post">
+            <span class="post-tag">Systems engineering</span>
+            <h1>Two systems-engineering projects in two weekends</h1>
+            <div class="meta">
+                <span><i class="far fa-calendar"></i> May 2026</span>
+                <span><i class="far fa-clock"></i> 9 min read</span>
+                <span><i class="fas fa-tag"></i> PQC, CV-QKD, RISC-V, hardware crypto</span>
+            </div>
+        </header>
+
+        <article>
+            <p>
+                I shipped two systems-engineering projects this month — a
+                hardware-accelerated post-quantum crypto subsystem on a
+                RISC-V soft core, and a metropolitan-scale CV-QKD network
+                architecture with hybrid PQC + QKD key management. They live
+                in <a href="https://github.com/alovladi007/pqc-riscv-system" target="_blank" rel="noopener">two</a>
+                <a href="https://github.com/alovladi007/cvqkd-network" target="_blank" rel="noopener">repos</a>
+                with real working code, real tests, and real CI. The point
+                of this post is not the code. The point is the methodology
+                that made it possible to ship them in the time I had,
+                without a lab, without a clearance, and without rolling my
+                own crypto.
+            </p>
+
+            <p>
+                Most engineers learn systems engineering as something you
+                do <em>after</em> the implementation: a document you write
+                because the customer asked for one. The shift that made
+                these two projects feasible was treating the architecture
+                artifact as the deliverable itself, with implementation as
+                the verification of the architecture.
+            </p>
+
+            <h2>What I actually built</h2>
+
+            <p>
+                Two repos, both honestly labelled Phase 2 (the architecture
+                + reference implementation), with Phase 3+ deferred to when
+                I have access to the right hardware:
+            </p>
+
+            <ul>
+                <li>
+                    <strong><a href="https://github.com/alovladi007/pqc-riscv-system" target="_blank" rel="noopener">pqc-riscv-system</a></strong>
+                    — Kyber768 (ML-KEM, NIST FIPS 203) accelerated as a
+                    custom RISC-V instruction extension. Python reference
+                    with 43 passing tests, SystemVerilog RTL (Barrett +
+                    Montgomery modular arithmetic, NTT butterfly, Keccak
+                    round), cocotb testbench using the Python as a golden
+                    model, CI running pytest + Verilator lint + cocotb on
+                    every push.
+                </li>
+                <li>
+                    <strong><a href="https://github.com/alovladi007/cvqkd-network" target="_blank" rel="noopener">cvqkd-network</a></strong>
+                    — Continuous-variable QKD scaled from a single fibre
+                    span to a metropolitan trusted-node backbone. Python
+                    simulator with asymptotic + finite-size secret-key-rate
+                    formulas, multi-hop trusted-node model with end-to-end
+                    QKD key as the XOR of per-hop keys hybridised with PQC
+                    via HKDF, working FastAPI implementation of the
+                    ETSI GS QKD 014 REST API. 44 passing tests plus one
+                    honest <code>xfail</code> for an approximation in the
+                    asymptotic SKR formula.
+                </li>
+            </ul>
+
+            <p>
+                The two projects deliberately point at each other: the
+                PQC accelerator is the building block of the trusted-node
+                hardware in the CV-QKD network's hybrid key management.
+                A reviewer can follow one technical story across both repos.
+            </p>
+
+            <h2>The methodology</h2>
+
+            <p>
+                Both projects followed the same five-step loop, which I'll
+                describe in the order that actually worked, not the order
+                a textbook lists them.
+            </p>
+
+            <h3>1. Pick the right scope, not the right project</h3>
+
+            <p>
+                The temptation when you have a "build something to
+                demonstrate systems engineering" prompt is to pick a
+                project. The mistake is that "a project" is too big. What
+                you actually pick is a <em>scope</em>: a bounded slice of
+                a much larger thing, where the boundaries themselves are
+                the engineering decision.
+            </p>
+
+            <p>
+                For PQC-on-RISC-V, the bounded slice was: <em>just</em>
+                the modular-arithmetic + NTT + Keccak primitives, on a
+                soft core, accelerated as custom instructions. Not the
+                full ML-KEM. Not the full ML-DSA. Not a real Kria board.
+                Definitely not a fabbed ASIC. The slice gave me something
+                that's an honest unit of work, fits the time budget, and
+                produces an artifact reviewers can actually run.
+            </p>
+
+            <p>
+                For the CV-QKD network, the bounded slice was: a
+                metropolitan trusted-node backbone with hybrid PQC + QKD
+                keys, modelled at the protocol-and-architecture level, no
+                photonics hardware. The simulator computes secret key
+                rate; the network model walks the trust assumptions; the
+                API speaks ETSI 014 to anything that wants to consume
+                keys. The photonics layer is real published physics;
+                writing yet another photon-Monte-Carlo wasn't going to
+                differentiate the project.
+            </p>
+
+            <blockquote>
+                <p>
+                    The scope is the artifact. Picking a bigger slice
+                    that you can't finish is a worse signal than picking
+                    a smaller slice you can finish honestly.
+                </p>
+            </blockquote>
+
+            <h3>2. Start with the requirements table, not the code</h3>
+
+            <p>
+                Both project pages on the portfolio open with a
+                7-row requirements table. Each row has an ID, the
+                requirement in one sentence, and the standard or rationale
+                it comes from. This isn't paperwork; it's the only
+                document that survives a scope debate.
+            </p>
+
+            <figure>
+<pre>| ID    | Requirement                                              | Source            |
+|-------|----------------------------------------------------------|-------------------|
+| SR-01 | Implement ML-KEM-768 per FIPS 203                        | NIST FIPS 203     |
+| SR-02 | Implement ML-DSA-65 per FIPS 204                         | NIST FIPS 204     |
+| SR-03 | Constant-time execution for secret-dependent operations  | CNSA 2.0          |
+| SR-04 | HW-accelerated keygen/encaps/decaps in &lt; 10x SW baseline | Project goal      |
+| SR-05 | Acceptable LUT/DSP/BRAM on Kria KV260                    | Platform          |
+| SR-06 | TVLA |T| &lt; 4.5 at 10^5 traces                            | ISO/IEC 17825     |
+| SR-07 | Open source under permissive license                     | Project goal      |</pre>
+                <figcaption>The 7 requirements that scoped the PQC project. Every later decision pointed back to one of these.</figcaption>
+            </figure>
+
+            <p>
+                When I caught myself wanting to add a "wouldn't it be cool
+                if it also did X" feature, the question was always: <em>which
+                requirement does that satisfy?</em> If none, it didn't go in
+                Phase 2. That single rule kept both projects shippable.
+            </p>
+
+            <h3>3. Write the trade study before writing the code</h3>
+
+            <p>
+                The trade studies are the section a reviewer flips to
+                first. They're also the section that most candidates either
+                skip or pad with marketing-style "Option A is best" bullet
+                lists. The pattern I used:
+            </p>
+
+            <ul>
+                <li>List 3–5 real options (not 1 good + 2 strawmen).</li>
+                <li>Pick 4–5 axes you actually care about, sourced from
+                    the requirements above.</li>
+                <li>Score each option honestly on each axis. "Don't know"
+                    is a valid entry — and it tells you what to prototype
+                    first.</li>
+                <li>State the verdict and the rationale. One sentence.</li>
+                <li>Note what would change your mind for a V2.</li>
+            </ul>
+
+            <p>
+                For the PQC project, the acceleration-partition trade
+                study compared four options (SW-only baseline,
+                NTT-only co-processor, NTT+Keccak co-processor, full
+                primitive in HW). The NTT+Keccak split won because
+                published profiling (Banerjee et al, IEEE TCAD 2019) shows
+                those two primitives dominate &gt; 80% of the cycle budget
+                for Kyber/Dilithium, while keeping the scheme glue in
+                software means easier review and patching when CNSA
+                guidance updates.
+            </p>
+
+            <p>
+                The trade study is the single most undervalued artifact in
+                an engineer's portfolio. Hiring managers for systems-
+                engineering roles read trade studies; they skim everything
+                else.
+            </p>
+
+            <h3>4. Write the threat model before writing the code</h3>
+
+            <p>
+                This is the section that turns a crypto project into a
+                <em>defended</em> crypto project. The pattern I used for
+                both repos:
+            </p>
+
+            <ul>
+                <li><strong>Capability assumed</strong> — what can the
+                    attacker actually do? Network-side timing? Local
+                    power traces? Physical access? A future quantum
+                    computer?</li>
+                <li><strong>Mitigation in this design</strong> — concretely,
+                    what stops it. Not "we use crypto"; rather "constant-time
+                    control FSM, first-order Boolean masking on NTT
+                    butterflies".</li>
+                <li><strong>Residual risk</strong> — what your mitigation
+                    does <em>not</em> cover. Honesty here is more
+                    credible than a checkbox claim.</li>
+                <li><strong>How you'd verify</strong> — the test that
+                    proves the mitigation works. <code>dudect</code> for
+                    timing, TVLA for power. Not always today; some are
+                    pinned to Phase 3.</li>
+            </ul>
+
+            <p>
+                Writing the threat model before the code forces you to
+                spec the verification target up front. The PQC repo's
+                cocotb tests aren't just functional — they're the
+                infrastructure that TVLA will eventually run inside.
+            </p>
+
+            <h3>5. Ship Phase 2 honestly</h3>
+
+            <p>
+                Both project pages on the portfolio open with a status
+                badge that explicitly says what's done and what isn't.
+                The PQC repo's README has a checklist: green ticks for
+                Phase 2 ("Python reference + RTL skeleton + cocotb + CI"),
+                empty boxes for Phase 3 ("Full NTT engine FSM, Keccak
+                pipeline, RoCC wrapper, Kria synthesis, ChipWhisperer
+                TVLA").
+            </p>
+
+            <p>
+                The honest framing is more credible than overclaiming.
+                If a reviewer asks "did you actually fab this?", the
+                answer "no, Phase 2 stops at functional verification, here
+                are the cocotb tests against the Python golden model that
+                catch the bugs Verilator can't see" is a much stronger
+                answer than evasive hand-waving. (One of those bugs got
+                caught on the very first cocotb run: I'd refactored
+                Barrett reduction in the RTL and accidentally truncated
+                the quotient to 12 bits when it needs 13. Lint passed.
+                Functional simulation against the Python reference did
+                not. That's exactly why the test exists.)
+            </p>
+
+            <div class="takeaway">
+                <strong>Takeaway —</strong> the architecture artifact is
+                the project. Implementation is verification of the
+                architecture. Treat it that way and a "systems engineering
+                project" stops being a vague aspiration and starts being
+                something you can scope, ship, and defend.
+            </div>
+
+            <h2>What this gets you in interviews</h2>
+
+            <p>
+                The systems-engineering-track interview at a DoD-adjacent
+                organization (the kind of place these two projects target)
+                doesn't ask you to write code on a whiteboard. It asks you
+                to walk through a design problem: requirements, trade
+                space, architecture, V&amp;V, integration, lifecycle. The
+                portfolio version of that walkthrough is the architecture
+                page on each project. The repos are the evidence that the
+                walkthrough is grounded in something that runs.
+            </p>
+
+            <p>
+                If you've never published a trade study before, build one
+                project around just that. Pick a bounded slice. List 3
+                options. Score them on 4 axes. Write the verdict. Put it
+                on the web. The methodology compounds.
+            </p>
+        </article>
+
+        <footer class="post-footer">
+            <h3>The projects</h3>
+            <div class="repo-links">
+                <a class="repo-pill" href="https://github.com/alovladi007/pqc-riscv-system" target="_blank" rel="noopener">
+                    <i class="fab fa-github"></i> alovladi007/pqc-riscv-system
+                </a>
+                <a class="repo-pill" href="https://github.com/alovladi007/cvqkd-network" target="_blank" rel="noopener">
+                    <i class="fab fa-github"></i> alovladi007/cvqkd-network
+                </a>
+                <a class="repo-pill" href="../projects/power-electronics/pqc-riscv-system.html">
+                    <i class="fas fa-shield-halved"></i> PQC project page
+                </a>
+                <a class="repo-pill" href="../projects/quantum/cvqkd-network-architecture.html">
+                    <i class="fas fa-key"></i> CV-QKD project page
+                </a>
+            </div>
+        </footer>
+
+        </main>
+    </div>
+
+    <script src="../assets/js/chatbot-bubble.js" defer></script>
+</body>
+</html>
