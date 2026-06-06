@@ -1,0 +1,47 @@
+name: Sitemap drift check
+
+# Regenerate sitemap.xml on every push and fail the build if it differs
+# from the committed version. With 939 HTML pages in the repo and growing,
+# a forgotten regen after adding a new project page would silently leave
+# the new page invisible to Google. This check makes the "regenerate
+# sitemap" step impossible to skip.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # generate-sitemap.py reads `git log -1` per file
+                           # for lastmod; shallow clone would mark everything
+                           # with the same date.
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Regenerate sitemap
+        run: python3 scripts/generate-sitemap.py
+
+      - name: Verify no drift
+        run: |
+          if ! git diff --exit-code sitemap.xml; then
+            echo "::error::sitemap.xml is stale. Run:"
+            echo "::error::   python3 scripts/generate-sitemap.py"
+            echo "::error::and commit the result."
+            exit 1
+          fi
+          echo "sitemap.xml in sync with the file tree."
