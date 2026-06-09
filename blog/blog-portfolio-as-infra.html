@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Treating a 940-page static portfolio like an infra project — Louis Antoine</title>
+    <meta name="description" content="How I turned a personal portfolio of 940 HTML pages into a CI-guarded, drift-checked, idempotently-mutated artifact. Sitemap generator with lastmod from git, meta-tag injector that respects manual overrides, skip-link injector with anchor auto-detection. Three small Python scripts and three CI jobs that make the site impossible to forget about.">
+    <link rel="canonical" href="https://alovladi007.github.io/louis-antoine-portfolio/blog/blog-portfolio-as-infra.html">
+    <meta property="og:title" content="Treating a 940-page static portfolio like an infra project">
+    <meta property="og:description" content="Three small Python scripts and three CI jobs that keep a 940-page personal portfolio consistent. Idempotency + drift detection as a design principle for static sites.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://alovladi007.github.io/louis-antoine-portfolio/blog/blog-portfolio-as-infra.html">
+    <meta property="og:image" content="https://alovladi007.github.io/louis-antoine-portfolio/assets/og-image.png">
+    <meta property="og:site_name" content="Louis Vladimir Antoine — Engineering Portfolio">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0a0a18 0%, #0f1530 50%, #0a0a18 100%);
+            color: #e5e7eb;
+            line-height: 1.75;
+            min-height: 100vh;
+        }
+        a { color: #8ab4ff; }
+        a:hover { color: #b8d0ff; }
+        .container { max-width: 760px; margin: 0 auto; padding: 0 1.5rem; }
+
+        .nav-back {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            padding: 0.65rem 1.25rem;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            color: #e5e7eb; text-decoration: none;
+            border-radius: 25px;
+            margin: 1.5rem 0 2rem;
+            transition: all 0.2s;
+            font-size: 0.95rem;
+        }
+        .nav-back:hover { background: rgba(255,255,255,0.12); color: #fff; }
+
+        header.post {
+            padding: 2rem 0 2rem;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            margin-bottom: 3rem;
+        }
+        .post-tag {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            background: rgba(196, 168, 255, 0.12);
+            color: #c4a8ff;
+            font-size: 0.78rem;
+            font-weight: 600;
+            border-radius: 12px;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            margin-bottom: 1.2rem;
+        }
+        header.post h1 {
+            font-size: 2.25rem;
+            font-weight: 700;
+            line-height: 1.18;
+            margin-bottom: 1.2rem;
+            background: linear-gradient(135deg, #ffffff 0%, #d4d8ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.01em;
+        }
+        .meta {
+            display: flex; flex-wrap: wrap; gap: 1.25rem;
+            color: #9aa3b8; font-size: 0.95rem;
+        }
+        .meta i { margin-right: 0.35rem; opacity: 0.7; }
+
+        article { padding-bottom: 4rem; }
+        article h2 {
+            font-size: 1.55rem; font-weight: 600;
+            color: #fff; margin: 3rem 0 1rem;
+            padding-bottom: 0.4rem;
+            border-bottom: 1px solid rgba(138, 180, 255, 0.18);
+        }
+        article h3 {
+            font-size: 1.18rem; font-weight: 600;
+            color: #d4d8e6; margin: 1.75rem 0 0.75rem;
+        }
+        article p { margin-bottom: 1.15rem; color: #cbd5e1; }
+        article ul, article ol { margin: 0.5rem 0 1.15rem 1.5rem; color: #cbd5e1; }
+        article li { margin-bottom: 0.4rem; }
+        article strong { color: #fff; }
+        article code {
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: 0.88em;
+            background: rgba(196, 168, 255, 0.1);
+            color: #c4a8ff;
+            padding: 0.12em 0.4em;
+            border-radius: 4px;
+        }
+        article blockquote {
+            margin: 1.5rem 0;
+            padding: 1rem 1.4rem;
+            border-left: 4px solid #8ab4ff;
+            background: rgba(138, 180, 255, 0.06);
+            border-radius: 0 8px 8px 0;
+            color: #cbd5e1;
+            font-style: italic;
+        }
+        article blockquote p:last-child { margin-bottom: 0; }
+        article figure {
+            margin: 1.75rem 0;
+            background: #0d1424;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 8px;
+            padding: 1.25rem;
+            overflow-x: auto;
+        }
+        article figure pre {
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: 0.85rem;
+            color: #a8d4ff;
+            white-space: pre;
+            line-height: 1.5;
+        }
+        article figcaption {
+            margin-top: 0.6rem;
+            font-size: 0.85rem;
+            color: #8d96b0;
+            text-align: center;
+        }
+
+        .takeaway {
+            margin: 2.5rem 0;
+            padding: 1.5rem;
+            background: rgba(245, 158, 11, 0.08);
+            border: 1px solid rgba(245, 158, 11, 0.25);
+            border-left: 4px solid #f59e0b;
+            border-radius: 8px;
+        }
+        .takeaway strong { color: #fbbf24; }
+
+        footer.post-footer {
+            margin-top: 3.5rem; padding-top: 2rem;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            color: #9aa3b8; font-size: 0.95rem;
+        }
+        footer.post-footer h3 {
+            color: #fff; margin-bottom: 0.5rem; font-size: 1.05rem;
+        }
+        .repo-links { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.75rem; }
+        .repo-pill {
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            padding: 0.5rem 1rem;
+            background: rgba(138, 180, 255, 0.1);
+            border: 1px solid rgba(138, 180, 255, 0.25);
+            border-radius: 20px;
+            text-decoration: none;
+            color: #b8d0ff;
+            font-size: 0.88rem;
+        }
+        .repo-pill:hover { background: rgba(138, 180, 255, 0.2); color: #fff; }
+
+        a:focus-visible {
+            outline: 3px solid #fbbf24;
+            outline-offset: 3px;
+            border-radius: 2px;
+        }
+
+        @media (max-width: 700px) {
+            header.post h1 { font-size: 1.7rem; }
+            article h2 { font-size: 1.25rem; }
+        }
+    </style>
+</head>
+<body>
+    <a href="#main" class="skip-link" style="position:absolute;top:-100px;left:0;z-index:10000;padding:.75rem 1.5rem;background:#1f2937;color:#fff;text-decoration:none;border-radius:0 0 8px 0;">Skip to main content</a>
+
+    <div class="container">
+        <a href="blog.html" class="nav-back">
+            <i class="fas fa-arrow-left"></i> Back to the blog
+        </a>
+
+        <main id="main">
+
+        <header class="post">
+            <span class="post-tag">Web infrastructure</span>
+            <h1>Treating a 940-page static portfolio like an infra project</h1>
+            <div class="meta">
+                <span><i class="far fa-calendar"></i> June 2026</span>
+                <span><i class="far fa-clock"></i> 9 min read</span>
+                <span><i class="fas fa-tag"></i> SEO, CI, accessibility, drift detection</span>
+            </div>
+        </header>
+
+        <article>
+
+            <p>
+                My portfolio has 940 HTML pages — about 780 interactive
+                project demos, 16 about pages, 5 blog posts, a handful
+                of hub aggregators, and the rest are utilities. Some
+                pages I wrote last week. Some I wrote two years ago.
+                Without active maintenance, a site like this rots
+                fast: broken meta descriptions, sitemaps that cover 6
+                pages out of 940, missing skip-links on every page
+                that was added after the original a11y pass.
+            </p>
+
+            <p>
+                Last week I audited the portfolio and found:
+            </p>
+
+            <ul>
+                <li><code>sitemap.xml</code> covered <strong>6 URLs</strong> out of 939 indexable pages. Google was crawling the homepage and the four hub aggregators; everything else was invisible to search.</li>
+                <li><strong>4 of ~780 project pages</strong> had a <code>meta description</code>. The rest were getting auto-extracted snippets from the visible body, which on a JavaScript-heavy demo page is whatever shows up first — usually a nav element or a button label.</li>
+                <li><strong>0 of ~930 pages</strong> had an Open Graph image. Every shared link on LinkedIn / Slack / X / Discord rendered as a text-only fallback.</li>
+                <li><strong>9 of 940 pages</strong> had a skip-to-content link. Keyboard and screen-reader users on the other 931 had to tab through the full nav on every navigation.</li>
+            </ul>
+
+            <p>
+                I could have hand-edited every page. That would have been
+                a week of mind-numbing work, and the next time I added a
+                project page I'd forget at least one of those fixes. The
+                better answer was to treat the portfolio like a small
+                infrastructure project: three short Python scripts to
+                generate / inject / verify, and three small CI jobs to
+                make sure I can't forget them again.
+            </p>
+
+            <h2>Script 1: sitemap generator (with lastmod from git)</h2>
+
+            <p>
+                The classic broken sitemap is one of three shapes:
+                hand-written and stale, generated once and never
+                regenerated, or "correctly listing 6 of 939 URLs because
+                someone gave up scrolling." The fix is to derive the
+                sitemap from the file tree, not from any human
+                memory.
+            </p>
+
+            <figure>
+                <pre># 80 lines that walk the file tree, classify each page,
+# and emit a sitemap.xml with priority + changefreq + lastmod.
+def classify(relpath):
+    parts = relpath.split("/")
+    if relpath == "index.html":             return (1.0, "weekly")
+    if relpath in TOP_HUB_PAGES:            return (0.8, "monthly")
+    if parts[0] == "blog":                  return (0.7, "monthly")
+    if parts[0] == "projects":              return (0.6, "monthly")
+    if parts[0] == "about":                 return (0.5, "yearly")
+    if parts[0] == "demos":                 return (0.4, "yearly")
+    return (0.5, "yearly")
+
+def last_modified(path):
+    out = subprocess.run(
+        ["git", "log", "-1", "--format=%cs", "--", str(path)],
+        capture_output=True, text=True,
+    )
+    return out.stdout.strip() or None</pre>
+                <figcaption>Two functions plus a filesystem walk = sitemap.xml. Lastmod from git so it's actually honest about staleness.</figcaption>
+            </figure>
+
+            <p>
+                The non-obvious choice here is using
+                <code>git log -1 --format=%cs</code> for
+                <code>lastmod</code>. Most sitemap generators stamp every
+                URL with the build date — which is wrong, because Google
+                uses lastmod to schedule recrawls. If you tell Google
+                every page changed today, it'll learn to ignore your
+                lastmod entirely. Per-file git dates give Google a real
+                signal: this page hasn't changed in 18 months; deprioritise.
+                This page changed yesterday; crawl it.
+            </p>
+
+            <h2>Script 2: meta-tag injector (idempotent, override-respecting)</h2>
+
+            <p>
+                Adding <code>&lt;meta description&gt;</code> + the seven
+                Open Graph + Twitter tags to 924 pages by hand is a
+                non-starter. The temptation is to write a one-shot script
+                that blasts a default set into every page. The trap is
+                that 15 of those pages already have hand-curated meta
+                tags — the PQC project page, for instance, has a
+                description carefully written to read well as a search
+                snippet.
+            </p>
+
+            <p>
+                Two properties matter:
+            </p>
+
+            <ol>
+                <li>
+                    <strong>Idempotent.</strong> Running the script
+                    twice in a row makes zero changes the second time.
+                    This is non-negotiable; without it, every CI run
+                    risks accidentally double-injecting tags.
+                </li>
+                <li>
+                    <strong>Non-destructive.</strong> If a page already
+                    defines <code>og:title</code>, the script leaves it
+                    alone. Only fills in what's missing.
+                </li>
+            </ol>
+
+            <p>
+                The implementation is a compact 200-line script. For
+                each page, it parses <code>&lt;title&gt;</code>, derives
+                a default description, generates the canonical URL from
+                the file path, then injects only the tags that aren't
+                already there:
+            </p>
+
+            <figure>
+                <pre>has = {
+    "description":  bool(META_DESC_RE.search(text)),
+    "og:title":     bool(OG_TITLE_RE.search(text)),
+    "og:desc":      bool(OG_DESC_RE.search(text)),
+    # ... 5 more tags
+}
+if all(has.values()):
+    return False, "all tags already present"
+
+additions = []
+if not has["description"]:
+    additions.append(f'&lt;meta name="description" content="{desc}"&gt;')
+# ... add the missing ones, leave the rest alone</pre>
+                <figcaption>Detect-and-fill pattern. The script ran on 940 pages — 924 changed, 15 already-complete, 1 unprocessable (no &lt;title&gt;).</figcaption>
+            </figure>
+
+            <p>
+                The PQC project page has 7 hand-written tags and 3 missing
+                ones (<code>og:url</code>, <code>og:image</code>,
+                <code>og:site_name</code> — the generic ones I'd never
+                bother to hand-craft per-page). The script added only the
+                3 missing tags and left the 7 hand-written tags untouched.
+                That's the test for "non-destructive": you can run it
+                blindly and trust it won't damage manual work.
+            </p>
+
+            <h2>Script 3: skip-link injector with anchor auto-detection</h2>
+
+            <p>
+                A skip-link is the WCAG-recommended way for keyboard /
+                screen-reader users to jump past the nav to the page
+                content. It's invisible by default; tab into it and it
+                slides into view in the top-left corner. One line of HTML,
+                a tiny CSS block.
+            </p>
+
+            <p>
+                The injection trick is finding the right anchor on each
+                page. Different pages used different conventions:
+                <code>&lt;main id="main-content"&gt;</code> on the
+                homepage, <code>&lt;section id="content"&gt;</code> on
+                most about pages, <code>&lt;article&gt;</code> with an
+                ID on the blog posts. So the script tries each in order
+                and falls back to <code>#content</code>:
+            </p>
+
+            <figure>
+                <pre>def best_anchor(text):
+    if 'id="main-content"' in text: return "#main-content"
+    if 'id="main"' in text:         return "#main"
+    m = MAIN_ID_RE.search(text)
+    if m: return f"#{m.group(1)}"
+    return "#content"</pre>
+                <figcaption>Anchor priority: explicit homepage convention first, then any tagged main/article/section, then a graceful fallback.</figcaption>
+            </figure>
+
+            <p>
+                After this script: 939/940 pages have a skip-link. The
+                1 page that doesn't has no <code>&lt;body&gt;</code> tag
+                — it's a fragment used as an iframe content body, so
+                the skip-link wouldn't help anyway. The script logs
+                "unprocessable: no &lt;body&gt;" and moves on; never
+                guesses.
+            </p>
+
+            <h2>The CI piece: drift detection</h2>
+
+            <p>
+                A regenerated sitemap and freshly-injected meta tags get
+                stale the moment I add a new project page. The fix isn't
+                a calendar reminder — it's CI.
+            </p>
+
+            <figure>
+                <pre>name: Sitemap drift check
+on:
+  push: { branches: [main] }
+  pull_request: { branches: [main] }
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }   # git log -1 needs history
+
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+
+      - name: Regenerate sitemap
+        run: python3 scripts/generate-sitemap.py
+
+      - name: Verify no drift
+        run: |
+          if ! git diff --exit-code sitemap.xml; then
+            echo "::error::sitemap.xml is stale. Run:"
+            echo "::error::   python3 scripts/generate-sitemap.py"
+            echo "::error::and commit the result."
+            exit 1
+          fi
+          echo "sitemap.xml in sync with the file tree."</pre>
+                <figcaption>Regen + diff + fail with a clear error pointing at the exact command to run.</figcaption>
+            </figure>
+
+            <p>
+                This isn't theoretical. Two days after I shipped the
+                workflow, I added a blog post, regenerated the sitemap,
+                added a link from the blog index, and committed. The
+                push triggered drift-check, which failed:
+            </p>
+
+            <figure>
+                <pre>sitemap.xml is stale. Run:
+   python3 scripts/generate-sitemap.py
+and commit the result.</pre>
+                <figcaption>The blog index edit changed blog.html's git mtime, which means its <lastmod> in sitemap.xml was now stale.</figcaption>
+            </figure>
+
+            <p>
+                I'd forgotten to re-run the generator after the blog
+                index edit. Without the drift check, the sitemap would
+                silently disagree with the file tree and the next
+                Google recrawl would see a stale signal for that page.
+                With the drift check, the fix was a 5-second
+                <code>python3 scripts/generate-sitemap.py &amp;&amp;
+                git commit -am "regen sitemap"</code>.
+            </p>
+
+            <div class="takeaway">
+                <strong>Lesson.</strong>
+                A drift check isn't a "should the build pass" gate.
+                It's a "did the human remember to run the generator"
+                gate. Those are different failure modes from compile
+                errors or test regressions — they're forgetfulness,
+                not bugs — and the only good fix for forgetfulness is
+                to make the forgetfulness impossible.
+            </div>
+
+            <h2>The bigger pattern: idempotent mutation + drift detection</h2>
+
+            <p>
+                Each of the three scripts above follows the same shape:
+            </p>
+
+            <ol>
+                <li>
+                    <strong>Inspect the current state</strong> (do tags
+                    already exist? is the sitemap already in sync? is
+                    there already a skip-link?).
+                </li>
+                <li>
+                    <strong>Mutate only what's missing.</strong> Never
+                    overwrite hand-curated content. If something is
+                    already there, leave it alone.
+                </li>
+                <li>
+                    <strong>Be safe to re-run.</strong> Running the
+                    script twice in a row produces no further changes —
+                    so it can be wired into CI and run on every push
+                    without producing noise.
+                </li>
+            </ol>
+
+            <p>
+                This shape generalises. The same pattern applies to:
+            </p>
+
+            <ul>
+                <li>License headers on source files (inject if missing)</li>
+                <li>OpenAPI schema validation on generated clients</li>
+                <li>Database migration check-then-apply</li>
+                <li>Terraform plan-then-apply</li>
+                <li>The kind of "post-commit linter" that fixes whitespace</li>
+            </ul>
+
+            <p>
+                The shared invariant across all of those is: <em>the
+                desired state is derivable from the source of truth</em>
+                (file tree, schema, migration history, Terraform config,
+                source code). If you can compute the desired state from
+                the source, you can compare it to the actual state, and
+                you can make the comparison part of CI. The scripts
+                become small and the drift checks become trivial.
+            </p>
+
+            <h2>Where this leaves the portfolio</h2>
+
+            <p>
+                The current state:
+            </p>
+
+            <ul>
+                <li>940 HTML pages, all with proper <code>meta description</code> + Open Graph + Twitter card tags.</li>
+                <li>939 URLs in <code>sitemap.xml</code>, auto-generated from the file tree, with <code>lastmod</code> dates from per-file git history.</li>
+                <li>939 pages with a skip-to-content link, anchor auto-detected from each page's main content container.</li>
+                <li>4 CI workflows: deploy (push to main), smoke tests (post-deploy + daily cron), Lighthouse (post-deploy + daily cron), sitemap drift check (every push and PR).</li>
+                <li>One real failure of the drift check already in the commit log, with a one-commit fix.</li>
+            </ul>
+
+            <p>
+                When I add a project tomorrow, the meta tags get filled
+                in, the skip-link gets added, and the sitemap drift
+                check screams at me until I regenerate. None of those
+                three things require me to remember anything. That's
+                the only sustainable mode for a static site that's
+                supposed to grow.
+            </p>
+
+            <p>
+                A site doesn't need to be a SPA or have a build step
+                to deserve infrastructure quality. It needs scripts you
+                can re-run, CI that catches what you forgot, and
+                idempotency so the scripts are safe to run constantly.
+                Three Python files, ~500 lines total, fixed a year's
+                worth of accumulated decay in an afternoon.
+            </p>
+
+        </article>
+
+        <footer class="post-footer">
+            <h3>Source</h3>
+            <p>
+                The generator scripts and the drift-check workflow live
+                in the portfolio repo. The same pattern shipped the PQC
+                accelerator's CI (covered in the
+                <a href="blog-pqc-build-bugs.html">companion build-bugs
+                post</a>) — different problem space, same shape.
+            </p>
+            <div class="repo-links">
+                <a class="repo-pill" href="https://github.com/alovladi007/louis-antoine-portfolio" target="_blank" rel="noopener">
+                    <i class="fab fa-github"></i> louis-antoine-portfolio
+                </a>
+                <a class="repo-pill" href="https://github.com/alovladi007/louis-antoine-portfolio/tree/main/scripts" target="_blank" rel="noopener">
+                    <i class="fas fa-code"></i> scripts/
+                </a>
+                <a class="repo-pill" href="https://github.com/alovladi007/louis-antoine-portfolio/blob/main/.github/workflows/sitemap.yml" target="_blank" rel="noopener">
+                    <i class="fas fa-cogs"></i> sitemap.yml workflow
+                </a>
+                <a class="repo-pill" href="blog-pqc-build-bugs.html">
+                    <i class="fas fa-arrow-left"></i> Companion: Kyber build bugs
+                </a>
+            </div>
+        </footer>
+
+        </main>
+    </div>
+</body>
+</html>
