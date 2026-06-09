@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Building a Kyber accelerator: the bugs no spec mentions — Louis Antoine</title>
+    <meta name="description" content="A field report from building Kyber768 in SystemVerilog from scratch: the Montgomery-form zeta trap, the Icarus VPI X-on-read saga that turned out not to be in the RTL at all, the state-retention bug that broke six SHA3-256 tests in a row, and the d2-queue scheduling dance that's impossible to learn from the FIPS spec.">
+    <link rel="canonical" href="https://alovladi007.github.io/louis-antoine-portfolio/blog/blog-pqc-build-bugs.html">
+    <meta property="og:title" content="Building a Kyber accelerator: the bugs no spec mentions">
+    <meta property="og:description" content="A field report from building Kyber768 in SystemVerilog: Montgomery traps, Icarus VPI quirks, state retention bugs, and the d2-queue dance — the stuff FIPS 203 doesn't tell you.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://alovladi007.github.io/louis-antoine-portfolio/blog/blog-pqc-build-bugs.html">
+    <meta property="og:image" content="https://alovladi007.github.io/louis-antoine-portfolio/assets/og-image.png">
+    <meta property="og:site_name" content="Louis Vladimir Antoine — Engineering Portfolio">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0a0a18 0%, #0f1530 50%, #0a0a18 100%);
+            color: #e5e7eb;
+            line-height: 1.75;
+            min-height: 100vh;
+        }
+        a { color: #8ab4ff; }
+        a:hover { color: #b8d0ff; }
+        .container { max-width: 760px; margin: 0 auto; padding: 0 1.5rem; }
+
+        .nav-back {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            padding: 0.65rem 1.25rem;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            color: #e5e7eb; text-decoration: none;
+            border-radius: 25px;
+            margin: 1.5rem 0 2rem;
+            transition: all 0.2s;
+            font-size: 0.95rem;
+        }
+        .nav-back:hover { background: rgba(255,255,255,0.12); color: #fff; }
+
+        header.post {
+            padding: 2rem 0 2rem;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            margin-bottom: 3rem;
+        }
+        .post-tag {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            background: rgba(196, 168, 255, 0.12);
+            color: #c4a8ff;
+            font-size: 0.78rem;
+            font-weight: 600;
+            border-radius: 12px;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            margin-bottom: 1.2rem;
+        }
+        header.post h1 {
+            font-size: 2.25rem;
+            font-weight: 700;
+            line-height: 1.18;
+            margin-bottom: 1.2rem;
+            background: linear-gradient(135deg, #ffffff 0%, #d4d8ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.01em;
+        }
+        .meta {
+            display: flex; flex-wrap: wrap; gap: 1.25rem;
+            color: #9aa3b8; font-size: 0.95rem;
+        }
+        .meta i { margin-right: 0.35rem; opacity: 0.7; }
+
+        article { padding-bottom: 4rem; }
+        article h2 {
+            font-size: 1.55rem; font-weight: 600;
+            color: #fff; margin: 3rem 0 1rem;
+            padding-bottom: 0.4rem;
+            border-bottom: 1px solid rgba(138, 180, 255, 0.18);
+        }
+        article h3 {
+            font-size: 1.18rem; font-weight: 600;
+            color: #d4d8e6; margin: 1.75rem 0 0.75rem;
+        }
+        article p { margin-bottom: 1.15rem; color: #cbd5e1; }
+        article ul, article ol { margin: 0.5rem 0 1.15rem 1.5rem; color: #cbd5e1; }
+        article li { margin-bottom: 0.4rem; }
+        article strong { color: #fff; }
+        article code {
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: 0.88em;
+            background: rgba(196, 168, 255, 0.1);
+            color: #c4a8ff;
+            padding: 0.12em 0.4em;
+            border-radius: 4px;
+        }
+        article blockquote {
+            margin: 1.5rem 0;
+            padding: 1rem 1.4rem;
+            border-left: 4px solid #8ab4ff;
+            background: rgba(138, 180, 255, 0.06);
+            border-radius: 0 8px 8px 0;
+            color: #cbd5e1;
+            font-style: italic;
+        }
+        article blockquote p:last-child { margin-bottom: 0; }
+        article figure {
+            margin: 1.75rem 0;
+            background: #0d1424;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 8px;
+            padding: 1.25rem;
+            overflow-x: auto;
+        }
+        article figure pre {
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: 0.85rem;
+            color: #a8d4ff;
+            white-space: pre;
+            line-height: 1.5;
+        }
+        article figcaption {
+            margin-top: 0.6rem;
+            font-size: 0.85rem;
+            color: #8d96b0;
+            text-align: center;
+        }
+
+        .takeaway {
+            margin: 2.5rem 0;
+            padding: 1.5rem;
+            background: rgba(245, 158, 11, 0.08);
+            border: 1px solid rgba(245, 158, 11, 0.25);
+            border-left: 4px solid #f59e0b;
+            border-radius: 8px;
+        }
+        .takeaway strong { color: #fbbf24; }
+
+        footer.post-footer {
+            margin-top: 3.5rem; padding-top: 2rem;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            color: #9aa3b8; font-size: 0.95rem;
+        }
+        footer.post-footer h3 {
+            color: #fff; margin-bottom: 0.5rem; font-size: 1.05rem;
+        }
+        .repo-links { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.75rem; }
+        .repo-pill {
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            padding: 0.5rem 1rem;
+            background: rgba(138, 180, 255, 0.1);
+            border: 1px solid rgba(138, 180, 255, 0.25);
+            border-radius: 20px;
+            text-decoration: none;
+            color: #b8d0ff;
+            font-size: 0.88rem;
+        }
+        .repo-pill:hover { background: rgba(138, 180, 255, 0.2); color: #fff; }
+
+        a:focus-visible {
+            outline: 3px solid #fbbf24;
+            outline-offset: 3px;
+            border-radius: 2px;
+        }
+
+        @media (max-width: 700px) {
+            header.post h1 { font-size: 1.7rem; }
+            article h2 { font-size: 1.25rem; }
+        }
+    </style>
+</head>
+<body>
+    <a href="#main" class="skip-link" style="position:absolute;top:-100px;left:0;z-index:10000;padding:.75rem 1.5rem;background:#1f2937;color:#fff;text-decoration:none;border-radius:0 0 8px 0;">Skip to main content</a>
+
+    <div class="container">
+        <a href="blog.html" class="nav-back">
+            <i class="fas fa-arrow-left"></i> Back to the blog
+        </a>
+
+        <main id="main">
+
+        <header class="post">
+            <span class="post-tag">Hardware crypto</span>
+            <h1>Building a Kyber accelerator: the bugs no spec mentions</h1>
+            <div class="meta">
+                <span><i class="far fa-calendar"></i> June 2026</span>
+                <span><i class="far fa-clock"></i> 11 min read</span>
+                <span><i class="fas fa-tag"></i> PQC, Kyber, SystemVerilog, cocotb, Icarus</span>
+            </div>
+        </header>
+
+        <article>
+
+            <p>
+                Over the last few weeks I built a Kyber768 (ML-KEM)
+                hardware accelerator from scratch — Python reference,
+                SystemVerilog RTL, cocotb testbench, the lot. The repo
+                now has <strong>8 RTL modules</strong>, <strong>35
+                cocotb tests</strong>, <strong>131 pytest passes</strong>,
+                and a working pipeline from a 34-byte seed through
+                SHAKE-128 rejection sampling to a 256-coefficient matrix-A
+                polynomial in the NTT domain, plus η=2 noise polynomials
+                via SHAKE-256 → centered binomial.
+            </p>
+
+            <p>
+                FIPS 203 is around 90 pages of spec for ML-KEM. None of
+                them prepare you for the bugs you'll actually hit when
+                you implement it. This post is a field report: four
+                specific bugs from the build that taught me something
+                worth writing down.
+            </p>
+
+            <h2>1. The Montgomery-form zeta trap</h2>
+
+            <p>
+                Kyber's NTT is a length-256 negacyclic transform in
+                <code>GF(3329)</code>. The reference uses Montgomery
+                reduction inside the butterfly because it's faster than
+                a generic modular multiplication. The math is in every
+                Kyber reference: <code>a' = a + t</code>,
+                <code>b' = a - t</code> where <code>t =
+                MontgomeryReduce(ζ × b)</code>.
+            </p>
+
+            <p>
+                My first butterfly cocotb test failed with a clean
+                mismatch:
+            </p>
+
+            <figure>
+                <pre>a=0, b=1, zeta=1: got (169, 3160) expected (1, 3328)</pre>
+                <figcaption>The cocotb regression line that prints when reality and the spec disagree.</figcaption>
+            </figure>
+
+            <p>
+                Both numbers <em>looked</em> wrong. <code>169</code> isn't
+                obviously related to <code>1</code>. <code>3160</code>
+                isn't obviously related to <code>3328</code>. It took
+                staring at the trace for a while before I noticed:
+                <code>169 + 3160 = 3329 = q</code>, and <code>3160 -
+                169 ≡ 2991 (mod 3329)</code> which is <code>−169 × R
+                mod q</code> where R = 2<sup>16</sup>. The output was
+                in <em>Montgomery form</em>.
+            </p>
+
+            <p>
+                The butterfly was correct. The test was wrong. Or
+                rather: the butterfly took a Montgomery-form
+                <code>ζ</code> as input and produced canonical-form
+                output, but my test was feeding it canonical-form
+                <code>ζ = 1</code> instead of <code>ζ × R mod q =
+                2285</code>. The Python reference NTT doesn't use
+                Montgomery form at the ζ table level (it converts inside
+                the multiply), so the table I'd been mirroring was the
+                wrong representation for the RTL.
+            </p>
+
+            <p>
+                The fix was two-fold: (1) pre-scale the
+                <code>ntt_engine</code>'s internal twiddle ROM by
+                <code>R mod q = 2285</code> so the butterfly's
+                Montgomery reduction lands canonical output, and (2)
+                update the standalone butterfly test to convert ζ
+                before driving the input.
+            </p>
+
+            <div class="takeaway">
+                <strong>Lesson.</strong>
+                When an arithmetic primitive operates in a specific
+                representation (Montgomery form, NTT form, bit-reversed
+                order), the test harness has to speak the same
+                language. If the spec gives you canonical inputs and
+                expects canonical outputs but your hardware works
+                internally in a different domain, the boundary
+                conversion belongs in the test, not in the RTL — keep
+                the primitive lean.
+            </div>
+
+            <h2>2. The Icarus + cocotb VPI X-on-read saga</h2>
+
+            <p>
+                This one took two full sessions to diagnose. The
+                <code>keccak_f1600.sv</code> permutation passed
+                Verilator lint. The standalone pure-SystemVerilog
+                testbench passed — every lane of the all-zero state
+                after f<sup>24</sup>(0) matched the canonical Keccak-Team
+                vector <code>0xF1258F7940E1DDE7</code> bit-for-bit. But
+                the cocotb test was reading <em>all-X</em> on every lane:
+            </p>
+
+            <figure>
+                <pre>WARNING  ..cak_zero_state.keccak_zero_state Can't convert
+LogicArray to int: it contains non-0/1 values
+ValueError: Can't convert LogicArray to int: it contains
+non-0/1 values</pre>
+                <figcaption>cocotb refusing to int() an output that's all X.</figcaption>
+            </figure>
+
+            <p>
+                The natural first hypothesis is "the RTL is wrong",
+                except the pure-SV testbench drives the same RTL and
+                gets the canonical output. So it has to be a
+                cocotb-specific sampling issue.
+            </p>
+
+            <p>
+                I tried every cocotb timing pattern I know: <code>await
+                RisingEdge</code>, <code>await ReadOnly()</code>,
+                <code>await NextTimeStep()</code>, double-clocked the
+                read, registered the read port instead of combinational,
+                fully-decoded the read port through a <code>unique case</code>
+                statement to avoid unpacked-array-by-variable-index.
+                Nothing worked. Every variant kept reading 64 bits of X.
+            </p>
+
+            <p>
+                Eventually I added a <code>$display</code> to the
+                round-commit logic to see what the simulator was
+                <em>actually</em> computing:
+            </p>
+
+            <figure>
+                <pre>[KECCAK_DEBUG] t=300000 round=0
+  state[0]_in=0x0000000000000000
+  round_out[0]=0xxxxxxxxxxxxxxxxx</pre>
+                <figcaption>Smoking gun: state is zero (correct), but the
+                combinational keccak_round produced X.</figcaption>
+            </figure>
+
+            <p>
+                The state register was correct. The keccak_round module
+                was producing X. That meant the inputs to keccak_round
+                were X — even though the upstream <code>state[]</code>
+                register held the right values.
+            </p>
+
+            <p>
+                The culprit was an <strong>unpacked-array module
+                port</strong>: <code>input wire [63:0] state_in
+                [0:24]</code>. Icarus's VPI binding under cocotb doesn't
+                propagate values across unpacked-array ports cleanly.
+                The same source code worked in pure-SV (where ports are
+                resolved by elaboration, not VPI) and worked under
+                Verilator (different VPI implementation). It broke
+                <em>only</em> on the cocotb + Icarus path.
+            </p>
+
+            <p>
+                The fix was to pack the state into a 1600-bit vector at
+                the port boundary, unpack it inside the module, and
+                pack it back at the output:
+            </p>
+
+            <figure>
+                <pre>// Before
+input  wire [63:0]  state_in  [0:24],
+output logic [63:0] state_out [0:24]
+
+// After
+input  wire [1599:0]  state_in_packed,
+output logic [1599:0] state_out_packed</pre>
+                <figcaption>Packed ports + a small unpack/repack inside the
+                module. Synthesis-identical, VPI-clean.</figcaption>
+            </figure>
+
+            <p>
+                cocotb went from 0/3 keccak tests passing to 3/3 on the
+                next CI run. Same RTL semantics. Same Verilator output.
+                The fix was purely about the port-level representation
+                a tool downstream of synthesis could see correctly.
+            </p>
+
+            <div class="takeaway">
+                <strong>Lesson.</strong>
+                When a test that should pass fails in a way that has
+                nothing to do with what you're testing, the tooling
+                layer is in the suspect set. Always build a fallback
+                that proves the RTL works <em>without</em> the
+                framework you suspect — a pure-SV testbench in this
+                case. It cost an hour to write and turned a "is my
+                Keccak round correct?" debug into a "is my port style
+                VPI-friendly?" debug. Those are different problems
+                with different fixes.
+            </div>
+
+            <h2>3. The state-retention bug that broke 6/6 SHA3 tests</h2>
+
+            <p>
+                Next module up the stack: the SHA3-256 sponge wrapping
+                <code>keccak_f1600</code>. First CI run, all 6 tests
+                failed — and the failure was suspicious. Test 1 (single
+                byte) produced output starting with <code>0x00</code>
+                (very suspicious for a hash). Tests 2-6 each produced
+                non-X but wrong output, none matching the expected
+                digests.
+            </p>
+
+            <p>
+                I added a <code>$display</code> dump at the XOR-with-state
+                step of the sponge's absorb phase. For the second test
+                (SHA3-256 of "abc"), the debug line said:
+            </p>
+
+            <figure>
+                <pre>[SHA3_XOR] t=1405000 merge=0 lane=0
+  buf=0x0000000006636261 read=0xc25693b55778de74</pre>
+                <figcaption>The absorb buffer is correct, but the state
+                register being read is leftover from the previous test.</figcaption>
+            </figure>
+
+            <p>
+                The buffer had the right padded "abc" content
+                (<code>0x06636261</code> is "a", "b", "c", 0x06 in
+                little-endian). But <code>state[0]</code> wasn't zero —
+                it held <code>0xc25693b55778de74</code>, the post-permute
+                lane 0 from the <em>previous</em> test.
+            </p>
+
+            <p>
+                The reason: <code>cocotb</code> calls a reset routine
+                between tests (drives <code>rst_n</code> low briefly),
+                but the Keccak state array is initialised via an
+                <code>initial</code> block at time zero, not in the
+                async-reset branch. (That itself was an earlier
+                workaround for Icarus mishandling
+                <code>for (int i ...) state[i] &lt;= 0</code> inside
+                the reset branch.) So the second test inherited the
+                first test's final state, and the sponge's XOR-into-zero
+                assumption was wrong.
+            </p>
+
+            <p>
+                The fix was a 1-bit <code>first_block</code> flag in
+                the SHA3 wrapper. On the first XOR pass of a new run,
+                <em>overwrite</em> state with the padded data instead
+                of XORing. After the first permute completes, clear
+                the flag so subsequent blocks of a multi-block message
+                XOR correctly into the existing state.
+            </p>
+
+            <figure>
+                <pre>// In S_XOR_LOAD:
+kf_load_data &lt;= first_block
+                ? absorb_buf[merge_bit +: 64]
+                : (kf_read_data ^ absorb_buf[merge_bit +: 64]);
+
+// In S_PERMUTE_WAIT (kf_done):
+first_block &lt;= 1'b0;</pre>
+                <figcaption>One 1-bit register, one mux, full fix.</figcaption>
+            </figure>
+
+            <p>
+                All 6 SHA3-256 tests went green on the next CI run. The
+                generalised version of this fix also covers
+                SHAKE-128, SHAKE-256, and the rejection / CBD samplers
+                that wrap them.
+            </p>
+
+            <div class="takeaway">
+                <strong>Lesson.</strong>
+                If your test harness reuses the simulator instance
+                across tests (cocotb does), then implicit state — the
+                "I assume the state starts at zero" assumption — is a
+                landmine. Either explicitly clear all state at the start
+                of each test, or design the module to be agnostic to
+                what came before. The flag-based fix here is the latter
+                approach and is also synthesis-realistic: a real
+                Kyber subsystem would issue many sha3_256 calls
+                back-to-back without a global reset between them.
+            </div>
+
+            <h2>4. The d2-queue scheduling dance in sample_ntt</h2>
+
+            <p>
+                The rejection sampler reads 3 bytes from SHAKE-128,
+                extracts two 12-bit candidates, accepts each if
+                <code>&lt; q</code>, and repeats until 256 coefficients
+                are collected. SHAKE produces one byte per cycle. With
+                acceptance rate ~81% (q/2<sup>12</sup>), the expected
+                output rate is 2 × 0.81 / 3 = 0.54 accepts/cycle —
+                comfortably under the single-port coef-mem's 1
+                write/cycle budget.
+            </p>
+
+            <p>
+                But the <em>peak</em> rate matters. When both d1 and d2
+                from a triple are accepted, we need two mem writes
+                between the byte-2 cycle and the byte-0 cycle of the
+                next triple. With a single-port mem and no buffering,
+                that's two writes in one cycle — a hardware conflict.
+            </p>
+
+            <p>
+                The standard fix is dual-port BRAM. The other fix is
+                what I actually used: a <strong>1-slot d2-pending
+                register</strong>. d1 commits the same cycle as byte
+                2 (when it's accepted). d2 is queued in
+                <code>d2_pending</code> / <code>d2_value</code>.
+                The next cycle — guaranteed to be a byte-0 cycle of
+                the next triple, which only needs to capture a byte,
+                not write the mem — d2 drains.
+            </p>
+
+            <p>
+                The reasoning that proves the queue never overflows:
+            </p>
+
+            <ul>
+                <li>Triple cycles repeat every 3 cycles (byte 0, 1, 2).</li>
+                <li>d2_pending is set only on byte-2 cycles.</li>
+                <li>d2_pending is drained on the very next cycle, which is
+                    always a byte-0 cycle (or a permute-paused cycle if
+                    SHAKE just exhausted its rate).</li>
+                <li>Therefore d2_pending is always false going into the
+                    next byte-2 cycle. The queue never collides.</li>
+            </ul>
+
+            <p>
+                My first cut got the logic almost right but had a
+                pathological branch handling "d2_pending while
+                processing a new triple with both candidates accepted" —
+                a case the timing reasoning above proves can't happen.
+                Removing the impossible branch made the design simpler
+                and the cycle count tighter. The CI ran 3 sample_ntt
+                tests (two random seeds + all-zero edge case) green on
+                the first try after the simplification.
+            </p>
+
+            <div class="takeaway">
+                <strong>Lesson.</strong>
+                Before writing buffering, think through the timing
+                carefully and write the invariant out. If
+                "queue size never exceeds 1" is provable from the
+                clock and the FSM, a 1-slot register beats a FIFO —
+                less area, less complexity, fewer corner cases. The
+                same exercise on the CBD-2 sampler said "actually here
+                we need 2 mem writes per cycle on average", and the
+                correct answer there was dual-port BRAM, not a queue.
+            </div>
+
+            <h2>The final stack</h2>
+
+            <p>
+                The accelerator's primitive stack at the end of the
+                last work session:
+            </p>
+
+            <figure>
+                <pre>                         keccak_f1600  (FIPS 202)
+                                │
+       ┌─────────────────┬──────┴──────┬─────────────────┐
+       │                 │              │                 │
+   sha3_256          shake_128       shake_256       (raw, used
+   6 cocotb           5 cocotb        [via cbd2]      directly by
+                                                     every sponge)
+       │                 │              │
+       │                 ▼              ▼
+       │             sample_ntt    sample_poly_cbd2
+       │             3 cocotb        3 cocotb
+       │             (Kyber A_hat)   (Kyber e/e1/e2)
+
+   kyber_q_alu       ntt_butterfly        ntt_engine
+   4 cocotb           3 cocotb            8 cocotb
+   (Barrett +         (Cooley-Tukey       (256-pt forward
+    mod_add +          + Montgomery)       + inverse + n⁻¹)
+    mod_sub)</pre>
+                <figcaption>8 RTL modules, 35 cocotb tests, 131 pytest, 10
+                verilator-lint targets — all green in CI.</figcaption>
+            </figure>
+
+            <p>
+                What's left for a full Kyber768 keygen: pointwise
+                polynomial multiplication (<code>basemul</code>), the
+                3×3 matrix-vector accumulator that produces
+                <code>t̂ = Â · ŝ + ê</code>, and a top-level FSM that
+                orchestrates the SHA3-512 / sample_ntt × 9 /
+                sample_cbd2 × 6 / NTT × 6 / matrix-mul / pack sequence.
+                Then Phase 5 wraps it in a RoCC-style coprocessor
+                interface for a CV32E40P soft core and targets a Kria
+                KV260 for synthesis + utilisation reporting.
+            </p>
+
+            <h2>What I'd tell myself at the start</h2>
+
+            <p>
+                Four things, in order of how much wall-clock they'd
+                have saved:
+            </p>
+
+            <ol>
+                <li>
+                    <strong>Write the Python reference first, even if
+                    you "already understand the algorithm".</strong>
+                    The Python ref isn't there to help you understand
+                    Kyber. It's there so that when the RTL produces
+                    wrong output, you can ask "does Python agree?" and
+                    have a millisecond-scale oracle. The Montgomery-form
+                    trap above was a 30-second debug because the
+                    Python reference for the butterfly was sitting
+                    right there.
+                </li>
+                <li>
+                    <strong>Write a pure-SV testbench for every module,
+                    even if cocotb is the primary test path.</strong>
+                    It costs an hour and it isolates "is the RTL
+                    correct?" from "is my framework binding it
+                    correctly?". I would have saved a session and a
+                    half on the Keccak VPI saga if I'd built the
+                    standalone testbench on day one instead of day
+                    three.
+                </li>
+                <li>
+                    <strong>Pack your unpacked-array module ports if
+                    cocotb is in the pipeline.</strong> Packed bit-vector
+                    ports work cleanly through both Icarus's and
+                    Verilator's VPI. Unpacked-array ports don't. Always
+                    pay the small unpack/repack cost at the boundary.
+                </li>
+                <li>
+                    <strong>Reason about your write-port pressure
+                    before adding a FIFO.</strong> For most pipelines
+                    where the FSM is fully scheduled, a single
+                    register slot ("pending") is enough and a real
+                    queue is overkill. For pipelines where the average
+                    write rate exceeds the port budget (CBD-2 at 2
+                    coefs per cycle), the right answer is to use the
+                    BRAM's dual port, not a deeper queue.
+                </li>
+            </ol>
+
+            <p>
+                None of these are in FIPS 203. None of them would have
+                been in a Kyber tutorial. They're the actual cost of
+                turning a specification into a working accelerator on
+                whichever simulator you happen to be using. The bugs
+                are the project.
+            </p>
+
+        </article>
+
+        <footer class="post-footer">
+            <h3>Source</h3>
+            <p>
+                All code, tests, and CI live in the
+                <a href="https://github.com/alovladi007/pqc-riscv-system" target="_blank" rel="noopener">pqc-riscv-system</a>
+                repository on GitHub. The architecture overview and
+                trade studies are on the
+                <a href="../projects/power-electronics/pqc-riscv-system.html">project page</a>.
+            </p>
+            <div class="repo-links">
+                <a class="repo-pill" href="https://github.com/alovladi007/pqc-riscv-system" target="_blank" rel="noopener">
+                    <i class="fab fa-github"></i> pqc-riscv-system
+                </a>
+                <a class="repo-pill" href="../projects/power-electronics/pqc-riscv-system.html">
+                    <i class="fas fa-microchip"></i> Project page
+                </a>
+                <a class="repo-pill" href="blog-systems-engineering-sprint.html">
+                    <i class="fas fa-arrow-left"></i> Companion post: scoping methodology
+                </a>
+            </div>
+        </footer>
+
+        </main>
+    </div>
+</body>
+</html>
