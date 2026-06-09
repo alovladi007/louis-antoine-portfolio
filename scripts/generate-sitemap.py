@@ -84,11 +84,41 @@ def classify(relpath: str) -> tuple[float, str]:
     return (0.5, "yearly")
 
 
-def last_modified(path: Path) -> str | None:
-    """Return ISO date of last git commit touching `path`, or None."""
+def _pending_changes() -> set:
+    """Set of relative paths with staged or unstaged changes — files that
+    will be part of the NEXT commit. Used to break a chicken-and-egg
+    where `git log -1` returns the OLD lastmod for a file you're about
+    to commit, which then drifts the moment the commit lands and CI
+    runs against HEAD."""
     try:
         out = subprocess.run(
-            ["git", "log", "-1", "--format=%cs", "--", str(path.relative_to(REPO_ROOT))],
+            ["git", "diff", "HEAD", "--name-only"],
+            cwd=REPO_ROOT, capture_output=True, text=True, timeout=10,
+        )
+        return set(out.stdout.split())
+    except (subprocess.SubprocessError, OSError):
+        return set()
+
+
+_PENDING: set | None = None
+
+
+def last_modified(path: Path) -> str | None:
+    """Return ISO date of last git commit touching `path`, or today if
+    the file has uncommitted changes (so a local run agrees with the
+    post-commit CI run)."""
+    global _PENDING
+    if _PENDING is None:
+        _PENDING = _pending_changes()
+
+    rel = str(path.relative_to(REPO_ROOT))
+    if rel in _PENDING:
+        from datetime import date
+        return date.today().isoformat()
+
+    try:
+        out = subprocess.run(
+            ["git", "log", "-1", "--format=%cs", "--", rel],
             cwd=REPO_ROOT,
             capture_output=True,
             text=True,
