@@ -1,12 +1,15 @@
 # Louis Antoine — Engineering Portfolio
 
 [![Deploy](https://github.com/alovladi007/louis-antoine-portfolio/actions/workflows/static.yml/badge.svg?branch=main)](https://github.com/alovladi007/louis-antoine-portfolio/actions/workflows/static.yml)
+[![Smoke tests](https://github.com/alovladi007/louis-antoine-portfolio/actions/workflows/smoke.yml/badge.svg?branch=main)](https://github.com/alovladi007/louis-antoine-portfolio/actions/workflows/smoke.yml)
+[![Lighthouse](https://github.com/alovladi007/louis-antoine-portfolio/actions/workflows/lighthouse.yml/badge.svg?branch=main)](https://github.com/alovladi007/louis-antoine-portfolio/actions/workflows/lighthouse.yml)
+[![Sitemap drift](https://github.com/alovladi007/louis-antoine-portfolio/actions/workflows/sitemap.yml/badge.svg?branch=main)](https://github.com/alovladi007/louis-antoine-portfolio/actions/workflows/sitemap.yml)
 [![Live site](https://img.shields.io/badge/live-alovladi007.github.io%2Flouis--antoine--portfolio-2563eb?logo=githubpages&logoColor=white)](https://alovladi007.github.io/louis-antoine-portfolio/)
 [![License](https://img.shields.io/badge/license-MIT%20code%20%2F%20RR%20content-informational)](LICENSE)
 
 A multi-section engineering portfolio covering semiconductor process work, photonics, quantum optics, machine learning, autonomy, and adjacent applied-physics topics.
 
-The site is a static HTML/CSS/JS app deployed to GitHub Pages, with hundreds of interactive simulators, tools, and project write-ups organized by domain.
+The site is a static HTML/CSS/JS app deployed to GitHub Pages, with **940 interactive simulators, tools, and project write-ups** organized by domain.
 
 **Live site →** <https://alovladi007.github.io/louis-antoine-portfolio/>
 
@@ -57,7 +60,12 @@ The site is a static HTML/CSS/JS app deployed to GitHub Pages, with hundreds of 
 │
 ├── backend/                         # Flask app for self-driving demo (not deployed)
 ├── docs/                            # Status notes, project guides (not deployed)
-├── scripts/                         # Helper scripts (not deployed)
+├── scripts/                         # Helper scripts (not deployed; see below)
+│   ├── generate-sitemap.py          # Walks the file tree → sitemap.xml
+│   └── inject-meta-tags.py          # Idempotent meta + OG tag injector
+│
+├── sitemap.xml                      # 939 URLs, regenerated on every push
+├── robots.txt                       # Allows crawlers, points to sitemap
 │
 ├── styles.css, styles-advanced.css  # Site-wide CSS
 ├── script.js, script-advanced.js,
@@ -100,6 +108,32 @@ YOLO weights/config/labels go in `backend/model/` — these are gitignored; fetc
 ## Deployment
 
 Push to `main` → [.github/workflows/static.yml](.github/workflows/static.yml) assembles a trimmed `_site/` directory (excludes `backend/`, `scripts/`, `docs/`, `tests/`, internal `*.md`, dev tooling, and VCS metadata) and uploads it to GitHub Pages.
+
+CSS is minified in-flight via [csso](https://github.com/css/csso) inside the deploy step — repo source stays readable, only the deployed copy is compressed.
+
+## CI workflows
+
+| Workflow | Trigger | What it checks |
+|---|---|---|
+| [`static.yml`](.github/workflows/static.yml)  | push to main | Assemble + minify + deploy to GitHub Pages |
+| [`smoke.yml`](.github/workflows/smoke.yml)    | post-deploy + daily cron | Playwright smoke tests + axe-core a11y against the live site |
+| [`lighthouse.yml`](.github/workflows/lighthouse.yml) | post-deploy + daily cron | Lighthouse CI on the deployed homepage; perf, a11y, SEO, best-practices floors |
+| [`sitemap.yml`](.github/workflows/sitemap.yml) | every push/PR | Regenerates `sitemap.xml` and fails the build if it drifts from the file tree |
+
+## SEO + social sharing
+
+| What | Status |
+|---|---|
+| `sitemap.xml` | 939 URLs (homepage, 3 top hubs, 6 sub-hubs, 6 blog posts, 781 project pages, 119 about/about-related, 29 demos). Auto-generated from the file tree. |
+| `robots.txt` | Allow all, points to the sitemap |
+| `meta description` | 940/940 pages (100%) |
+| `og:title`, `og:description`, `og:image`, `og:url`, `og:site_name`, `og:type`, `twitter:card` | 940/940 pages — LinkedIn / Slack / X / Discord all render proper link previews |
+| Schema.org `Person` JSON-LD | Homepage only (the rest are project pages, not personal pages) |
+| Open Graph image | [`assets/og-image.png`](assets/og-image.png) — custom branded card |
+
+The `sitemap.yml` workflow guards against forgotten regenerations: if you add a new project page and forget to re-run `python3 scripts/generate-sitemap.py`, CI fails with a clear "sitemap.xml is stale" message and the exact command to run.
+
+The meta-tag injector ([`scripts/inject-meta-tags.py`](scripts/inject-meta-tags.py)) is **idempotent** and **non-destructive**: it only adds tags that are missing. Pages with hand-curated meta tags (e.g. the [PQC SE project page](projects/power-electronics/pqc-riscv-system.html) with its custom description and og:title) are preserved verbatim — the script just fills in the gaps the author didn't write.
 
 ## Recovery
 
