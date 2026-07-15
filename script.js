@@ -69,32 +69,24 @@ document.querySelectorAll('.project-card, .certification-card, .contact-item').f
     cardObserver.observe(card);
 });
 
-// Add typing effect to hero title
-function typeWriter(element, text, speed = 100) {
-    let i = 0;
-    element.innerHTML = '';
-    
-    function type() {
-        if (i < text.length) {
-            element.innerHTML += text.charAt(i);
-            i++;
-            setTimeout(type, speed);
-        }
-    }
-    
-    type();
-}
-
-// Initialize typing effect when page loads
-window.addEventListener('load', () => {
-    const heroTitle = document.querySelector('.hero-title');
-    if (heroTitle) {
-        const originalText = heroTitle.textContent;
-        setTimeout(() => {
-            typeWriter(heroTitle, originalText, 150);
-        }, 500);
-    }
-});
+// NOTE: a typewriter effect used to live here. It was removed because it
+// was the single largest Core Web Vitals problem on the site:
+//
+//   * CLS — it did `heroTitle.innerHTML = ''` and retyped one char at a
+//     time. Emptying the h1 collapsed it from ~3 lines to 0, so the
+//     subtitle, specialization text and both CTA buttons jumped up ~140px
+//     and walked back down over the next 3.3s. All of it landed in one
+//     CLS session window, which is essentially the whole measured 0.107.
+//   * LCP — it started 500ms after `window.load` and ran 22 chars ×
+//     150ms = 3300ms, with every character registering a new, larger
+//     text-block LCP candidate. That is the 2374ms gap between the
+//     measured FCP (3495ms) and LCP (5869ms).
+//
+// The hero h1 now renders its real text at first paint, which is both
+// faster and more readable. If the effect is ever wanted back, it must
+// not empty the element or change its box: reserve the final height and
+// reveal the text (e.g. a CSS clip-path/width animation), rather than
+// mutating innerHTML.
 
 // Add parallax effect to hero section
 window.addEventListener('scroll', () => {
