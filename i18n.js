@@ -734,10 +734,32 @@
             }
             if (value) {
                 if (el.tagName === 'INPUT' && el.hasAttribute('placeholder')) {
-                    el.placeholder = value;
+                    // Only touch the DOM when the value actually changes (see below).
+                    if (el.placeholder !== value) {
+                        el.placeholder = value;
+                    }
                 } else if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
                     // For labels, update the associated label
-                } else {
+                } else if (el.textContent !== value) {
+                    // GUARD: only write when the text genuinely differs.
+                    //
+                    // This was the site's Largest Contentful Paint bug. Assigning
+                    // textContent unconditionally destroys the existing text node
+                    // and creates a new one even when the string is identical —
+                    // which forces a repaint and registers a BRAND NEW LCP
+                    // candidate at that moment.
+                    //
+                    // On a default en-US load the translations equal the markup,
+                    // so every one of these writes was a pure no-op that still
+                    // re-rendered the page. i18n.js is 53KB and deferred, so it
+                    // executed late: Lighthouse measured the hero <h1
+                    // data-i18n="hero.name"> as the LCP element with Load Time
+                    // 0ms but Render Delay 5233ms, pinning LCP at 5.9s while FCP
+                    // was 2.6s. Comparing first makes the en-US path touch zero
+                    // nodes, so LCP should collapse back toward FCP.
+                    //
+                    // Real language switches are unaffected — the text differs,
+                    // so the write still happens.
                     el.textContent = value;
                 }
             }
