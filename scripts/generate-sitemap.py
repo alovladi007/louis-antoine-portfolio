@@ -34,11 +34,39 @@ SITE_URL = "https://alovladi007.github.io/louis-antoine-portfolio"
 REPO_ROOT = Path(__file__).resolve().parent.parent
 OUT = REPO_ROOT / "sitemap.xml"
 
-# Paths to skip entirely
-SKIP_DIRS = {
-    ".git", ".github", "node_modules", "scripts", "tests",
-    "git", "backend", "frontend", "playwright-report", "test-results",
+# Root-level directories to skip entirely.
+#
+# CRITICAL: this MUST stay in sync with the rsync exclude list in
+# .github/workflows/static.yml. This script walks the SOURCE TREE, but the
+# sitemap describes the DEPLOYED SITE. Any directory the deploy excludes but
+# this script includes produces a sitemap entry that 404s in production —
+# and because .github/workflows/sitemap.yml regenerates from the same tree,
+# the drift check would happily re-add the bad entries on every run rather
+# than catch them.
+#
+# That is exactly what happened with `docs/`: it is excluded from the deploy
+# artifact but was absent here, so the sitemap advertised 5 URLs
+# (docs/index.html, docs/additional-projects.html, docs/ml-projects.html,
+# docs/self-driving-vision.html, docs/projects/self-driving-vision/index.html)
+# that do not exist on the live site.
+#
+# These are matched at the ROOT only (see discover_html_files), mirroring the
+# leading-slash anchoring in static.yml, so nested dirs that merely share a
+# name (e.g. riscv-soc-files/docs) are still published.
+SKIP_ROOT_DIRS = {
+    ".git", ".github", ".claude", "node_modules", "_site",
+    "scripts", "tests", "backend", "archives", "logs",
+    "docs",              # excluded by static.yml — must not be sitemapped
+    "git", "playwright-report", "test-results",
+    # frontend/ DOES ship, but its only page is a meta-refresh redirect
+    # stub linked from nowhere — indexing a redirect is bad SEO, so it is
+    # deliberately omitted. (Allowed: sitemap ⊆ artifact, not equality.)
+    "frontend",
 }
+
+# Directory names skipped at ANY depth (mirrors the unanchored static.yml
+# patterns).
+SKIP_ANY_DIRS = {"node_modules", "__pycache__"}
 
 SKIP_NAMES = {"404.html"}
 
@@ -131,11 +159,32 @@ def last_modified(path: Path) -> str | None:
 
 
 def discover_html_files() -> list[str]:
-    """Walk REPO_ROOT and return sorted list of relative html paths."""
+    """Walk REPO_ROOT and return sorted list of relative html paths.
+
+    Invariant: the result must be a SUBSET of what static.yml publishes.
+    Listing a URL the deploy excludes gives Google a guaranteed 404;
+    listing fewer than we publish is harmless (a sitemap is "what should be
+    indexed", not "every file that ships").
+
+    Root-only skips are pruned at depth 0 only, mirroring the leading-slash
+    anchoring in static.yml, so a nested directory that merely shares a name
+    (riscv-soc-files/docs, medimetrics-nest/scripts) is still published AND
+    sitemapped.
+    """
     found: list[str] = []
     for dirpath, dirnames, filenames in os.walk(REPO_ROOT):
-        # Prune skip-dirs in place
-        dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS and not d.startswith(".")]
+        at_root = Path(dirpath).resolve() == REPO_ROOT
+        pruned = []
+        for d in dirnames:
+            if d.startswith("."):
+                continue
+            if d in SKIP_ANY_DIRS:
+                continue
+            if at_root and d in SKIP_ROOT_DIRS:
+                continue
+            pruned.append(d)
+        dirnames[:] = pruned
+
         for f in filenames:
             if not f.endswith(".html"):
                 continue
